@@ -1,0 +1,822 @@
+<!DOCTYPE html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, user-scalable=no"
+    />
+    <title>KI Welt Baumeister (Ego-Perspektive)</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap"
+      rel="stylesheet"
+    />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/PointerLockControls.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    <style>
+      body {
+        font-family: "Press Start 2P", cursive;
+        color: #0f0;
+        background-color: #1a1a2e;
+        margin: 0;
+        overflow: hidden; /* Prevent scrollbars */
+        display: flex; /* Use flexbox for centering */
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+        text-align: center; /* Center text elements like title */
+      }
+      #game-container {
+        position: relative; /* For overlay elements */
+        width: 100%;
+        height: 100vh; /* Full viewport height */
+        cursor: pointer;
+      }
+      #renderer-container {
+        width: 100%;
+        height: 100%;
+        display: block; /* Ensure it takes full space */
+      }
+      #blocker {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.7); /* Dark overlay */
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        flex-direction: column; /* Stack text */
+      }
+      #instructions {
+        width: 80%;
+        max-width: 500px;
+        color: #0f0; /* Green text */
+        font-size: 1.2em;
+        text-shadow: 2px 2px #050;
+        line-height: 1.5;
+      }
+      #instructions h1 {
+        font-size: 1.8em;
+        margin-bottom: 20px;
+      }
+      #instructions p {
+        font-size: 0.8em;
+        margin-bottom: 15px;
+      }
+      #instructions .click-info {
+        font-size: 1em;
+        font-weight: bold;
+        color: #ff0; /* Yellow highlight */
+        margin-top: 20px;
+      }
+      /* Crosshair */
+      #crosshair {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 4px;
+        height: 4px;
+        background-color: #0f0; /* Default crosshair color */
+        border: 1px solid black; /* Add border for visibility */
+        border-radius: 50%;
+        transform: translate(-50%, -50%);
+        pointer-events: none; /* Don't interfere with clicks */
+        display: none; /* Hidden until controls are locked */
+      }
+      /* Style for when crosshair is over a targetable block */
+      #crosshair.target-locked {
+        background-color: #ff0; /* Yellow when targeting */
+      }
+    </style>
+  </head>
+  <body>
+    <div id="game-container">
+      <div id="blocker">
+        <div id="instructions">
+          <h1>KI Welt Baumeister</h1>
+          <p>Bewege dich mit WASD.</p>
+          <p>Springe mit der Leertaste.</p>
+          <p>Schaue dich mit der Maus um.</p>
+          <p>Linksklick zum Abbauen von Blöcken.</p>
+          <p>Tetris-Blöcke fallen vom Himmel und formen die Welt.</p>
+          <div class="click-info">Klicke, um zu starten</div>
+        </div>
+      </div>
+      <div id="renderer-container"></div>
+      <div id="crosshair"></div>
+    </div>
+
+    <script>
+      // --- Three.js Setup ---
+      let scene, camera, renderer, controls;
+      let worldGroup; // Group for static world elements (ground, landed blocks)
+      let fallingPiecesGroup; // Group for currently falling pieces
+      let raycaster; // For targeting blocks
+      let pickaxeGroup; // Group for the pickaxe model
+
+      const rendererContainer = document.getElementById("renderer-container");
+      const blocker = document.getElementById("blocker");
+      const instructions = document.getElementById("instructions");
+      const crosshair = document.getElementById("crosshair");
+
+      // --- Game Constants ---
+      const BLOCK_SIZE = 1;
+      const WORLD_SIZE = 50; // Size of the ground plane
+      const PLAYER_HEIGHT = 1.8 * BLOCK_SIZE;
+      const PLAYER_RADIUS = 0.4 * BLOCK_SIZE; // For collision
+      const GRAVITY = 9.8 * BLOCK_SIZE;
+      const JUMP_VELOCITY = 4.0 * BLOCK_SIZE;
+      const MOVEMENT_SPEED = 5.0 * BLOCK_SIZE;
+      const MIN_ROTATION_INTERVAL = 1.5; // Minimum seconds between rotations
+      const MAX_ROTATION_INTERVAL = 4.0; // Maximum seconds between rotations
+      const MINING_RANGE = 4.5 * BLOCK_SIZE; // How far the player can mine
+      const MINING_CLICKS_NEEDED = 3; // Clicks to break a block
+      const PICKAXE_ANIMATION_DURATION = 0.15; // Seconds for mining swing
+      const PICKAXE_ANIMATION_ANGLE = Math.PI / 6; // Angle for swing
+
+      // --- Colors & Shapes (Tetris pieces) ---
+      const COLORS = [
+        /* Colors remain the same */ null,
+        0x8b4513,
+        0x808080,
+        0xffff00,
+        0x00ffff,
+        0x008000,
+        0xff0000,
+        0x800080,
+      ];
+      const SHAPES = [
+        /* Shapes remain the same */ [],
+        [
+          [0, 1, 0],
+          [1, 1, 1],
+        ],
+        [
+          [0, 0, 2],
+          [2, 2, 2],
+        ],
+        [
+          [3, 3],
+          [3, 3],
+        ],
+        [[4, 4, 4, 4]],
+        [
+          [0, 5, 5],
+          [5, 5, 0],
+        ],
+        [
+          [6, 6, 0],
+          [0, 6, 6],
+        ],
+        [
+          [7, 0, 0],
+          [7, 7, 7],
+        ],
+      ];
+
+      // --- Game State ---
+      let moveForward = false;
+      let moveBackward = false;
+      let moveLeft = false;
+      let moveRight = false;
+      let canJump = false;
+      let playerVelocity = new THREE.Vector3();
+      let playerOnGround = false;
+
+      let lastTime = performance.now();
+      let clock = new THREE.Clock(); // For delta time calculation
+
+      let fallingPieces = []; // Array to manage falling pieces data
+      let spawnTimer = 0;
+      const SPAWN_INTERVAL = 2; // Seconds between new pieces spawning
+
+      // --- Mining State ---
+      let targetedBlock = null;
+      let miningProgress = 0;
+      let originalBlockColor = new THREE.Color(); // To restore color after unhighlighting
+      let isMining = false; // Flag for pickaxe animation
+      let miningAnimStartTime = 0;
+
+      // --- Audio State (Tone.js) ---
+      let hitSynth = null;
+      let breakSynth = null;
+      let audioReady = false;
+
+      // --- Initialization ---
+      function init() {
+        console.log("Initializing game...");
+
+        // Ensure THREE and PointerLockControls are loaded
+        if (
+          typeof THREE === "undefined" ||
+          typeof THREE.PointerLockControls === "undefined"
+        ) {
+          /* ... error handling ... */
+          console.error("THREE.js or PointerLockControls not loaded!");
+          instructions.innerHTML =
+            "<h1>Fehler</h1><p>THREE.js oder PointerLockControls konnten nicht geladen werden. Bitte Seite neu laden.</p>";
+          return;
+        }
+        // Ensure Tone.js is loaded
+        if (typeof Tone === "undefined") {
+          /* ... warning ... */
+          console.warn("Tone.js not loaded! Audio will be disabled.");
+        } else {
+          /* ... Tone.js init ... */
+          hitSynth = new Tone.MembraneSynth({
+            pitchDecay: 0.01,
+            octaves: 2,
+            envelope: { attack: 0.001, decay: 0.1, sustain: 0 },
+          }).toDestination();
+          breakSynth = new Tone.NoiseSynth({
+            noise: { type: "white" },
+            envelope: { attack: 0.005, decay: 0.1, sustain: 0 },
+          }).toDestination();
+          audioReady = true;
+          console.log("Tone.js initialized.");
+        }
+
+        // Scene, Camera, Renderer, Lighting... (setup remains mostly the same)
+        scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x87ceeb);
+        scene.fog = new THREE.Fog(0x87ceeb, 0, WORLD_SIZE * 1.5);
+        camera = new THREE.PerspectiveCamera(
+          75,
+          window.innerWidth / window.innerHeight,
+          0.1,
+          1000
+        );
+        camera.position.y = PLAYER_HEIGHT;
+        renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        rendererContainer.appendChild(renderer.domElement);
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+        scene.add(ambientLight);
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        directionalLight.position.set(50, 100, 75);
+        directionalLight.castShadow = true;
+        scene.add(directionalLight);
+
+        // World Group & Falling Pieces Group
+        worldGroup = new THREE.Group();
+        scene.add(worldGroup);
+        fallingPiecesGroup = new THREE.Group();
+        scene.add(fallingPiecesGroup);
+
+        // Ground Plane & Trees
+        const groundGeometry = new THREE.PlaneGeometry(WORLD_SIZE, WORLD_SIZE);
+        const groundMaterial = new THREE.MeshLambertMaterial({
+          color: 0x55aa55,
+        });
+        const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+        ground.rotation.x = -Math.PI / 2;
+        ground.name = "ground";
+        worldGroup.add(ground);
+        for (let i = 0; i < 15; i++) {
+          /* ... tree generation ... */
+          const treeHeight = Math.random() * 5 + 3;
+          const treeGeo = new THREE.BoxGeometry(
+            BLOCK_SIZE,
+            treeHeight,
+            BLOCK_SIZE
+          );
+          const treeMat = new THREE.MeshLambertMaterial({ color: 0x8b4513 }); // Brown trunk
+          const tree = new THREE.Mesh(treeGeo, treeMat);
+          tree.position.set(
+            (Math.random() - 0.5) * WORLD_SIZE * 0.8,
+            treeHeight / 2,
+            (Math.random() - 0.5) * WORLD_SIZE * 0.8
+          );
+          tree.name = "world_object";
+          worldGroup.add(tree);
+        }
+
+        // Raycaster for mining
+        raycaster = new THREE.Raycaster();
+
+        // --- Create and Add Pickaxe ---
+        pickaxeGroup = createPickaxeModel();
+        // Position the pickaxe relative to the camera
+        pickaxeGroup.position.set(0.4, -0.3, -0.7); // Adjust x, y, z for desired position
+        pickaxeGroup.rotation.set(0, Math.PI * 0.9, Math.PI / 8); // Adjust rotation
+        camera.add(pickaxeGroup); // Add pickaxe to the camera
+
+        // Pointer Lock Controls Setup
+        try {
+          controls = new THREE.PointerLockControls(camera, renderer.domElement);
+          scene.add(controls.getObject()); // Add the controls object (which contains the camera) to the scene
+          // Event listeners for lock/unlock and click (same as before)
+          blocker.addEventListener("click", function () {
+            /* ... Tone.start() and controls.lock() ... */ console.log(
+              "Blocker clicked. Requesting pointer lock..."
+            );
+            if (Tone.context.state !== "running") {
+              Tone.start()
+                .then(() => {
+                  console.log("Audio context started.");
+                  controls.lock();
+                })
+                .catch((e) => {
+                  console.error("Failed to start audio context:", e);
+                  controls.lock();
+                });
+            } else {
+              controls.lock();
+            }
+          });
+          controls.addEventListener("lock", function () {
+            /* ... hide instructions ... */ console.log(
+              "Pointer lock successful ('lock' event fired)."
+            );
+            instructions.style.display = "none";
+            blocker.style.display = "none";
+            crosshair.style.display = "block";
+          });
+          controls.addEventListener("unlock", function () {
+            /* ... show instructions, reset target ... */ console.log(
+              "Pointer lock released ('unlock' event fired)."
+            );
+            blocker.style.display = "flex";
+            instructions.style.display = "";
+            crosshair.style.display = "none";
+            unhighlightTarget();
+            targetedBlock = null;
+            miningProgress = 0;
+          });
+        } catch (error) {
+          /* ... error handling ... */
+          console.error("Failed to initialize PointerLockControls:", error);
+          instructions.innerHTML =
+            "<h1>Fehler</h1><p>Steuerung konnte nicht initialisiert werden.</p>";
+          return;
+        }
+
+        // Keyboard Input Listeners
+        document.addEventListener("keydown", onKeyDown);
+        document.addEventListener("keyup", onKeyUp);
+        // Mouse Click Listener for Mining
+        window.addEventListener("mousedown", onMouseDown);
+        // Window resize Listener
+        window.addEventListener("resize", onWindowResize);
+
+        console.log("Initialization complete. Starting animation loop.");
+        animate();
+      }
+
+      // --- Event Handlers ---
+      function onWindowResize() {
+        /* ... same as before ... */
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+      }
+      function onKeyDown(event) {
+        /* ... same as before ... */
+        if (!controls || !controls.isLocked) return;
+        switch (event.code) {
+          case "KeyW":
+            moveForward = true;
+            break;
+          case "KeyA":
+            moveLeft = true;
+            break;
+          case "KeyS":
+            moveBackward = true;
+            break;
+          case "KeyD":
+            moveRight = true;
+            break;
+          case "Space":
+            if (canJump && playerOnGround) playerVelocity.y += JUMP_VELOCITY;
+            canJump = false;
+            playerOnGround = false;
+            break;
+        }
+      }
+      function onKeyUp(event) {
+        /* ... same as before ... */
+        switch (event.code) {
+          case "KeyW":
+            moveForward = false;
+            break;
+          case "KeyA":
+            moveLeft = false;
+            break;
+          case "KeyS":
+            moveBackward = false;
+            break;
+          case "KeyD":
+            moveRight = false;
+            break;
+          case "Space":
+            canJump = true;
+            break;
+        }
+      }
+
+      // --- Mining Click Handler ---
+      function onMouseDown(event) {
+        if (!controls || !controls.isLocked || event.button !== 0) return;
+        if (targetedBlock) {
+          miningProgress++;
+          console.log(
+            `Mining progress on block: ${miningProgress}/${MINING_CLICKS_NEEDED}`
+          );
+          // --- Trigger Pickaxe Animation ---
+          isMining = true;
+          miningAnimStartTime = clock.getElapsedTime();
+          // --- Play hit sound ---
+          if (audioReady && hitSynth)
+            hitSynth.triggerAttackRelease("C2", "8n", Tone.now());
+          // Check if block should break
+          if (miningProgress >= MINING_CLICKS_NEEDED) {
+            console.log("Block broken!");
+            if (audioReady && breakSynth)
+              breakSynth.triggerAttackRelease("4n", Tone.now());
+            worldGroup.remove(targetedBlock);
+            targetedBlock = null; // Clear target immediately
+            miningProgress = 0;
+            crosshair.classList.remove("target-locked");
+            isMining = false; // Stop animation if block breaks mid-swing
+            // Reset pickaxe rotation immediately when block breaks
+            if (pickaxeGroup) pickaxeGroup.rotation.z = Math.PI / 8; // Reset to default Z rotation
+          }
+        }
+      }
+
+      // --- Game Logic ---
+
+      // Create a 3D block mesh
+      function createBlockMesh(color) {
+        /* ... same as before ... */
+        const geometry = new THREE.BoxGeometry(
+          BLOCK_SIZE,
+          BLOCK_SIZE,
+          BLOCK_SIZE
+        );
+        const edges = new THREE.EdgesGeometry(geometry);
+        const lineMaterial = new THREE.LineBasicMaterial({
+          color: 0x000000,
+          linewidth: 2,
+        });
+        const edgesMesh = new THREE.LineSegments(edges, lineMaterial);
+        const material = new THREE.MeshLambertMaterial({ color: color });
+        const cube = new THREE.Mesh(geometry, material);
+        cube.add(edgesMesh);
+        cube.userData.isBlock = true;
+        cube.userData.originalColor = material.color.clone();
+        return cube;
+      }
+
+      // Create Piece 3D
+      function createPiece3D(shapeData, colorIndex) {
+        /* ... same as before ... */
+        const pieceGroup = new THREE.Group();
+        const color = COLORS[colorIndex];
+        shapeData.forEach((row, y) => {
+          row.forEach((value, x) => {
+            if (value > 0) {
+              const blockMesh = createBlockMesh(color);
+              blockMesh.position.set(x * BLOCK_SIZE, -y * BLOCK_SIZE, 0);
+              pieceGroup.add(blockMesh);
+            }
+          });
+        });
+        pieceGroup.userData.pivotOffset = new THREE.Vector3(
+          (shapeData[0].length / 2 - 0.5) * BLOCK_SIZE,
+          (-shapeData.length / 2 + 0.5) * BLOCK_SIZE,
+          0
+        );
+        pieceGroup.children.forEach((child) =>
+          child.position.sub(pieceGroup.userData.pivotOffset)
+        );
+        pieceGroup.position.add(pieceGroup.userData.pivotOffset);
+        return pieceGroup;
+      }
+
+      // Spawn Falling Piece
+      function spawnFallingPiece() {
+        /* ... same as before ... */
+        const index = Math.floor(Math.random() * (SHAPES.length - 1)) + 1;
+        const shape = SHAPES[index];
+        const piece3D = createPiece3D(shape, index);
+        const spawnX = (Math.random() - 0.5) * (WORLD_SIZE * 0.8);
+        const spawnZ = (Math.random() - 0.5) * (WORLD_SIZE * 0.8);
+        const spawnY = WORLD_SIZE * 0.6;
+        piece3D.position.set(spawnX, spawnY, spawnZ);
+        piece3D.userData.velocity = new THREE.Vector3(0, -GRAVITY / 4, 0);
+        piece3D.userData.colorIndex = index;
+        piece3D.userData.timeSinceRotation = 0;
+        piece3D.userData.rotationInterval =
+          Math.random() * (MAX_ROTATION_INTERVAL - MIN_ROTATION_INTERVAL) +
+          MIN_ROTATION_INTERVAL;
+        fallingPiecesGroup.add(piece3D);
+        fallingPieces.push(piece3D);
+      }
+
+      // Apply Random Rotation
+      function applyRandomRotation(piece) {
+        /* ... same as before ... */
+        const axis = Math.floor(Math.random() * 3);
+        const angle = Math.PI / 2;
+        if (axis === 0) piece.rotateX(angle);
+        else if (axis === 1) piece.rotateY(angle);
+        else piece.rotateZ(angle);
+      }
+
+      // Update Falling Pieces
+      function updateFallingPieces(delta) {
+        /* ... same collision/landing logic as before ... */
+        const landedPieces = [];
+        fallingPieces.forEach((piece, i) => {
+          // Rotation
+          piece.userData.timeSinceRotation += delta;
+          if (
+            piece.userData.timeSinceRotation >= piece.userData.rotationInterval
+          ) {
+            applyRandomRotation(piece);
+            piece.userData.timeSinceRotation = 0;
+            piece.userData.rotationInterval =
+              Math.random() * (MAX_ROTATION_INTERVAL - MIN_ROTATION_INTERVAL) +
+              MIN_ROTATION_INTERVAL;
+          }
+          // Position
+          piece.position.y += piece.userData.velocity.y * delta;
+          // Collision Check
+          let lowestPoint = Infinity;
+          piece.children.forEach((block) => {
+            block.getWorldPosition(
+              (block.userData.tempVec =
+                block.userData.tempVec || new THREE.Vector3())
+            );
+            lowestPoint = Math.min(lowestPoint, block.userData.tempVec.y);
+          });
+          let landed = false;
+          if (lowestPoint <= BLOCK_SIZE / 2) {
+            piece.position.y += BLOCK_SIZE / 2 - lowestPoint;
+            landed = true;
+          } else {
+            piece.children.forEach((block) => {
+              if (landed) return;
+              block.getWorldPosition(block.userData.tempVec);
+              const blockBottomY = block.userData.tempVec.y - BLOCK_SIZE / 2;
+              worldGroup.children.forEach((staticObj) => {
+                if (landed || staticObj.name === "ground") return;
+                const staticBox = (staticObj.userData.boundingBox =
+                  staticObj.userData.boundingBox ||
+                  new THREE.Box3().setFromObject(staticObj));
+                const fallingBlockWorldBox = (block.userData.worldBox =
+                  block.userData.worldBox || new THREE.Box3());
+                fallingBlockWorldBox.setFromCenterAndSize(
+                  block.userData.tempVec,
+                  (block.userData.sizeVec =
+                    block.userData.sizeVec ||
+                    new THREE.Vector3(BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE))
+                );
+                if (fallingBlockWorldBox.intersectsBox(staticBox)) {
+                  if (blockBottomY <= staticBox.max.y + 0.01) {
+                    piece.position.y +=
+                      staticBox.max.y +
+                      BLOCK_SIZE / 2 -
+                      block.userData.tempVec.y;
+                    landed = true;
+                  }
+                }
+              });
+            });
+          }
+          if (landed) landedPieces.push(i);
+        });
+        // Move landed pieces
+        for (let i = landedPieces.length - 1; i >= 0; i--) {
+          const index = landedPieces[i];
+          const pieceToLand = fallingPieces[index];
+          while (pieceToLand.children.length > 0) {
+            const block = pieceToLand.children[0];
+            block.getWorldPosition(block.userData.tempVec);
+            block.getWorldQuaternion(
+              (block.userData.tempQuat =
+                block.userData.tempQuat || new THREE.Quaternion())
+            );
+            worldGroup.attach(block);
+            block.position.copy(block.userData.tempVec);
+            block.quaternion.copy(block.userData.tempQuat);
+            block.name = "landed_block";
+          }
+          fallingPiecesGroup.remove(pieceToLand);
+          fallingPieces.splice(index, 1);
+        }
+      }
+
+      // Check Player Collision
+      function checkPlayerCollision(deltaY) {
+        /* ... same as before ... */
+        playerOnGround = false;
+        if (!controls) return false;
+        const playerPosition = controls.getObject().position;
+        const capsuleRadius = PLAYER_RADIUS;
+        const capsuleHalfHeight = PLAYER_HEIGHT / 2;
+        const downRayOrigin = playerPosition.clone();
+        const downRaycaster = new THREE.Raycaster(
+          downRayOrigin,
+          new THREE.Vector3(0, -1, 0),
+          0,
+          capsuleHalfHeight + 0.1
+        );
+        const downIntersects = downRaycaster.intersectObjects(
+          worldGroup.children,
+          true
+        );
+        let onSolidGround = false;
+        if (downIntersects.length > 0) {
+          const distance = downIntersects[0].distance;
+          if (distance <= capsuleHalfHeight + 0.05) {
+            playerVelocity.y = Math.max(0, playerVelocity.y);
+            playerPosition.y += capsuleHalfHeight - distance + 0.01;
+            onSolidGround = true;
+          }
+        }
+        if (
+          !onSolidGround &&
+          playerPosition.y <= capsuleHalfHeight + BLOCK_SIZE / 2
+        ) {
+          playerVelocity.y = Math.max(0, playerVelocity.y);
+          playerPosition.y = capsuleHalfHeight + BLOCK_SIZE / 2;
+          onSolidGround = true;
+        }
+        playerOnGround = onSolidGround;
+        if (playerOnGround) canJump = true;
+        // Simplified horizontal check...
+        return false;
+      }
+
+      // --- Block Targeting & Highlighting ---
+      function highlightBlock(block) {
+        /* ... same as before ... */
+        if (!block || !block.material) return;
+        if (!block.userData.originalColor) {
+          block.userData.originalColor = block.material.color.clone();
+        }
+        block.material.emissive = new THREE.Color(0x555555);
+        block.material.needsUpdate = true;
+      }
+      function unhighlightBlock(block) {
+        /* ... same as before ... */
+        if (!block || !block.material || !block.userData.originalColor) return;
+        block.material.emissive = new THREE.Color(0x000000);
+        block.material.needsUpdate = true;
+      }
+      // Unhighlight wrapper for clarity
+      function unhighlightTarget() {
+        if (targetedBlock) {
+          unhighlightBlock(targetedBlock);
+        }
+      }
+      function updateTargeting() {
+        /* ... same raycasting logic as before ... */
+        if (!controls || !camera || !raycaster) return;
+        raycaster.setFromCamera({ x: 0, y: 0 }, camera);
+        const intersects = raycaster.intersectObjects(worldGroup.children);
+        let newTarget = null;
+        if (intersects.length > 0) {
+          const intersection = intersects[0];
+          if (
+            intersection.object.name === "landed_block" &&
+            intersection.distance <= MINING_RANGE
+          ) {
+            newTarget = intersection.object;
+          }
+        }
+        if (newTarget !== targetedBlock) {
+          unhighlightTarget();
+          if (newTarget) {
+            highlightBlock(newTarget);
+            crosshair.classList.add("target-locked");
+          } else {
+            crosshair.classList.remove("target-locked");
+          }
+          targetedBlock = newTarget;
+          miningProgress = 0;
+        }
+      }
+
+      // --- Create Pickaxe Model ---
+      function createPickaxeModel() {
+        const pickaxeGroup = new THREE.Group();
+
+        // Materials
+        const handleMaterial = new THREE.MeshLambertMaterial({
+          color: 0x8b4513,
+        }); // Brown
+        const headMaterial = new THREE.MeshLambertMaterial({ color: 0x808080 }); // Gray
+
+        // Handle (Long Box)
+        const handleGeometry = new THREE.BoxGeometry(0.1, 0.8, 0.1);
+        const handle = new THREE.Mesh(handleGeometry, handleMaterial);
+        handle.position.y = -0.3; // Position it below the head origin
+        pickaxeGroup.add(handle);
+
+        // Head (Wider Box)
+        const headGeometry = new THREE.BoxGeometry(0.6, 0.15, 0.12);
+        const head = new THREE.Mesh(headGeometry, headMaterial);
+        head.position.y = 0.1; // Position it slightly above the handle top
+        pickaxeGroup.add(head);
+
+        // Add edges for definition (optional, but looks more blocky)
+        const handleEdges = new THREE.LineSegments(
+          new THREE.EdgesGeometry(handleGeometry),
+          new THREE.LineBasicMaterial({ color: 0x000000 })
+        );
+        handleEdges.position.copy(handle.position);
+        pickaxeGroup.add(handleEdges);
+        const headEdges = new THREE.LineSegments(
+          new THREE.EdgesGeometry(headGeometry),
+          new THREE.LineBasicMaterial({ color: 0x000000 })
+        );
+        headEdges.position.copy(head.position);
+        pickaxeGroup.add(headEdges);
+
+        return pickaxeGroup;
+      }
+
+      // --- Animation Loop ---
+      function animate() {
+        requestAnimationFrame(animate);
+
+        const time = performance.now();
+        const delta = clock.getDelta();
+        const elapsedTime = clock.getElapsedTime(); // Get total elapsed time
+
+        // Update Falling Pieces
+        spawnTimer += delta;
+        if (spawnTimer > SPAWN_INTERVAL) {
+          spawnFallingPiece();
+          spawnTimer = 0;
+        }
+        updateFallingPieces(delta);
+
+        // Update Player Movement & Physics
+        if (controls && controls.isLocked === true) {
+          const playerPosition = controls.getObject().position;
+          if (!playerOnGround) playerVelocity.y -= GRAVITY * delta;
+          const speedDelta = MOVEMENT_SPEED * delta;
+          if (moveForward) controls.moveForward(speedDelta);
+          if (moveBackward) controls.moveForward(-speedDelta);
+          if (moveLeft) controls.moveRight(-speedDelta);
+          if (moveRight) controls.moveRight(speedDelta);
+          playerPosition.y += playerVelocity.y * delta;
+          checkPlayerCollision(playerVelocity.y * delta);
+          updateTargeting();
+
+          // --- Update Pickaxe Animation ---
+          if (pickaxeGroup) {
+            const defaultRotationZ = Math.PI / 8; // Resting angle
+            if (isMining) {
+              const animElapsedTime = elapsedTime - miningAnimStartTime;
+              if (animElapsedTime < PICKAXE_ANIMATION_DURATION) {
+                // Simple swing animation: rotate back and forth based on time
+                const swingPhase =
+                  (animElapsedTime / PICKAXE_ANIMATION_DURATION) * Math.PI; // 0 to PI
+                pickaxeGroup.rotation.z =
+                  defaultRotationZ -
+                  Math.sin(swingPhase) * PICKAXE_ANIMATION_ANGLE;
+              } else {
+                // Animation finished
+                isMining = false;
+                pickaxeGroup.rotation.z = defaultRotationZ; // Reset to default
+              }
+            } else {
+              // Ensure it's at default rotation if not mining
+              pickaxeGroup.rotation.z = defaultRotationZ;
+            }
+          }
+          // --- End Pickaxe Animation Update ---
+        } else {
+          // Reset velocity and target if controls not locked
+          playerVelocity.x = 0;
+          playerVelocity.z = 0;
+          unhighlightTarget();
+          targetedBlock = null;
+          miningProgress = 0;
+          crosshair.classList.remove("target-locked");
+          // Reset mining animation state as well
+          isMining = false;
+          if (pickaxeGroup) pickaxeGroup.rotation.z = Math.PI / 8; // Reset rotation
+        }
+
+        renderer.render(scene, camera);
+        lastTime = time;
+      }
+
+      // --- Start ---
+      try {
+        init();
+      } catch (error) {
+        console.error("Error during initialization:", error);
+        instructions.innerHTML = `<h1>Fehler</h1><p>Ein Fehler ist während der Initialisierung aufgetreten: ${error.message}</p>`;
+      }
+    </script>
+  </body>
+</html>
