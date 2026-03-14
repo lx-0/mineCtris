@@ -53,6 +53,50 @@ function applyRandomRotation(piece) {
   else piece.rotateZ(angle);
 }
 
+// Check if the player is close to a landing piece and apply a lateral push.
+function checkAndApplyPlayerPush(piece) {
+  if (!controls) return;
+  const playerPos = controls.getObject().position;
+
+  // Compute horizontal center of the piece from its blocks
+  const center = new THREE.Vector3();
+  const tempVec = new THREE.Vector3();
+  piece.children.forEach((block) => {
+    block.getWorldPosition(tempVec);
+    center.add(tempVec);
+  });
+  if (piece.children.length === 0) return;
+  center.divideScalar(piece.children.length);
+
+  // Check each block's horizontal distance from the player
+  let tooClose = false;
+  piece.children.forEach((block) => {
+    block.getWorldPosition(tempVec);
+    const dx = playerPos.x - tempVec.x;
+    const dz = playerPos.z - tempVec.z;
+    if (Math.sqrt(dx * dx + dz * dz) < PUSH_DISTANCE_THRESHOLD) {
+      tooClose = true;
+    }
+  });
+  if (!tooClose) return;
+
+  // Push direction: horizontal vector from piece center to player
+  const pushDir = new THREE.Vector3(
+    playerPos.x - center.x,
+    0,
+    playerPos.z - center.z
+  );
+  if (pushDir.length() < 0.001) {
+    pushDir.set(1, 0, 0); // fallback: push sideways if player is directly over center
+  } else {
+    pushDir.normalize();
+  }
+
+  playerPushVelocity.copy(pushDir.multiplyScalar(PUSH_SPEED));
+  screenShakeActive = true;
+  screenShakeStart = clock.getElapsedTime();
+}
+
 function updateFallingPieces(delta) {
   const landedPieces = [];
   fallingPieces.forEach((piece, i) => {
@@ -115,6 +159,7 @@ function updateFallingPieces(delta) {
   for (let i = landedPieces.length - 1; i >= 0; i--) {
     const index = landedPieces[i];
     const pieceToLand = fallingPieces[index];
+    checkAndApplyPlayerPush(pieceToLand);
     const newBlocks = [];
     while (pieceToLand.children.length > 0) {
       const block = pieceToLand.children[0];

@@ -145,6 +145,8 @@ function resetGame() {
   if (controls) {
     controls.getObject().position.set(0, PLAYER_HEIGHT, 5);
     playerVelocity.set(0, 0, 0);
+    playerPushVelocity.set(0, 0, 0);
+    screenShakeActive = false;
     playerOnGround = false;
     canJump = false;
     moveForward = moveBackward = moveLeft = moveRight = false;

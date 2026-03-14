@@ -84,3 +84,8 @@ let inventory = {};
 let selectedBlockColor = null;  // CSS hex color key of selected block type
 let targetedFaceNormal = null;  // THREE.Vector3 world-space face normal from last raycast
 let placeSynth = null;          // Tone.js synth for placement sound
+
+// ── Player push (from landing pieces) ────────────────────────────────────────
+let playerPushVelocity = new THREE.Vector3();
+let screenShakeActive = false;
+let screenShakeStart = 0;

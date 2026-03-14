@@ -313,6 +313,27 @@ function animate() {
     if (moveLeft) controls.moveRight(-speedDelta);
     if (moveRight) controls.moveRight(speedDelta);
     playerPosition.y += playerVelocity.y * delta;
+
+    // Apply lateral push impulse from nearby landing pieces
+    if (playerPushVelocity.lengthSq() > 0.01) {
+      playerPosition.x += playerPushVelocity.x * delta;
+      playerPosition.z += playerPushVelocity.z * delta;
+      playerPushVelocity.multiplyScalar(Math.pow(PUSH_DECAY, delta));
+      if (playerPushVelocity.lengthSq() < 0.01) playerPushVelocity.set(0, 0, 0);
+    }
+
+    // Screen shake when pushed
+    if (screenShakeActive) {
+      const shakeAge = elapsedTime - screenShakeStart;
+      if (shakeAge < SCREEN_SHAKE_DURATION) {
+        const intensity = (1 - shakeAge / SCREEN_SHAKE_DURATION) * 0.12;
+        camera.position.x += (Math.random() - 0.5) * intensity;
+        camera.position.y += (Math.random() - 0.5) * intensity;
+      } else {
+        screenShakeActive = false;
+      }
+    }
+
     checkPlayerCollision(playerVelocity.y * delta);
     updateTargeting();
 

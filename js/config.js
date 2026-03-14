@@ -30,6 +30,11 @@ const DANGER_ZONE_HEIGHT = GAME_OVER_HEIGHT - 3;
 
 const SHADOW_APPEAR_DIST = 20; // blocks of fall distance before shadow appears
 
+const PUSH_DISTANCE_THRESHOLD = 1.5 * BLOCK_SIZE; // horizontal distance to trigger push
+const PUSH_SPEED = 10.0 * BLOCK_SIZE;              // initial lateral push speed
+const PUSH_DECAY = 0.05;                           // velocity multiplier per second (fast decay)
+const SCREEN_SHAKE_DURATION = 0.08;               // seconds of screen shake on push
+
 // Block color palette (index 0 = unused/null).
 const COLORS = [
   null,
