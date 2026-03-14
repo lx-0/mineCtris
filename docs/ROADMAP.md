@@ -23,9 +23,10 @@ That's MineCtris at v1.0.
 | 1 | v0.2 | **Core Game Loop** | ✅ Done | — | An actual game with stakes, objectives, and payoff |
 | 2 | v0.3 | **The Loop Closes** | 🔄 Active | — | Full resource cycle: mine → carry → place → clear |
 | 3 | v0.4 | **Flow & Feel** | Planned | — | Difficulty curve, juice, and UX that make you want to play again |
-| 4 | v0.5 | **Strategic Depth** | Planned | — | Piece influence, tool tiers, biome blocks — skill ceiling rises |
-| 5 | v0.6 | **The Meta** | Planned | — | Cross-session goals, unlockables, daily challenge — reason to return |
-| 6 | v1.0 | **Launch** | Planned | — | Polished, shareable, leaderboard-ready — the complete MineCtris experience |
+| 4 | v0.5 | **Truly Beautiful** | Planned | — | Shaders, bloom, glow trails, sky, explosions — random, chaotic, *beautiful* |
+| 5 | v0.6 | **Strategic Depth** | Planned | — | Piece influence, tool tiers, block types — skill ceiling rises |
+| 6 | v0.7 | **The Meta** | Planned | — | Cross-session goals, unlockables, daily challenge — reason to return |
+| 7 | v1.0 | **Launch** | Planned | — | Polished, shareable, leaderboard-ready — the complete MineCtris experience |
 
 ---
 
@@ -90,7 +91,25 @@ Every action should have weight. Every second of play should ramp the tension. B
 
 ---
 
-## Milestone 4: Strategic Depth (v0.5) Planned
+## Milestone 4: Truly Beautiful (v0.5) Planned
+
+**Theme:** Random, chaotic, *beautiful.*
+
+The world of MineCtris is already visually interesting. This milestone makes it genuinely stunning — the kind of thing you screenshot and share before you even think about it. Every visual system gets elevated: lighting, shaders, particle explosions, post-processing. When this milestone is done, MineCtris should look like it was made by a studio, not a weekend prototype.
+
+| Feature | Issue | Priority | Description |
+|:--------|:------|:---------|:------------|
+| Dynamic sky, fog & day/night lighting | [MINAA-19](/MINAA/issues/MINAA-19) | High | Animated gradient sky, directional sunlight tracking a day/night cycle, atmospheric fog that thickens as danger rises |
+| Block shaders: ambient occlusion & surface depth | [MINAA-20](/MINAA/issues/MINAA-20) | High | Per-face brightness variation, SSAO contact shadows, procedural surface texture, specular highlights on gold/ice blocks |
+| Falling piece glow trails | [MINAA-21](/MINAA/issues/MINAA-21) | Medium | Color-matched luminous trails behind falling pieces, glow pulse that intensifies near landing — like meteors |
+| Post-processing: bloom & cinematic color grading | [MINAA-22](/MINAA/issues/MINAA-22) | Medium | UnrealBloom on emissive blocks, emotional color grading per game state (calm → dread → euphoria → finality), vignette |
+| Line-clear visual explosion & shockwave | [MINAA-23](/MINAA/issues/MINAA-23) | Medium | 4-phase clear: anticipation vibration → block detonation with fragments → expanding shockwave ring → spring drop aftermath |
+
+**Done when:** You can record a 10-second clip of MineCtris, post it with no context, and people ask "what game is this?" because it looks extraordinary.
+
+---
+
+## Milestone 5: Strategic Depth (v0.6) Planned
 
 **Theme:** Raise the skill ceiling. Give experts something to master.
 
@@ -109,7 +128,7 @@ MineCtris has a promising skill depth that's currently locked away: if you could
 
 ---
 
-## Milestone 5: The Meta (v0.6) Planned
+## Milestone 6: The Meta (v0.7) Planned
 
 **Theme:** Give players a reason to return tomorrow.
 
@@ -128,7 +147,7 @@ A game you play once is a curiosity. A game you play every day is a habit. This 
 
 ---
 
-## Milestone 6: Launch (v1.0) Planned
+## Milestone 7: Launch (v1.0) Planned
 
 **Theme:** The complete, polished, shareable MineCtris experience.
 
