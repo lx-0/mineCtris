@@ -1,0 +1,245 @@
+body {
+  font-family: "Press Start 2P", cursive;
+  color: #0f0;
+  background-color: #1a1a2e;
+  margin: 0;
+  overflow: hidden;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  text-align: center;
+}
+#game-container {
+  position: relative;
+  width: 100%;
+  height: 100vh;
+  cursor: pointer;
+}
+#renderer-container {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+#blocker {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.7);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+}
+#instructions {
+  width: 80%;
+  max-width: 500px;
+  color: #0f0;
+  font-size: 1.2em;
+  text-shadow: 2px 2px #050;
+  line-height: 1.5;
+}
+#instructions h1 {
+  font-size: 1.8em;
+  margin-bottom: 20px;
+}
+#instructions p {
+  font-size: 0.8em;
+  margin-bottom: 15px;
+}
+#instructions .click-info {
+  font-size: 1em;
+  font-weight: bold;
+  color: #ff0;
+  margin-top: 20px;
+}
+#crosshair {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 4px;
+  height: 4px;
+  background-color: #0f0;
+  border: 1px solid black;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  display: none;
+}
+#crosshair.target-locked {
+  background-color: #ff0;
+}
+
+/* ── Inventory HUD ── */
+#inventory-hud {
+  position: absolute;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  pointer-events: none;
+}
+#inventory-total {
+  font-family: "Press Start 2P", cursive;
+  font-size: 8px;
+  color: rgba(255, 255, 255, 0.7);
+  text-shadow: 1px 1px 2px #000;
+}
+#inventory-slots {
+  display: flex;
+  gap: 6px;
+  background: rgba(0, 0, 0, 0.55);
+  border: 2px solid rgba(255, 255, 255, 0.25);
+  border-radius: 4px;
+  padding: 6px 8px;
+}
+.inv-slot {
+  position: relative;
+  width: 48px;
+  height: 48px;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  border-radius: 3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.3);
+}
+.inv-slot-color {
+  width: 30px;
+  height: 30px;
+  border: 2px solid rgba(0, 0, 0, 0.5);
+  border-radius: 2px;
+}
+.inv-slot-count {
+  position: absolute;
+  bottom: 2px;
+  right: 4px;
+  font-family: "Press Start 2P", cursive;
+  font-size: 8px;
+  color: #fff;
+  text-shadow: 1px 1px 1px #000;
+}
+
+/* ── Score HUD ── */
+#score-display {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  font-family: "Press Start 2P", cursive;
+  color: #0f0;
+  text-shadow: 1px 1px 2px #000;
+  pointer-events: none;
+  display: none;
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(0, 255, 0, 0.3);
+  border-radius: 4px;
+  padding: 10px 14px;
+  line-height: 2;
+}
+.hud-score {
+  font-size: 20px;
+  color: #ff0;
+  text-shadow: 1px 1px 3px #000;
+  margin-bottom: 4px;
+  display: block;
+}
+.hud-stat {
+  font-size: 8px;
+  color: rgba(0, 255, 0, 0.85);
+  display: block;
+}
+
+/* ── Line-clear flash overlay ── */
+#line-clear-banner {
+  position: absolute;
+  top: 40%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-family: "Press Start 2P", cursive;
+  font-size: 24px;
+  color: #ff0;
+  text-shadow: 2px 2px 4px #000;
+  pointer-events: none;
+  display: none;
+  white-space: nowrap;
+}
+
+/* ── Danger warning overlay ── */
+@keyframes danger-pulse {
+  from { opacity: 0.35; }
+  to   { opacity: 1.0; }
+}
+#danger-overlay {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  pointer-events: none;
+  display: none;
+  border: 10px solid #f00;
+  box-shadow: inset 0 0 50px rgba(255, 0, 0, 0.35);
+  animation: danger-pulse 0.55s ease-in-out infinite alternate;
+}
+#danger-text {
+  position: absolute;
+  top: 60px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: "Press Start 2P", cursive;
+  font-size: 13px;
+  color: #f00;
+  text-shadow: 0 0 10px #f00, 1px 1px 2px #000;
+  pointer-events: none;
+  display: none;
+  white-space: nowrap;
+  animation: danger-pulse 0.55s ease-in-out infinite alternate;
+}
+
+/* ── Game Over screen ── */
+@keyframes go-flicker {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.7; }
+}
+#game-over-screen {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0, 0, 0, 0.88);
+  display: none;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+  z-index: 200;
+}
+#game-over-title {
+  font-family: "Press Start 2P", cursive;
+  font-size: 2.4em;
+  color: #f00;
+  text-shadow: 3px 3px #600;
+  margin-bottom: 36px;
+  animation: go-flicker 1.5s infinite;
+}
+#game-over-stats {
+  font-family: "Press Start 2P", cursive;
+  font-size: 10px;
+  color: #0f0;
+  line-height: 3.2;
+  margin-bottom: 36px;
+  text-align: center;
+}
+#game-over-stats .go-label {
+  color: rgba(0, 255, 0, 0.6);
+  font-size: 8px;
+}
+#play-again-btn {
+  font-family: "Press Start 2P", cursive;
+  font-size: 12px;
+  color: #000;
+  background: #0f0;
+  border: none;
+  padding: 14px 28px;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background 0.15s;
+}
+#play-again-btn:hover { background: #ff0; }
