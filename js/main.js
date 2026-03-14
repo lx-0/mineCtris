@@ -74,6 +74,7 @@ function init() {
 
   scoreEl = document.getElementById("score-display");
   lineClearBannerEl = document.getElementById("line-clear-banner");
+  speedUpBannerEl = document.getElementById("speed-up-banner");
 
   raycaster = new THREE.Raycaster();
 
@@ -291,6 +292,7 @@ function animate() {
     }
     updateLineClear(delta);
     updateFallingPieces(delta);
+    updateDifficulty(delta);
   }
   updateDangerWarning();
 

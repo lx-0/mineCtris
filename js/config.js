@@ -35,6 +35,10 @@ const PUSH_SPEED = 10.0 * BLOCK_SIZE;              // initial lateral push speed
 const PUSH_DECAY = 0.05;                           // velocity multiplier per second (fast decay)
 const SCREEN_SHAKE_DURATION = 0.08;               // seconds of screen shake on push
 
+const DIFFICULTY_INTERVAL = 60;               // seconds between speed tiers
+const DIFFICULTY_MULTIPLIER_PER_TIER = 1.1;   // 10% faster each tier
+const DIFFICULTY_MAX_MULTIPLIER = 3.0;         // cap at 3x starting speed
+
 // Block color palette (index 0 = unused/null).
 const COLORS = [
   null,

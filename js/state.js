@@ -73,6 +73,12 @@ let scoreEl = null;
 let lineClearBannerEl = null;
 let bannerTimer = 0;
 
+// ── Difficulty scaling ────────────────────────────────────────────────────────
+let difficultyMultiplier = 1.0;  // current fall-speed multiplier
+let lastDifficultyTier = 0;      // last tier that triggered a speed-up
+let speedUpBannerEl = null;      // DOM reference, assigned in init()
+let speedUpBannerTimer = 0;      // seconds remaining for speed-up banner
+
 // ── Game-over flag ────────────────────────────────────────────────────────────
 let isGameOver = false;
 

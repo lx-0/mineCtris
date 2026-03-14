@@ -20,6 +20,8 @@ function updateScoreHUD() {
     "Lines: " + linesCleared;
   scoreEl.querySelector(".hud-stat:nth-child(4)").textContent =
     "Time: " + mm + ":" + ss;
+  scoreEl.querySelector(".hud-stat:nth-child(5)").textContent =
+    "Speed: " + difficultyMultiplier.toFixed(1) + "x";
 }
 
 /** Returns current game stats for use by the Game Over screen. */
@@ -123,6 +125,12 @@ function resetGame() {
   gameElapsedSeconds = 0;
   lastHudSecond = -1;
 
+  // Reset difficulty
+  difficultyMultiplier = 1.0;
+  lastDifficultyTier = 0;
+  speedUpBannerTimer = 0;
+  if (speedUpBannerEl) speedUpBannerEl.style.display = "none";
+
   // Reset inventory
   inventory = {};
   selectedBlockColor = null;
@@ -167,4 +175,36 @@ function resetGame() {
   crosshair.style.display = "none";
   if (scoreEl) scoreEl.style.display = "none";
   document.getElementById("inventory-hud").style.display = "none";
+}
+
+/**
+ * Called every frame (while game is running). Derives the current difficulty
+ * tier from gameElapsedSeconds, updates difficultyMultiplier, and shows the
+ * speed-up banner when a new tier is reached.
+ */
+function updateDifficulty(delta) {
+  // Tick banner display timer
+  if (speedUpBannerTimer > 0) {
+    speedUpBannerTimer -= delta;
+    if (speedUpBannerTimer <= 0 && speedUpBannerEl) {
+      speedUpBannerEl.style.display = "none";
+    }
+  }
+
+  const tier = Math.floor(gameElapsedSeconds / DIFFICULTY_INTERVAL);
+  difficultyMultiplier = Math.min(
+    DIFFICULTY_MAX_MULTIPLIER,
+    Math.pow(DIFFICULTY_MULTIPLIER_PER_TIER, tier)
+  );
+
+  if (tier > lastDifficultyTier) {
+    lastDifficultyTier = tier;
+    if (speedUpBannerEl) {
+      speedUpBannerEl.textContent =
+        "SPEED UP!  " + difficultyMultiplier.toFixed(1) + "x";
+      speedUpBannerEl.style.display = "block";
+      speedUpBannerTimer = 2.0;
+    }
+    updateScoreHUD();
+  }
 }

@@ -34,7 +34,7 @@ function spawnFallingPiece() {
   const spawnZ = (Math.random() - 0.5) * (WORLD_SIZE * 0.8);
   const spawnY = WORLD_SIZE * 0.6;
   piece3D.position.set(spawnX, spawnY, spawnZ);
-  piece3D.userData.velocity = new THREE.Vector3(0, -GRAVITY / 4, 0);
+  piece3D.userData.velocity = new THREE.Vector3(0, -(GRAVITY / 4) * difficultyMultiplier, 0);
   piece3D.userData.colorIndex = index;
   piece3D.userData.timeSinceRotation = 0;
   piece3D.userData.rotationInterval =

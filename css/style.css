@@ -180,6 +180,21 @@ body {
   white-space: nowrap;
 }
 
+/* ── Speed-up banner ── */
+#speed-up-banner {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-family: "Press Start 2P", cursive;
+  font-size: 20px;
+  color: #f80;
+  text-shadow: 2px 2px 4px #000, 0 0 12px #f80;
+  pointer-events: none;
+  display: none;
+  white-space: nowrap;
+}
+
 /* ── Danger warning overlay ── */
 @keyframes danger-pulse {
   from { opacity: 0.35; }
