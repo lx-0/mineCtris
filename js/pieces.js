@@ -42,6 +42,7 @@ function spawnFallingPiece() {
     MIN_ROTATION_INTERVAL;
   fallingPiecesGroup.add(piece3D);
   fallingPieces.push(piece3D);
+  createPieceShadow(piece3D);
 }
 
 function applyRandomRotation(piece) {
@@ -66,6 +67,7 @@ function updateFallingPieces(delta) {
         MIN_ROTATION_INTERVAL;
     }
     piece.position.y += piece.userData.velocity.y * delta;
+    updatePieceShadow(piece);
     let lowestPoint = Infinity;
     piece.children.forEach((block) => {
       block.getWorldPosition(
@@ -128,6 +130,7 @@ function updateFallingPieces(delta) {
       registerBlock(block);
       newBlocks.push(block);
     }
+    removePieceShadow(pieceToLand);
     fallingPiecesGroup.remove(pieceToLand);
     fallingPieces.splice(index, 1);
     checkLineClear(newBlocks);

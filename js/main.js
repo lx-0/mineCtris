@@ -48,6 +48,8 @@ function init() {
   scene.add(worldGroup);
   fallingPiecesGroup = new THREE.Group();
   scene.add(fallingPiecesGroup);
+  shadowsGroup = new THREE.Group();
+  scene.add(shadowsGroup);
 
   const groundGeometry = new THREE.PlaneGeometry(WORLD_SIZE, WORLD_SIZE);
   const groundMaterial = new THREE.MeshLambertMaterial({ color: 0x55aa55 });

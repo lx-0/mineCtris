@@ -28,6 +28,8 @@ const LINE_CLEAR_FLASH_SECS = 0.5;
 const GAME_OVER_HEIGHT = 20;
 const DANGER_ZONE_HEIGHT = GAME_OVER_HEIGHT - 3;
 
+const SHADOW_APPEAR_DIST = 20; // blocks of fall distance before shadow appears
+
 // Block color palette (index 0 = unused/null).
 const COLORS = [
   null,

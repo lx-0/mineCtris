@@ -31,6 +31,9 @@ let clock = new THREE.Clock();
 let fallingPieces = [];
 let spawnTimer = 0;
 
+// ── Landing shadow/ghost previews ─────────────────────────────────────────────
+let shadowsGroup;
+
 // ── Mining state ──────────────────────────────────────────────────────────────
 let targetedBlock = null;
 let miningProgress = 0;
