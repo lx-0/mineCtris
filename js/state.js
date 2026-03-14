@@ -8,6 +8,9 @@ let fallingPiecesGroup;
 let raycaster;
 let pickaxeGroup;
 
+// ── Sky / lighting ────────────────────────────────────────────────────────────
+let skyMesh, skyStars, sunLight, hemisphereLight;
+
 // ── DOM element references (assigned in init()) ───────────────────────────────
 let rendererContainer;
 let blocker;

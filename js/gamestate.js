@@ -118,6 +118,9 @@ function resetGame() {
   // Reset grid occupancy
   gridOccupancy.clear();
 
+  // Reset fog to initial clear density
+  if (scene.fog) scene.fog.density = 0.002;
+
   // Reset score / stats
   score = 0;
   blocksMined = 0;

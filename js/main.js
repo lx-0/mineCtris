@@ -23,8 +23,6 @@ function init() {
   initAudio();
 
   scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x87ceeb);
-  scene.fog = new THREE.Fog(0x87ceeb, 0, WORLD_SIZE * 1.5);
   camera = new THREE.PerspectiveCamera(
     75,
     window.innerWidth / window.innerHeight,
@@ -37,12 +35,7 @@ function init() {
   renderer.setPixelRatio(window.devicePixelRatio);
   rendererContainer.appendChild(renderer.domElement);
 
-  const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
-  scene.add(ambientLight);
-  const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-  directionalLight.position.set(50, 100, 75);
-  directionalLight.castShadow = true;
-  scene.add(directionalLight);
+  initSky();
 
   worldGroup = new THREE.Group();
   scene.add(worldGroup);
@@ -283,6 +276,8 @@ function animate() {
   const time = performance.now();
   const delta = clock.getDelta();
   const elapsedTime = clock.getElapsedTime();
+
+  updateSky(elapsedTime);
 
   if (!isGameOver) {
     spawnTimer += delta;
