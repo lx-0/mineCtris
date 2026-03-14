@@ -1,47 +1,83 @@
-# You're inside the Tetris board now.
+<div align="center">
 
-Pieces are falling.
+<br>
 
-Around you.
+# ⛏️ &nbsp; MineCtris &nbsp; 🟦
 
-*On* you.
+<br>
 
----
+### You're inside the Tetris board now.
 
-## **[▶ &nbsp; Play MineCtris](https://lx-0.github.io/mineCtris)** &nbsp;— browser. no install. right now.
+*Pieces are falling. Around you. On you.*
 
----
+<br>
 
-Look up.
+[![▶ PLAY NOW — no install, runs in browser](https://img.shields.io/badge/▶%20PLAY%20NOW-2ea043?style=for-the-badge&logoColor=white)](https://lx-0.github.io/mineCtris)
 
-There's an L-piece tumbling toward you. It's going to land in about three seconds.
-
-You have a pickaxe.
+<br>
 
 ---
 
-MineCtris puts you *inside* a Tetris board — first-person, ground level, fully 3D. Tetrominoes rain from above. They stack into walls. They close in. They bury you.
+<br>
 
-Classic Tetris gives you a god's-eye view and infinite patience.
+```
+      🟦
+   🟦 🟦       ← that's coming down
+      🟦
 
-MineCtris gives you **legs.**
+         YOU ARE HERE  ↓
+
+⬛ ⬛ ⬛ ⬛ ⬛ ⬛ ⬛ ⬛
+🟫 ⬛ 🟫 🟫 ⬛ 🟫 🟫 ⬛   ← mine these
+🟫 🟫 🟫 🟫 🟫 🟫 🟫 🟫   ← this row clears
+```
+
+<br>
+
+</div>
 
 ---
 
-**WASD** to move. **Mouse** to look. **Left click** to mine.
+**MineCtris** drops you onto the floor of a Tetris board — first-person, fully 3D. Tetrominoes fall from above. They stack into walls around you. They pile up. They close in.
 
-Break the falling blocks before they stack too high. Fill a complete layer — it vanishes, like always, because this is still Tetris, deep down. Collect what you break. Stay alive.
+Your pickaxe is the only thing keeping you alive.
 
-There is no pause.
+<br>
+
+<div align="center">
+
+| <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> | <kbd>Space</kbd> | <kbd>Mouse</kbd> | <kbd>Click</kbd> |
+|:---:|:---:|:---:|:---:|
+| Move | Jump | Look | Mine |
+
+</div>
+
+<br>
+
+Break blocks. Collect them. Fill a complete layer — it vanishes in a cascade of light and points. Leave a layer incomplete and it just... stays. And the next piece falls on top.
+
+And the next.
+
+And the next.
+
+<br>
 
 ---
+
+<div align="center">
 
 *Random. Chaotic. Beautiful.*
 
 *And merciless.*
 
----
+<br>
 
-&nbsp;
+[![▶ PLAY NOW](https://img.shields.io/badge/▶%20PLAY%20NOW-2ea043?style=for-the-badge)](https://lx-0.github.io/mineCtris)
 
-> Built with Three.js and a love of impossible mashups. [MIT License](LICENSE).
+<br>
+
+<sub>Built with Three.js &nbsp;·&nbsp; Tone.js &nbsp;·&nbsp; Pure browser JS &nbsp;·&nbsp; <a href="LICENSE">MIT</a></sub>
+
+<br>
+
+</div>
