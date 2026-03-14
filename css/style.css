@@ -122,6 +122,19 @@ body {
   color: #fff;
   text-shadow: 1px 1px 1px #000;
 }
+.inv-slot-num {
+  position: absolute;
+  top: 2px;
+  left: 4px;
+  font-family: "Press Start 2P", cursive;
+  font-size: 7px;
+  color: rgba(255, 255, 255, 0.55);
+  text-shadow: 1px 1px 1px #000;
+}
+.inv-slot.selected {
+  border-color: #ff0;
+  box-shadow: 0 0 8px rgba(255, 255, 0, 0.65);
+}
 
 /* ── Score HUD ── */
 #score-display {

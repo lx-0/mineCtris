@@ -20,6 +20,11 @@ function initAudio() {
     envelope: { attack: 0.01, decay: 0.3, sustain: 0.1, release: 0.5 },
   }).toDestination();
   clearSynth.volume.value = -8;
+  placeSynth = new Tone.Synth({
+    oscillator: { type: "square" },
+    envelope: { attack: 0.001, decay: 0.08, sustain: 0, release: 0.1 },
+  }).toDestination();
+  placeSynth.volume.value = -18;
   audioReady = true;
   console.log("Tone.js initialized.");
 }

@@ -79,3 +79,8 @@ let isGameOver = false;
 // ── Inventory ─────────────────────────────────────────────────────────────────
 // Keys are CSS hex color strings (e.g. "#8b4513"), values are counts.
 let inventory = {};
+
+// ── Block placement state ─────────────────────────────────────────────────────
+let selectedBlockColor = null;  // CSS hex color key of selected block type
+let targetedFaceNormal = null;  // THREE.Vector3 world-space face normal from last raycast
+let placeSynth = null;          // Tone.js synth for placement sound

@@ -27,6 +27,7 @@ function updateTargeting() {
   raycaster.setFromCamera({ x: 0, y: 0 }, camera);
   const intersects = raycaster.intersectObjects(worldGroup.children);
   let newTarget = null;
+  let newFaceNormal = null;
   if (intersects.length > 0) {
     const intersection = intersects[0];
     if (
@@ -34,8 +35,25 @@ function updateTargeting() {
       intersection.distance <= MINING_RANGE
     ) {
       newTarget = intersection.object;
+      if (intersection.face) {
+        newFaceNormal = intersection.face.normal.clone()
+          .transformDirection(intersection.object.matrixWorld);
+        // Snap to nearest axis
+        const ax = Math.abs(newFaceNormal.x);
+        const ay = Math.abs(newFaceNormal.y);
+        const az = Math.abs(newFaceNormal.z);
+        if (ax >= ay && ax >= az) {
+          newFaceNormal.set(Math.sign(newFaceNormal.x), 0, 0);
+        } else if (ay >= ax && ay >= az) {
+          newFaceNormal.set(0, Math.sign(newFaceNormal.y), 0);
+        } else {
+          newFaceNormal.set(0, 0, Math.sign(newFaceNormal.z));
+        }
+      }
     }
   }
+  // Always keep face normal in sync with current target
+  targetedFaceNormal = newFaceNormal;
   if (newTarget !== targetedBlock) {
     if (targetedBlock) {
       resetMineDamage(targetedBlock);

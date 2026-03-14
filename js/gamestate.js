@@ -125,6 +125,7 @@ function resetGame() {
 
   // Reset inventory
   inventory = {};
+  selectedBlockColor = null;
   updateInventoryHUD();
 
   // Reset mining feedback state

@@ -12,8 +12,39 @@ function addToInventory(cssColor) {
   const current = inventory[cssColor] || 0;
   if (current >= INV_MAX_PER_TYPE) return false;
   inventory[cssColor] = current + 1;
+  // Auto-select first block type collected
+  if (!selectedBlockColor) selectedBlockColor = cssColor;
   updateInventoryHUD();
   return true;
+}
+
+/** Return the currently selected color if still in inventory, else auto-pick first available. */
+function getSelectedColor() {
+  const entries = Object.entries(inventory).filter(([, n]) => n > 0);
+  if (!entries.length) return null;
+  if (selectedBlockColor && inventory[selectedBlockColor] > 0) return selectedBlockColor;
+  // Auto-pick first available
+  selectedBlockColor = entries[0][0];
+  return selectedBlockColor;
+}
+
+/** Select a specific color as the active block type. */
+function selectBlockColor(color) {
+  if (!color || !inventory[color] || inventory[color] <= 0) return;
+  selectedBlockColor = color;
+  updateInventoryHUD();
+}
+
+/** Cycle through available inventory colors. direction: +1 forward, -1 backward. */
+function cycleSelectedBlock(direction) {
+  const entries = Object.entries(inventory).filter(([, n]) => n > 0);
+  if (!entries.length) return;
+  const colors = entries.map(([c]) => c);
+  const current = getSelectedColor();
+  const idx = colors.indexOf(current);
+  const newIdx = ((idx + direction) + colors.length) % colors.length;
+  selectedBlockColor = colors[newIdx];
+  updateInventoryHUD();
 }
 
 /** Re-render the bottom inventory bar from current inventory state. */
@@ -37,9 +68,15 @@ function updateInventoryHUD() {
   totalEl.textContent = "Inventar: " + total + "/" + INV_MAX_TOTAL;
 
   slotsEl.innerHTML = "";
-  entries.forEach(([color, count]) => {
+  const currentSelected = getSelectedColor();
+  entries.forEach(([color, count], i) => {
     const slot = document.createElement("div");
-    slot.className = "inv-slot";
+    slot.className = color === currentSelected ? "inv-slot selected" : "inv-slot";
+    slot.dataset.color = color;
+
+    const numEl = document.createElement("div");
+    numEl.className = "inv-slot-num";
+    numEl.textContent = i + 1;
 
     const swatch = document.createElement("div");
     swatch.className = "inv-slot-color";
@@ -49,6 +86,7 @@ function updateInventoryHUD() {
     countEl.className = "inv-slot-count";
     countEl.textContent = count;
 
+    slot.appendChild(numEl);
     slot.appendChild(swatch);
     slot.appendChild(countEl);
     slotsEl.appendChild(slot);

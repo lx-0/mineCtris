@@ -59,6 +59,18 @@ function onKeyDown(event) {
       canJump = false;
       playerOnGround = false;
       break;
+    case "Digit1":
+    case "Digit2":
+    case "Digit3":
+    case "Digit4":
+    case "Digit5":
+    case "Digit6":
+    case "Digit7": {
+      const idx = parseInt(event.code.replace("Digit", "")) - 1;
+      const entries = Object.entries(inventory).filter(([, n]) => n > 0);
+      if (idx < entries.length) selectBlockColor(entries[idx][0]);
+      break;
+    }
   }
 }
 

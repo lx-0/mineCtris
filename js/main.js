@@ -144,7 +144,11 @@ function init() {
   document.addEventListener("keydown", onKeyDown);
   document.addEventListener("keyup", onKeyUp);
   window.addEventListener("mousedown", onMouseDown);
+  window.addEventListener("wheel", onWheel, { passive: true });
   window.addEventListener("resize", onWindowResize);
+  renderer.domElement.addEventListener("contextmenu", function (e) {
+    e.preventDefault();
+  });
 
   const playAgainBtn = document.getElementById("play-again-btn");
   if (playAgainBtn) playAgainBtn.addEventListener("click", resetGame);
@@ -159,9 +163,76 @@ function onWindowResize() {
   renderer.setSize(window.innerWidth, window.innerHeight);
 }
 
+function onWheel(event) {
+  if (!controls || !controls.isLocked || isGameOver) return;
+  cycleSelectedBlock(event.deltaY > 0 ? 1 : -1);
+}
+
+function placeBlock() {
+  const selectedColor = getSelectedColor();
+  if (!selectedColor) return;
+  if (!targetedBlock || !targetedFaceNormal) return;
+
+  // Compute placement position adjacent to the targeted face
+  const blockPos = new THREE.Vector3();
+  targetedBlock.getWorldPosition(blockPos);
+  const placeX = snapGrid(blockPos.x + targetedFaceNormal.x * BLOCK_SIZE);
+  const placeY = snapGrid(blockPos.y + targetedFaceNormal.y * BLOCK_SIZE);
+  const placeZ = snapGrid(blockPos.z + targetedFaceNormal.z * BLOCK_SIZE);
+
+  // Cannot place underground
+  if (placeY < 1) return;
+
+  // Cannot place on occupied cell
+  const layer = gridOccupancy.get(placeY);
+  if (layer && layer.has(placeX + "," + placeZ)) return;
+
+  // Cannot place inside the player
+  if (controls) {
+    const pp = controls.getObject().position;
+    const dx = Math.abs(placeX - pp.x);
+    const dz = Math.abs(placeZ - pp.z);
+    const dy = Math.abs(placeY - pp.y);
+    if (
+      dx < PLAYER_RADIUS + 0.5 &&
+      dz < PLAYER_RADIUS + 0.5 &&
+      dy < PLAYER_HEIGHT / 2 + 0.5
+    )
+      return;
+  }
+
+  // Consume one block from inventory
+  inventory[selectedColor]--;
+  if (inventory[selectedColor] <= 0) {
+    delete inventory[selectedColor];
+    selectedBlockColor = null; // getSelectedColor() will auto-pick next
+  }
+
+  // Create and register the placed block
+  const threeColor = new THREE.Color(selectedColor);
+  const block = createBlockMesh(threeColor);
+  block.name = "landed_block";
+  block.position.set(placeX, placeY, placeZ);
+  worldGroup.add(block);
+  registerBlock(block);
+
+  // Update HUD and check line-clear
+  updateInventoryHUD();
+  checkLineClear([block]);
+
+  // Placement sound
+  if (audioReady && placeSynth) {
+    placeSynth.triggerAttackRelease("E3", "32n", Tone.now());
+  }
+}
+
 function onMouseDown(event) {
-  if (!controls || !controls.isLocked || isGameOver || event.button !== 0)
+  if (!controls || !controls.isLocked || isGameOver) return;
+  if (event.button === 2) {
+    placeBlock();
     return;
+  }
+  if (event.button !== 0) return;
   if (targetedBlock) {
     miningProgress++;
     console.log(
