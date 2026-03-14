@@ -2,9 +2,11 @@
 
 **Tetris pieces fall from the sky. You're standing in the middle of them.**
 
-MineCtris is a first-person 3D game where Tetris meets Minecraft. Tetrominos rain down and build the world around you in real time. Your pickaxe is the only thing standing between you and being buried alive.
+MineCtris drops you inside a Tetris board — first-person, ground level, fully three-dimensional. Tetrominoes rain down around you in real time. They stack. They pile. They bury.
 
-Mine blocks. Fill gaps. Trigger line clears. Survive.
+Your pickaxe is the only thing keeping you alive.
+
+Mine blocks. Fill rows. Trigger line clears. Don't get buried.
 
 <!-- TODO: Add a screenshot or GIF of gameplay here -->
 <!-- ![MineCtris gameplay](screenshot.png) -->
@@ -22,18 +24,20 @@ Mine blocks. Fill gaps. Trigger line clears. Survive.
 | **Mouse** | Look around |
 | **Left Click** | Mine blocks (3 hits to break) |
 
-Tetris pieces fall continuously, building the landscape around you. Mine blocks to collect them in your inventory. When blocks stack too high, you lose — so keep mining and trigger line clears to buy yourself time.
+Pieces fall constantly. The world builds itself around you, random, chaotic, beautiful — and lethal. Mine blocks to clear space and collect them. When a full horizontal layer forms, it vanishes in a cascade of points. When the blocks reach the danger zone, it's over.
+
+Stay low. Keep mining. Fill the gaps.
 
 ## Features
 
-- **First-person Tetris** — experience falling tetrominoes from inside the world they create
-- **Mining and inventory** — break blocks with a pickaxe, collect up to 256 resources
-- **Line clears** — fill a horizontal layer to clear it, just like classic Tetris
-- **Ghost previews** — see where falling pieces will land
-- **Scoring** — track your score, blocks mined, lines cleared, and survival time
-- **Audio feedback** — mining sounds, break effects, and line-clear arpeggios
-- **Game over and restart** — blocks reach the danger zone and it's over. Try again.
-- **Zero setup** — pure HTML/CSS/JS. No build tools, no dependencies to install.
+- **First-person Tetris** — not watching the board from above. *Inside* it. At ground level. Looking up.
+- **Mining and inventory** — swing your pickaxe, break blocks, collect up to 256 resources
+- **Line clears** — fill a complete layer and watch it disappear, just like classic Tetris — except you're inside when it happens
+- **Ghost previews** — translucent shadows show you where falling pieces will land, so you can plan your escape
+- **Scoring** — blocks mined, lines cleared, survival time, all tracked
+- **Audio feedback** — every hit, every break, every line clear has a sound. The arpeggios on a line clear are *chef's kiss.*
+- **Game over and restart** — get buried, hit restart, try again. You'll do better this time.
+- **Zero setup** — pure HTML/CSS/JS. No build tools, no install, no nonsense.
 
 ## Development
 
@@ -45,7 +49,7 @@ open index.html
 npx serve .
 ```
 
-The game is built with vanilla JavaScript, Three.js for 3D rendering, and Tone.js for audio. No build step required.
+Vanilla JavaScript, Three.js for 3D rendering, Tone.js for audio. No build step. No dependencies to install. You can read the whole codebase in an afternoon.
 
 ### Project Structure
 
