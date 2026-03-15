@@ -35,7 +35,20 @@ function checkPlayerCollision(deltaY) {
     onSolidGround = true;
   }
   playerOnGround = onSolidGround;
-  if (playerOnGround) canJump = true;
+  if (playerOnGround) {
+    canJump = true;
+    // Detect ice block underfoot for friction modifier.
+    if (downIntersects.length > 0 && downIntersects[0].distance <= capsuleHalfHeight + 0.05) {
+      const hitObj = downIntersects[0].object;
+      const matType = hitObj.userData.materialType ||
+        (hitObj.parent && hitObj.parent.userData.materialType);
+      playerStandingOnIce = matType === "ice";
+    } else {
+      playerStandingOnIce = false;
+    }
+  } else {
+    playerStandingOnIce = false;
+  }
   return false;
 }
 

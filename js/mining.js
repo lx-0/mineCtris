@@ -12,7 +12,11 @@ function highlightBlock(block) {
 
 function unhighlightBlock(block) {
   if (!block || !block.material || !block.userData.originalColor) return;
-  block.material.emissive = new THREE.Color(0x000000);
+  if (block.userData.defaultEmissive) {
+    block.material.emissive.copy(block.userData.defaultEmissive);
+  } else {
+    block.material.emissive = new THREE.Color(0x000000);
+  }
   block.material.needsUpdate = true;
 }
 

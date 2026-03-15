@@ -49,5 +49,20 @@ function createBlockMesh(color) {
   cube.add(edgesMesh);
   cube.userData.isBlock = true;
   cube.userData.originalColor = material.color.clone();
+
+  // Tag with material type and per-material properties.
+  const hexColor = material.color.getHex();
+  const materialName = COLOR_TO_MATERIAL[hexColor];
+  if (materialName) {
+    cube.userData.materialType = materialName;
+    cube.userData.miningClicks = BLOCK_TYPES[materialName].hits;
+    if (BLOCK_TYPES[materialName].effect === "lava_glow") {
+      const lavaEmissive = new THREE.Color(0x220800);
+      cube.material.emissive = lavaEmissive;
+      cube.material.needsUpdate = true;
+      cube.userData.defaultEmissive = lavaEmissive.clone();
+    }
+  }
+
   return cube;
 }

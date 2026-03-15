@@ -18,7 +18,7 @@ function spawnTree(tx, tz) {
     const trunk = new THREE.Mesh(trunkGeo, trunkMat.clone());
     trunk.position.set(tx, BLOCK_SIZE / 2 + ty * BLOCK_SIZE, tz);
     trunk.name = "trunk_block";
-    trunk.userData.miningClicks = 4;
+    trunk.userData.miningClicks = BLOCK_TYPES.wood.hits;
     trunk.userData.objectType = "trunk";
     worldGroup.add(trunk);
     meshes.push(trunk);
@@ -45,7 +45,7 @@ function spawnTree(tx, tz) {
           tz + lz * BLOCK_SIZE
         );
         leaf.name = "leaf_block";
-        leaf.userData.miningClicks = 2;
+        leaf.userData.miningClicks = BLOCK_TYPES.leaf.hits;
         leaf.userData.objectType = "leaf";
         worldGroup.add(leaf);
         meshes.push(leaf);
@@ -67,7 +67,7 @@ function spawnRock(rx, rz, size) {
     const block = new THREE.Mesh(geo, mat);
     block.position.set(rx, BLOCK_SIZE / 2 + i * BLOCK_SIZE, rz);
     block.name = "world_object";
-    block.userData.miningClicks = 5;
+    block.userData.miningClicks = BLOCK_TYPES.rock.hits;
     block.userData.objectType = "rock";
     worldGroup.add(block);
   }
@@ -463,7 +463,9 @@ function onMouseDown(event) {
       // Break burst particles
       spawnDustParticles(targetedBlock, { breakBurst: true });
       blocksMined++;
-      addScore(10);
+      const _matName = targetedBlock.userData.materialType ||
+        (targetedBlock.userData.objectType ? OBJECT_TYPE_TO_MATERIAL[targetedBlock.userData.objectType] : null);
+      addScore(_matName && BLOCK_TYPES[_matName] ? BLOCK_TYPES[_matName].points : 10);
 
       const blockColor =
         targetedBlock.userData.originalColor ||
@@ -541,7 +543,7 @@ function animate() {
 
     const playerPosition = controls.getObject().position;
     if (!playerOnGround) playerVelocity.y -= GRAVITY * delta;
-    const speedDelta = MOVEMENT_SPEED * delta;
+    const speedDelta = MOVEMENT_SPEED * (playerStandingOnIce ? 1.2 : 1.0) * delta;
     if (moveForward) controls.moveForward(speedDelta);
     if (moveBackward) controls.moveForward(-speedDelta);
     if (moveLeft) controls.moveRight(-speedDelta);

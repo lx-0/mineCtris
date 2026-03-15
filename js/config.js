@@ -39,6 +39,38 @@ const DIFFICULTY_INTERVAL = 60;               // seconds between speed tiers
 const DIFFICULTY_MULTIPLIER_PER_TIER = 1.1;   // 10% faster each tier
 const DIFFICULTY_MAX_MULTIPLIER = 3.0;         // cap at 3x starting speed
 
+// Material properties keyed by material name.
+const BLOCK_TYPES = {
+  dirt:    { hits: 2, points: 5,  effect: null },
+  stone:   { hits: 4, points: 15, effect: null },
+  gold:    { hits: 2, points: 50, effect: null },
+  ice:     { hits: 1, points: 5,  effect: "ice" },
+  moss:    { hits: 3, points: 8,  effect: null },
+  lava:    { hits: 3, points: 25, effect: "lava_glow" },
+  crystal: { hits: 2, points: 35, effect: null },
+  wood:    { hits: 3, points: 10, effect: null },
+  leaf:    { hits: 1, points: 2,  effect: null },
+  rock:    { hits: 5, points: 20, effect: null },
+};
+
+// Maps color hex integer (from COLORS array) to material name.
+const COLOR_TO_MATERIAL = {
+  0x8b4513: "dirt",
+  0x808080: "stone",
+  0xffff00: "gold",
+  0x00ffff: "ice",
+  0x008000: "moss",
+  0xff0000: "lava",
+  0x800080: "crystal",
+};
+
+// Maps objectType string to material name for world objects.
+const OBJECT_TYPE_TO_MATERIAL = {
+  trunk: "wood",
+  leaf:  "leaf",
+  rock:  "rock",
+};
+
 // Block color palette (index 0 = unused/null).
 const COLORS = [
   null,

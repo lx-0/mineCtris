@@ -104,6 +104,9 @@ let targetedFaceNormal = null;  // THREE.Vector3 world-space face normal from la
 let groundPlacementPoint = null; // THREE.Vector3 world intersection point on ground (when no block targeted)
 let placeSynth = null;          // Tone.js synth for placement sound
 
+// ── Ice friction state ────────────────────────────────────────────────────────
+let playerStandingOnIce = false;
+
 // ── Player push (from landing pieces) ────────────────────────────────────────
 let playerPushVelocity = new THREE.Vector3();
 let screenShakeActive = false;
