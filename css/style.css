@@ -724,3 +724,67 @@ body {
 #pause-resume-btn:hover  { background: #ff0; }
 #pause-restart-btn:hover { background: #f80; }
 #pause-settings-btn:hover { background: #08f; color: #fff; }
+
+/* ── Daily challenge ── */
+.start-buttons {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  margin-top: 20px;
+}
+#start-random-btn {
+  font-size: 1em;
+  font-weight: bold;
+  color: #ff0;
+  cursor: pointer;
+}
+#daily-challenge-btn {
+  font-family: "Press Start 2P", cursive;
+  font-size: 10px;
+  color: #000;
+  background: #0cf;
+  border: none;
+  padding: 10px 20px;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background 0.15s;
+}
+#daily-challenge-btn:hover { background: #ff0; }
+
+#daily-challenge-badge {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: "Press Start 2P", cursive;
+  font-size: 9px;
+  color: #0cf;
+  text-shadow: 0 0 8px #0cf;
+  background: rgba(0, 0, 0, 0.55);
+  padding: 4px 10px;
+  border-radius: 3px;
+  pointer-events: none;
+  z-index: 150;
+}
+
+#daily-go-section {
+  margin: 14px 0;
+  text-align: center;
+  font-family: "Press Start 2P", cursive;
+}
+#daily-go-label {
+  font-size: 8px;
+  color: #0cf;
+  margin-bottom: 6px;
+  letter-spacing: 0.05em;
+}
+.daily-best-score {
+  font-size: 18px;
+  color: #0cf;
+}
+.daily-best-score.daily-best-new {
+  color: #ff0;
+  text-shadow: 0 0 10px #ff0;
+  animation: go-flicker 1.2s infinite;
+}

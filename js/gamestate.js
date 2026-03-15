@@ -103,6 +103,20 @@ function triggerGameOver() {
   );
   renderHighScoresGameOver(hsRank);
 
+  // Daily challenge score tracking
+  if (isDailyChallenge) {
+    const isNewDailyBest = submitDailyScore(
+      state.score,
+      state.elapsedSeconds,
+      state.blocksMined,
+      state.linesCleared
+    );
+    renderDailyBestGameOver(isNewDailyBest);
+  } else {
+    const dailyEl = document.getElementById('daily-go-section');
+    if (dailyEl) dailyEl.style.display = 'none';
+  }
+
   // Fade out background music, then play game-over jingle
   if (typeof stopBgMusic === "function") stopBgMusic();
   if (typeof playGameOverJingle === "function") playGameOverJingle();
@@ -167,6 +181,12 @@ function resetGame() {
   nudgeCooldown = 0;
   const nudgeHintEl = document.getElementById("nudge-hint");
   if (nudgeHintEl) nudgeHintEl.style.display = "none";
+
+  // Reset daily challenge state
+  isDailyChallenge = false;
+  gameRng = null;
+  const dailyBadgeEl = document.getElementById('daily-challenge-badge');
+  if (dailyBadgeEl) dailyBadgeEl.style.display = 'none';
 
   // Reset next-piece queue
   initPieceQueue();

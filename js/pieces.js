@@ -87,8 +87,12 @@ function createPiece3D(shapeData, colorIndex) {
 
 // ── Next-piece queue ──────────────────────────────────────────────────────────
 
+function _rng() {
+  return gameRng ? gameRng() : Math.random();
+}
+
 function _randomShapeIndex() {
-  return Math.floor(Math.random() * (SHAPES.length - 1)) + 1;
+  return Math.floor(_rng() * (SHAPES.length - 1)) + 1;
 }
 
 /** Populate pieceQueue with NEXT_QUEUE_SIZE entries from scratch. */
@@ -132,15 +136,15 @@ function spawnFallingPiece() {
   pieceQueue.push({ index: newIdx, shape: SHAPES[newIdx] });
   updateNextPiecesHUD();
   const piece3D = createPiece3D(shape, index);
-  const spawnX = (Math.random() - 0.5) * (WORLD_SIZE * 0.8);
-  const spawnZ = (Math.random() - 0.5) * (WORLD_SIZE * 0.8);
+  const spawnX = (_rng() - 0.5) * (WORLD_SIZE * 0.8);
+  const spawnZ = (_rng() - 0.5) * (WORLD_SIZE * 0.8);
   const spawnY = WORLD_SIZE * 0.6;
   piece3D.position.set(spawnX, spawnY, spawnZ);
   piece3D.userData.velocity = new THREE.Vector3(0, -(GRAVITY / 4) * difficultyMultiplier, 0);
   piece3D.userData.colorIndex = index;
   piece3D.userData.timeSinceRotation = 0;
   piece3D.userData.rotationInterval =
-    Math.random() * (MAX_ROTATION_INTERVAL - MIN_ROTATION_INTERVAL) +
+    _rng() * (MAX_ROTATION_INTERVAL - MIN_ROTATION_INTERVAL) +
     MIN_ROTATION_INTERVAL;
   piece3D.userData.nudgeOffsetX = 0;
   piece3D.userData.nudgeOffsetZ = 0;
@@ -152,7 +156,7 @@ function spawnFallingPiece() {
 }
 
 function applyRandomRotation(piece) {
-  const axis = Math.floor(Math.random() * 3);
+  const axis = Math.floor(_rng() * 3);
   const angle = Math.PI / 2;
   if (axis === 0) piece.rotateX(angle);
   else if (axis === 1) piece.rotateY(angle);
@@ -315,7 +319,7 @@ function updateFallingPieces(delta) {
       applyRandomRotation(piece);
       piece.userData.timeSinceRotation = 0;
       piece.userData.rotationInterval =
-        Math.random() * (MAX_ROTATION_INTERVAL - MIN_ROTATION_INTERVAL) +
+        _rng() * (MAX_ROTATION_INTERVAL - MIN_ROTATION_INTERVAL) +
         MIN_ROTATION_INTERVAL;
     }
     piece.position.y += piece.userData.velocity.y * delta;

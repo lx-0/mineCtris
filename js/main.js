@@ -212,8 +212,13 @@ function init() {
     controls = new THREE.PointerLockControls(camera, renderer.domElement);
     scene.add(controls.getObject());
 
-    blocker.addEventListener("click", function () {
+    blocker.addEventListener("click", function (e) {
+      // Daily challenge button handles its own lock — skip here
+      if (e.target.id === "daily-challenge-btn") return;
       console.log("Blocker clicked. Requesting pointer lock...");
+      // Normal random game: ensure daily mode is off
+      isDailyChallenge = false;
+      gameRng = null;
       if (Tone.context.state !== "running") {
         Tone.start()
           .then(() => {
@@ -228,6 +233,28 @@ function init() {
         controls.lock();
       }
     });
+
+    const dailyChallengeBtn = document.getElementById("daily-challenge-btn");
+    if (dailyChallengeBtn) {
+      dailyChallengeBtn.addEventListener("click", function (e) {
+        e.stopPropagation();
+        isDailyChallenge = true;
+        gameRng = getDailyPrng();
+        // Re-seed the piece queue with today's PRNG
+        initPieceQueue();
+        // Show daily badge in HUD
+        const badgeEl = document.getElementById("daily-challenge-badge");
+        if (badgeEl) {
+          badgeEl.textContent = "Daily: " + getTodayLabel();
+          badgeEl.style.display = "block";
+        }
+        if (Tone.context.state !== "running") {
+          Tone.start().then(() => controls.lock()).catch(() => controls.lock());
+        } else {
+          controls.lock();
+        }
+      });
+    }
 
     controls.addEventListener("lock", function () {
       console.log("Pointer lock successful ('lock' event fired).");

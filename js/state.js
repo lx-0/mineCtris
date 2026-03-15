@@ -130,3 +130,8 @@ let nudgeCooldown = 0;  // seconds remaining before next nudge is allowed
 // ── Next-piece queue ──────────────────────────────────────────────────────────
 // Each entry: { index: colorIndex, shape: SHAPES[index] }
 let pieceQueue = [];
+
+// ── Daily challenge state ─────────────────────────────────────────────────────
+let isDailyChallenge = false;
+// null → use Math.random(); function → seeded daily PRNG from daily.js
+let gameRng = null;
