@@ -378,6 +378,16 @@ body {
   z-index: 100;
 }
 
+/* ── Level-up flash on speed level indicator ── */
+@keyframes level-up-flash {
+  0%   { color: #fff; text-shadow: 0 0 8px #f80, 0 0 16px #f80; transform: scale(1.4); }
+  40%  { color: #f80; text-shadow: 0 0 6px #f80; transform: scale(1.1); }
+  100% { color: rgba(0, 255, 0, 0.85); text-shadow: none; transform: scale(1.0); }
+}
+#hud-level.level-up-flash {
+  animation: level-up-flash 0.6s ease-out forwards;
+}
+
 /* ── Score-slam bounce animation (Tetris clear) ── */
 @keyframes score-slam {
   0%   { transform: scale(1.0); }

@@ -21,7 +21,7 @@ function updateScoreHUD() {
   scoreEl.querySelector(".hud-stat:nth-child(4)").textContent =
     "Time: " + mm + ":" + ss;
   scoreEl.querySelector(".hud-stat:nth-child(5)").textContent =
-    "Speed: " + difficultyMultiplier.toFixed(1) + "x";
+    "Level " + (lastDifficultyTier + 1);
 }
 
 /** Returns current game stats for use by the Game Over screen. */
@@ -248,10 +248,17 @@ function updateDifficulty(delta) {
     lastDifficultyTier = tier;
     if (speedUpBannerEl) {
       speedUpBannerEl.textContent =
-        "SPEED UP!  " + difficultyMultiplier.toFixed(1) + "x";
+        "SPEED UP!  Level " + (lastDifficultyTier + 1);
       speedUpBannerEl.style.display = "block";
       speedUpBannerTimer = 2.0;
     }
     updateScoreHUD();
+    // Flash the level indicator
+    const levelEl = document.getElementById("hud-level");
+    if (levelEl) {
+      levelEl.classList.remove("level-up-flash");
+      void levelEl.offsetWidth; // force reflow to restart animation
+      levelEl.classList.add("level-up-flash");
+    }
   }
 }
