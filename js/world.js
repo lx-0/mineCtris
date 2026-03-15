@@ -32,13 +32,14 @@ function unregisterBlock(block) {
 /** Create a single block mesh with edge overlay. */
 function createBlockMesh(color) {
   const geometry = new THREE.BoxGeometry(BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
+  addFaceBrightnessColors(geometry);
   const edges = new THREE.EdgesGeometry(geometry);
   const lineMaterial = new THREE.LineBasicMaterial({
     color: 0x000000,
     linewidth: 2,
   });
   const edgesMesh = new THREE.LineSegments(edges, lineMaterial);
-  const material = new THREE.MeshLambertMaterial({ color: color });
+  const material = createBlockMaterial(color);
   const cube = new THREE.Mesh(geometry, material);
   cube.add(edgesMesh);
   cube.userData.isBlock = true;

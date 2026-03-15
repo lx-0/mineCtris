@@ -34,6 +34,7 @@ function init() {
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.setPixelRatio(window.devicePixelRatio);
   rendererContainer.appendChild(renderer.domElement);
+  renderer.shadowMap.enabled = true;
 
   initSky();
 
@@ -147,14 +148,38 @@ function init() {
   const playAgainBtn = document.getElementById("play-again-btn");
   if (playAgainBtn) playAgainBtn.addEventListener("click", resetGame);
 
+  initPostProcessing();
+
   console.log("Initialization complete. Starting animation loop.");
   animate();
+}
+
+function initPostProcessing() {
+  if (
+    typeof THREE.EffectComposer === 'undefined' ||
+    typeof THREE.SSAOPass === 'undefined'
+  ) {
+    console.warn("Post-processing scripts not loaded — skipping SSAO.");
+    return;
+  }
+
+  composer = new THREE.EffectComposer(renderer);
+
+  const renderPass = new THREE.RenderPass(scene, camera);
+  composer.addPass(renderPass);
+
+  const ssaoPass = new THREE.SSAOPass(scene, camera, window.innerWidth, window.innerHeight);
+  ssaoPass.kernelRadius = 6;
+  ssaoPass.minDistance  = 0.004;
+  ssaoPass.maxDistance  = 0.08;
+  composer.addPass(ssaoPass);
 }
 
 function onWindowResize() {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
+  if (composer) composer.setSize(window.innerWidth, window.innerHeight);
 }
 
 function onWheel(event) {
@@ -391,7 +416,11 @@ function animate() {
     if (pickaxeGroup) pickaxeGroup.rotation.z = Math.PI / 8;
   }
 
-  renderer.render(scene, camera);
+  if (composer) {
+    composer.render(delta);
+  } else {
+    renderer.render(scene, camera);
+  }
   lastTime = time;
 }
 

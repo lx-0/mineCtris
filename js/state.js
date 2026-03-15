@@ -3,6 +3,7 @@
 
 // ── Three.js scene objects ────────────────────────────────────────────────────
 let scene, camera, renderer, controls;
+let composer; // EffectComposer for post-processing (SSAO)
 let worldGroup;
 let fallingPiecesGroup;
 let raycaster;
