@@ -54,6 +54,7 @@ let dustParticles = [];
 let hitSynth = null;
 let breakSynth = null;
 let clearSynth = null;
+let rockCrackSynth = null;
 let audioReady = false;
 
 // ── Grid occupancy ────────────────────────────────────────────────────────────

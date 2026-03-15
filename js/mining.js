@@ -65,6 +65,11 @@ function updateTargeting() {
         miningShakeActive = false;
         miningShakeBlock = null;
       }
+      // Reset trunk tilt applied at hit 3/4
+      if (targetedBlock.userData.isTilted) {
+        targetedBlock.rotation.set(0, 0, 0);
+        targetedBlock.userData.isTilted = false;
+      }
     }
     unhighlightTarget();
     if (newTarget) {
@@ -100,6 +105,7 @@ function applyMineDamage(block, hits) {
 function resetMineDamage(block) {
   if (!block || !block.material || !block.userData.originalColor) return;
   block.material.color.copy(block.userData.originalColor);
+  block.userData.fractured = false;
   block.material.needsUpdate = true;
 }
 
@@ -113,15 +119,67 @@ function startMiningShake(block) {
   miningShakeActive = true;
 }
 
-function spawnDustParticles(block) {
+function spawnDustParticles(block, opts) {
   if (!block) return;
+  opts = opts || {};
   const wp = new THREE.Vector3();
   block.getWorldPosition(wp);
-  const dustColor = block.userData.originalColor
-    ? block.userData.originalColor.clone()
-    : block.material.color.clone();
-  dustColor.multiplyScalar(0.7);
-  for (let i = 0; i < 4; i++) {
+
+  const objType = block.userData.objectType; // "trunk", "leaf", "rock", or undefined
+  let count, dustColor, velocityFn, lifetime;
+
+  if (objType === "trunk") {
+    count = opts.breakBurst
+      ? Math.floor(Math.random() * 3) + 8   // 8–10 on break
+      : Math.floor(Math.random() * 3) + 4;  // 4–6 per hit
+    dustColor = new THREE.Color(0x8b4513);
+    lifetime = 0.35;
+    velocityFn = () => new THREE.Vector3(
+      (Math.random() - 0.5) * 4,
+      Math.random() * 2.5 + 0.5,
+      (Math.random() - 0.5) * 4
+    );
+  } else if (objType === "leaf") {
+    count = Math.floor(Math.random() * 3) + 6; // 6–8
+    dustColor = opts.breakBurst
+      ? new THREE.Color(0x55cc55)  // lighter green pop on break
+      : new THREE.Color(0x2d8a2d); // leaf green on hit
+    lifetime = 0.35;
+    velocityFn = () => new THREE.Vector3(
+      (Math.random() - 0.5) * 6,  // ±3 wider spread
+      Math.random() * 2.5 + 0.5,
+      (Math.random() - 0.5) * 6
+    );
+  } else if (objType === "rock") {
+    count = opts.breakBurst
+      ? Math.floor(Math.random() * 3) + 10  // 10–12 on break
+      : Math.floor(Math.random() * 3) + 5;  // 5–7 per hit
+    dustColor = new THREE.Color(0xdddddd);
+    lifetime = 0.2; // short — spark feel
+    velocityFn = () => {
+      const speed = 3 + Math.random() * 2; // 3–5 units/sec
+      return new THREE.Vector3(
+        (Math.random() - 0.5) * 2,
+        Math.random() * 0.8 + 0.2,
+        (Math.random() - 0.5) * 2
+      ).normalize().multiplyScalar(speed);
+    };
+  } else {
+    // Default: landed_block — unchanged behavior
+    count = 4;
+    dustColor = block.userData.originalColor
+      ? block.userData.originalColor.clone()
+      : block.material.color.clone();
+    dustColor.multiplyScalar(0.7);
+    lifetime = 0.35;
+    velocityFn = () => new THREE.Vector3(
+      (Math.random() - 0.5) * 4,
+      Math.random() * 2.5 + 0.5,
+      (Math.random() - 0.5) * 4
+    );
+  }
+
+  for (let i = 0; i < count; i++) {
     const geo = new THREE.BoxGeometry(0.07, 0.07, 0.07);
     const mat = new THREE.MeshLambertMaterial({
       color: dustColor,
@@ -130,17 +188,12 @@ function spawnDustParticles(block) {
     });
     const mesh = new THREE.Mesh(geo, mat);
     mesh.position.copy(wp);
-    const vel = new THREE.Vector3(
-      (Math.random() - 0.5) * 4,
-      Math.random() * 2.5 + 0.5,
-      (Math.random() - 0.5) * 4
-    );
     scene.add(mesh);
     dustParticles.push({
       mesh,
-      velocity: vel,
+      velocity: velocityFn(),
       startTime: clock.getElapsedTime(),
-      lifetime: 0.35,
+      lifetime,
     });
   }
 }

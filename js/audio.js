@@ -27,6 +27,12 @@ function initAudio() {
     envelope: { attack: 0.001, decay: 0.08, sustain: 0, release: 0.1 },
   }).toDestination();
   placeSynth.volume.value = -18;
+  // Rock break: higher attack, shorter decay than the default wood break
+  rockCrackSynth = new Tone.NoiseSynth({
+    noise: { type: "white" },
+    envelope: { attack: 0.02, decay: 0.06, sustain: 0 },
+  }).toDestination();
+  rockCrackSynth.volume.value = -4;
   // Low rumble that plays during the anticipation phase of a line clear.
   rumbleSynth = new Tone.MembraneSynth({
     pitchDecay: 0.15,

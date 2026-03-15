@@ -19,6 +19,7 @@ function spawnTree(tx, tz) {
     trunk.position.set(tx, BLOCK_SIZE / 2 + ty * BLOCK_SIZE, tz);
     trunk.name = "trunk_block";
     trunk.userData.miningClicks = 4;
+    trunk.userData.objectType = "trunk";
     worldGroup.add(trunk);
     meshes.push(trunk);
   }
@@ -45,6 +46,7 @@ function spawnTree(tx, tz) {
         );
         leaf.name = "leaf_block";
         leaf.userData.miningClicks = 2;
+        leaf.userData.objectType = "leaf";
         worldGroup.add(leaf);
         meshes.push(leaf);
       }
@@ -393,12 +395,53 @@ function onMouseDown(event) {
       hitSynth.triggerAttackRelease("C2", "8n", Tone.now());
     applyMineDamage(targetedBlock, miningProgress);
     startMiningShake(targetedBlock);
-    spawnDustParticles(targetedBlock);
+
     const clicksNeeded = targetedBlock.userData.miningClicks || MINING_CLICKS_NEEDED;
-    if (miningProgress >= clicksNeeded) {
+    const objType = targetedBlock.userData.objectType;
+    const isBreak = miningProgress >= clicksNeeded;
+
+    if (!isBreak) {
+      // Normal hit particles
+      spawnDustParticles(targetedBlock);
+      // Trunk: tilt toward player on hit 3 of 4
+      if (objType === "trunk" && miningProgress === 3) {
+        const camPos = new THREE.Vector3();
+        camera.getWorldPosition(camPos);
+        const blkPos = new THREE.Vector3();
+        targetedBlock.getWorldPosition(blkPos);
+        const blockToPlayer = new THREE.Vector3(
+          camPos.x - blkPos.x, 0, camPos.z - blkPos.z
+        ).normalize();
+        const tiltAxis = new THREE.Vector3()
+          .crossVectors(new THREE.Vector3(0, 1, 0), blockToPlayer)
+          .normalize();
+        const tiltAngle = (5 + Math.random() * 3) * Math.PI / 180;
+        targetedBlock.rotateOnWorldAxis(tiltAxis, tiltAngle);
+        targetedBlock.userData.isTilted = true;
+      }
+      // Rock: show fracture emissive on hit 3 of 5
+      if (objType === "rock" && miningProgress === 3 && targetedBlock.material) {
+        targetedBlock.material.emissive = new THREE.Color(0x220000);
+        targetedBlock.material.needsUpdate = true;
+        targetedBlock.userData.fractured = true;
+      }
+    }
+
+    if (isBreak) {
       console.log("Block broken!");
-      if (audioReady && breakSynth)
-        breakSynth.triggerAttackRelease("4n", Tone.now());
+      // Per-material break sound
+      if (audioReady) {
+        if (objType === "trunk") {
+          // Lower-pitch tone than default break
+          if (hitSynth) hitSynth.triggerAttackRelease("C1", "8n", Tone.now());
+        } else if (objType === "rock") {
+          if (rockCrackSynth) rockCrackSynth.triggerAttackRelease("16n", Tone.now());
+        } else {
+          if (breakSynth) breakSynth.triggerAttackRelease("4n", Tone.now());
+        }
+      }
+      // Break burst particles
+      spawnDustParticles(targetedBlock, { breakBurst: true });
       blocksMined++;
       addScore(10);
 
