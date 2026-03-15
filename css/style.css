@@ -73,7 +73,7 @@ body {
 /* ── Material HUD tooltip ── */
 #material-tooltip {
   position: absolute;
-  bottom: 80px;
+  bottom: 110px;
   left: 50%;
   transform: translateX(-50%);
   display: flex;
