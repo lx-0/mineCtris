@@ -51,7 +51,11 @@ const BLOCK_TYPES = {
   wood:    { hits: 3, points: 10, effect: null },
   leaf:    { hits: 1, points: 2,  effect: null },
   rock:    { hits: 5, points: 20, effect: null },
+  plank:   { hits: 4, points: 15, effect: null },
 };
+
+// Crafted plank block color (light tan, distinct from all spawned palette colors).
+const PLANK_COLOR = "#d4a56a";
 
 // Maps color hex integer (from COLORS array) to material name.
 const COLOR_TO_MATERIAL = {
@@ -62,6 +66,7 @@ const COLOR_TO_MATERIAL = {
   0x008000: "moss",
   0xff0000: "lava",
   0x800080: "crystal",
+  0xd4a56a: "plank",
 };
 
 // Maps objectType string to material name for world objects.
@@ -111,4 +116,43 @@ const SHAPES = [
     [7, 0, 0],
     [7, 7, 7],
   ],
+];
+
+// Crafting recipes. inputs use CSS hex color strings matching inventory keys.
+const RECIPES = [
+  {
+    id: "wood_plank",
+    name: "Wood Plank",
+    description: "Durable wall block (4 hits to mine)",
+    inputs: [
+      { cssColor: "#8b4513", label: "Wood", count: 1 },
+    ],
+    outputType: "block",
+    outputCssColor: PLANK_COLOR,
+    outputCount: 2,
+  },
+  {
+    id: "stone_pickaxe",
+    name: "Stone Pickaxe",
+    description: "All blocks mine in max 2 hits",
+    inputs: [
+      { cssColor: "#808080", label: "Rock/Stone", count: 3 },
+      { cssColor: "#8b4513", label: "Wood", count: 2 },
+    ],
+    outputType: "tool",
+    toolTier: "stone",
+    outputCount: 1,
+  },
+  {
+    id: "iron_pickaxe",
+    name: "Iron Pickaxe",
+    description: "All blocks mine in 1 hit (instant)",
+    inputs: [
+      { cssColor: "#808080", label: "Rock/Stone", count: 5 },
+      { cssColor: "#8b4513", label: "Wood", count: 3 },
+    ],
+    outputType: "tool",
+    toolTier: "iron",
+    outputCount: 1,
+  },
 ];

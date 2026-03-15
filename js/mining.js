@@ -91,11 +91,11 @@ function updateTargeting() {
   }
 }
 
-function applyMineDamage(block, hits) {
+function applyMineDamage(block, hits, effectiveMax) {
   if (!block || !block.material) return;
   const orig = block.userData.originalColor;
   if (!orig) return;
-  const maxClicks = block.userData.miningClicks || MINING_CLICKS_NEEDED;
+  const maxClicks = effectiveMax || block.userData.miningClicks || MINING_CLICKS_NEEDED;
   if (maxClicks > 2 && hits === 1) {
     // First hit on multi-hit block: light cracks — darken slightly
     block.material.color.setRGB(orig.r * 0.65, orig.g * 0.65, orig.b * 0.65);

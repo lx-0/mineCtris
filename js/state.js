@@ -99,6 +99,10 @@ let groundPlacementPoint = null; // THREE.Vector3 world intersection point on gr
 // ── Ice friction state ────────────────────────────────────────────────────────
 let playerStandingOnIce = false;
 
+// ── Crafting / pickaxe tier ───────────────────────────────────────────────────
+// Values: "none" | "stone" | "iron"
+let pickaxeTier = "none";
+
 // ── Player push (from landing pieces) ────────────────────────────────────────
 let playerPushVelocity = new THREE.Vector3();
 let screenShakeActive = false;

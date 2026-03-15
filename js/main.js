@@ -238,6 +238,7 @@ function init() {
     controls.addEventListener("unlock", function () {
       console.log("Pointer lock released ('unlock' event fired).");
       gameTimerRunning = false;
+      closeCraftingPanel();
       // Don't show start screen if game over — game over overlay handles it
       if (!isGameOver) {
         blocker.style.display = "flex";
@@ -396,12 +397,13 @@ function onMouseDown(event) {
     console.log(
       `Mining progress on block: ${miningProgress}/${MINING_CLICKS_NEEDED}`
     );
+    let clicksNeeded = targetedBlock.userData.miningClicks || MINING_CLICKS_NEEDED;
+    if (pickaxeTier === "stone") clicksNeeded = Math.min(clicksNeeded, 2);
+    else if (pickaxeTier === "iron") clicksNeeded = 1;
     isMining = true;
     miningAnimStartTime = clock.getElapsedTime();
-    applyMineDamage(targetedBlock, miningProgress);
+    applyMineDamage(targetedBlock, miningProgress, clicksNeeded);
     startMiningShake(targetedBlock);
-
-    const clicksNeeded = targetedBlock.userData.miningClicks || MINING_CLICKS_NEEDED;
     const objType = targetedBlock.userData.objectType;
     const isBreak = miningProgress >= clicksNeeded;
 
@@ -598,6 +600,7 @@ function animate() {
     }
 
     updateDustParticles(delta);
+    updateCraftingBanner(delta);
   } else {
     playerVelocity.x = 0;
     playerVelocity.z = 0;

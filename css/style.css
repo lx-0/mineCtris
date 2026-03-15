@@ -293,3 +293,142 @@ body {
   transition: background 0.15s;
 }
 #play-again-btn:hover { background: #ff0; }
+
+/* ── Crafting panel ── */
+#crafting-panel {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: none;
+  flex-direction: column;
+  gap: 12px;
+  background: rgba(0, 0, 0, 0.82);
+  border: 2px solid rgba(255, 255, 255, 0.25);
+  border-radius: 6px;
+  padding: 18px 22px;
+  min-width: 320px;
+  max-width: 420px;
+  pointer-events: all;
+  z-index: 150;
+}
+#crafting-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+  padding-bottom: 8px;
+}
+#crafting-title {
+  font-family: "Press Start 2P", cursive;
+  font-size: 13px;
+  color: #ff0;
+  text-shadow: 1px 1px 3px #000;
+}
+#crafting-pickaxe-tier {
+  font-family: "Press Start 2P", cursive;
+  font-size: 7px;
+}
+#crafting-recipes {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.craft-row {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 4px;
+  padding: 10px 12px;
+}
+.craft-row.craft-row-ready {
+  border-color: rgba(0, 255, 0, 0.35);
+  background: rgba(0, 255, 0, 0.04);
+}
+.craft-name {
+  font-family: "Press Start 2P", cursive;
+  font-size: 9px;
+  color: #fff;
+}
+.craft-desc {
+  font-family: "Press Start 2P", cursive;
+  font-size: 7px;
+  color: rgba(255, 255, 255, 0.5);
+}
+.craft-ingredients {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 2px;
+}
+.craft-chip {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.craft-swatch {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border: 1px solid rgba(0, 0, 0, 0.5);
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+.craft-chip-label {
+  font-family: "Press Start 2P", cursive;
+  font-size: 7px;
+}
+.craft-output {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-family: "Press Start 2P", cursive;
+  font-size: 8px;
+  color: rgba(255, 255, 255, 0.7);
+  margin-top: 2px;
+}
+.craft-btn {
+  font-family: "Press Start 2P", cursive;
+  font-size: 8px;
+  color: #000;
+  background: rgba(0, 255, 0, 0.5);
+  border: 1px solid rgba(0, 255, 0, 0.6);
+  border-radius: 3px;
+  padding: 6px 12px;
+  cursor: pointer;
+  margin-top: 4px;
+  align-self: flex-start;
+  transition: background 0.1s;
+}
+.craft-btn:disabled {
+  background: rgba(80, 80, 80, 0.5);
+  border-color: rgba(120, 120, 120, 0.4);
+  color: rgba(0, 0, 0, 0.5);
+  cursor: not-allowed;
+}
+.craft-btn:not(:disabled):hover { background: rgba(0, 255, 0, 0.8); }
+.craft-empty {
+  font-family: "Press Start 2P", cursive;
+  font-size: 8px;
+  color: rgba(255, 255, 255, 0.4);
+  text-align: center;
+  padding: 12px 0;
+}
+
+/* ── Crafted banner ── */
+#crafted-banner {
+  position: absolute;
+  top: 38%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-family: "Press Start 2P", cursive;
+  font-size: 18px;
+  color: #0f0;
+  text-shadow: 2px 2px 4px #000, 0 0 12px #0f0;
+  pointer-events: none;
+  display: none;
+  white-space: nowrap;
+  z-index: 160;
+}

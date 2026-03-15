@@ -84,6 +84,9 @@ function onKeyDown(event) {
       if (idx < entries.length) selectBlockColor(entries[idx][0]);
       break;
     }
+    case "KeyC":
+      toggleCraftingPanel();
+      break;
   }
 }
 

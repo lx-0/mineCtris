@@ -142,6 +142,10 @@ function resetGame() {
   selectedBlockColor = null;
   updateInventoryHUD();
 
+  // Reset crafting state
+  pickaxeTier = "none";
+  closeCraftingPanel();
+
   // Clear tree respawn queue
   treeRespawnQueue.length = 0;
 
