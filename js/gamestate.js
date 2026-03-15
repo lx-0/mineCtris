@@ -121,6 +121,9 @@ function resetGame() {
   // Reset fog to initial clear density
   if (scene.fog) scene.fog.density = 0.002;
 
+  // Snap post-processing grade back to normal
+  if (typeof resetPostProcessing === 'function') resetPostProcessing();
+
   // Reset score / stats
   score = 0;
   blocksMined = 0;

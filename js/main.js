@@ -205,6 +205,9 @@ function initPostProcessing() {
   ssaoPass.minDistance  = 0.004;
   ssaoPass.maxDistance  = 0.08;
   composer.addPass(ssaoPass);
+
+  // Bloom + color grade + vignette
+  initBloomPasses(composer);
 }
 
 function onWindowResize() {
@@ -212,6 +215,7 @@ function onWindowResize() {
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
   if (composer) composer.setSize(window.innerWidth, window.innerHeight);
+  resizePostProcessing(window.innerWidth, window.innerHeight);
 }
 
 function onWheel(event) {
@@ -448,6 +452,8 @@ function animate() {
     isMining = false;
     if (pickaxeGroup) pickaxeGroup.rotation.z = Math.PI / 8;
   }
+
+  updatePostProcessing(delta);
 
   if (composer) {
     composer.render(delta);
