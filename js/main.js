@@ -148,6 +148,7 @@ function init() {
   const playAgainBtn = document.getElementById("play-again-btn");
   if (playAgainBtn) playAgainBtn.addEventListener("click", resetGame);
 
+  initTrails();
   initPostProcessing();
 
   console.log("Initialization complete. Starting animation loop.");
@@ -312,6 +313,7 @@ function animate() {
     }
     updateLineClear(delta);
     updateFallingPieces(delta);
+    updateTrails(delta, elapsedTime);
     updateDifficulty(delta);
   }
   updateDangerWarning();

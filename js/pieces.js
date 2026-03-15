@@ -43,6 +43,7 @@ function spawnFallingPiece() {
   fallingPiecesGroup.add(piece3D);
   fallingPieces.push(piece3D);
   createPieceShadow(piece3D);
+  createPieceTrail(piece3D);
 }
 
 function applyRandomRotation(piece) {
@@ -160,6 +161,7 @@ function updateFallingPieces(delta) {
     const index = landedPieces[i];
     const pieceToLand = fallingPieces[index];
     checkAndApplyPlayerPush(pieceToLand);
+    disposePieceTrail(pieceToLand);
     const newBlocks = [];
     while (pieceToLand.children.length > 0) {
       const block = pieceToLand.children[0];
