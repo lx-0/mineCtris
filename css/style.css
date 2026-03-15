@@ -725,6 +725,115 @@ body {
 #pause-restart-btn:hover { background: #f80; }
 #pause-settings-btn:hover { background: #08f; color: #fff; }
 
+/* ── Audio settings overlay ── */
+#settings-overlay {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0, 0, 0, 0.85);
+  display: none;
+  justify-content: center;
+  align-items: center;
+  z-index: 300;
+  pointer-events: all;
+}
+#settings-panel {
+  background: #111;
+  border: 2px solid #0f0;
+  border-radius: 6px;
+  padding: 36px 40px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+  min-width: 360px;
+  box-shadow: 0 0 30px rgba(0, 255, 0, 0.2);
+}
+#settings-title {
+  font-family: "Press Start 2P", cursive;
+  font-size: 1.4em;
+  color: #0f0;
+  text-shadow: 0 0 10px #0f0;
+  letter-spacing: 0.1em;
+}
+.settings-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+}
+.settings-label {
+  font-family: "Press Start 2P", cursive;
+  font-size: 9px;
+  color: #ff0;
+  width: 60px;
+  text-align: right;
+  flex-shrink: 0;
+}
+.vol-slider {
+  flex: 1;
+  -webkit-appearance: none;
+  appearance: none;
+  height: 6px;
+  background: #333;
+  border-radius: 3px;
+  outline: none;
+  cursor: pointer;
+}
+.vol-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  background: #0f0;
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: 0 0 6px #0f0;
+}
+.vol-slider::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  background: #0f0;
+  border-radius: 50%;
+  cursor: pointer;
+  border: none;
+  box-shadow: 0 0 6px #0f0;
+}
+.vol-val {
+  font-family: "Press Start 2P", cursive;
+  font-size: 9px;
+  color: #0f0;
+  width: 30px;
+  text-align: left;
+  flex-shrink: 0;
+}
+#settings-close-btn {
+  font-family: "Press Start 2P", cursive;
+  font-size: 11px;
+  color: #000;
+  background: #0f0;
+  border: none;
+  padding: 12px 36px;
+  cursor: pointer;
+  border-radius: 4px;
+  margin-top: 8px;
+  transition: background 0.15s;
+}
+#settings-close-btn:hover { background: #ff0; }
+
+/* ── Start screen settings button ── */
+#start-settings-btn {
+  font-family: "Press Start 2P", cursive;
+  font-size: 9px;
+  color: #000;
+  background: #aaa;
+  border: none;
+  padding: 8px 18px;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background 0.15s;
+}
+#start-settings-btn:hover { background: #fff; }
+
 /* ── Daily challenge ── */
 .start-buttons {
   display: flex;

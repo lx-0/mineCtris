@@ -51,6 +51,7 @@
           <div class="start-buttons">
             <div class="click-info" id="start-random-btn">Click to Start</div>
             <button id="daily-challenge-btn">&#127374; Daily Challenge</button>
+            <button id="start-settings-btn">&#9881; Settings</button>
           </div>
           <div id="hs-start-panel"></div>
         </div>
@@ -114,6 +115,29 @@
         <button id="pause-settings-btn">Settings</button>
       </div>
 
+      <!-- Audio settings overlay -->
+      <div id="settings-overlay">
+        <div id="settings-panel">
+          <div id="settings-title">SETTINGS</div>
+          <div class="settings-row">
+            <label class="settings-label">Master</label>
+            <input type="range" id="vol-master" class="vol-slider" min="0" max="100" value="80">
+            <span class="vol-val" id="vol-master-val">80</span>
+          </div>
+          <div class="settings-row">
+            <label class="settings-label">SFX</label>
+            <input type="range" id="vol-sfx" class="vol-slider" min="0" max="100" value="100">
+            <span class="vol-val" id="vol-sfx-val">100</span>
+          </div>
+          <div class="settings-row">
+            <label class="settings-label">Music</label>
+            <input type="range" id="vol-music" class="vol-slider" min="0" max="100" value="60">
+            <span class="vol-val" id="vol-music-val">60</span>
+          </div>
+          <button id="settings-close-btn">Close</button>
+        </div>
+      </div>
+
       <!-- Line-clear screen flash (triple / Tetris) -->
       <div id="lc-flash-overlay"></div>
 
@@ -173,6 +197,7 @@
     <script src="js/highscores.js"></script>
     <script src="js/aura.js"></script>
     <script src="js/tutorial.js"></script>
+    <script src="js/settings.js"></script>
     <script src="js/main.js"></script>
   </body>
 </html>

@@ -1,6 +1,11 @@
 // Audio system — Howler.js for SFX, Tone.js for musical events.
 // Requires: state.js (audioReady)
 
+// Volume levels (0–100), applied by applyAudioSettings()
+let _volMaster = 80;
+let _volSfx    = 100;
+let _volMusic  = 60;
+
 // Howler sound instances (populated in initAudio)
 const sfx = {};
 
@@ -173,7 +178,7 @@ function startBgMusic() {
   bgKickSeq.start(0);
   bgHihatSeq.start(0);
   Tone.Transport.start();
-  bgGain.gain.rampTo(1, 2); // 2 s fade in
+  bgGain.gain.rampTo(_volMusic / 100, 2); // 2 s fade in
 }
 
 /** Fade-out background music on game over. */
@@ -282,5 +287,36 @@ function playLineClearSound(numLines) {
   const count = Math.min(numLines + 2, 5);
   for (let i = 0; i < count; i++) {
     clearSynth.triggerAttackRelease(notes[i], "8n", now + i * 0.1);
+  }
+}
+
+// ── Volume settings ───────────────────────────────────────────────────────────
+
+/**
+ * Apply master / SFX / music volume settings (each 0–100).
+ *   master → Tone.js Destination volume (dB) + Howler global (× sfx factor)
+ *   sfx    → Howler global (× master factor)
+ *   music  → bgGain target level (relative to Tone Destination)
+ */
+function applyAudioSettings(master, sfx, music) {
+  _volMaster = master;
+  _volSfx    = sfx;
+  _volMusic  = music;
+
+  // Howler global: effective SFX = master × sfx
+  if (typeof Howler !== "undefined") {
+    Howler.volume((master / 100) * (sfx / 100));
+  }
+
+  // Tone.js Destination: master level in dB (affects all Tone synths)
+  if (typeof Tone !== "undefined") {
+    Tone.Destination.volume.value = master > 0
+      ? 20 * Math.log10(master / 100)
+      : -100;
+  }
+
+  // Background music gain (relative within Tone, controlled by music slider)
+  if (bgGain && bgMusicPlaying) {
+    bgGain.gain.rampTo(music / 100, 0.1);
   }
 }

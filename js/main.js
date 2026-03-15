@@ -125,6 +125,7 @@ function init() {
   }
 
   initAudio();
+  initSettings();
 
   scene = new THREE.Scene();
   camera = new THREE.PerspectiveCamera(
@@ -370,7 +371,13 @@ function init() {
 
   const pauseSettingsBtn = document.getElementById("pause-settings-btn");
   if (pauseSettingsBtn) pauseSettingsBtn.addEventListener("click", function () {
-    // Placeholder — audio settings panel will be wired in a future issue
+    openSettings();
+  });
+
+  const startSettingsBtn = document.getElementById("start-settings-btn");
+  if (startSettingsBtn) startSettingsBtn.addEventListener("click", function (e) {
+    e.stopPropagation();
+    openSettings();
   });
 
   initLineClearFragmentPool();
