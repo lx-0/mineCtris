@@ -12,14 +12,16 @@ function spawnTree(tx, tz) {
 
   const meshes = [];
 
-  // Trunk (single tall box)
-  const trunkGeo = new THREE.BoxGeometry(BLOCK_SIZE, trunkHeight * BLOCK_SIZE, BLOCK_SIZE);
-  const trunk = new THREE.Mesh(trunkGeo, trunkMat);
-  trunk.position.set(tx, (trunkHeight * BLOCK_SIZE) / 2, tz);
-  trunk.name = "trunk_block";
-  trunk.userData.miningClicks = 4;
-  worldGroup.add(trunk);
-  meshes.push(trunk);
+  // Trunk: individual stacked cubes, each independently mineable
+  const trunkGeo = new THREE.BoxGeometry(BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
+  for (let ty = 0; ty < trunkHeight; ty++) {
+    const trunk = new THREE.Mesh(trunkGeo, trunkMat.clone());
+    trunk.position.set(tx, BLOCK_SIZE / 2 + ty * BLOCK_SIZE, tz);
+    trunk.name = "trunk_block";
+    trunk.userData.miningClicks = 4;
+    worldGroup.add(trunk);
+    meshes.push(trunk);
+  }
 
   // Minecraft-style leaf canopy: 3 layers
   const leafTopY = trunkHeight * BLOCK_SIZE;
