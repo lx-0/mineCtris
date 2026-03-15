@@ -4,7 +4,11 @@
 // Shared time uniform for animated lava — updated every frame by main.js.
 const lavaUniforms = { uTime: { value: 0 } };
 
+// Shared time uniform for animated ice — updated every frame by main.js.
+const iceUniforms = { uTime: { value: 0 } };
+
 const LAVA_COLOR_HEX = 0xff0000;
+const ICE_COLOR_HEX  = 0x00ffff;
 
 // PBR properties keyed by color hex integer.
 // roughness/metalness drive specular character; noiseScale/noiseStrength drive texture.
@@ -112,6 +116,82 @@ float lavaNoise(vec2 p) {
 }`
       );
     };
+  } else if (hexColor === ICE_COLOR_HEX) {
+    // Ice: semi-transparent with Fresnel rim glow + animated caustic shimmer.
+    mat.transparent = true;
+    mat.opacity     = 0.82;
+    mat.depthWrite  = false;
+
+    mat.onBeforeCompile = function(shader) {
+      shader.uniforms.uTime          = iceUniforms.uTime;
+      shader.uniforms.uNoiseScale    = { value: noiseScale };
+      shader.uniforms.uNoiseStrength = { value: noiseStrength };
+
+      // Vertex shader: world position + view-space view direction
+      shader.vertexShader = shader.vertexShader.replace(
+        '#include <common>',
+        '#include <common>\nvarying vec3 vWorldPos;\nvarying vec3 vViewDir;'
+      );
+      shader.vertexShader = shader.vertexShader.replace(
+        '#include <begin_vertex>',
+        '#include <begin_vertex>\nvWorldPos = (modelMatrix * vec4(transformed, 1.0)).xyz;'
+      );
+      // mvPosition is available after project_vertex
+      shader.vertexShader = shader.vertexShader.replace(
+        '#include <project_vertex>',
+        '#include <project_vertex>\nvViewDir = normalize(-mvPosition.xyz);'
+      );
+
+      // Fragment shader: declare varyings + uniforms + noise helpers
+      shader.fragmentShader = shader.fragmentShader.replace(
+        '#include <common>',
+        `#include <common>
+varying vec3 vWorldPos;
+varying vec3 vViewDir;
+uniform float uTime;
+uniform float uNoiseScale;
+uniform float uNoiseStrength;
+float iceHash2(vec2 p) {
+  return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+}
+float iceNoise(vec2 p) {
+  vec2 i = floor(p);
+  vec2 f = fract(p);
+  vec2 u = f * f * (3.0 - 2.0 * f);
+  return mix(
+    mix(iceHash2(i),                 iceHash2(i + vec2(1.0, 0.0)), u.x),
+    mix(iceHash2(i + vec2(0.0, 1.0)),iceHash2(i + vec2(1.0, 1.0)), u.x),
+    u.y);
+}
+float iceBlockNoise(vec3 p) {
+  vec3 fp = floor(p);
+  return fract(sin(dot(fp, vec3(127.1, 311.7, 74.7))) * 43758.5453) * 2.0 - 1.0;
+}`
+      );
+
+      // Surface texture noise (same as default block path)
+      shader.fragmentShader = shader.fragmentShader.replace(
+        '#include <color_fragment>',
+        `#include <color_fragment>
+diffuseColor.rgb += iceBlockNoise(vWorldPos * uNoiseScale) * uNoiseStrength;`
+      );
+
+      // Fresnel rim + caustic shimmer injected after emissive map
+      // vViewDir and normal are both in view-space here.
+      shader.fragmentShader = shader.fragmentShader.replace(
+        '#include <emissivemap_fragment>',
+        `#include <emissivemap_fragment>
+{
+  float fresnel = pow(1.0 - max(dot(normal, vViewDir), 0.0), 3.0);
+  totalEmissiveRadiance += fresnel * vec3(0.3, 0.8, 1.0) * 0.6;
+  vec2 uv1 = vWorldPos.xz * 4.0 + uTime * 0.05;
+  vec2 uv2 = vWorldPos.xz * 4.0 + vec2(0.7, -0.3) + uTime * 0.05;
+  float caustic = iceNoise(uv1) * 0.5 + iceNoise(uv2) * 0.5;
+  diffuseColor.rgb += caustic * 0.08 * vec3(0.5, 0.9, 1.0);
+}`
+      );
+    };
+
   } else {
     mat.onBeforeCompile = function(shader) {
       shader.uniforms.uNoiseScale    = { value: noiseScale };

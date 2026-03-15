@@ -626,8 +626,9 @@ function animate() {
     if (pickaxeGroup) pickaxeGroup.rotation.z = Math.PI / 8;
   }
 
-  // Animate lava: update shared time uniform and reposition point lights
+  // Animate lava/ice: update shared time uniforms
   lavaUniforms.uTime.value = elapsedTime;
+  iceUniforms.uTime.value  = elapsedTime;
   {
     const camPos = camera.position;
     const lavaBlocks = [];
