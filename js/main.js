@@ -52,18 +52,49 @@ function init() {
   ground.name = "ground";
   worldGroup.add(ground);
 
+  const trunkMat = new THREE.MeshLambertMaterial({ color: 0x8b4513 });
+  const leafMat = new THREE.MeshLambertMaterial({ color: 0x2d8a2d });
+
   for (let i = 0; i < 15; i++) {
-    const treeHeight = Math.random() * 5 + 3;
-    const treeGeo = new THREE.BoxGeometry(BLOCK_SIZE, treeHeight, BLOCK_SIZE);
-    const treeMat = new THREE.MeshLambertMaterial({ color: 0x8b4513 });
-    const tree = new THREE.Mesh(treeGeo, treeMat);
-    tree.position.set(
-      (Math.random() - 0.5) * WORLD_SIZE * 0.8,
-      treeHeight / 2,
-      (Math.random() - 0.5) * WORLD_SIZE * 0.8
-    );
-    tree.name = "world_object";
-    worldGroup.add(tree);
+    const trunkHeight = Math.floor(Math.random() * 3) + 4; // 4–6 blocks
+    const tx = (Math.random() - 0.5) * WORLD_SIZE * 0.8;
+    const tz = (Math.random() - 0.5) * WORLD_SIZE * 0.8;
+
+    // Trunk
+    const trunkGeo = new THREE.BoxGeometry(BLOCK_SIZE, trunkHeight * BLOCK_SIZE, BLOCK_SIZE);
+    const trunk = new THREE.Mesh(trunkGeo, trunkMat);
+    trunk.position.set(tx, (trunkHeight * BLOCK_SIZE) / 2, tz);
+    trunk.name = "world_object";
+    worldGroup.add(trunk);
+
+    // Minecraft-style leaf canopy: 3 layers of boxes
+    // Bottom layer: 5×5 minus corners
+    // Middle layer: 3×3
+    // Top layer: single block cap
+    const leafTopY = trunkHeight * BLOCK_SIZE;
+    const leafLayers = [
+      { y: leafTopY,                  radius: 2, cornerCut: true  },
+      { y: leafTopY + BLOCK_SIZE,     radius: 1, cornerCut: false },
+      { y: leafTopY + BLOCK_SIZE * 2, radius: 0, cornerCut: false },
+    ];
+
+    for (const layer of leafLayers) {
+      const r = layer.radius;
+      for (let lx = -r; lx <= r; lx++) {
+        for (let lz = -r; lz <= r; lz++) {
+          if (layer.cornerCut && Math.abs(lx) === r && Math.abs(lz) === r) continue;
+          const leafGeo = new THREE.BoxGeometry(BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
+          const leaf = new THREE.Mesh(leafGeo, leafMat);
+          leaf.position.set(
+            tx + lx * BLOCK_SIZE,
+            layer.y + BLOCK_SIZE / 2,
+            tz + lz * BLOCK_SIZE
+          );
+          leaf.name = "world_object";
+          worldGroup.add(leaf);
+        }
+      }
+    }
   }
 
   scoreEl = document.getElementById("score-display");
