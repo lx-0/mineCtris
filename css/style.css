@@ -447,6 +447,11 @@ body {
   transition: background 0.15s;
 }
 #play-again-btn:hover { background: #ff0; }
+.key-hint {
+  font-size: 0.7em;
+  opacity: 0.6;
+  margin-left: 6px;
+}
 #go-main-menu-btn {
   font-family: "Press Start 2P", cursive;
   font-size: 12px;

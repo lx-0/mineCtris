@@ -60,6 +60,11 @@ function onKeyDown(event) {
     }
     return;
   }
+  // Allow P to trigger Play Again from the game-over screen
+  if (isGameOver && event.code === "KeyP") {
+    if (typeof resetGame === "function") resetGame();
+    return;
+  }
   if (!controls || !controls.isLocked || isGameOver) return;
   switch (event.code) {
     case "KeyW":
