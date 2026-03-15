@@ -33,40 +33,38 @@ function initAudio() {
     envelope: { attack: 0.01, decay: 0.3, sustain: 0.1, release: 0.5 },
   }).connect(masterCompressor);
   clearSynth.volume.value = -8;
-  placeSynth = new Tone.Synth({
-    oscillator: { type: "square" },
-    envelope: { attack: 0.001, decay: 0.08, sustain: 0, release: 0.1 },
+  placeSynth = new Tone.MembraneSynth({
+    pitchDecay: 0.06,
+    octaves: 3,
+    envelope: { attack: 0.001, decay: 0.08, sustain: 0 },
   }).connect(masterCompressor);
-  placeSynth.volume.value = -18;
-  // Deep wooden thud for trunk hits (lower & more resonant than generic hitSynth)
+  placeSynth.volume.value = -8;
+  // Deep wooden thud for trunk hits — deeper knock with resonance
   trunkHitSynth = new Tone.MembraneSynth({
-    pitchDecay: 0.12,
-    octaves: 6,
-    envelope: { attack: 0.001, decay: 0.35, sustain: 0 },
+    pitchDecay: 0.18,
+    octaves: 4,
+    envelope: { attack: 0.002, decay: 0.5, sustain: 0 },
   }).connect(masterCompressor);
-  trunkHitSynth.volume.value = -6;
-  // Light airy tap for leaf hits — quiet high-pitched sine
+  trunkHitSynth.volume.value = -4;
+  // Soft airy swoosh for leaf hits — triangle wave, audible volume
   leafHitSynth = new Tone.Synth({
-    oscillator: { type: "sine" },
-    envelope: { attack: 0.001, decay: 0.05, sustain: 0, release: 0.04 },
+    oscillator: { type: "triangle" },
+    envelope: { attack: 0.001, decay: 0.08, sustain: 0, release: 0.04 },
   }).connect(masterCompressor);
-  leafHitSynth.volume.value = -18;
-  // Metallic ping for rock hits — clearly distinct from wood/leaf
-  rockHitSynth = new Tone.MetalSynth({
-    frequency: 220,
-    envelope: { attack: 0.001, decay: 0.1, release: 0.08 },
-    harmonicity: 5.1,
-    modulationIndex: 16,
-    resonance: 3000,
-    octaves: 1.5,
+  leafHitSynth.volume.value = -10;
+  // Dull stone thud for rock hits — short MembraneSynth, not metallic
+  rockHitSynth = new Tone.MembraneSynth({
+    pitchDecay: 0.05,
+    octaves: 2,
+    envelope: { attack: 0.001, decay: 0.15, sustain: 0 },
   }).connect(masterCompressor);
-  rockHitSynth.volume.value = -10;
-  // Sharp crack for rock breaks: high attack, brief decay
+  rockHitSynth.volume.value = -8;
+  // Satisfying crunch for rock breaks: punchy attack, extended decay
   rockCrackSynth = new Tone.NoiseSynth({
     noise: { type: "white" },
-    envelope: { attack: 0.02, decay: 0.06, sustain: 0 },
+    envelope: { attack: 0.02, decay: 0.12, sustain: 0 },
   }).connect(masterCompressor);
-  rockCrackSynth.volume.value = -4;
+  rockCrackSynth.volume.value = -1;
   // Low rumble that plays during the anticipation phase of a line clear.
   rumbleSynth = new Tone.MembraneSynth({
     pitchDecay: 0.15,

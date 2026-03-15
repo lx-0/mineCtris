@@ -382,7 +382,7 @@ function placeBlock() {
 
   // Placement sound
   if (audioReady && placeSynth) {
-    placeSynth.triggerAttackRelease("E3", "32n", Tone.now());
+    placeSynth.triggerAttackRelease("C3", "32n", Tone.now());
   }
 }
 
@@ -414,7 +414,7 @@ function onMouseDown(event) {
       } else if (objType === "leaf") {
         if (leafHitSynth) leafHitSynth.triggerAttackRelease("G5", "32n", Tone.now());
       } else if (objType === "rock") {
-        if (rockHitSynth) rockHitSynth.triggerAttackRelease("16n", Tone.now());
+        if (rockHitSynth) rockHitSynth.triggerAttackRelease("C2", "16n", Tone.now());
       } else {
         if (hitSynth) hitSynth.triggerAttackRelease("C2", "8n", Tone.now());
       }
@@ -453,7 +453,7 @@ function onMouseDown(event) {
       if (audioReady) {
         if (objType === "trunk") {
           // Deep low thud on break — same synth type but lower note
-          if (trunkHitSynth) trunkHitSynth.triggerAttackRelease("C1", "8n", Tone.now());
+          if (trunkHitSynth) trunkHitSynth.triggerAttackRelease("A0", "8n", Tone.now());
         } else if (objType === "rock") {
           if (rockCrackSynth) rockCrackSynth.triggerAttackRelease("16n", Tone.now());
         } else {
