@@ -240,6 +240,7 @@ function init() {
         // Starting from start screen
         instructions.style.display = "none";
         blocker.style.display = "none";
+        if (typeof startBgMusic === "function") startBgMusic();
       }
       crosshair.style.display = "block";
       if (scoreEl) scoreEl.style.display = "block";

@@ -12,6 +12,18 @@ let masterCompressor = null;
 let masterReverb = null;
 let masterLimiter = null;
 
+// Background music state
+let bgGain      = null;
+let bgBass      = null;
+let bgMelody    = null;
+let bgKick      = null;
+let bgHihat     = null;
+let bgBassSeq   = null;
+let bgMelodySeq = null;
+let bgKickSeq   = null;
+let bgHihatSeq  = null;
+let bgMusicPlaying = false;
+
 function initAudio() {
   // ── Howler.js SFX ──────────────────────────────────────────────────────────
   if (typeof Howl !== "undefined") {
@@ -54,12 +66,143 @@ function initAudio() {
     }).connect(masterCompressor);
     gameOverSynth.volume.value = -10;
 
+    _initBgMusic();
     console.log("Tone.js musical bus initialized.");
   } else {
     console.warn("Tone.js not loaded — line-clear music disabled.");
   }
 
   audioReady = true;
+}
+
+// ── Background music ──────────────────────────────────────────────────────────
+
+function _initBgMusic() {
+  // Master gain node for fade in / fade out — starts silent
+  bgGain = new Tone.Gain(0).connect(masterCompressor);
+
+  // Bass — square wave, low register, moderate sustain
+  bgBass = new Tone.Synth({
+    oscillator: { type: "square" },
+    envelope: { attack: 0.05, decay: 0.1, sustain: 0.55, release: 0.3 },
+  }).connect(bgGain);
+  bgBass.volume.value = -16;
+
+  // Melody — soft triangle wave arpeggio
+  bgMelody = new Tone.Synth({
+    oscillator: { type: "triangle" },
+    envelope: { attack: 0.02, decay: 0.25, sustain: 0.2, release: 0.5 },
+  }).connect(bgGain);
+  bgMelody.volume.value = -22;
+
+  // Kick drum — punchy but quiet
+  bgKick = new Tone.MembraneSynth({
+    pitchDecay: 0.08,
+    octaves: 3,
+    envelope: { attack: 0.005, decay: 0.15, sustain: 0.0, release: 0.08 },
+  }).connect(bgGain);
+  bgKick.volume.value = -24;
+
+  // Hi-hat — subtle white-noise offbeats
+  bgHihat = new Tone.NoiseSynth({
+    noise: { type: "white" },
+    envelope: { attack: 0.001, decay: 0.04, sustain: 0.0, release: 0.03 },
+  }).connect(bgGain);
+  bgHihat.volume.value = -34;
+
+  Tone.Transport.bpm.value = 100;
+
+  // A minor pentatonic bass line — 4 bars × 8 eighth-note steps = 32 steps
+  bgBassSeq = new Tone.Sequence(
+    (time, note) => { if (note) bgBass.triggerAttackRelease(note, "8n", time); },
+    [
+      "A2", null, null, "C3", null, null, "G2", null,
+      "A2", null, "D3", null, null, "E3", null, null,
+      "A2", null, null, "C3", "D3", null, null, null,
+      "G2", null, "A2", null, null, "E3", null, null,
+    ],
+    "8n"
+  );
+
+  // Melodic arpeggio — sparse, higher register
+  bgMelodySeq = new Tone.Sequence(
+    (time, note) => { if (note) bgMelody.triggerAttackRelease(note, "16n", time); },
+    [
+      "A4", null, "E4", null, "D4", null, "G4", null,
+      "A4", null, null, "C4", null, "E4", null, null,
+      null, "G4", null, "A4", null, null, "D4", null,
+      "E4", null, null, "C4", "A3", null, null, null,
+    ],
+    "8n"
+  );
+
+  // Kick on beat 1 of each bar (every 8 eighth-note steps)
+  bgKickSeq = new Tone.Sequence(
+    (time, val) => { if (val) bgKick.triggerAttackRelease("C1", "16n", time); },
+    [
+      1, null, null, null, null, null, null, null,
+      1, null, null, null, null, null, null, null,
+      1, null, null, null, null, null, null, null,
+      1, null, null, null, null, null, null, null,
+    ],
+    "8n"
+  );
+
+  // Hi-hat on offbeats (steps 2, 4, 6 of each bar)
+  bgHihatSeq = new Tone.Sequence(
+    (time) => { bgHihat.triggerAttackRelease("16n", time); },
+    [
+      null, null, 1, null, 1, null, 1, null,
+      null, null, 1, null, 1, null, 1, null,
+      null, null, 1, null, 1, null, 1, null,
+      null, null, 1, null, 1, null, 1, null,
+    ],
+    "8n"
+  );
+}
+
+/** Fade-in and start background music loop at game start. */
+function startBgMusic() {
+  if (!audioReady || !bgGain || bgMusicPlaying) return;
+  bgMusicPlaying = true;
+  // Stop/reset transport before (re-)starting to allow clean restarts
+  Tone.Transport.stop();
+  Tone.Transport.position = 0;
+  bgBassSeq.start(0);
+  bgMelodySeq.start(0);
+  bgKickSeq.start(0);
+  bgHihatSeq.start(0);
+  Tone.Transport.start();
+  bgGain.gain.rampTo(1, 2); // 2 s fade in
+}
+
+/** Fade-out background music on game over. */
+function stopBgMusic() {
+  if (!audioReady || !bgGain || !bgMusicPlaying) return;
+  bgMusicPlaying = false;
+  bgGain.gain.rampTo(0, 2); // 2 s fade out
+  setTimeout(() => {
+    if (!bgMusicPlaying) {
+      bgBassSeq.stop();
+      bgMelodySeq.stop();
+      bgKickSeq.stop();
+      bgHihatSeq.stop();
+      Tone.Transport.stop();
+    }
+  }, 2500);
+}
+
+/** Immediately silence background music on game reset (no fade). */
+function resetBgMusic() {
+  if (!audioReady || !bgGain) return;
+  bgMusicPlaying = false;
+  bgGain.gain.cancelScheduledValues(Tone.now());
+  bgGain.gain.setValueAtTime(0, Tone.now());
+  try { bgBassSeq.stop();   } catch (_) {}
+  try { bgMelodySeq.stop(); } catch (_) {}
+  try { bgKickSeq.stop();   } catch (_) {}
+  try { bgHihatSeq.stop();  } catch (_) {}
+  Tone.Transport.stop();
 }
 
 // ── SFX helpers ───────────────────────────────────────────────────────────────

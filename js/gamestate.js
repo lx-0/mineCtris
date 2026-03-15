@@ -103,7 +103,8 @@ function triggerGameOver() {
   );
   renderHighScoresGameOver(hsRank);
 
-  // Play game-over jingle
+  // Fade out background music, then play game-over jingle
+  if (typeof stopBgMusic === "function") stopBgMusic();
   if (typeof playGameOverJingle === "function") playGameOverJingle();
 
   // Show Game Over overlay
@@ -116,6 +117,7 @@ function triggerGameOver() {
 
 /** Reset all game state and return to the start screen. */
 function resetGame() {
+  if (typeof resetBgMusic === "function") resetBgMusic();
   // Remove landed blocks (keep ground and trees)
   const toRemove = worldGroup.children.filter(
     (c) => c.name === "landed_block"
