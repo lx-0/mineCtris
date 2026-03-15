@@ -135,3 +135,8 @@ let pieceQueue = [];
 let isDailyChallenge = false;
 // null → use Math.random(); function → seeded daily PRNG from daily.js
 let gameRng = null;
+
+// ── Session stats (reset each game, accumulated for lifetime stats on game over) ──
+let blocksPlaced = 0;
+let sessionCrafts = 0;
+let sessionHighestComboCount = 0;

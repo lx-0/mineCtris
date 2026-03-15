@@ -130,6 +130,7 @@ function checkLineClear(newBlocks) {
     comboCount = 1;
   }
   lastClearTime = now;
+  if (comboCount > sessionHighestComboCount) sessionHighestComboCount = comboCount;
 
   const COMBO_MULTIPLIERS = [1.0, 1.0, 1.5, 2.0, 3.0]; // index by comboCount (capped at 4)
   const comboIdx = Math.min(comboCount, 4);

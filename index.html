@@ -52,6 +52,7 @@
             <div class="click-info" id="start-random-btn">Click to Start</div>
             <button id="daily-challenge-btn">&#127374; Daily Challenge</button>
             <button id="start-settings-btn">&#9881; Settings</button>
+            <button id="start-stats-btn">&#128202; Stats</button>
           </div>
           <div id="hs-start-panel"></div>
         </div>
@@ -134,6 +135,8 @@
       <div id="game-over-screen">
         <div id="game-over-title">GAME OVER</div>
         <div id="game-over-stats"></div>
+        <div id="go-lifetime-stats"></div>
+        <button id="go-stats-btn">View All Stats</button>
         <div id="hs-go-label">HIGH SCORES</div>
         <div id="hs-go-table"></div>
         <div id="daily-go-section" style="display:none;"></div>
@@ -146,6 +149,15 @@
         <button id="pause-resume-btn">Resume</button>
         <button id="pause-restart-btn">Restart</button>
         <button id="pause-settings-btn">Settings</button>
+      </div>
+
+      <!-- Stats overlay -->
+      <div id="stats-overlay">
+        <div id="stats-panel">
+          <div id="stats-title">STATS</div>
+          <div id="stats-panel-body"></div>
+          <button id="stats-close-btn">Close</button>
+        </div>
       </div>
 
       <!-- Audio settings overlay -->
@@ -228,6 +240,7 @@
     <script src="js/crafting.js"></script>
     <script src="js/daily.js"></script>
     <script src="js/highscores.js"></script>
+    <script src="js/stats.js"></script>
     <script src="js/aura.js"></script>
     <script src="js/tutorial.js"></script>
     <script src="js/settings.js"></script>

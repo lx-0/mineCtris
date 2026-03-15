@@ -214,9 +214,10 @@ function init() {
     scene.add(controls.getObject());
 
     blocker.addEventListener("click", function (e) {
-      // Daily challenge and settings buttons handle their own events — skip here
+      // Daily challenge, settings, and stats buttons handle their own events — skip here
       if (e.target.id === "daily-challenge-btn") return;
       if (e.target.id === "start-settings-btn") return;
+      if (e.target.id === "start-stats-btn") return;
       // Show mode select screen instead of jumping straight into the game
       showModeSelect();
     });
@@ -419,6 +420,22 @@ function init() {
     openSettings();
   });
 
+  const startStatsBtn = document.getElementById("start-stats-btn");
+  if (startStatsBtn) startStatsBtn.addEventListener("click", function (e) {
+    e.stopPropagation();
+    openStatsPanel();
+  });
+
+  const goStatsBtn = document.getElementById("go-stats-btn");
+  if (goStatsBtn) goStatsBtn.addEventListener("click", function () {
+    openStatsPanel();
+  });
+
+  const statsCloseBtn = document.getElementById("stats-close-btn");
+  if (statsCloseBtn) statsCloseBtn.addEventListener("click", function () {
+    closeStatsPanel();
+  });
+
   initLineClearFragmentPool();
   initTrails();
   initAuras();
@@ -531,6 +548,7 @@ function placeBlock() {
   block.position.set(placeX, placeY, placeZ);
   worldGroup.add(block);
   registerBlock(block);
+  blocksPlaced++;
 
   // Update HUD and check line-clear
   updateInventoryHUD();

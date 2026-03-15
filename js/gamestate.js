@@ -94,6 +94,28 @@ function triggerGameOver() {
       `<div><span class="go-label">TIME SURVIVED</span><br>${mm}:${ss}</div>`;
   }
 
+  // Record lifetime stats
+  submitLifetimeStats({
+    score: state.score,
+    blocksMined: state.blocksMined,
+    linesCleared: state.linesCleared,
+    blocksPlaced,
+    totalCrafts: sessionCrafts,
+    highestComboCount: sessionHighestComboCount,
+    highestDifficultyTier: lastDifficultyTier,
+    isDailyChallenge,
+  });
+
+  // Key lifetime stats on game-over screen
+  const lifetimeStats = loadLifetimeStats();
+  const goLifetimeEl = document.getElementById('go-lifetime-stats');
+  if (goLifetimeEl) {
+    goLifetimeEl.innerHTML =
+      `<div><span class="go-label">BEST SCORE</span><br>${lifetimeStats.bestScore}</div>` +
+      `<div><span class="go-label">GAMES PLAYED</span><br>${lifetimeStats.gamesPlayed}</div>` +
+      `<div><span class="go-label">ALL-TIME LINES</span><br>${lifetimeStats.totalLinesCleared}</div>`;
+  }
+
   // Submit and render high scores
   const hsRank = submitHighScore(
     state.score,
@@ -158,6 +180,11 @@ function resetGame() {
   linesCleared = 0;
   gameElapsedSeconds = 0;
   lastHudSecond = -1;
+
+  // Reset session stats for lifetime tracking
+  blocksPlaced = 0;
+  sessionCrafts = 0;
+  sessionHighestComboCount = 0;
 
   // Reset difficulty
   difficultyMultiplier = 1.0;

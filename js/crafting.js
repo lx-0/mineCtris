@@ -173,6 +173,7 @@ function craftRecipe(recipe) {
   updateInventoryHUD();
   showCraftedBanner(recipe.name);
   closeCraftingPanel();
+  sessionCrafts++;
   return true;
 }
 
