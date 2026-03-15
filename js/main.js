@@ -1,6 +1,88 @@
 // Entry point — scene setup, game loop, and mouse/resize handlers.
 // Must be loaded last (after all other modules).
 
+/**
+ * Spawn a tree at (tx, tz). Returns an array of all THREE.Mesh objects added.
+ * Meshes are added to worldGroup at scale 1; caller can set scale if needed.
+ */
+function spawnTree(tx, tz) {
+  const trunkMat = new THREE.MeshLambertMaterial({ color: 0x8b4513 });
+  const leafMat  = new THREE.MeshLambertMaterial({ color: 0x2d8a2d });
+  const trunkHeight = Math.floor(Math.random() * 3) + 4; // 4–6 blocks
+
+  const meshes = [];
+
+  // Trunk (single tall box)
+  const trunkGeo = new THREE.BoxGeometry(BLOCK_SIZE, trunkHeight * BLOCK_SIZE, BLOCK_SIZE);
+  const trunk = new THREE.Mesh(trunkGeo, trunkMat);
+  trunk.position.set(tx, (trunkHeight * BLOCK_SIZE) / 2, tz);
+  trunk.name = "trunk_block";
+  trunk.userData.miningClicks = 4;
+  worldGroup.add(trunk);
+  meshes.push(trunk);
+
+  // Minecraft-style leaf canopy: 3 layers
+  const leafTopY = trunkHeight * BLOCK_SIZE;
+  const leafLayers = [
+    { y: leafTopY,                  radius: 2, cornerCut: true  },
+    { y: leafTopY + BLOCK_SIZE,     radius: 1, cornerCut: false },
+    { y: leafTopY + BLOCK_SIZE * 2, radius: 0, cornerCut: false },
+  ];
+
+  for (const layer of leafLayers) {
+    const r = layer.radius;
+    for (let lx = -r; lx <= r; lx++) {
+      for (let lz = -r; lz <= r; lz++) {
+        if (layer.cornerCut && Math.abs(lx) === r && Math.abs(lz) === r) continue;
+        const leafGeo = new THREE.BoxGeometry(BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
+        const leaf = new THREE.Mesh(leafGeo, leafMat);
+        leaf.position.set(
+          tx + lx * BLOCK_SIZE,
+          layer.y + BLOCK_SIZE / 2,
+          tz + lz * BLOCK_SIZE
+        );
+        leaf.name = "world_object";
+        worldGroup.add(leaf);
+        meshes.push(leaf);
+      }
+    }
+  }
+
+  return meshes;
+}
+
+/**
+ * Tick tree respawn queue. Call every frame while game is active.
+ * @param {number} delta        Seconds since last frame.
+ * @param {number} elapsedTime  Total elapsed time (for grow animation).
+ */
+function updateTreeRespawn(delta, elapsedTime) {
+  for (let i = treeRespawnQueue.length - 1; i >= 0; i--) {
+    const entry = treeRespawnQueue[i];
+
+    if (entry.growing) {
+      // Animate scale 0 → 1 over 1.5 seconds
+      const t = Math.min((elapsedTime - entry.growStart) / 1.5, 1);
+      entry.meshes.forEach(m => m.scale.setScalar(t));
+      if (t >= 1) {
+        treeRespawnQueue.splice(i, 1); // done growing
+      }
+    } else {
+      entry.timer -= delta;
+      if (entry.timer <= 0) {
+        // Grow a new tree at original position ± 0–2 block random offset
+        const ox = (Math.floor(Math.random() * 5) - 2) * BLOCK_SIZE;
+        const oz = (Math.floor(Math.random() * 5) - 2) * BLOCK_SIZE;
+        const meshes = spawnTree(entry.x + ox, entry.z + oz);
+        meshes.forEach(m => m.scale.setScalar(0));
+        entry.growing  = true;
+        entry.growStart = elapsedTime;
+        entry.meshes   = meshes;
+      }
+    }
+  }
+}
+
 function init() {
   console.log("Initializing game...");
 
@@ -52,50 +134,10 @@ function init() {
   ground.name = "ground";
   worldGroup.add(ground);
 
-  const trunkMat = new THREE.MeshLambertMaterial({ color: 0x8b4513 });
-  const leafMat = new THREE.MeshLambertMaterial({ color: 0x2d8a2d });
-
   for (let i = 0; i < 15; i++) {
-    const trunkHeight = Math.floor(Math.random() * 3) + 4; // 4–6 blocks
     const tx = (Math.random() - 0.5) * WORLD_SIZE * 0.8;
     const tz = (Math.random() - 0.5) * WORLD_SIZE * 0.8;
-
-    // Trunk
-    const trunkGeo = new THREE.BoxGeometry(BLOCK_SIZE, trunkHeight * BLOCK_SIZE, BLOCK_SIZE);
-    const trunk = new THREE.Mesh(trunkGeo, trunkMat);
-    trunk.position.set(tx, (trunkHeight * BLOCK_SIZE) / 2, tz);
-    trunk.name = "trunk_block";
-    trunk.userData.miningClicks = 4;
-    worldGroup.add(trunk);
-
-    // Minecraft-style leaf canopy: 3 layers of boxes
-    // Bottom layer: 5×5 minus corners
-    // Middle layer: 3×3
-    // Top layer: single block cap
-    const leafTopY = trunkHeight * BLOCK_SIZE;
-    const leafLayers = [
-      { y: leafTopY,                  radius: 2, cornerCut: true  },
-      { y: leafTopY + BLOCK_SIZE,     radius: 1, cornerCut: false },
-      { y: leafTopY + BLOCK_SIZE * 2, radius: 0, cornerCut: false },
-    ];
-
-    for (const layer of leafLayers) {
-      const r = layer.radius;
-      for (let lx = -r; lx <= r; lx++) {
-        for (let lz = -r; lz <= r; lz++) {
-          if (layer.cornerCut && Math.abs(lx) === r && Math.abs(lz) === r) continue;
-          const leafGeo = new THREE.BoxGeometry(BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
-          const leaf = new THREE.Mesh(leafGeo, leafMat);
-          leaf.position.set(
-            tx + lx * BLOCK_SIZE,
-            layer.y + BLOCK_SIZE / 2,
-            tz + lz * BLOCK_SIZE
-          );
-          leaf.name = "world_object";
-          worldGroup.add(leaf);
-        }
-      }
-    }
+    spawnTree(tx, tz);
   }
 
   scoreEl = document.getElementById("score-display");
@@ -323,6 +365,19 @@ function onMouseDown(event) {
         miningShakeActive = false;
         miningShakeBlock = null;
       }
+
+      // Queue tree respawn when a trunk is felled
+      if (targetedBlock.name === "trunk_block" && treeRespawnQueue.length < 15) {
+        treeRespawnQueue.push({
+          x: targetedBlock.position.x,
+          z: targetedBlock.position.z,
+          timer: 90,
+          growing: false,
+          growStart: 0,
+          meshes: null,
+        });
+      }
+
       unregisterBlock(targetedBlock);
       worldGroup.remove(targetedBlock);
       targetedBlock = null;
@@ -353,6 +408,7 @@ function animate() {
     updateFallingPieces(delta);
     updateTrails(delta, elapsedTime);
     updateDifficulty(delta);
+    updateTreeRespawn(delta, elapsedTime);
   }
   updateDangerWarning();
 

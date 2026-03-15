@@ -142,6 +142,9 @@ function resetGame() {
   selectedBlockColor = null;
   updateInventoryHUD();
 
+  // Clear tree respawn queue
+  treeRespawnQueue.length = 0;
+
   // Reset mining feedback state
   miningShakeActive = false;
   miningShakeBlock = null;

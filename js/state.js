@@ -90,6 +90,10 @@ let isGameOver = false;
 // Keys are CSS hex color strings (e.g. "#8b4513"), values are counts.
 let inventory = {};
 
+// ── Tree respawn queue ────────────────────────────────────────────────────────
+// Each entry: { x, z, timer, growing, growStart, meshes }
+let treeRespawnQueue = [];
+
 // ── Block placement state ─────────────────────────────────────────────────────
 let selectedBlockColor = null;  // CSS hex color key of selected block type
 let targetedFaceNormal = null;  // THREE.Vector3 world-space face normal from last raycast
