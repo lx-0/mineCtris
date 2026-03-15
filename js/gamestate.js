@@ -197,12 +197,15 @@ function resetGame() {
     moveForward = moveBackward = moveLeft = moveRight = false;
   }
 
-  // Reset game over flag
+  // Reset game over / pause flags
   isGameOver = false;
+  isPaused = false;
 
-  // Hide Game Over screen
+  // Hide Game Over and pause screens
   const gameOverEl = document.getElementById("game-over-screen");
   if (gameOverEl) gameOverEl.style.display = "none";
+  const pauseScreenEl = document.getElementById("pause-screen");
+  if (pauseScreenEl) pauseScreenEl.style.display = "none";
 
   updateScoreHUD();
 

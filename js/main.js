@@ -231,8 +231,16 @@ function init() {
 
     controls.addEventListener("lock", function () {
       console.log("Pointer lock successful ('lock' event fired).");
-      instructions.style.display = "none";
-      blocker.style.display = "none";
+      if (isPaused) {
+        // Resuming from pause — hide pause screen, restore paused state
+        isPaused = false;
+        const pauseScreenEl = document.getElementById("pause-screen");
+        if (pauseScreenEl) pauseScreenEl.style.display = "none";
+      } else {
+        // Starting from start screen
+        instructions.style.display = "none";
+        blocker.style.display = "none";
+      }
       crosshair.style.display = "block";
       if (scoreEl) scoreEl.style.display = "block";
       if (nextPiecesEl) nextPiecesEl.style.display = "block";
@@ -249,8 +257,10 @@ function init() {
         closeCraftingPanel();
         // Don't show start screen if game over — game over overlay handles it
         if (!isGameOver) {
-          blocker.style.display = "flex";
-          instructions.style.display = "";
+          // Show pause screen (Escape during active gameplay)
+          isPaused = true;
+          const pauseScreenEl = document.getElementById("pause-screen");
+          if (pauseScreenEl) pauseScreenEl.style.display = "flex";
         }
       }
       crosshair.style.display = "none";
@@ -287,6 +297,28 @@ function init() {
 
   const playAgainBtn = document.getElementById("play-again-btn");
   if (playAgainBtn) playAgainBtn.addEventListener("click", resetGame);
+
+  const pauseResumeBtn = document.getElementById("pause-resume-btn");
+  if (pauseResumeBtn) pauseResumeBtn.addEventListener("click", function () {
+    if (Tone.context.state !== "running") {
+      Tone.start().then(() => controls.lock()).catch(() => controls.lock());
+    } else {
+      controls.lock();
+    }
+  });
+
+  const pauseRestartBtn = document.getElementById("pause-restart-btn");
+  if (pauseRestartBtn) pauseRestartBtn.addEventListener("click", function () {
+    const pauseScreenEl = document.getElementById("pause-screen");
+    if (pauseScreenEl) pauseScreenEl.style.display = "none";
+    isPaused = false;
+    resetGame();
+  });
+
+  const pauseSettingsBtn = document.getElementById("pause-settings-btn");
+  if (pauseSettingsBtn) pauseSettingsBtn.addEventListener("click", function () {
+    // Placeholder — audio settings panel will be wired in a future issue
+  });
 
   initLineClearFragmentPool();
   initTrails();
@@ -522,7 +554,7 @@ function animate() {
 
   updateSky(elapsedTime, delta);
 
-  if (!isGameOver) {
+  if (!isGameOver && !isPaused) {
     spawnTimer += delta;
     if (spawnTimer > SPAWN_INTERVAL) {
       spawnFallingPiece();

@@ -96,6 +96,9 @@ let speedUpBannerTimer = 0;      // seconds remaining for speed-up banner
 // ── Game-over flag ────────────────────────────────────────────────────────────
 let isGameOver = false;
 
+// ── Pause flag ────────────────────────────────────────────────────────────────
+let isPaused = false;
+
 // ── Inventory ─────────────────────────────────────────────────────────────────
 // Keys are CSS hex color strings (e.g. "#8b4513"), values are counts.
 let inventory = {};
