@@ -322,14 +322,23 @@ function onWheel(event) {
 function placeBlock() {
   const selectedColor = getSelectedColor();
   if (!selectedColor) return;
-  if (!targetedBlock || !targetedFaceNormal) return;
 
-  // Compute placement position adjacent to the targeted face
-  const blockPos = new THREE.Vector3();
-  targetedBlock.getWorldPosition(blockPos);
-  const placeX = snapGrid(blockPos.x + targetedFaceNormal.x * BLOCK_SIZE);
-  const placeY = snapGridY(blockPos.y + targetedFaceNormal.y * BLOCK_SIZE);
-  const placeZ = snapGrid(blockPos.z + targetedFaceNormal.z * BLOCK_SIZE);
+  let placeX, placeY, placeZ;
+  if (targetedBlock && targetedFaceNormal) {
+    // Place adjacent to the targeted block face
+    const blockPos = new THREE.Vector3();
+    targetedBlock.getWorldPosition(blockPos);
+    placeX = snapGrid(blockPos.x + targetedFaceNormal.x * BLOCK_SIZE);
+    placeY = snapGridY(blockPos.y + targetedFaceNormal.y * BLOCK_SIZE);
+    placeZ = snapGrid(blockPos.z + targetedFaceNormal.z * BLOCK_SIZE);
+  } else if (groundPlacementPoint) {
+    // Place directly on the ground at the aimed point
+    placeX = snapGrid(groundPlacementPoint.x);
+    placeY = 0.5;
+    placeZ = snapGrid(groundPlacementPoint.z);
+  } else {
+    return;
+  }
 
   // Cannot place underground
   if (placeY < 0.5) return;

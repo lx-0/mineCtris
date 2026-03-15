@@ -101,6 +101,7 @@ let treeRespawnQueue = [];
 // ── Block placement state ─────────────────────────────────────────────────────
 let selectedBlockColor = null;  // CSS hex color key of selected block type
 let targetedFaceNormal = null;  // THREE.Vector3 world-space face normal from last raycast
+let groundPlacementPoint = null; // THREE.Vector3 world intersection point on ground (when no block targeted)
 let placeSynth = null;          // Tone.js synth for placement sound
 
 // ── Player push (from landing pieces) ────────────────────────────────────────

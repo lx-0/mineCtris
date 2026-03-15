@@ -28,12 +28,11 @@ function updateTargeting() {
   const intersects = raycaster.intersectObjects(worldGroup.children);
   let newTarget = null;
   let newFaceNormal = null;
-  if (intersects.length > 0) {
-    const intersection = intersects[0];
-    if (
-      (intersection.object.name === "landed_block" || intersection.object.name === "trunk_block" || intersection.object.name === "leaf_block" || intersection.object.name === "world_object") &&
-      intersection.distance <= MINING_RANGE
-    ) {
+  let newGroundPoint = null;
+  for (const intersection of intersects) {
+    if (intersection.distance > MINING_RANGE) break;
+    const name = intersection.object.name;
+    if (name === "landed_block" || name === "trunk_block" || name === "leaf_block" || name === "world_object") {
       newTarget = intersection.object;
       if (intersection.face) {
         newFaceNormal = intersection.face.normal.clone()
@@ -50,8 +49,13 @@ function updateTargeting() {
           newFaceNormal.set(0, 0, Math.sign(newFaceNormal.z));
         }
       }
+      break;
+    } else if (name === "ground") {
+      newGroundPoint = intersection.point.clone();
+      break;
     }
   }
+  groundPlacementPoint = newGroundPoint;
   // Always keep face normal in sync with current target
   targetedFaceNormal = newFaceNormal;
   if (newTarget !== targetedBlock) {
