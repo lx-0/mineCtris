@@ -56,6 +56,39 @@
           <div id="hs-start-panel"></div>
         </div>
       </div>
+      <!-- Mode select screen — shown after clicking Play, before pointer lock -->
+      <div id="mode-select" style="display:none;">
+        <div id="mode-select-inner">
+          <h2 id="mode-select-title">SELECT MODE</h2>
+          <div id="mode-cards">
+            <!-- Classic -->
+            <div class="mode-card" id="mode-card-classic" data-mode="classic">
+              <div class="mode-card-icon">&#8734;</div>
+              <div class="mode-card-name">Classic</div>
+              <div class="mode-card-desc">Survive as long as you can.</div>
+              <div class="mode-card-pb" id="mode-pb-classic"></div>
+            </div>
+            <!-- Sprint (locked) -->
+            <div class="mode-card mode-card-locked" id="mode-card-sprint">
+              <div class="mode-card-lock">&#128274;</div>
+              <div class="mode-card-icon">&#9201;</div>
+              <div class="mode-card-name">Sprint</div>
+              <div class="mode-card-desc">Clear 40 lines. Beat the clock.</div>
+              <div class="mode-card-coming">Coming Soon</div>
+            </div>
+            <!-- Blitz (locked) -->
+            <div class="mode-card mode-card-locked" id="mode-card-blitz">
+              <div class="mode-card-lock">&#128274;</div>
+              <div class="mode-card-icon">&#9889;</div>
+              <div class="mode-card-name">Blitz</div>
+              <div class="mode-card-desc">2 minutes. Maximum score.</div>
+              <div class="mode-card-coming">Coming Soon</div>
+            </div>
+          </div>
+          <button id="mode-select-back">&#8592; Back</button>
+        </div>
+      </div>
+
       <div id="renderer-container"></div>
       <div id="crosshair"></div>
 

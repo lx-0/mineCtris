@@ -214,25 +214,11 @@ function init() {
     scene.add(controls.getObject());
 
     blocker.addEventListener("click", function (e) {
-      // Daily challenge button handles its own lock — skip here
+      // Daily challenge and settings buttons handle their own events — skip here
       if (e.target.id === "daily-challenge-btn") return;
-      console.log("Blocker clicked. Requesting pointer lock...");
-      // Normal random game: ensure daily mode is off
-      isDailyChallenge = false;
-      gameRng = null;
-      if (Tone.context.state !== "running") {
-        Tone.start()
-          .then(() => {
-            console.log("Audio context started.");
-            controls.lock();
-          })
-          .catch((e) => {
-            console.error("Failed to start audio context:", e);
-            controls.lock();
-          });
-      } else {
-        controls.lock();
-      }
+      if (e.target.id === "start-settings-btn") return;
+      // Show mode select screen instead of jumping straight into the game
+      showModeSelect();
     });
 
     const dailyChallengeBtn = document.getElementById("daily-challenge-btn");
@@ -256,6 +242,59 @@ function init() {
         }
       });
     }
+
+    // ── Mode select helpers ───────────────────────────────────────────
+    function showModeSelect() {
+      const modeSelectEl = document.getElementById("mode-select");
+      if (!modeSelectEl) return;
+      // Populate Classic personal best
+      const pbEl = document.getElementById("mode-pb-classic");
+      if (pbEl) {
+        const scores = loadHighScores();
+        if (scores.length > 0) {
+          const best = scores[0];
+          pbEl.textContent = "Best: " + best.score + " (" + fmtTime(best.timeSurvived) + ")";
+        } else {
+          pbEl.textContent = "";
+        }
+      }
+      blocker.style.display = "none";
+      modeSelectEl.style.display = "flex";
+    }
+
+    function hideModeSelect() {
+      const modeSelectEl = document.getElementById("mode-select");
+      if (modeSelectEl) modeSelectEl.style.display = "none";
+    }
+
+    function requestPointerLock() {
+      if (Tone.context.state !== "running") {
+        Tone.start().then(() => controls.lock()).catch(() => controls.lock());
+      } else {
+        controls.lock();
+      }
+    }
+
+    const classicCardEl = document.getElementById("mode-card-classic");
+    if (classicCardEl) {
+      classicCardEl.addEventListener("click", function () {
+        isDailyChallenge = false;
+        gameRng = null;
+        try { localStorage.setItem("mineCtris_lastMode", "classic"); } catch (_) {}
+        hideModeSelect();
+        requestPointerLock();
+      });
+    }
+
+    const modeBackBtn = document.getElementById("mode-select-back");
+    if (modeBackBtn) {
+      modeBackBtn.addEventListener("click", function () {
+        hideModeSelect();
+        blocker.style.display = "flex";
+        instructions.style.display = "";
+      });
+    }
+    // ─────────────────────────────────────────────────────────────────
 
     controls.addEventListener("lock", function () {
       console.log("Pointer lock successful ('lock' event fired).");

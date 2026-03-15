@@ -234,7 +234,9 @@ function resetGame() {
 
   updateScoreHUD();
 
-  // Return to start screen
+  // Return to start screen (hide mode select if it was open)
+  const modeSelectEl = document.getElementById("mode-select");
+  if (modeSelectEl) modeSelectEl.style.display = "none";
   blocker.style.display = "flex";
   instructions.style.display = "";
   crosshair.style.display = "none";
