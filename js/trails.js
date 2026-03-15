@@ -12,6 +12,14 @@ const TRAIL_MAX_OPACITY = 0.30; // opacity at the segment closest to the piece
 const TRAIL_SCALE_NEAR  = 0.88; // scale of the nearest segment
 const TRAIL_SCALE_FAR   = 0.42; // scale of the farthest segment
 
+// Material-matched trail emissive colors keyed by colorIndex.
+// Gold (3): warm amber, Ice (4): cold blue-cyan, Lava (6): orange-red.
+const TRAIL_EMISSIVE_COLORS = {
+  3: 0xffaa00,
+  4: 0x00aaff,
+  6: 0xff3300,
+};
+
 let trailsGroup = null;
 let _trailGeo   = null; // shared BoxGeometry — never disposed while game runs
 
@@ -26,9 +34,12 @@ function initTrails() {
  * Call immediately after spawnFallingPiece adds the piece to the scene.
  */
 function createPieceTrail(piece) {
-  const colorIndex = piece.userData.colorIndex;
-  const color      = new THREE.Color(COLORS[colorIndex]);
-  const blockCount = piece.children.length;
+  const colorIndex   = piece.userData.colorIndex;
+  const emissiveHex  = TRAIL_EMISSIVE_COLORS[colorIndex];
+  const trailColor   = new THREE.Color(emissiveHex !== undefined ? emissiveHex : COLORS[colorIndex]);
+  const emissiveColor = emissiveHex !== undefined ? trailColor.clone() : null;
+  const isLava       = colorIndex === 6;
+  const blockCount   = piece.children.length;
 
   // posHistory[blockIdx][slotIdx] = Vector3 — ring buffer of world positions
   const posHistory = [];
@@ -44,7 +55,7 @@ function createPieceTrail(piece) {
     const blockSegs = [];
     for (let s = 0; s < TRAIL_SEGMENTS; s++) {
       const mat = new THREE.MeshBasicMaterial({
-        color:       color,
+        color:       trailColor,
         transparent: true,
         opacity:     0,
         depthWrite:  false,
@@ -63,6 +74,8 @@ function createPieceTrail(piece) {
     historyHead:   0,  // next slot to write
     historyFilled: 0,  // how many slots contain valid data
     blockCount,
+    emissiveColor,     // THREE.Color or null — used for ground-proximity pulse
+    isLava,            // bool — enables per-segment flicker
   };
 }
 
@@ -80,7 +93,7 @@ function updateTrails(delta, elapsedTime) {
     const trail = piece.userData.trail;
     if (!trail) return;
 
-    const { posHistory, segmentMeshes, blockCount } = trail;
+    const { posHistory, segmentMeshes, blockCount, emissiveColor, isLava } = trail;
     const actualBlocks = Math.min(blockCount, piece.children.length);
     if (actualBlocks === 0) return;
 
@@ -109,8 +122,12 @@ function updateTrails(delta, elapsedTime) {
     for (let b = 0; b < actualBlocks; b++) {
       const mat = piece.children[b].material;
       if (mat && mat.emissive) {
-        const c = mat.color;
-        mat.emissive.setRGB(c.r * 0.6, c.g * 0.6, c.b * 0.6);
+        if (emissiveColor) {
+          mat.emissive.copy(emissiveColor).multiplyScalar(0.6);
+        } else {
+          const c = mat.color;
+          mat.emissive.setRGB(c.r * 0.6, c.g * 0.6, c.b * 0.6);
+        }
         mat.emissiveIntensity = inNudgePulse ? Math.min(pulse * 3, 3.0) : pulse;
       }
     }
@@ -143,7 +160,9 @@ function updateTrails(delta, elapsedTime) {
         const t     = s / Math.max(visSegments - 1, 1);        // 0 near, 1 far
         const scale = THREE.MathUtils.lerp(TRAIL_SCALE_NEAR, TRAIL_SCALE_FAR, t);
         mesh.scale.setScalar(scale);
-        mesh.material.opacity = TRAIL_MAX_OPACITY * (1 - t) * (speedRatio / 3);
+        let segOpacity = TRAIL_MAX_OPACITY * (1 - t) * (speedRatio / 3);
+        if (isLava) segOpacity *= 0.85 + 0.15 * Math.random();
+        mesh.material.opacity = segOpacity;
       }
     }
   });
