@@ -2,17 +2,17 @@
 
 <br>
 
-# ⛏️ &nbsp; MineCtris &nbsp; 🟦
+# ⛏️ &nbsp; Minetris &nbsp; 🟦
 
 <br>
 
-### You're inside the Tetris board now.
+### You're inside the Tetris board now
 
 *Pieces are falling. Around you. On you.*
 
 <br>
 
-[![▶ PLAY NOW — no install, runs in browser](https://img.shields.io/badge/▶%20PLAY%20NOW-2ea043?style=for-the-badge&logoColor=white)](https://lx-0.github.io/mineCtris)
+[![▶ PLAY NOW — no install, runs in browser](https://img.shields.io/badge/▶%20PLAY%20NOW-2ea043?style=for-the-badge&logoColor=white)](https://lx-0.github.io/minetris)
 
 <br>
 
@@ -40,13 +40,13 @@
 
 <div align="center">
 
-![MineCtris gameplay — tetrominoes falling in first-person 3D](screenshot.png)
+![Minetris gameplay — tetrominoes falling in first-person 3D](screenshot.png)
 
 </div>
 
 ---
 
-**MineCtris** drops you onto the floor of a Tetris board — first-person, fully 3D. Tetrominoes fall from above. They stack into walls around you. They pile up. They close in.
+**Minetris** drops you onto the floor of a Tetris board — first-person, fully 3D. Tetrominoes fall from above. They stack into walls around you. They pile up. They close in.
 
 Your pickaxe is the only thing keeping you alive.
 
@@ -80,7 +80,7 @@ And the next.
 
 <br>
 
-[![▶ PLAY NOW](https://img.shields.io/badge/▶%20PLAY%20NOW-2ea043?style=for-the-badge)](https://lx-0.github.io/mineCtris)
+[![▶ PLAY NOW](https://img.shields.io/badge/▶%20PLAY%20NOW-2ea043?style=for-the-badge)](https://lx-0.github.io/minetris)
 
 <br>
 
