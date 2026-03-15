@@ -149,6 +149,11 @@ function resetGame() {
   // Clear tree respawn queue
   treeRespawnQueue.length = 0;
 
+  // Reset nudge state
+  nudgeCooldown = 0;
+  const nudgeHintEl = document.getElementById("nudge-hint");
+  if (nudgeHintEl) nudgeHintEl.style.display = "none";
+
   // Reset mining feedback state
   miningShakeActive = false;
   miningShakeBlock = null;

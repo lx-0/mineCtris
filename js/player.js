@@ -87,6 +87,18 @@ function onKeyDown(event) {
     case "KeyC":
       toggleCraftingPanel();
       break;
+    case "KeyQ":
+      applyNudge(-1, 0);
+      break;
+    case "KeyE":
+      applyNudge(1, 0);
+      break;
+    case "KeyZ":
+      applyNudge(0, -1);
+      break;
+    case "KeyX":
+      applyNudge(0, 1);
+      break;
   }
 }
 

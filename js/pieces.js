@@ -40,6 +40,9 @@ function spawnFallingPiece() {
   piece3D.userData.rotationInterval =
     Math.random() * (MAX_ROTATION_INTERVAL - MIN_ROTATION_INTERVAL) +
     MIN_ROTATION_INTERVAL;
+  piece3D.userData.nudgeOffsetX = 0;
+  piece3D.userData.nudgeOffsetZ = 0;
+  piece3D.userData.nudgePulseEnd = -1;
   fallingPiecesGroup.add(piece3D);
   fallingPieces.push(piece3D);
   createPieceShadow(piece3D);
@@ -96,6 +99,108 @@ function checkAndApplyPlayerPush(piece) {
   playerPushVelocity.copy(pushDir.multiplyScalar(PUSH_SPEED));
   screenShakeActive = true;
   screenShakeStart = clock.getElapsedTime();
+}
+
+/** Returns the falling piece with the lowest point, if it's within the nudge activation zone. */
+function getNudgeTargetPiece() {
+  let closestPiece = null;
+  let closestLowest = Infinity;
+  const _tv = new THREE.Vector3();
+  fallingPieces.forEach((piece) => {
+    let lowestY = Infinity;
+    piece.children.forEach((block) => {
+      block.getWorldPosition(_tv);
+      if (_tv.y < lowestY) lowestY = _tv.y;
+    });
+    if (lowestY < closestLowest) {
+      closestLowest = lowestY;
+      closestPiece = piece;
+    }
+  });
+  // Activate when bottom face is within NUDGE_PROXIMITY_BLOCKS blocks of ground (Y=0)
+  const heightAboveGround = closestLowest - BLOCK_SIZE / 2;
+  if (closestPiece && heightAboveGround <= NUDGE_PROXIMITY_BLOCKS * BLOCK_SIZE) {
+    return closestPiece;
+  }
+  return null;
+}
+
+/** Spawn a directional swoosh burst of particles from the piece center in the nudge direction. */
+function spawnNudgeSwoosh(center, dx, dz, colorIndex) {
+  const col = COLORS[colorIndex];
+  if (!col) return;
+  const swooshColor = new THREE.Color(col);
+  swooshColor.r = Math.min(swooshColor.r * 1.6 + 0.15, 1);
+  swooshColor.g = Math.min(swooshColor.g * 1.6 + 0.15, 1);
+  swooshColor.b = Math.min(swooshColor.b * 1.6 + 0.15, 1);
+  const count = 7;
+  for (let i = 0; i < count; i++) {
+    const geo = new THREE.BoxGeometry(0.12, 0.12, 0.12);
+    const mat = new THREE.MeshBasicMaterial({ color: swooshColor, transparent: true, opacity: 0.9 });
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.position.set(
+      center.x + (Math.random() - 0.5) * 1.5,
+      center.y + (Math.random() - 0.5) * 1.5,
+      center.z + (Math.random() - 0.5) * 1.5
+    );
+    scene.add(mesh);
+    const baseSpeed = 5 + Math.random() * 3;
+    dustParticles.push({
+      mesh,
+      velocity: new THREE.Vector3(
+        dx * baseSpeed + (Math.random() - 0.5) * 2,
+        (Math.random() - 0.5) * 1.5,
+        dz * baseSpeed + (Math.random() - 0.5) * 2
+      ),
+      startTime: clock.getElapsedTime(),
+      lifetime: 0.25,
+    });
+  }
+}
+
+/**
+ * Nudge the piece closest to the ground by (dx, dz) blocks on the X/Z axes.
+ * Called from key handlers (Q/E/Z/X).
+ */
+function applyNudge(dx, dz) {
+  if (nudgeCooldown > 0) return;
+  const piece = getNudgeTargetPiece();
+  if (!piece) return;
+
+  const newOffsetX = piece.userData.nudgeOffsetX + dx;
+  const newOffsetZ = piece.userData.nudgeOffsetZ + dz;
+
+  // Enforce per-axis cumulative limit
+  if (dx !== 0 && Math.abs(newOffsetX) > NUDGE_MAX_OFFSET) return;
+  if (dz !== 0 && Math.abs(newOffsetZ) > NUDGE_MAX_OFFSET) return;
+
+  // World boundary guard (1-block buffer inside world edge)
+  const newX = piece.position.x + dx * BLOCK_SIZE;
+  const newZ = piece.position.z + dz * BLOCK_SIZE;
+  if (Math.abs(newX) > WORLD_SIZE / 2 - BLOCK_SIZE) return;
+  if (Math.abs(newZ) > WORLD_SIZE / 2 - BLOCK_SIZE) return;
+
+  // Apply the nudge
+  piece.position.x = newX;
+  piece.position.z = newZ;
+  piece.userData.nudgeOffsetX = newOffsetX;
+  piece.userData.nudgeOffsetZ = newOffsetZ;
+
+  // Start cooldown and emissive pulse
+  nudgeCooldown = NUDGE_COOLDOWN_SECS;
+  piece.userData.nudgePulseEnd = clock.getElapsedTime() + NUDGE_EMISSIVE_PULSE_SECS;
+
+  // Swoosh particles from piece center
+  const center = new THREE.Vector3();
+  const _tv = new THREE.Vector3();
+  piece.children.forEach((block) => {
+    block.getWorldPosition(_tv);
+    center.add(_tv);
+  });
+  if (piece.children.length > 0) {
+    center.divideScalar(piece.children.length);
+    spawnNudgeSwoosh(center, dx, dz, piece.userData.colorIndex);
+  }
 }
 
 function updateFallingPieces(delta) {
@@ -182,5 +287,15 @@ function updateFallingPieces(delta) {
     fallingPieces.splice(index, 1);
     checkLineClear(newBlocks);
     checkGameOver();
+  }
+
+  // Tick nudge cooldown
+  nudgeCooldown = Math.max(0, nudgeCooldown - delta);
+
+  // Update nudge hint visibility
+  const nudgeHintEl = document.getElementById("nudge-hint");
+  if (nudgeHintEl) {
+    const showHint = controls && controls.isLocked && !isGameOver && getNudgeTargetPiece() !== null;
+    nudgeHintEl.style.display = showHint ? "block" : "none";
   }
 }

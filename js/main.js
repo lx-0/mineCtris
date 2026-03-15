@@ -246,6 +246,8 @@ function init() {
       }
       crosshair.style.display = "none";
       if (scoreEl) scoreEl.style.display = "none";
+      const nudgeHintEl = document.getElementById("nudge-hint");
+      if (nudgeHintEl) nudgeHintEl.style.display = "none";
       if (lineClearBannerEl) lineClearBannerEl.style.display = "none";
       document.getElementById("inventory-hud").style.display = "none";
       const dangerEl = document.getElementById("danger-overlay");

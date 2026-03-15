@@ -39,6 +39,12 @@ const DIFFICULTY_INTERVAL = 60;               // seconds between speed tiers
 const DIFFICULTY_MULTIPLIER_PER_TIER = 1.1;   // 10% faster each tier
 const DIFFICULTY_MAX_MULTIPLIER = 3.0;         // cap at 3x starting speed
 
+// Piece directional nudge constants
+const NUDGE_PROXIMITY_BLOCKS = 10;     // blocks above ground to activate nudge zone
+const NUDGE_MAX_OFFSET = 3;            // max cumulative nudge per piece, per axis (blocks)
+const NUDGE_COOLDOWN_SECS = 0.5;       // seconds between nudges
+const NUDGE_EMISSIVE_PULSE_SECS = 0.2; // seconds of emissive boost after a nudge
+
 // Material properties keyed by material name.
 const BLOCK_TYPES = {
   dirt:    { hits: 2, points: 5,  effect: null },

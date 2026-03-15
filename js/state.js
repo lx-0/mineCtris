@@ -107,3 +107,6 @@ let pickaxeTier = "none";
 let playerPushVelocity = new THREE.Vector3();
 let screenShakeActive = false;
 let screenShakeStart = 0;
+
+// ── Piece nudge state ─────────────────────────────────────────────────────────
+let nudgeCooldown = 0;  // seconds remaining before next nudge is allowed

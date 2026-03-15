@@ -105,12 +105,13 @@ function updateTrails(delta, elapsedTime) {
     const pulseBase  = THREE.MathUtils.lerp(0.4, 1.0, proximity);
     const pulse      = pulseBase * (0.5 + 0.5 * Math.abs(Math.sin(elapsedTime * Math.PI)));
 
+    const inNudgePulse = elapsedTime < (piece.userData.nudgePulseEnd || -1);
     for (let b = 0; b < actualBlocks; b++) {
       const mat = piece.children[b].material;
       if (mat && mat.emissive) {
         const c = mat.color;
         mat.emissive.setRGB(c.r * 0.6, c.g * 0.6, c.b * 0.6);
-        mat.emissiveIntensity = pulse;
+        mat.emissiveIntensity = inNudgePulse ? Math.min(pulse * 3, 3.0) : pulse;
       }
     }
 
