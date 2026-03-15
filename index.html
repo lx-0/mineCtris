@@ -137,6 +137,19 @@
 
       <!-- Nudge hint — shown when piece is in steering zone -->
       <div id="nudge-hint">Q/E Z/X — steer piece</div>
+
+      <!-- First-run tutorial overlay -->
+      <div id="tutorial-overlay">
+        <div id="tutorial-body">
+          <p id="tutorial-text"></p>
+          <p id="tutorial-subtext"></p>
+          <button id="tutorial-dismiss-btn">Got it!</button>
+        </div>
+        <div id="tutorial-footer">
+          <span id="tutorial-step-count"></span>
+          <button id="tutorial-skip-btn">Skip Tutorial</button>
+        </div>
+      </div>
     </div>
 
     <!-- Game modules — order matters: dependencies before dependents -->
@@ -159,6 +172,7 @@
     <script src="js/daily.js"></script>
     <script src="js/highscores.js"></script>
     <script src="js/aura.js"></script>
+    <script src="js/tutorial.js"></script>
     <script src="js/main.js"></script>
   </body>
 </html>

@@ -768,6 +768,89 @@ body {
   z-index: 150;
 }
 
+/* ── Tutorial overlay ── */
+#tutorial-overlay {
+  position: absolute;
+  bottom: 130px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.80);
+  border: 2px solid #0f0;
+  border-radius: 6px;
+  padding: 14px 20px 12px;
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  z-index: 195;
+  min-width: 300px;
+  max-width: 460px;
+  pointer-events: none;
+}
+#tutorial-body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  text-align: center;
+}
+#tutorial-text {
+  font-family: "Press Start 2P", cursive;
+  font-size: 10px;
+  color: #ff0;
+  text-shadow: 1px 1px 0 #000, 0 0 10px #ff0;
+  margin: 0;
+  line-height: 1.6;
+}
+#tutorial-subtext {
+  font-family: "Press Start 2P", cursive;
+  font-size: 7px;
+  color: #aaa;
+  margin: 0;
+  line-height: 1.6;
+  display: none;
+}
+#tutorial-dismiss-btn {
+  font-family: "Press Start 2P", cursive;
+  font-size: 8px;
+  color: #000;
+  background: #0f0;
+  border: none;
+  padding: 8px 18px;
+  cursor: pointer;
+  border-radius: 3px;
+  margin-top: 4px;
+  pointer-events: all;
+  display: none;
+  transition: background 0.15s;
+}
+#tutorial-dismiss-btn:hover { background: #ff0; }
+#tutorial-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  gap: 16px;
+}
+#tutorial-step-count {
+  font-family: "Press Start 2P", cursive;
+  font-size: 6px;
+  color: #555;
+}
+#tutorial-skip-btn {
+  font-family: "Press Start 2P", cursive;
+  font-size: 6px;
+  color: #888;
+  background: transparent;
+  border: 1px solid #444;
+  padding: 4px 8px;
+  cursor: pointer;
+  border-radius: 3px;
+  pointer-events: all;
+  transition: color 0.15s, border-color 0.15s;
+}
+#tutorial-skip-btn:hover { color: #f44; border-color: #f44; }
+
 #daily-go-section {
   margin: 14px 0;
   text-align: center;

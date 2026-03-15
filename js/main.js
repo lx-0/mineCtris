@@ -268,6 +268,31 @@ function init() {
         instructions.style.display = "none";
         blocker.style.display = "none";
         if (typeof startBgMusic === "function") startBgMusic();
+        // First-run tutorial
+        if (typeof initTutorial === "function") {
+          initTutorial();
+          // One-shot mousemove listener to detect first camera movement
+          const _onFirstMove = function () {
+            if (typeof tutorialNotify === "function") tutorialNotify("cameraMove");
+            document.removeEventListener("mousemove", _onFirstMove);
+          };
+          document.addEventListener("mousemove", _onFirstMove);
+          // Wire skip / dismiss buttons
+          const skipBtn = document.getElementById("tutorial-skip-btn");
+          if (skipBtn && !skipBtn._tutorialBound) {
+            skipBtn._tutorialBound = true;
+            skipBtn.addEventListener("click", function () {
+              if (typeof skipTutorial === "function") skipTutorial();
+            });
+          }
+          const dismissBtn = document.getElementById("tutorial-dismiss-btn");
+          if (dismissBtn && !dismissBtn._tutorialBound) {
+            dismissBtn._tutorialBound = true;
+            dismissBtn.addEventListener("click", function () {
+              if (typeof skipTutorial === "function") skipTutorial();
+            });
+          }
+        }
       }
       crosshair.style.display = "block";
       if (scoreEl) scoreEl.style.display = "block";
@@ -467,6 +492,7 @@ function placeBlock() {
 
   // Placement sound
   playPlaceSound();
+  if (typeof tutorialNotify === "function") tutorialNotify("blockPlace");
 }
 
 function onMouseDown(event) {
@@ -524,6 +550,7 @@ function onMouseDown(event) {
 
     if (isBreak) {
       console.log("Block broken!");
+      if (typeof tutorialNotify === "function") tutorialNotify("blockMine");
       // Per-material break sound
       playBreakSound(objType);
       // Break burst particles
@@ -595,6 +622,7 @@ function animate() {
     updateAuras(delta, camera);
     updateDifficulty(delta);
     updateTreeRespawn(delta, elapsedTime);
+    if (typeof updateTutorial === "function") updateTutorial(delta);
   }
   updateDangerWarning();
 

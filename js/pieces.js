@@ -419,6 +419,7 @@ function updateFallingPieces(delta) {
     fallingPieces.splice(index, 1);
     checkLineClear(newBlocks);
     checkGameOver();
+    if (typeof tutorialNotify === "function") tutorialNotify("pieceLand");
   }
 
   // Tick nudge cooldown
