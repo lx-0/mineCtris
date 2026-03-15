@@ -114,6 +114,11 @@ function checkLineClear(newBlocks) {
   playLineClearRumble();
   playLineClearSound(completeLevels.length);
 
+  // Tetris clear (4 lines): strong chromatic aberration burst
+  if (completeLevels.length >= 4 && typeof triggerChromaticAberration === 'function') {
+    triggerChromaticAberration(0.012, 0.4);
+  }
+
   // Score with combo multiplier
   const LINE_SCORES = [0, 100, 300, 500, 800];
   linesCleared += completeLevels.length;

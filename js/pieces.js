@@ -2,6 +2,65 @@
 // Requires: state.js, config.js, world.js (createBlockMesh, registerBlock),
 //           lineclear.js (checkLineClear), gamestate.js (checkGameOver)
 
+// ── Landing shockwave ring pool ───────────────────────────────────────────────
+const _LANDING_RING_POOL_SIZE = 3;
+const _landingRingPool   = [];   // { mesh, active }
+const _activeLandingRings = [];  // { entry, age }
+
+const _LANDING_RING_DURATION  = 0.35;   // seconds for full animation
+const _LANDING_RING_MAX_SCALE = 8;      // max uniform XZ scale
+const _LANDING_RING_OPACITY   = 0.35;   // starting opacity (fades to 0)
+
+function initLandingRingPool() {
+  const geo = new THREE.RingGeometry(0.1, 0.5, 32);
+  for (let i = 0; i < _LANDING_RING_POOL_SIZE; i++) {
+    const mat = new THREE.MeshBasicMaterial({
+      color: 0xffffff,
+      transparent: true,
+      side: THREE.DoubleSide,
+      depthWrite: false,
+    });
+    const mesh = new THREE.Mesh(geo.clone(), mat);
+    // Lie flat in XZ plane with a 10° forward tilt for first-person visibility
+    mesh.rotation.x = Math.PI / 2 - (10 * Math.PI / 180);
+    mesh.visible = false;
+    scene.add(mesh);
+    _landingRingPool.push({ mesh, active: false });
+  }
+}
+
+function spawnLandingRing(centerPos) {
+  let entry = null;
+  for (let i = 0; i < _landingRingPool.length; i++) {
+    if (!_landingRingPool[i].active) { entry = _landingRingPool[i]; break; }
+  }
+  if (!entry) return;
+  entry.active = true;
+  entry.mesh.position.copy(centerPos);
+  entry.mesh.scale.set(0.01, 1, 0.01);
+  entry.mesh.material.opacity = _LANDING_RING_OPACITY;
+  entry.mesh.visible = true;
+  _activeLandingRings.push({ entry, age: 0 });
+}
+
+function updateLandingRings(delta) {
+  for (let i = _activeLandingRings.length - 1; i >= 0; i--) {
+    const r = _activeLandingRings[i];
+    r.age += delta;
+    if (r.age >= _LANDING_RING_DURATION) {
+      r.entry.mesh.visible = false;
+      r.entry.active = false;
+      _activeLandingRings.splice(i, 1);
+      continue;
+    }
+    const t = r.age / _LANDING_RING_DURATION;
+    const s = t * _LANDING_RING_MAX_SCALE;
+    r.entry.mesh.scale.set(s, 1, s);
+    r.entry.mesh.material.opacity = _LANDING_RING_OPACITY * (1 - t);
+    r.entry.mesh.material.needsUpdate = true;
+  }
+}
+
 function createPiece3D(shapeData, colorIndex) {
   const pieceGroup = new THREE.Group();
   const color = COLORS[colorIndex];
@@ -268,6 +327,31 @@ function updateFallingPieces(delta) {
     checkAndApplyPlayerPush(pieceToLand);
     playPlaceSound();
     disposePieceTrail(pieceToLand);
+
+    // ── Shockwave ring + chromatic aberration on landing ─────────────────────
+    {
+      const _rc = new THREE.Vector3();
+      const _rv = new THREE.Vector3();
+      let _lowestY = Infinity;
+      const _blockCount = pieceToLand.children.length;
+      pieceToLand.children.forEach((block) => {
+        block.getWorldPosition(_rv);
+        _rc.add(_rv);
+        if (_rv.y < _lowestY) _lowestY = _rv.y;
+      });
+      if (_blockCount > 0) {
+        _rc.divideScalar(_blockCount);
+        _rc.y = _lowestY - BLOCK_SIZE / 2;  // bottom face of lowest block
+        spawnLandingRing(_rc);
+        // Hard landing: 4+ blocks in piece OR speed level > 5
+        if (_blockCount >= 4 || lastDifficultyTier > 5) {
+          if (typeof triggerChromaticAberration === 'function') {
+            triggerChromaticAberration(0.006, 0.2);
+          }
+        }
+      }
+    }
+
     const newBlocks = [];
     while (pieceToLand.children.length > 0) {
       const block = pieceToLand.children[0];

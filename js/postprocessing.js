@@ -30,6 +30,11 @@ const _cur = { saturation: 1.25, temperature: 0.08, brightness: 1.00, vignette: 
 let _bloomPass      = null;
 let _colorGradePass = null;
 let _vignettePass   = null;
+let _chromaticAberrationPass = null;
+
+// Chromatic aberration decay state (updated each frame)
+let _caStrength   = 0.0;
+let _caDecayRate  = 0.0;
 
 // ── Color Grade Shader ────────────────────────────────────────────────────────
 // Applies saturation, temperature (warm/cool tint), and brightness.
@@ -69,6 +74,38 @@ const _ColorGradeShader = {
       c.b -= uTemperature * 0.12;
 
       gl_FragColor = vec4(clamp(c, 0.0, 1.0), 1.0);
+    }
+  `,
+};
+
+// ── Chromatic Aberration Shader ───────────────────────────────────────────────
+// Splits R/G/B channels horizontally by `strength` UV units.
+// strength=0 → passthrough; hard landing spikes to 0.006, Tetris to 0.012.
+const _ChromaticAberrationShader = {
+  uniforms: {
+    tDiffuse: { value: null },
+    strength: { value: 0.0 },
+  },
+  vertexShader: `
+    varying vec2 vUv;
+    void main() {
+      vUv = uv;
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    }
+  `,
+  fragmentShader: `
+    uniform sampler2D tDiffuse;
+    uniform float strength;
+    varying vec2 vUv;
+
+    void main() {
+      vec2 offset = vec2(strength, 0.0);
+      gl_FragColor = vec4(
+        texture2D(tDiffuse, vUv + offset).r,
+        texture2D(tDiffuse, vUv).g,
+        texture2D(tDiffuse, vUv - offset).b,
+        1.0
+      );
     }
   `,
 };
@@ -134,6 +171,10 @@ function initBloomPasses(compsr) {
 
   _vignettePass = new THREE.ShaderPass(_VignetteShader);
   compsr.addPass(_vignettePass);
+
+  // Chromatic aberration — final pass so it splits the fully-graded image
+  _chromaticAberrationPass = new THREE.ShaderPass(_ChromaticAberrationShader);
+  compsr.addPass(_chromaticAberrationPass);
 }
 
 /**
@@ -165,6 +206,25 @@ function updatePostProcessing(delta) {
   _colorGradePass.uniforms.uTemperature.value = _cur.temperature;
   _colorGradePass.uniforms.uBrightness.value  = _cur.brightness;
   _vignettePass.uniforms.uStrength.value      = _cur.vignette;
+
+  // Chromatic aberration: exponential decay each frame
+  if (_chromaticAberrationPass && _caStrength > 0) {
+    _caStrength = Math.max(0, _caStrength - delta * _caDecayRate);
+    _chromaticAberrationPass.uniforms.strength.value = _caStrength;
+  }
+}
+
+/**
+ * Spike chromatic aberration strength then let it decay to 0.
+ * @param {number} strength      Peak UV offset (e.g. 0.006 or 0.012)
+ * @param {number} decayDuration Seconds to decay from peak to 0
+ */
+function triggerChromaticAberration(strength, decayDuration) {
+  _caStrength  = strength;
+  _caDecayRate = strength / decayDuration;
+  if (_chromaticAberrationPass) {
+    _chromaticAberrationPass.uniforms.strength.value = _caStrength;
+  }
 }
 
 /** Snap grade values back to normal immediately (called on game reset). */
@@ -181,6 +241,11 @@ function resetPostProcessing() {
   }
   if (_vignettePass) {
     _vignettePass.uniforms.uStrength.value = n.vignette;
+  }
+  _caStrength = 0;
+  _caDecayRate = 0;
+  if (_chromaticAberrationPass) {
+    _chromaticAberrationPass.uniforms.strength.value = 0;
   }
 }
 

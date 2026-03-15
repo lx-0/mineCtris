@@ -281,6 +281,7 @@ function init() {
 
   initLineClearFragmentPool();
   initTrails();
+  initLandingRingPool();
   initPostProcessing();
 
   // Lava point-light pool — positioned toward closest lava blocks each frame
@@ -519,6 +520,7 @@ function animate() {
     }
     updateLineClear(delta);
     updateFallingPieces(delta);
+    updateLandingRings(delta);
     updateTrails(delta, elapsedTime);
     updateDifficulty(delta);
     updateTreeRespawn(delta, elapsedTime);
