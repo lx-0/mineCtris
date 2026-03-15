@@ -53,6 +53,23 @@ function spawnTree(tx, tz) {
 }
 
 /**
+ * Spawn a rock at (rx, rz) with the given number of stacked blocks (1–3).
+ * Rocks do not respawn when destroyed.
+ */
+function spawnRock(rx, rz, size) {
+  for (let i = 0; i < size; i++) {
+    const geo = new THREE.BoxGeometry(1.2, 1, 1.2);
+    const mat = new THREE.MeshLambertMaterial({ color: 0x808080 });
+    const block = new THREE.Mesh(geo, mat);
+    block.position.set(rx, BLOCK_SIZE / 2 + i * BLOCK_SIZE, rz);
+    block.name = "world_object";
+    block.userData.miningClicks = 5;
+    block.userData.objectType = "rock";
+    worldGroup.add(block);
+  }
+}
+
+/**
  * Tick tree respawn queue. Call every frame while game is active.
  * @param {number} delta        Seconds since last frame.
  * @param {number} elapsedTime  Total elapsed time (for grow animation).
@@ -135,10 +152,40 @@ function init() {
   ground.name = "ground";
   worldGroup.add(ground);
 
+  const spawnedPositions = [];
   for (let i = 0; i < 15; i++) {
     const tx = (Math.random() - 0.5) * WORLD_SIZE * 0.8;
     const tz = (Math.random() - 0.5) * WORLD_SIZE * 0.8;
     spawnTree(tx, tz);
+    spawnedPositions.push({ x: tx, z: tz });
+  }
+
+  // Rocks: 8–12, scattered, no overlap with trees or other rocks (≥ 3 blocks apart)
+  const numRocks = Math.floor(Math.random() * 5) + 8;
+  for (let i = 0; i < numRocks; i++) {
+    let rx, rz, valid;
+    let attempts = 0;
+    do {
+      rx = (Math.random() - 0.5) * WORLD_SIZE * 0.8;
+      rz = (Math.random() - 0.5) * WORLD_SIZE * 0.8;
+      valid = true;
+      for (const pos of spawnedPositions) {
+        const dx = rx - pos.x;
+        const dz = rz - pos.z;
+        if (Math.sqrt(dx * dx + dz * dz) < 3) {
+          valid = false;
+          break;
+        }
+      }
+      attempts++;
+    } while (!valid && attempts < 50);
+
+    if (valid) {
+      const r = Math.random();
+      const size = r < 0.4 ? 1 : r < 0.8 ? 2 : 3;
+      spawnRock(rx, rz, size);
+      spawnedPositions.push({ x: rx, z: rz });
+    }
   }
 
   scoreEl = document.getElementById("score-display");

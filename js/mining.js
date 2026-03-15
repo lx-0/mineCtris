@@ -31,7 +31,7 @@ function updateTargeting() {
   if (intersects.length > 0) {
     const intersection = intersects[0];
     if (
-      (intersection.object.name === "landed_block" || intersection.object.name === "trunk_block" || intersection.object.name === "leaf_block") &&
+      (intersection.object.name === "landed_block" || intersection.object.name === "trunk_block" || intersection.object.name === "leaf_block" || intersection.object.name === "world_object") &&
       intersection.distance <= MINING_RANGE
     ) {
       newTarget = intersection.object;
