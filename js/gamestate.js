@@ -10,18 +10,30 @@ function addScore(pts) {
 /** Re-render the score HUD from current state. */
 function updateScoreHUD() {
   if (!scoreEl) return;
-  const totalSecs = Math.floor(gameElapsedSeconds);
-  const mm = Math.floor(totalSecs / 60).toString().padStart(2, "0");
-  const ss = (totalSecs % 60).toString().padStart(2, "0");
   scoreEl.querySelector(".hud-score").textContent = score;
   scoreEl.querySelector(".hud-stat:nth-child(2)").textContent =
     "Blocks: " + blocksMined;
-  scoreEl.querySelector(".hud-stat:nth-child(3)").textContent =
-    "Lines: " + linesCleared;
-  scoreEl.querySelector(".hud-stat:nth-child(4)").textContent =
-    "Time: " + mm + ":" + ss;
-  scoreEl.querySelector(".hud-stat:nth-child(5)").textContent =
-    "Level " + (lastDifficultyTier + 1);
+  if (isSprintMode) {
+    // Sprint: show progress toward 40 lines and sprint elapsed time
+    scoreEl.querySelector(".hud-stat:nth-child(3)").textContent =
+      "Lines: " + linesCleared + "/" + SPRINT_LINE_TARGET;
+    const sprintSecs = Math.floor(sprintElapsedMs / 1000);
+    const sm = Math.floor(sprintSecs / 60).toString().padStart(2, "0");
+    const ss = (sprintSecs % 60).toString().padStart(2, "0");
+    scoreEl.querySelector(".hud-stat:nth-child(4)").textContent =
+      "Time: " + sm + ":" + ss;
+    scoreEl.querySelector(".hud-stat:nth-child(5)").textContent = "Sprint";
+  } else {
+    const totalSecs = Math.floor(gameElapsedSeconds);
+    const mm = Math.floor(totalSecs / 60).toString().padStart(2, "0");
+    const ss = (totalSecs % 60).toString().padStart(2, "0");
+    scoreEl.querySelector(".hud-stat:nth-child(3)").textContent =
+      "Lines: " + linesCleared;
+    scoreEl.querySelector(".hud-stat:nth-child(4)").textContent =
+      "Time: " + mm + ":" + ss;
+    scoreEl.querySelector(".hud-stat:nth-child(5)").textContent =
+      "Level " + (lastDifficultyTier + 1);
+  }
 }
 
 /** Returns current game stats for use by the Game Over screen. */
@@ -45,6 +57,8 @@ function getMaxBlockHeight() {
 
 /** Show/hide the danger overlay based on current max block height. */
 function updateDangerWarning() {
+  // Sprint has no lose condition — never show danger warning
+  if (isSprintMode) return;
   const dangerEl = document.getElementById("danger-overlay");
   const dangerTextEl = document.getElementById("danger-text");
   if (!dangerEl || !dangerTextEl) return;
@@ -59,6 +73,8 @@ function updateDangerWarning() {
 
 /** Check if any landed block has reached the game-over height. */
 function checkGameOver() {
+  // Sprint has no lose condition — blocks can pile indefinitely
+  if (isSprintMode) return;
   if (isGameOver) return;
   for (const gy of gridOccupancy.keys()) {
     if (gy >= GAME_OVER_HEIGHT) {
@@ -209,6 +225,14 @@ function resetGame() {
   const nudgeHintEl = document.getElementById("nudge-hint");
   if (nudgeHintEl) nudgeHintEl.style.display = "none";
 
+  // Reset sprint state
+  isSprintMode      = false;
+  sprintTimerActive = false;
+  sprintElapsedMs   = 0;
+  sprintComplete    = false;
+  const sprintCompleteEl = document.getElementById("sprint-complete-screen");
+  if (sprintCompleteEl) sprintCompleteEl.style.display = "none";
+
   // Reset daily challenge state
   isDailyChallenge = false;
   gameRng = null;
@@ -279,6 +303,12 @@ function resetGame() {
  * speed-up banner when a new tier is reached.
  */
 function updateDifficulty(delta) {
+  // Sprint: fixed speed = Classic Level 5; no escalation, no banner
+  if (isSprintMode) {
+    difficultyMultiplier = SPRINT_FIXED_MULTIPLIER;
+    return;
+  }
+
   // Tick banner display timer
   if (speedUpBannerTimer > 0) {
     speedUpBannerTimer -= delta;

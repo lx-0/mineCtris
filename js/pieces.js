@@ -129,6 +129,11 @@ function updateNextPiecesHUD() {
 }
 
 function spawnFallingPiece() {
+  // In Sprint mode, start the timer on the very first piece drop
+  if (isSprintMode && !sprintTimerActive && !sprintComplete) {
+    sprintTimerActive = true;
+  }
+
   // Draw the next piece from the pre-generated queue; refill to keep it at NEXT_QUEUE_SIZE.
   if (pieceQueue.length === 0) initPieceQueue();
   const { index, shape } = pieceQueue.shift();

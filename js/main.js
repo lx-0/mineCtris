@@ -259,6 +259,14 @@ function init() {
           pbEl.textContent = "";
         }
       }
+      // Populate Sprint personal best
+      const sprintPbEl = document.getElementById("mode-pb-sprint");
+      if (sprintPbEl) {
+        const sprintBest = loadSprintBest();
+        sprintPbEl.textContent = sprintBest
+          ? "Best: " + fmtSprintTime(sprintBest.timeMs)
+          : "";
+      }
       blocker.style.display = "none";
       modeSelectEl.style.display = "flex";
     }
@@ -282,6 +290,21 @@ function init() {
         isDailyChallenge = false;
         gameRng = null;
         try { localStorage.setItem("mineCtris_lastMode", "classic"); } catch (_) {}
+        hideModeSelect();
+        requestPointerLock();
+      });
+    }
+
+    const sprintCardEl = document.getElementById("mode-card-sprint");
+    if (sprintCardEl) {
+      sprintCardEl.addEventListener("click", function () {
+        isDailyChallenge = false;
+        gameRng = null;
+        isSprintMode = true;
+        // Fixed speed from the start; difficulty escalation is disabled in sprint
+        difficultyMultiplier = SPRINT_FIXED_MULTIPLIER;
+        lastDifficultyTier   = 4; // Level 5 display
+        try { localStorage.setItem("mineCtris_lastMode", "sprint"); } catch (_) {}
         hideModeSelect();
         requestPointerLock();
       });
@@ -391,6 +414,9 @@ function init() {
 
   const playAgainBtn = document.getElementById("play-again-btn");
   if (playAgainBtn) playAgainBtn.addEventListener("click", resetGame);
+
+  const sprintPlayAgainBtn = document.getElementById("sprint-play-again-btn");
+  if (sprintPlayAgainBtn) sprintPlayAgainBtn.addEventListener("click", resetGame);
 
   const pauseResumeBtn = document.getElementById("pause-resume-btn");
   if (pauseResumeBtn) pauseResumeBtn.addEventListener("click", function () {
@@ -674,6 +700,11 @@ function animate() {
   updateSky(elapsedTime, delta);
 
   if (!isGameOver && !isPaused) {
+    // Tick the sprint timer (starts only once the first piece begins falling)
+    if (isSprintMode && sprintTimerActive && !sprintComplete) {
+      sprintElapsedMs += delta * 1000;
+    }
+
     spawnTimer += delta;
     if (spawnTimer > SPAWN_INTERVAL) {
       spawnFallingPiece();
@@ -694,7 +725,9 @@ function animate() {
     // Tick survival timer and refresh HUD once per second
     if (gameTimerRunning) {
       gameElapsedSeconds += delta;
-      const currentSecond = Math.floor(gameElapsedSeconds);
+      const currentSecond = isSprintMode
+        ? Math.floor(sprintElapsedMs / 1000)
+        : Math.floor(gameElapsedSeconds);
       if (currentSecond !== lastHudSecond) {
         lastHudSecond = currentSecond;
         updateScoreHUD();

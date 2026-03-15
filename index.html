@@ -69,13 +69,12 @@
               <div class="mode-card-desc">Survive as long as you can.</div>
               <div class="mode-card-pb" id="mode-pb-classic"></div>
             </div>
-            <!-- Sprint (locked) -->
-            <div class="mode-card mode-card-locked" id="mode-card-sprint">
-              <div class="mode-card-lock">&#128274;</div>
+            <!-- Sprint -->
+            <div class="mode-card" id="mode-card-sprint" data-mode="sprint">
               <div class="mode-card-icon">&#9201;</div>
               <div class="mode-card-name">Sprint</div>
               <div class="mode-card-desc">Clear 40 lines. Beat the clock.</div>
-              <div class="mode-card-coming">Coming Soon</div>
+              <div class="mode-card-pb" id="mode-pb-sprint"></div>
             </div>
             <!-- Blitz (locked) -->
             <div class="mode-card mode-card-locked" id="mode-card-blitz">
@@ -141,6 +140,15 @@
         <div id="hs-go-table"></div>
         <div id="daily-go-section" style="display:none;"></div>
         <button id="play-again-btn">Play Again</button>
+      </div>
+
+      <!-- Sprint complete screen -->
+      <div id="sprint-complete-screen" style="display:none;">
+        <div id="sprint-complete-title">SPRINT COMPLETE!</div>
+        <div id="sprint-complete-time-label">TIME</div>
+        <div id="sprint-final-time">00:00.00</div>
+        <div id="sprint-personal-best"></div>
+        <button id="sprint-play-again-btn">Play Again</button>
       </div>
 
       <!-- Pause screen -->
@@ -241,6 +249,7 @@
     <script src="js/daily.js"></script>
     <script src="js/highscores.js"></script>
     <script src="js/stats.js"></script>
+    <script src="js/sprint.js"></script>
     <script src="js/aura.js"></script>
     <script src="js/tutorial.js"></script>
     <script src="js/settings.js"></script>

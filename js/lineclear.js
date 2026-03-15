@@ -123,6 +123,12 @@ function checkLineClear(newBlocks) {
   const LINE_SCORES = [0, 100, 300, 500, 800];
   linesCleared += completeLevels.length;
 
+  // Sprint: end the game when 40 lines are cleared
+  if (isSprintMode && linesCleared >= SPRINT_LINE_TARGET &&
+      typeof triggerSprintComplete === "function") {
+    triggerSprintComplete();
+  }
+
   const now = clock.getElapsedTime();
   if (lastClearTime >= 0 && (now - lastClearTime) <= 3.0) {
     comboCount++;

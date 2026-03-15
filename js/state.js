@@ -136,6 +136,17 @@ let isDailyChallenge = false;
 // null → use Math.random(); function → seeded daily PRNG from daily.js
 let gameRng = null;
 
+// ── Sprint mode state ─────────────────────────────────────────────────────────
+// Target: clear exactly 40 lines as fast as possible.
+// Fixed fall speed = Classic Level 5 (tier 4 multiplier).
+// Crafting disabled; mining enabled; no lose condition.
+let isSprintMode       = false;
+let sprintTimerActive  = false;   // becomes true on first piece drop
+let sprintElapsedMs    = 0;       // milliseconds since sprint timer started
+let sprintComplete     = false;
+const SPRINT_LINE_TARGET        = 40;
+const SPRINT_FIXED_MULTIPLIER   = Math.pow(1.1, 4); // ≈ 1.4641 (Level 5)
+
 // ── Session stats (reset each game, accumulated for lifetime stats on game over) ──
 let blocksPlaced = 0;
 let sessionCrafts = 0;
