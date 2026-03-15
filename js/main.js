@@ -64,7 +64,8 @@ function init() {
     const trunkGeo = new THREE.BoxGeometry(BLOCK_SIZE, trunkHeight * BLOCK_SIZE, BLOCK_SIZE);
     const trunk = new THREE.Mesh(trunkGeo, trunkMat);
     trunk.position.set(tx, (trunkHeight * BLOCK_SIZE) / 2, tz);
-    trunk.name = "world_object";
+    trunk.name = "trunk_block";
+    trunk.userData.miningClicks = 4;
     worldGroup.add(trunk);
 
     // Minecraft-style leaf canopy: 3 layers of boxes
@@ -301,7 +302,8 @@ function onMouseDown(event) {
     applyMineDamage(targetedBlock, miningProgress);
     startMiningShake(targetedBlock);
     spawnDustParticles(targetedBlock);
-    if (miningProgress >= MINING_CLICKS_NEEDED) {
+    const clicksNeeded = targetedBlock.userData.miningClicks || MINING_CLICKS_NEEDED;
+    if (miningProgress >= clicksNeeded) {
       console.log("Block broken!");
       if (audioReady && breakSynth)
         breakSynth.triggerAttackRelease("4n", Tone.now());
