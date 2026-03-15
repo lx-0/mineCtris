@@ -408,6 +408,7 @@ function onMouseDown(event) {
     else if (pickaxeTier === "iron") clicksNeeded = 1;
     isMining = true;
     miningAnimStartTime = clock.getElapsedTime();
+    updateMaterialTooltip();
     applyMineDamage(targetedBlock, miningProgress, clicksNeeded);
     startMiningShake(targetedBlock);
     const objType = targetedBlock.userData.objectType;

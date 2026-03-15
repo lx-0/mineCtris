@@ -89,6 +89,7 @@ function updateTargeting() {
     targetedBlock = newTarget;
     miningProgress = 0;
   }
+  updateMaterialTooltip();
 }
 
 function applyMineDamage(block, hits, effectiveMax) {
@@ -221,6 +222,58 @@ function updateDustParticles(delta) {
     p.mesh.material.opacity = 0.85 * (1 - age / p.lifetime);
     p.mesh.material.needsUpdate = true;
   }
+}
+
+function updateMaterialTooltip() {
+  const tooltip = document.getElementById("material-tooltip");
+  if (!tooltip) return;
+
+  if (!targetedBlock) {
+    tooltip.classList.remove("visible");
+    return;
+  }
+
+  const matType = targetedBlock.userData.materialType ||
+    (targetedBlock.userData.objectType ? OBJECT_TYPE_TO_MATERIAL[targetedBlock.userData.objectType] : null);
+  if (!matType) {
+    tooltip.classList.remove("visible");
+    return;
+  }
+
+  let totalHits = targetedBlock.userData.miningClicks || MINING_CLICKS_NEEDED;
+  if (pickaxeTier === "stone") totalHits = Math.min(totalHits, 2);
+  else if (pickaxeTier === "iron") totalHits = 1;
+
+  const hitsDealt = miningProgress;
+  const hitsRemaining = Math.max(0, totalHits - hitsDealt);
+
+  let barStr = "";
+  for (let i = 0; i < totalHits; i++) {
+    barStr += i < hitsRemaining ? "█" : "░";
+  }
+
+  const displayName = matType.charAt(0).toUpperCase() + matType.slice(1);
+  const hitsLabel = hitsRemaining === 1 ? "1 hit remaining" : `${hitsRemaining} hits remaining`;
+
+  const nameEl = document.getElementById("material-tooltip-name");
+  const barEl = document.getElementById("material-tooltip-bar");
+  const hitsEl = document.getElementById("material-tooltip-hits");
+  const pickaxeEl = document.getElementById("material-tooltip-pickaxe");
+
+  if (nameEl) nameEl.textContent = displayName;
+  if (barEl) barEl.textContent = barStr;
+  if (hitsEl) hitsEl.textContent = hitsLabel;
+  if (pickaxeEl) {
+    if (pickaxeTier !== "none") {
+      const tierLabels = { stone: "Stone Pickaxe", iron: "Iron Pickaxe" };
+      pickaxeEl.textContent = "[" + (tierLabels[pickaxeTier] || pickaxeTier) + "]";
+      pickaxeEl.style.display = "";
+    } else {
+      pickaxeEl.style.display = "none";
+    }
+  }
+
+  tooltip.classList.add("visible");
 }
 
 function createPickaxeModel() {
