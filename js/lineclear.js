@@ -114,17 +114,56 @@ function checkLineClear(newBlocks) {
   playLineClearRumble();
   playLineClearSound(completeLevels.length);
 
-  // Score
+  // Score with combo multiplier
   const LINE_SCORES = [0, 100, 300, 500, 800];
   linesCleared += completeLevels.length;
-  addScore(LINE_SCORES[Math.min(completeLevels.length, 4)]);
 
-  // Banner
+  const now = clock.getElapsedTime();
+  if (lastClearTime >= 0 && (now - lastClearTime) <= 3.0) {
+    comboCount++;
+  } else {
+    comboCount = 1;
+  }
+  lastClearTime = now;
+
+  const COMBO_MULTIPLIERS = [1.0, 1.0, 1.5, 2.0, 3.0]; // index by comboCount (capped at 4)
+  const comboIdx = Math.min(comboCount, 4);
+  const comboMult = COMBO_MULTIPLIERS[comboIdx];
+  const baseScore = LINE_SCORES[Math.min(completeLevels.length, 4)];
+  addScore(Math.round(baseScore * comboMult));
+
+  // Line-clear banner
   if (lineClearBannerEl) {
     const labels = ["", "LINE CLEAR!", "DOUBLE!", "TRIPLE!", "TETRIS!"];
     lineClearBannerEl.textContent = labels[Math.min(completeLevels.length, 4)];
     lineClearBannerEl.style.display = "block";
     bannerTimer = 1.5;
+  }
+
+  // Combo banner (shown only from 2nd consecutive clear onward)
+  if (comboCount >= 2 && comboBannerEl) {
+    const comboLabels = ["", "", "COMBO x1.5!", "COMBO x2!", "COMBO x3!"];
+    const comboColors = ["", "", "#f80", "#ffd700", "#ff3300"];
+    comboBannerEl.textContent = comboLabels[comboIdx];
+    comboBannerEl.style.color = comboColors[comboIdx];
+    // Re-trigger animation by toggling display
+    comboBannerEl.style.display = "none";
+    void comboBannerEl.offsetHeight;
+    comboBannerEl.style.display = "block";
+    comboBannerTimer = 1.5;
+
+    // x3 combo: subtle vignette brightness pulse
+    if (comboCount >= 4) {
+      const flashEl = document.getElementById("lc-flash-overlay");
+      if (flashEl) {
+        flashEl.style.transition = "none";
+        flashEl.style.backgroundColor = "#ffe080";
+        flashEl.style.opacity = "0.18";
+        void flashEl.offsetHeight;
+        flashEl.style.transition = "opacity 0.5s ease-out";
+        flashEl.style.opacity = "0";
+      }
+    }
   }
 }
 
@@ -136,6 +175,18 @@ function updateLineClear(delta) {
   if (bannerTimer > 0) {
     bannerTimer -= delta;
     if (bannerTimer <= 0 && lineClearBannerEl) lineClearBannerEl.style.display = "none";
+  }
+
+  // Combo banner countdown
+  if (comboBannerTimer > 0) {
+    comboBannerTimer -= delta;
+    if (comboBannerTimer <= 0 && comboBannerEl) comboBannerEl.style.display = "none";
+  }
+
+  // Combo reset: if 3s pass without a clear, reset count
+  if (lastClearTime >= 0 && (clock.getElapsedTime() - lastClearTime) > 3.0) {
+    comboCount = 0;
+    lastClearTime = -1;
   }
 
   // ── Camera jolt (upward impulse, decays over ~120 ms) ──────────────────────
@@ -385,6 +436,7 @@ function _lcDetonate() {
   if (doFlash) {
     const el = document.getElementById("lc-flash-overlay");
     if (el) {
+      el.style.backgroundColor = "#fff";  // restore white in case combo pulse changed it
       el.style.transition = "none";
       el.style.opacity = flashAmt;
       void el.offsetHeight;  // force reflow so CSS transition fires from flashAmt

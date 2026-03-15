@@ -194,6 +194,7 @@ function init() {
 
   scoreEl = document.getElementById("score-display");
   lineClearBannerEl = document.getElementById("line-clear-banner");
+  comboBannerEl = document.getElementById("combo-banner");
   speedUpBannerEl = document.getElementById("speed-up-banner");
 
   raycaster = new THREE.Raycaster();
@@ -249,6 +250,7 @@ function init() {
       const nudgeHintEl = document.getElementById("nudge-hint");
       if (nudgeHintEl) nudgeHintEl.style.display = "none";
       if (lineClearBannerEl) lineClearBannerEl.style.display = "none";
+      if (comboBannerEl) comboBannerEl.style.display = "none";
       document.getElementById("inventory-hud").style.display = "none";
       const dangerEl = document.getElementById("danger-overlay");
       const dangerTextEl = document.getElementById("danger-text");

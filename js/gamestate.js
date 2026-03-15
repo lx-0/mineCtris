@@ -167,6 +167,12 @@ function resetGame() {
   bannerTimer = 0;
   if (lineClearBannerEl) lineClearBannerEl.style.display = "none";
 
+  // Reset combo state
+  comboCount = 0;
+  lastClearTime = -1;
+  comboBannerTimer = 0;
+  if (comboBannerEl) comboBannerEl.style.display = "none";
+
   // Reset player
   if (controls) {
     controls.getObject().position.set(0, PLAYER_HEIGHT, 5);

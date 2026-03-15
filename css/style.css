@@ -180,6 +180,28 @@ body {
   white-space: nowrap;
 }
 
+/* ── Combo multiplier banner ── */
+@keyframes combo-pulse {
+  0%   { transform: translate(-50%, -50%) scale(1.0); }
+  40%  { transform: translate(-50%, -50%) scale(1.15); }
+  70%  { transform: translate(-50%, -50%) scale(0.95); }
+  100% { transform: translate(-50%, -50%) scale(1.0); }
+}
+#combo-banner {
+  position: absolute;
+  top: 40%;
+  left: 75%;
+  transform: translate(-50%, -50%);
+  font-family: "Press Start 2P", cursive;
+  font-size: 20px;
+  color: #f80;
+  text-shadow: 2px 2px 4px #000, 0 0 10px currentColor;
+  pointer-events: none;
+  display: none;
+  white-space: nowrap;
+  animation: combo-pulse 0.35s ease-out;
+}
+
 /* ── Speed-up banner ── */
 #speed-up-banner {
   position: absolute;

@@ -74,6 +74,12 @@ let scoreEl = null;
 let lineClearBannerEl = null;
 let bannerTimer = 0;
 
+// ── Combo multiplier state ────────────────────────────────────────────────────
+let comboCount = 0;       // consecutive line clears within 3s (1 = first clear)
+let lastClearTime = -1;   // clock.getElapsedTime() when last clear occurred
+let comboBannerEl = null; // DOM reference for combo banner
+let comboBannerTimer = 0; // seconds remaining for combo banner display
+
 // ── Difficulty scaling ────────────────────────────────────────────────────────
 let difficultyMultiplier = 1.0;  // current fall-speed multiplier
 let lastDifficultyTier = 0;      // last tier that triggered a speed-up
