@@ -38,6 +38,14 @@
 
 ---
 
+<div align="center">
+
+![MineCtris gameplay — tetrominoes falling in first-person 3D](screenshot.png)
+
+</div>
+
+---
+
 **MineCtris** drops you onto the floor of a Tetris board — first-person, fully 3D. Tetrominoes fall from above. They stack into walls around you. They pile up. They close in.
 
 Your pickaxe is the only thing keeping you alive.
