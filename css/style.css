@@ -33,19 +33,53 @@ body {
 }
 #instructions {
   width: 80%;
-  max-width: 500px;
+  max-width: 680px;
   color: #0f0;
   font-size: 1.2em;
   text-shadow: 2px 2px #050;
   line-height: 1.5;
 }
-#instructions h1 {
-  font-size: 1.8em;
-  margin-bottom: 20px;
+#minetris-title {
+  font-size: 2.8em;
+  margin-bottom: 10px;
+  letter-spacing: 4px;
+  color: #00ff88;
+  text-shadow:
+    0 0 8px #00ff88,
+    0 0 20px #00ff88,
+    0 0 40px #00cc66,
+    3px 3px 0 #004422;
+  animation: title-pulse 3s ease-in-out infinite;
 }
-#instructions p {
-  font-size: 0.8em;
-  margin-bottom: 15px;
+@keyframes title-pulse {
+  0%, 100% { text-shadow: 0 0 8px #00ff88, 0 0 20px #00ff88, 0 0 40px #00cc66, 3px 3px 0 #004422; }
+  50%       { text-shadow: 0 0 14px #00ff88, 0 0 35px #00ff88, 0 0 60px #00cc66, 3px 3px 0 #004422; }
+}
+.tagline {
+  font-size: 0.6em;
+  color: #aaffcc;
+  margin-bottom: 24px;
+  text-shadow: 1px 1px #033;
+}
+.controls-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px 24px;
+  margin-bottom: 20px;
+  text-align: left;
+}
+.col-header {
+  font-size: 0.6em;
+  color: #ff0;
+  margin-bottom: 8px;
+  border-bottom: 1px solid rgba(255, 255, 0, 0.3);
+  padding-bottom: 4px;
+}
+.controls-col p {
+  font-size: 0.55em;
+  margin-bottom: 8px;
+  color: #ccffcc;
+  text-shadow: 1px 1px #050;
 }
 #instructions .click-info {
   font-size: 1em;

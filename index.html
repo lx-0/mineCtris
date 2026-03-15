@@ -1,12 +1,12 @@
 <!DOCTYPE html>
-<html lang="de">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta
       name="viewport"
       content="width=device-width, initial-scale=1.0, user-scalable=no"
     />
-    <title>KI Welt Baumeister (Ego-Perspektive)</title>
+    <title>MINETRIS</title>
     <link
       href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap"
       rel="stylesheet"
@@ -32,15 +32,23 @@
     <div id="game-container">
       <div id="blocker">
         <div id="instructions">
-          <h1>KI Welt Baumeister</h1>
-          <p>Bewege dich mit WASD.</p>
-          <p>Springe mit der Leertaste.</p>
-          <p>Schaue dich mit der Maus um.</p>
-          <p>Linksklick zum Abbauen von Blöcken.</p>
-          <p>Rechtsklick zum Platzieren von Blöcken.</p>
-          <p>1-7 / Mausrad zum Auswählen des Blocktyps.</p>
-          <p>Tetris-Blöcke fallen vom Himmel und formen die Welt.</p>
-          <div class="click-info">Klicke, um zu starten</div>
+          <h1 id="minetris-title">MINETRIS</h1>
+          <p class="tagline">Mine. Build. Survive the fall.</p>
+          <div class="controls-grid">
+            <div class="controls-col">
+              <div class="col-header">MOVEMENT</div>
+              <p>WASD — Move</p>
+              <p>Space — Jump</p>
+              <p>Mouse — Look</p>
+            </div>
+            <div class="controls-col">
+              <div class="col-header">ACTIONS</div>
+              <p>Left Click — Mine</p>
+              <p>Right Click — Place</p>
+              <p>1-7 / Scroll — Select Block</p>
+            </div>
+          </div>
+          <div class="click-info">Click to Start</div>
           <div id="hs-start-panel"></div>
         </div>
       </div>

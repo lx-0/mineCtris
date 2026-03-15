@@ -120,7 +120,7 @@ function init() {
   ) {
     console.error("THREE.js or PointerLockControls not loaded!");
     instructions.innerHTML =
-      "<h1>Fehler</h1><p>THREE.js oder PointerLockControls konnten nicht geladen werden. Bitte Seite neu laden.</p>";
+      "<h1>Error</h1><p>THREE.js or PointerLockControls could not be loaded. Please reload the page.</p>";
     return;
   }
 
@@ -269,7 +269,7 @@ function init() {
   } catch (error) {
     console.error("Failed to initialize PointerLockControls:", error);
     instructions.innerHTML =
-      "<h1>Fehler</h1><p>Steuerung konnte nicht initialisiert werden.</p>";
+      "<h1>Error</h1><p>Controls could not be initialized.</p>";
     return;
   }
 
@@ -678,6 +678,6 @@ try {
   console.error("Error during initialization:", error);
   const instructionsEl = document.getElementById("instructions");
   if (instructionsEl) {
-    instructionsEl.innerHTML = `<h1>Fehler</h1><p>Ein Fehler ist während der Initialisierung aufgetreten: ${error.message}</p>`;
+    instructionsEl.innerHTML = `<h1>Error</h1><p>An error occurred during initialization: ${error.message}</p>`;
   }
 }
