@@ -11,6 +11,7 @@ let pickaxeGroup;
 
 // ── Sky / lighting ────────────────────────────────────────────────────────────
 let skyMesh, skyStars, sunLight, hemisphereLight;
+let sunMesh, sunCorona, moonMesh, moonCrescent;
 
 // ── Lava point-light pool ─────────────────────────────────────────────────────
 // Max 4 PointLights shared across all lava blocks; positioned toward closest blocks.
@@ -121,3 +122,7 @@ let screenShakeStart = 0;
 
 // ── Piece nudge state ─────────────────────────────────────────────────────────
 let nudgeCooldown = 0;  // seconds remaining before next nudge is allowed
+
+// ── Next-piece queue ──────────────────────────────────────────────────────────
+// Each entry: { index: colorIndex, shape: SHAPES[index] }
+let pieceQueue = [];

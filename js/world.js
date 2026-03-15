@@ -20,6 +20,11 @@ function registerBlock(block) {
   block.userData.gridPos = { x: gx, y: gy, z: gz };
   if (!gridOccupancy.has(gy)) gridOccupancy.set(gy, new Set());
   gridOccupancy.get(gy).add(gx + "," + gz);
+
+  const mat = block.userData.materialType;
+  if (mat === 'lava' || mat === 'gold' || mat === 'ice') {
+    registerAuraEmitter(gx, gy, gz, mat);
+  }
 }
 
 /** Remove a block from the grid occupancy map (mining or line-clear). */
@@ -31,6 +36,12 @@ function unregisterBlock(block) {
     layer.delete(gp.x + "," + gp.z);
     if (!layer.size) gridOccupancy.delete(gp.y);
   }
+
+  const mat = block.userData.materialType;
+  if (mat === 'lava' || mat === 'gold' || mat === 'ice') {
+    removeAuraEmitter(gp.x, gp.y, gp.z);
+  }
+
   block.userData.gridPos = null;
 }
 

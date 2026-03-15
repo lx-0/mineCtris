@@ -281,6 +281,7 @@ function init() {
 
   initLineClearFragmentPool();
   initTrails();
+  initAuras();
   initLandingRingPool();
   initPostProcessing();
 
@@ -510,7 +511,7 @@ function animate() {
   const delta = clock.getDelta();
   const elapsedTime = clock.getElapsedTime();
 
-  updateSky(elapsedTime);
+  updateSky(elapsedTime, delta);
 
   if (!isGameOver) {
     spawnTimer += delta;
@@ -522,6 +523,7 @@ function animate() {
     updateFallingPieces(delta);
     updateLandingRings(delta);
     updateTrails(delta, elapsedTime);
+    updateAuras(delta, camera);
     updateDifficulty(delta);
     updateTreeRespawn(delta, elapsedTime);
   }

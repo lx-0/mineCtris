@@ -1,5 +1,6 @@
 // Dynamic sky, day/night lighting, and atmospheric fog.
-// Requires: state.js (scene, skyMesh, skyStars, sunLight, hemisphereLight),
+// Requires: state.js (scene, skyMesh, skyStars, sunLight, hemisphereLight,
+//                     sunMesh, sunCorona, moonMesh, moonCrescent),
 //           config.js (GAME_OVER_HEIGHT, DANGER_ZONE_HEIGHT),
 //           gamestate.js (getMaxBlockHeight)
 
@@ -24,6 +25,13 @@ const _LIGHT_KEYS = [
 ];
 
 const _dangerFogColor = new THREE.Color(0x8b1a1a);
+
+// ── Shooting star pool ────────────────────────────────────────────────────────
+const _SKY_RADIUS = 430;
+const _SHOOT_POOL_SIZE = 3;
+const _SHOOT_DURATION = 0.8; // seconds total streak travel
+// Each slot: { mesh, active, progress, startPos (Vec3), velocity (Vec3) }
+const _shootPool = [];
 
 function _lerpArr(a, b, t) {
   return [
@@ -103,6 +111,68 @@ function initSky() {
   skyStars = new THREE.Points(starGeo, starMat);
   scene.add(skyStars);
 
+  // ── Sun disk + corona ────────────────────────────────────────────────────
+  sunMesh = new THREE.Mesh(
+    new THREE.SphereGeometry(2.5, 8, 8),
+    new THREE.MeshBasicMaterial({ color: 0xfffae0, fog: false, depthWrite: false })
+  );
+  sunMesh.renderOrder = 0;
+  scene.add(sunMesh);
+
+  sunCorona = new THREE.Mesh(
+    new THREE.RingGeometry(2.7, 5.0, 32),
+    new THREE.MeshBasicMaterial({
+      color: 0xffcc44,
+      transparent: true,
+      opacity: 0.35,
+      side: THREE.DoubleSide,
+      fog: false,
+      depthWrite: false,
+    })
+  );
+  sunCorona.renderOrder = 0;
+  scene.add(sunCorona);
+
+  // ── Moon + crescent mask ──────────────────────────────────────────────────
+  moonMesh = new THREE.Mesh(
+    new THREE.SphereGeometry(1.2, 8, 8),
+    new THREE.MeshBasicMaterial({ color: 0xddeeff, fog: false, depthWrite: false })
+  );
+  moonMesh.renderOrder = 0;
+  moonMesh.visible = false;
+  scene.add(moonMesh);
+
+  moonCrescent = new THREE.Mesh(
+    new THREE.SphereGeometry(1.25, 8, 8),
+    new THREE.MeshBasicMaterial({ color: 0x050a14, fog: false, depthWrite: false })
+  );
+  moonCrescent.renderOrder = 1; // render over moon to mask it
+  moonCrescent.visible = false;
+  scene.add(moonCrescent);
+
+  // ── Shooting star pool ────────────────────────────────────────────────────
+  for (let i = 0; i < _SHOOT_POOL_SIZE; i++) {
+    const mesh = new THREE.Mesh(
+      new THREE.BoxGeometry(0.05, 0.05, 3.0),
+      new THREE.MeshBasicMaterial({
+        color: 0xffffff,
+        transparent: true,
+        opacity: 0,
+        fog: false,
+        depthWrite: false,
+      })
+    );
+    mesh.visible = false;
+    scene.add(mesh);
+    _shootPool.push({
+      mesh,
+      active: false,
+      progress: 0,
+      startPos: new THREE.Vector3(),
+      velocity: new THREE.Vector3(),
+    });
+  }
+
   // ── Lights ────────────────────────────────────────────────────────────────
   // Hemisphere: sky color top, ground color bottom
   hemisphereLight = new THREE.HemisphereLight(0x87ceeb, 0x55aa55, 0.5);
@@ -121,8 +191,8 @@ function initSky() {
   updateSky(0);
 }
 
-/** Called every frame from animate(). elapsedSeconds = clock.getElapsedTime(). */
-function updateSky(elapsedSeconds) {
+/** Called every frame from animate(). elapsedSeconds = clock.getElapsedTime(), delta = frame delta in seconds. */
+function updateSky(elapsedSeconds, delta = 0.016) {
   const phase = (elapsedSeconds % SKY_CYCLE_DURATION) / SKY_CYCLE_DURATION;
 
   // ── Sky dome colors ───────────────────────────────────────────────────────
@@ -142,11 +212,12 @@ function updateSky(elapsedSeconds) {
   const si = lkf.k0.si + (lkf.k1.si - lkf.k0.si) * lkf.local;
   const ai = lkf.k0.ai + (lkf.k1.ai - lkf.k0.ai) * lkf.local;
 
+  // Sun arcs across the sky — positive Y = above horizon
+  const sunAngle = phase * 2 * Math.PI - Math.PI * 0.5;
+
   if (sunLight) {
     sunLight.color.setRGB(sc[0] / 255, sc[1] / 255, sc[2] / 255);
     sunLight.intensity = si;
-    // Sun arcs across the sky — positive Y = above horizon
-    const sunAngle = phase * 2 * Math.PI - Math.PI * 0.5;
     sunLight.position.set(
       Math.cos(sunAngle) * 120,
       Math.sin(sunAngle) * 120,
@@ -157,6 +228,43 @@ function updateSky(elapsedSeconds) {
   if (hemisphereLight) {
     hemisphereLight.color.setRGB(ac[0] / 255, ac[1] / 255, ac[2] / 255);
     hemisphereLight.intensity = ai;
+  }
+
+  // ── Sun and moon positioning ──────────────────────────────────────────────
+  const sunDirX = Math.cos(sunAngle);
+  const sunDirY = Math.sin(sunAngle);
+  const sunDirZ = 60 / 120; // matches the lighting direction ratio
+  const sunDirLen = Math.sqrt(sunDirX * sunDirX + sunDirY * sunDirY + sunDirZ * sunDirZ);
+  const sunR = _SKY_RADIUS * 0.95;
+  const sunPosX = (sunDirX / sunDirLen) * sunR;
+  const sunPosY = (sunDirY / sunDirLen) * sunR;
+  const sunPosZ = (sunDirZ / sunDirLen) * sunR;
+
+  // Fade based on normalized Y (sunDirY already normalized along Y)
+  const sunNormY = sunDirY / sunDirLen;
+  const sunFade = Math.max(0, Math.min(1, sunNormY * 8 + 0.5));
+
+  if (sunMesh) {
+    sunMesh.position.set(sunPosX, sunPosY, sunPosZ);
+    sunMesh.material.opacity = sunFade;
+    sunMesh.material.transparent = sunFade < 1;
+    sunMesh.visible = sunFade > 0.01;
+    // Face corona toward camera (billboard along dome tangent)
+    sunCorona.position.set(sunPosX, sunPosY, sunPosZ);
+    sunCorona.lookAt(0, 0, 0);
+    sunCorona.material.opacity = sunFade * 0.35;
+    sunCorona.visible = sunFade > 0.01;
+  }
+
+  if (moonMesh) {
+    // Moon is opposite to sun on the dome
+    moonMesh.position.set(-sunPosX, -sunPosY, -sunPosZ);
+    const moonFade = Math.max(0, Math.min(1, -sunNormY * 8 + 0.5));
+    moonMesh.visible = moonFade > 0.01;
+    // Crescent mask: offset 0.3 units toward center (toward camera at origin)
+    const moonNorm = moonMesh.position.clone().normalize();
+    moonCrescent.position.copy(moonMesh.position).addScaledVector(moonNorm, -0.3);
+    moonCrescent.visible = moonFade > 0.01;
   }
 
   // ── Stars: fade in at dusk, fade out at dawn ──────────────────────────────
@@ -173,6 +281,54 @@ function updateSky(elapsedSeconds) {
     }
     skyStars.material.opacity = starOpacity;
     skyStars.visible = starOpacity > 0.01;
+  }
+
+  // ── Shooting stars (night only) ───────────────────────────────────────────
+  const isNight = phase < 0.15 || phase > 0.85;
+  for (let i = 0; i < _shootPool.length; i++) {
+    const s = _shootPool[i];
+    if (!s.active) {
+      if (isNight && Math.random() < 0.003) {
+        // Spawn: random position in upper hemisphere
+        const theta = Math.random() * 2 * Math.PI;
+        const phi = Math.random() * Math.PI * 0.4 + 0.05; // upper hemisphere
+        const r = _SKY_RADIUS * 0.9;
+        s.startPos.set(
+          r * Math.sin(phi) * Math.cos(theta),
+          r * Math.cos(phi),
+          r * Math.sin(phi) * Math.sin(theta)
+        );
+        // Tangential velocity: pick random vector, cross with radial, normalize, scale
+        const radial = s.startPos.clone().normalize();
+        const randVec = new THREE.Vector3(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).normalize();
+        s.velocity.crossVectors(radial, randVec).normalize().multiplyScalar(r * 1.5); // crosses ~150° of dome in 0.8s
+        s.progress = 0;
+        s.active = true;
+        s.mesh.visible = true;
+      }
+    } else {
+      s.progress += delta;
+      if (s.progress >= _SHOOT_DURATION) {
+        s.active = false;
+        s.mesh.visible = false;
+        s.mesh.material.opacity = 0;
+      } else {
+        // Position along arc
+        s.mesh.position.copy(s.startPos).addScaledVector(s.velocity, s.progress);
+        // Orient along velocity
+        s.mesh.lookAt(s.mesh.position.clone().add(s.velocity));
+        // Opacity: fade in 0-0.1s, hold, fade out last 0.2s
+        let op;
+        if (s.progress < 0.1) {
+          op = s.progress / 0.1;
+        } else if (s.progress > _SHOOT_DURATION - 0.2) {
+          op = ((_SHOOT_DURATION - s.progress) / 0.2);
+        } else {
+          op = 1.0;
+        }
+        s.mesh.material.opacity = op * 0.9;
+      }
+    }
   }
 
   // ── Fog density tied to block stack height ────────────────────────────────
