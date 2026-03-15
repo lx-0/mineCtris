@@ -15,6 +15,10 @@ function toggleCraftingPanel() {
 
 function openCraftingPanel() {
   craftingPanelOpen = true;
+  // Release pointer lock so the mouse cursor is visible and can click buttons
+  if (typeof controls !== "undefined" && controls && controls.isLocked) {
+    controls.unlock();
+  }
   const panel = document.getElementById("crafting-panel");
   if (panel) {
     panel.style.display = "flex";
@@ -26,6 +30,12 @@ function closeCraftingPanel() {
   craftingPanelOpen = false;
   const panel = document.getElementById("crafting-panel");
   if (panel) panel.style.display = "none";
+  // Re-engage pointer lock to return to FPV mode (requires user gesture — satisfied
+  // by the click or keypress that triggered the close)
+  if (typeof controls !== "undefined" && controls && !controls.isLocked &&
+      typeof isGameOver !== "undefined" && !isGameOver) {
+    controls.lock();
+  }
 }
 
 function canCraftRecipe(recipe) {

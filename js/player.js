@@ -53,6 +53,13 @@ function checkPlayerCollision(deltaY) {
 }
 
 function onKeyDown(event) {
+  // When crafting panel is open the pointer is unlocked; still allow C/Escape to close it
+  if (craftingPanelOpen) {
+    if (event.code === "KeyC" || event.code === "Escape") {
+      closeCraftingPanel();
+    }
+    return;
+  }
   if (!controls || !controls.isLocked || isGameOver) return;
   switch (event.code) {
     case "KeyW":

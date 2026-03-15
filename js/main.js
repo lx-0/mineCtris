@@ -244,11 +244,14 @@ function init() {
     controls.addEventListener("unlock", function () {
       console.log("Pointer lock released ('unlock' event fired).");
       gameTimerRunning = false;
-      closeCraftingPanel();
-      // Don't show start screen if game over — game over overlay handles it
-      if (!isGameOver) {
-        blocker.style.display = "flex";
-        instructions.style.display = "";
+      // If the crafting panel intentionally released the lock, don't show the pause/blocker screen
+      if (!craftingPanelOpen) {
+        closeCraftingPanel();
+        // Don't show start screen if game over — game over overlay handles it
+        if (!isGameOver) {
+          blocker.style.display = "flex";
+          instructions.style.display = "";
+        }
       }
       crosshair.style.display = "none";
       if (scoreEl) scoreEl.style.display = "none";
