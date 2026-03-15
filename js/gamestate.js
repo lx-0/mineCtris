@@ -103,6 +103,9 @@ function triggerGameOver() {
   );
   renderHighScoresGameOver(hsRank);
 
+  // Play game-over jingle
+  if (typeof playGameOverJingle === "function") playGameOverJingle();
+
   // Show Game Over overlay
   const gameOverEl = document.getElementById("game-over-screen");
   if (gameOverEl) gameOverEl.style.display = "flex";

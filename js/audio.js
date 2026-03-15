@@ -4,9 +4,10 @@
 // Howler sound instances (populated in initAudio)
 const sfx = {};
 
-// Tone.js musical synths (line-clear arpeggio + rumble only)
+// Tone.js musical synths (line-clear arpeggio + rumble + game-over jingle)
 let clearSynth = null;
 let rumbleSynth = null;
+let gameOverSynth = null;
 let masterCompressor = null;
 let masterReverb = null;
 let masterLimiter = null;
@@ -45,6 +46,13 @@ function initAudio() {
       envelope: { attack: 0.005, decay: 0.25, sustain: 0.5, release: 0.2 },
     }).connect(masterCompressor);
     rumbleSynth.volume.value = -3;
+
+    // Square-wave chiptune synth for the game-over descending fanfare
+    gameOverSynth = new Tone.Synth({
+      oscillator: { type: "square" },
+      envelope: { attack: 0.01, decay: 0.35, sustain: 0.0, release: 0.25 },
+    }).connect(masterCompressor);
+    gameOverSynth.volume.value = -10;
 
     console.log("Tone.js musical bus initialized.");
   } else {
@@ -105,6 +113,22 @@ function playPlaceSound() {
 function playLineClearRumble() {
   if (!audioReady || !rumbleSynth) return;
   rumbleSynth.triggerAttackRelease("C1", "4n", Tone.now());
+}
+
+/** Short descending fanfare on game over — minor key, ~2.5 s, chiptune feel. */
+function playGameOverJingle() {
+  if (!audioReady || !gameOverSynth) return;
+  const now = Tone.now();
+  // Descending C-minor arpeggio: C5 → Bb4 → G4 → Eb4 → C4
+  const notes   = ["C5", "Bb4", "G4", "Eb4", "C4"];
+  const spacing = 0.3; // 300 ms between each note
+  for (let i = 0; i < notes.length; i++) {
+    gameOverSynth.triggerAttackRelease(notes[i], "8n", now + i * spacing);
+  }
+  // Low drum thud for finality (~1.5 s in)
+  if (rumbleSynth) {
+    rumbleSynth.triggerAttackRelease("C2", "4n", now + notes.length * spacing);
+  }
 }
 
 /** Rising arpeggio when lines are cleared. */
