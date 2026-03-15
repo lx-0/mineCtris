@@ -94,6 +94,15 @@ function triggerGameOver() {
       `<div><span class="go-label">TIME SURVIVED</span><br>${mm}:${ss}</div>`;
   }
 
+  // Submit and render high scores
+  const hsRank = submitHighScore(
+    state.score,
+    state.elapsedSeconds,
+    state.blocksMined,
+    state.linesCleared
+  );
+  renderHighScoresGameOver(hsRank);
+
   // Show Game Over overlay
   const gameOverEl = document.getElementById("game-over-screen");
   if (gameOverEl) gameOverEl.style.display = "flex";
@@ -199,6 +208,8 @@ function resetGame() {
   crosshair.style.display = "none";
   if (scoreEl) scoreEl.style.display = "none";
   document.getElementById("inventory-hud").style.display = "none";
+
+  renderHighScoresStart();
 }
 
 /**

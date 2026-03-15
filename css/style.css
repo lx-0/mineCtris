@@ -439,6 +439,88 @@ body {
   padding: 12px 0;
 }
 
+/* ── High score — start screen (top-3 summary) ── */
+#hs-start-panel {
+  margin-top: 18px;
+  font-family: "Press Start 2P", cursive;
+  font-size: 8px;
+  color: rgba(0, 255, 0, 0.75);
+  text-shadow: 1px 1px 2px #000;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: center;
+}
+.hs-start-row {
+  display: flex;
+  gap: 12px;
+  align-items: baseline;
+}
+.hs-start-rank {
+  color: rgba(255, 255, 0, 0.7);
+  min-width: 24px;
+}
+.hs-start-score {
+  color: #ff0;
+  min-width: 56px;
+  text-align: right;
+}
+.hs-start-time {
+  color: rgba(0, 255, 0, 0.6);
+}
+.hs-none {
+  color: rgba(255, 255, 255, 0.35);
+  font-size: 7px;
+}
+
+/* ── High score — game-over full table ── */
+#hs-go-table {
+  font-family: "Press Start 2P", cursive;
+  font-size: 8px;
+  color: rgba(0, 255, 0, 0.8);
+  margin-bottom: 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: center;
+  max-height: 240px;
+  overflow-y: auto;
+}
+#hs-go-label {
+  font-family: "Press Start 2P", cursive;
+  font-size: 10px;
+  color: rgba(0, 255, 0, 0.55);
+  letter-spacing: 2px;
+  margin-bottom: 8px;
+}
+.hs-go-row {
+  display: flex;
+  gap: 14px;
+  align-items: baseline;
+}
+.hs-go-new {
+  color: #ff0;
+  text-shadow: 0 0 8px #ff0;
+}
+.hs-go-rank {
+  min-width: 28px;
+  color: rgba(255, 255, 0, 0.6);
+}
+.hs-go-new .hs-go-rank {
+  color: #ff0;
+}
+.hs-go-score {
+  min-width: 60px;
+  text-align: right;
+}
+.hs-go-time {
+  min-width: 48px;
+}
+.hs-go-date {
+  color: rgba(0, 255, 0, 0.45);
+  font-size: 7px;
+}
+
 /* ── Nudge hint ── */
 #nudge-hint {
   position: absolute;

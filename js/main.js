@@ -283,6 +283,8 @@ function init() {
   initTrails();
   initPostProcessing();
 
+  renderHighScoresStart();
+
   console.log("Initialization complete. Starting animation loop.");
   animate();
 }
