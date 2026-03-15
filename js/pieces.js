@@ -266,6 +266,7 @@ function updateFallingPieces(delta) {
     const index = landedPieces[i];
     const pieceToLand = fallingPieces[index];
     checkAndApplyPlayerPush(pieceToLand);
+    playPlaceSound();
     disposePieceTrail(pieceToLand);
     const newBlocks = [];
     while (pieceToLand.children.length > 0) {
