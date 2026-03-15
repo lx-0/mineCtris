@@ -133,6 +133,10 @@ function spawnFallingPiece() {
   if (isSprintMode && !sprintTimerActive && !sprintComplete) {
     sprintTimerActive = true;
   }
+  // In Blitz mode, start the countdown on the very first piece drop
+  if (isBlitzMode && !blitzTimerActive && !blitzComplete) {
+    blitzTimerActive = true;
+  }
 
   // Draw the next piece from the pre-generated queue; refill to keep it at NEXT_QUEUE_SIZE.
   if (pieceQueue.length === 0) initPieceQueue();

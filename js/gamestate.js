@@ -13,7 +13,18 @@ function updateScoreHUD() {
   scoreEl.querySelector(".hud-score").textContent = score;
   scoreEl.querySelector(".hud-stat:nth-child(2)").textContent =
     "Blocks: " + blocksMined;
-  if (isSprintMode) {
+  if (isBlitzMode) {
+    // Blitz: show lines and countdown timer (gold when bonus active)
+    scoreEl.querySelector(".hud-stat:nth-child(3)").textContent =
+      "Lines: " + linesCleared;
+    const blitzSecs = Math.max(0, Math.ceil(blitzRemainingMs / 1000));
+    const bm = Math.floor(blitzSecs / 60).toString().padStart(2, "0");
+    const bs = (blitzSecs % 60).toString().padStart(2, "0");
+    const timerEl = scoreEl.querySelector(".hud-stat:nth-child(4)");
+    timerEl.textContent = "Time: " + bm + ":" + bs;
+    timerEl.style.color = blitzBonusActive ? "#ffd700" : "";
+    scoreEl.querySelector(".hud-stat:nth-child(5)").textContent = "Blitz";
+  } else if (isSprintMode) {
     // Sprint: show progress toward 40 lines and sprint elapsed time
     scoreEl.querySelector(".hud-stat:nth-child(3)").textContent =
       "Lines: " + linesCleared + "/" + SPRINT_LINE_TARGET;
@@ -22,6 +33,7 @@ function updateScoreHUD() {
     const ss = (sprintSecs % 60).toString().padStart(2, "0");
     scoreEl.querySelector(".hud-stat:nth-child(4)").textContent =
       "Time: " + sm + ":" + ss;
+    scoreEl.querySelector(".hud-stat:nth-child(4)").style.color = "";
     scoreEl.querySelector(".hud-stat:nth-child(5)").textContent = "Sprint";
   } else {
     const totalSecs = Math.floor(gameElapsedSeconds);
@@ -57,8 +69,8 @@ function getMaxBlockHeight() {
 
 /** Show/hide the danger overlay based on current max block height. */
 function updateDangerWarning() {
-  // Sprint has no lose condition — never show danger warning
-  if (isSprintMode) return;
+  // Sprint and Blitz have no lose condition — never show danger warning
+  if (isSprintMode || isBlitzMode) return;
   const dangerEl = document.getElementById("danger-overlay");
   const dangerTextEl = document.getElementById("danger-text");
   if (!dangerEl || !dangerTextEl) return;
@@ -73,8 +85,8 @@ function updateDangerWarning() {
 
 /** Check if any landed block has reached the game-over height. */
 function checkGameOver() {
-  // Sprint has no lose condition — blocks can pile indefinitely
-  if (isSprintMode) return;
+  // Sprint and Blitz have no lose condition — blocks can pile indefinitely
+  if (isSprintMode || isBlitzMode) return;
   if (isGameOver) return;
   for (const gy of gridOccupancy.keys()) {
     if (gy >= GAME_OVER_HEIGHT) {
@@ -206,7 +218,10 @@ function resetGame() {
   difficultyMultiplier = 1.0;
   lastDifficultyTier = 0;
   speedUpBannerTimer = 0;
-  if (speedUpBannerEl) speedUpBannerEl.style.display = "none";
+  if (speedUpBannerEl) {
+    speedUpBannerEl.style.display = "none";
+    speedUpBannerEl.style.color = "";
+  }
 
   // Reset inventory
   inventory = {};
@@ -232,6 +247,20 @@ function resetGame() {
   sprintComplete    = false;
   const sprintCompleteEl = document.getElementById("sprint-complete-screen");
   if (sprintCompleteEl) sprintCompleteEl.style.display = "none";
+
+  // Reset blitz state
+  isBlitzMode       = false;
+  blitzTimerActive  = false;
+  blitzRemainingMs  = BLITZ_DURATION_MS;
+  blitzComplete     = false;
+  blitzBonusActive  = false;
+  const blitzCompleteEl = document.getElementById("blitz-complete-screen");
+  if (blitzCompleteEl) blitzCompleteEl.style.display = "none";
+  // Reset timer HUD color
+  if (scoreEl) {
+    const timerEl = scoreEl.querySelector(".hud-stat:nth-child(4)");
+    if (timerEl) timerEl.style.color = "";
+  }
 
   // Reset daily challenge state
   isDailyChallenge = false;
@@ -303,9 +332,9 @@ function resetGame() {
  * speed-up banner when a new tier is reached.
  */
 function updateDifficulty(delta) {
-  // Sprint: fixed speed = Classic Level 5; no escalation, no banner
-  if (isSprintMode) {
-    difficultyMultiplier = SPRINT_FIXED_MULTIPLIER;
+  // Sprint/Blitz: fixed speed = Classic Level 5; no escalation, no banner
+  if (isSprintMode || isBlitzMode) {
+    difficultyMultiplier = BLITZ_FIXED_MULTIPLIER;
     return;
   }
 

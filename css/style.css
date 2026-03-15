@@ -505,6 +505,63 @@ body {
 }
 #sprint-play-again-btn:hover { background: #ff0; }
 
+/* ── Blitz complete screen ── */
+#blitz-complete-screen {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0, 0, 0, 0.88);
+  display: none;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+  z-index: 200;
+}
+#blitz-complete-title {
+  font-family: "Press Start 2P", cursive;
+  font-size: 2em;
+  color: #ffd700;
+  text-shadow: 3px 3px #664400;
+  margin-bottom: 32px;
+}
+#blitz-complete-score-label {
+  font-family: "Press Start 2P", cursive;
+  font-size: 9px;
+  color: rgba(255, 215, 0, 0.55);
+  letter-spacing: 4px;
+  margin-bottom: 6px;
+}
+#blitz-final-score {
+  font-family: "Press Start 2P", cursive;
+  font-size: 2.6em;
+  color: #fff;
+  text-shadow: 2px 2px #aa6600;
+  margin-bottom: 22px;
+}
+#blitz-personal-best {
+  font-family: "Press Start 2P", cursive;
+  font-size: 11px;
+  margin-bottom: 36px;
+}
+#blitz-personal-best.blitz-new-best {
+  color: #ffd700;
+  text-shadow: 0 0 12px #ffd700;
+}
+#blitz-personal-best.blitz-pb-line {
+  color: rgba(255, 255, 255, 0.55);
+}
+#blitz-play-again-btn {
+  font-family: "Press Start 2P", cursive;
+  font-size: 12px;
+  color: #000;
+  background: #ffd700;
+  border: none;
+  padding: 14px 28px;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background 0.15s;
+}
+#blitz-play-again-btn:hover { background: #fff; }
+
 /* ── Crafting panel ── */
 #crafting-panel {
   position: absolute;

@@ -267,6 +267,12 @@ function init() {
           ? "Best: " + fmtSprintTime(sprintBest.timeMs)
           : "";
       }
+      // Populate Blitz personal best
+      const blitzPbEl = document.getElementById("mode-pb-blitz");
+      if (blitzPbEl) {
+        const blitzBest = loadBlitzBest();
+        blitzPbEl.textContent = blitzBest ? "Best: " + blitzBest.score : "";
+      }
       blocker.style.display = "none";
       modeSelectEl.style.display = "flex";
     }
@@ -307,6 +313,29 @@ function init() {
         try { localStorage.setItem("mineCtris_lastMode", "sprint"); } catch (_) {}
         hideModeSelect();
         requestPointerLock();
+      });
+    }
+
+    const blitzCardEl = document.getElementById("mode-card-blitz");
+    if (blitzCardEl) {
+      blitzCardEl.addEventListener("click", function () {
+        isDailyChallenge = false;
+        gameRng = null;
+        isBlitzMode = true;
+        difficultyMultiplier = BLITZ_FIXED_MULTIPLIER;
+        lastDifficultyTier   = 4; // Level 5 display
+        blitzRemainingMs     = BLITZ_DURATION_MS;
+        try { localStorage.setItem("mineCtris_lastMode", "blitz"); } catch (_) {}
+        hideModeSelect();
+        requestPointerLock();
+      });
+    }
+
+    // Wire up Blitz play-again button
+    const blitzPlayAgainBtn = document.getElementById("blitz-play-again-btn");
+    if (blitzPlayAgainBtn) {
+      blitzPlayAgainBtn.addEventListener("click", function () {
+        resetGame();
       });
     }
 
@@ -705,6 +734,26 @@ function animate() {
       sprintElapsedMs += delta * 1000;
     }
 
+    // Tick the blitz countdown timer
+    if (isBlitzMode && blitzTimerActive && !blitzComplete) {
+      blitzRemainingMs -= delta * 1000;
+      if (blitzRemainingMs <= 0) {
+        blitzRemainingMs = 0;
+        if (typeof triggerBlitzComplete === "function") triggerBlitzComplete();
+      } else if (!blitzBonusActive && blitzRemainingMs <= BLITZ_BONUS_THRESHOLD_MS) {
+        // Activate Blitz bonus for final 30 seconds
+        blitzBonusActive = true;
+        // Show visual cue via speed-up banner
+        if (speedUpBannerEl) {
+          speedUpBannerEl.textContent = "⚡ BLITZ BONUS! 1.5×";
+          speedUpBannerEl.style.color = "#ffd700";
+          speedUpBannerEl.style.display = "block";
+          speedUpBannerTimer = 2.5;
+        }
+        updateScoreHUD();
+      }
+    }
+
     spawnTimer += delta;
     if (spawnTimer > SPAWN_INTERVAL) {
       spawnFallingPiece();
@@ -725,9 +774,11 @@ function animate() {
     // Tick survival timer and refresh HUD once per second
     if (gameTimerRunning) {
       gameElapsedSeconds += delta;
-      const currentSecond = isSprintMode
-        ? Math.floor(sprintElapsedMs / 1000)
-        : Math.floor(gameElapsedSeconds);
+      const currentSecond = isBlitzMode
+        ? Math.ceil(blitzRemainingMs / 1000)
+        : isSprintMode
+          ? Math.floor(sprintElapsedMs / 1000)
+          : Math.floor(gameElapsedSeconds);
       if (currentSecond !== lastHudSecond) {
         lastHudSecond = currentSecond;
         updateScoreHUD();

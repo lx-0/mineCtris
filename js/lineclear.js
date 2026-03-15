@@ -141,8 +141,9 @@ function checkLineClear(newBlocks) {
   const COMBO_MULTIPLIERS = [1.0, 1.0, 1.5, 2.0, 3.0]; // index by comboCount (capped at 4)
   const comboIdx = Math.min(comboCount, 4);
   const comboMult = COMBO_MULTIPLIERS[comboIdx];
+  const blitzMult = (isBlitzMode && blitzBonusActive) ? BLITZ_BONUS_MULTIPLIER : 1.0;
   const baseScore = LINE_SCORES[Math.min(completeLevels.length, 4)];
-  addScore(Math.round(baseScore * comboMult));
+  addScore(Math.round(baseScore * comboMult * blitzMult));
 
   // Line-clear banner
   if (lineClearBannerEl) {
