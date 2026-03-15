@@ -381,12 +381,7 @@ function placeBlock() {
   checkLineClear([block]);
 
   // Placement sound
-  if (audioReady && placeSynth) {
-    const placeNotes = ["C3", "B2", "C#3", "D3"];
-    const placeNote = placeNotes[Math.floor(Math.random() * placeNotes.length)];
-    const placeJitter = Math.random() * 0.02;
-    placeSynth.triggerAttackRelease(placeNote, "32n", Tone.now() + placeJitter);
-  }
+  playPlaceSound();
 }
 
 function onMouseDown(event) {
@@ -411,26 +406,7 @@ function onMouseDown(event) {
     const isBreak = miningProgress >= clicksNeeded;
 
     // Per-material hit sound (played even on the breaking hit)
-    if (audioReady) {
-      const jitter = Math.random() * 0.03; // 0–30 ms timing micro-variation
-      if (objType === "trunk") {
-        const notes = ["A1", "G#1", "A#1", "G1", "B1"];
-        const note = notes[Math.floor(Math.random() * notes.length)];
-        if (trunkHitSynth) trunkHitSynth.triggerAttackRelease(note, "8n", Tone.now() + jitter);
-      } else if (objType === "leaf") {
-        const notes = ["G5", "F#5", "G#5", "A5"];
-        const note = notes[Math.floor(Math.random() * notes.length)];
-        if (leafHitSynth) leafHitSynth.triggerAttackRelease(note, "32n", Tone.now() + jitter);
-      } else if (objType === "rock") {
-        const notes = ["C2", "B1", "C#2", "D2"];
-        const note = notes[Math.floor(Math.random() * notes.length)];
-        if (rockHitSynth) rockHitSynth.triggerAttackRelease(note, "16n", Tone.now() + jitter);
-      } else {
-        const notes = ["C2", "B1", "C#2", "D2"];
-        const note = notes[Math.floor(Math.random() * notes.length)];
-        if (hitSynth) hitSynth.triggerAttackRelease(note, "8n", Tone.now() + jitter);
-      }
-    }
+    playHitSound(objType);
 
     if (!isBreak) {
       // Normal hit particles
@@ -462,19 +438,7 @@ function onMouseDown(event) {
     if (isBreak) {
       console.log("Block broken!");
       // Per-material break sound
-      if (audioReady) {
-        const breakJitter = Math.random() * 0.03;
-        if (objType === "trunk") {
-          // Deep low thud on break — same synth type but lower note
-          const breakNotes = ["A0", "G#0", "A#0", "G0", "B0"];
-          const breakNote = breakNotes[Math.floor(Math.random() * breakNotes.length)];
-          if (trunkHitSynth) trunkHitSynth.triggerAttackRelease(breakNote, "8n", Tone.now() + breakJitter);
-        } else if (objType === "rock") {
-          if (rockCrackSynth) rockCrackSynth.triggerAttackRelease("16n", Tone.now() + breakJitter);
-        } else {
-          if (breakSynth) breakSynth.triggerAttackRelease("4n", Tone.now() + breakJitter);
-        }
-      }
+      playBreakSound(objType);
       // Break burst particles
       spawnDustParticles(targetedBlock, { breakBurst: true });
       blocksMined++;

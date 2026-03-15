@@ -1,88 +1,113 @@
-// Audio system — Tone.js setup and sound playback.
-// Requires: state.js (hitSynth, breakSynth, clearSynth, audioReady)
+// Audio system — Howler.js for SFX, Tone.js for musical events.
+// Requires: state.js (audioReady)
 
+// Howler sound instances (populated in initAudio)
+const sfx = {};
+
+// Tone.js musical synths (line-clear arpeggio + rumble only)
+let clearSynth = null;
 let rumbleSynth = null;
-// Master effects bus: all synths → compressor → reverb → limiter → Destination
 let masterCompressor = null;
 let masterReverb = null;
 let masterLimiter = null;
 
 function initAudio() {
-  if (typeof Tone === "undefined") {
-    console.warn("Tone.js not loaded! Audio will be disabled.");
-    return;
+  // ── Howler.js SFX ──────────────────────────────────────────────────────────
+  if (typeof Howl !== "undefined") {
+    sfx.woodHit   = new Howl({ src: ["sounds/wood_hit.wav"],   volume: 0.7, preload: true });
+    sfx.woodBreak  = new Howl({ src: ["sounds/wood_break.wav"],  volume: 0.85, preload: true });
+    sfx.stoneHit  = new Howl({ src: ["sounds/stone_hit.wav"],  volume: 0.8, preload: true });
+    sfx.stoneBreak = new Howl({ src: ["sounds/stone_break.wav"], volume: 0.95, preload: true });
+    sfx.leafHit   = new Howl({ src: ["sounds/leaf_hit.wav"],   volume: 0.55, preload: true });
+    sfx.leafBreak  = new Howl({ src: ["sounds/leaf_break.wav"],  volume: 0.65, preload: true });
+    sfx.place     = new Howl({ src: ["sounds/place.wav"],      volume: 0.65, preload: true });
+    console.log("Howler.js SFX preloaded.");
+  } else {
+    console.warn("Howler.js not loaded — SFX disabled.");
   }
 
-  // Build master effects chain
-  masterCompressor = new Tone.Compressor({ threshold: -20, ratio: 4 });
-  masterReverb = new Tone.Reverb({ decay: 0.3, wet: 0.2 });
-  masterLimiter = new Tone.Limiter(-1);
-  masterCompressor.chain(masterReverb, masterLimiter, Tone.Destination);
+  // ── Tone.js musical bus (arpeggio + rumble only) ───────────────────────────
+  if (typeof Tone !== "undefined") {
+    masterCompressor = new Tone.Compressor({ threshold: -20, ratio: 4 });
+    masterReverb     = new Tone.Reverb({ decay: 0.3, wet: 0.2 });
+    masterLimiter    = new Tone.Limiter(-1);
+    masterCompressor.chain(masterReverb, masterLimiter, Tone.Destination);
 
-  hitSynth = new Tone.MembraneSynth({
-    pitchDecay: 0.01,
-    octaves: 2,
-    envelope: { attack: 0.001, decay: 0.1, sustain: 0 },
-  }).connect(masterCompressor);
-  breakSynth = new Tone.NoiseSynth({
-    noise: { type: "white" },
-    envelope: { attack: 0.005, decay: 0.1, sustain: 0 },
-  }).connect(masterCompressor);
-  clearSynth = new Tone.Synth({
-    oscillator: { type: "triangle" },
-    envelope: { attack: 0.01, decay: 0.3, sustain: 0.1, release: 0.5 },
-  }).connect(masterCompressor);
-  clearSynth.volume.value = -8;
-  placeSynth = new Tone.MembraneSynth({
-    pitchDecay: 0.06,
-    octaves: 3,
-    envelope: { attack: 0.001, decay: 0.08, sustain: 0 },
-  }).connect(masterCompressor);
-  placeSynth.volume.value = -8;
-  // Deep wooden thud for trunk hits — deeper knock with resonance
-  trunkHitSynth = new Tone.MembraneSynth({
-    pitchDecay: 0.18,
-    octaves: 4,
-    envelope: { attack: 0.002, decay: 0.5, sustain: 0 },
-  }).connect(masterCompressor);
-  trunkHitSynth.volume.value = -4;
-  // Soft airy swoosh for leaf hits — triangle wave, audible volume
-  leafHitSynth = new Tone.Synth({
-    oscillator: { type: "triangle" },
-    envelope: { attack: 0.001, decay: 0.08, sustain: 0, release: 0.04 },
-  }).connect(masterCompressor);
-  leafHitSynth.volume.value = -10;
-  // Dull stone thud for rock hits — short MembraneSynth, not metallic
-  rockHitSynth = new Tone.MembraneSynth({
-    pitchDecay: 0.05,
-    octaves: 2,
-    envelope: { attack: 0.001, decay: 0.15, sustain: 0 },
-  }).connect(masterCompressor);
-  rockHitSynth.volume.value = -8;
-  // Satisfying crunch for rock breaks: punchy attack, extended decay
-  rockCrackSynth = new Tone.NoiseSynth({
-    noise: { type: "white" },
-    envelope: { attack: 0.02, decay: 0.12, sustain: 0 },
-  }).connect(masterCompressor);
-  rockCrackSynth.volume.value = -1;
-  // Low rumble that plays during the anticipation phase of a line clear.
-  rumbleSynth = new Tone.MembraneSynth({
-    pitchDecay: 0.15,
-    octaves: 4,
-    envelope: { attack: 0.005, decay: 0.25, sustain: 0.5, release: 0.2 },
-  }).connect(masterCompressor);
-  rumbleSynth.volume.value = -3;
+    clearSynth = new Tone.Synth({
+      oscillator: { type: "triangle" },
+      envelope: { attack: 0.01, decay: 0.3, sustain: 0.1, release: 0.5 },
+    }).connect(masterCompressor);
+    clearSynth.volume.value = -8;
+
+    rumbleSynth = new Tone.MembraneSynth({
+      pitchDecay: 0.15,
+      octaves: 4,
+      envelope: { attack: 0.005, decay: 0.25, sustain: 0.5, release: 0.2 },
+    }).connect(masterCompressor);
+    rumbleSynth.volume.value = -3;
+
+    console.log("Tone.js musical bus initialized.");
+  } else {
+    console.warn("Tone.js not loaded — line-clear music disabled.");
+  }
+
   audioReady = true;
-  console.log("Tone.js initialized.");
 }
 
-/** Low bass rumble that plays during the anticipation build-up. */
+// ── SFX helpers ───────────────────────────────────────────────────────────────
+
+/** Play a Howler sound with randomised pitch for variety. */
+function _playSfx(key, rateMin, rateMax) {
+  const h = sfx[key];
+  if (!h) return;
+  const id = h.play();
+  h.rate(rateMin + Math.random() * (rateMax - rateMin), id);
+}
+
+/** Play the appropriate hit sound for a block's object type. */
+function playHitSound(objType) {
+  if (!audioReady) return;
+  if (objType === "trunk") {
+    _playSfx("woodHit", 0.85, 1.15);
+  } else if (objType === "leaf") {
+    _playSfx("leafHit", 0.9, 1.2);
+  } else if (objType === "rock") {
+    _playSfx("stoneHit", 0.88, 1.12);
+  } else {
+    // Generic landed_block — use stone hit at slightly lower pitch
+    _playSfx("stoneHit", 0.75, 1.0);
+  }
+}
+
+/** Play the appropriate break sound for a block's object type. */
+function playBreakSound(objType) {
+  if (!audioReady) return;
+  if (objType === "trunk") {
+    _playSfx("woodBreak", 0.85, 1.1);
+  } else if (objType === "leaf") {
+    _playSfx("leafBreak", 0.9, 1.2);
+  } else if (objType === "rock") {
+    _playSfx("stoneBreak", 0.88, 1.05);
+  } else {
+    _playSfx("woodBreak", 0.75, 1.0);
+  }
+}
+
+/** Play block placement thud. */
+function playPlaceSound() {
+  if (!audioReady) return;
+  _playSfx("place", 0.88, 1.12);
+}
+
+// ── Musical events (Tone.js) ──────────────────────────────────────────────────
+
+/** Low bass rumble during line-clear anticipation build-up. */
 function playLineClearRumble() {
   if (!audioReady || !rumbleSynth) return;
   rumbleSynth.triggerAttackRelease("C1", "4n", Tone.now());
 }
 
-/** Play a rising arpeggio when lines are cleared. */
+/** Rising arpeggio when lines are cleared. */
 function playLineClearSound(numLines) {
   if (!audioReady || !clearSynth) return;
   const now = Tone.now();
