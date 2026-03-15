@@ -68,6 +68,9 @@ function triggerBlitzComplete() {
   const isNewBest  = saveBlitzBest(finalScore);
   const best       = loadBlitzBest();
 
+  // Achievement: Blitz Bomber
+  if (typeof achOnBlitzComplete === "function") achOnBlitzComplete(finalScore);
+
   // Populate blitz-complete overlay
   const overlayEl = document.getElementById("blitz-complete-screen");
   if (overlayEl) {

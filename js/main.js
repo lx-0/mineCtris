@@ -604,6 +604,7 @@ function placeBlock() {
   worldGroup.add(block);
   registerBlock(block);
   blocksPlaced++;
+  if (typeof achOnBlockPlaced === "function") achOnBlockPlaced(blocksPlaced);
 
   // Update HUD and check line-clear
   updateInventoryHUD();
@@ -675,9 +676,11 @@ function onMouseDown(event) {
       // Break burst particles
       spawnDustParticles(targetedBlock, { breakBurst: true });
       blocksMined++;
+      const _objType = targetedBlock.userData.objectType;
       const _matName = targetedBlock.userData.materialType ||
-        (targetedBlock.userData.objectType ? OBJECT_TYPE_TO_MATERIAL[targetedBlock.userData.objectType] : null);
+        (_objType ? OBJECT_TYPE_TO_MATERIAL[_objType] : null);
       addScore(_matName && BLOCK_TYPES[_matName] ? BLOCK_TYPES[_matName].points : 10);
+      if (typeof achOnBlockMined === "function") achOnBlockMined(blocksMined, _objType);
 
       const blockColor =
         targetedBlock.userData.originalColor ||
@@ -782,6 +785,7 @@ function animate() {
       if (currentSecond !== lastHudSecond) {
         lastHudSecond = currentSecond;
         updateScoreHUD();
+        if (typeof achOnSurvivalTime === "function") achOnSurvivalTime(gameElapsedSeconds);
       }
     }
 

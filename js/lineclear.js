@@ -123,6 +123,9 @@ function checkLineClear(newBlocks) {
   const LINE_SCORES = [0, 100, 300, 500, 800];
   linesCleared += completeLevels.length;
 
+  // Achievement: first line clear, Tetramino
+  if (typeof achOnLineClear === "function") achOnLineClear(completeLevels.length);
+
   // Sprint: end the game when 40 lines are cleared
   if (isSprintMode && linesCleared >= SPRINT_LINE_TARGET &&
       typeof triggerSprintComplete === "function") {
@@ -137,6 +140,9 @@ function checkLineClear(newBlocks) {
   }
   lastClearTime = now;
   if (comboCount > sessionHighestComboCount) sessionHighestComboCount = comboCount;
+
+  // Achievement: Combo Starter, Combo King
+  if (typeof achOnComboUpdate === "function") achOnComboUpdate(comboCount);
 
   const COMBO_MULTIPLIERS = [1.0, 1.0, 1.5, 2.0, 3.0]; // index by comboCount (capped at 4)
   const comboIdx = Math.min(comboCount, 4);

@@ -168,6 +168,7 @@ function craftRecipe(recipe) {
     }
   } else if (recipe.outputType === "tool") {
     pickaxeTier = recipe.toolTier;
+    if (typeof achOnCraft === "function") achOnCraft(recipe.toolTier);
   }
 
   updateInventoryHUD();

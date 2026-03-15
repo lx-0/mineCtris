@@ -84,6 +84,9 @@ function triggerSprintComplete() {
   const isNewBest   = saveSprintBest(finalTimeMs);
   const best        = loadSprintBest();
 
+  // Achievements: Sprinter, Speed Sprinter
+  if (typeof achOnSprintComplete === "function") achOnSprintComplete(finalTimeMs);
+
   // Populate sprint-complete overlay
   const overlayEl = document.getElementById("sprint-complete-screen");
   if (overlayEl) {

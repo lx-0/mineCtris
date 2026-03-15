@@ -767,6 +767,52 @@ body {
   font-size: 7px;
 }
 
+/* ── Achievement toast ── */
+#achievement-toast {
+  position: absolute;
+  bottom: 120px;
+  right: -320px;
+  width: 280px;
+  background: rgba(0, 0, 0, 0.92);
+  border: 2px solid #ffd700;
+  border-radius: 4px;
+  padding: 10px 14px;
+  z-index: 300;
+  transition: right 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+  pointer-events: none;
+}
+#achievement-toast.ach-toast-visible {
+  right: 16px;
+}
+.ach-toast-header {
+  font-family: "Press Start 2P", cursive;
+  font-size: 6px;
+  color: #ffd700;
+  letter-spacing: 2px;
+  margin-bottom: 8px;
+}
+.ach-toast-body {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.ach-toast-icon {
+  font-size: 22px;
+  flex-shrink: 0;
+}
+.ach-toast-name {
+  font-family: "Press Start 2P", cursive;
+  font-size: 9px;
+  color: #fff;
+  margin-bottom: 4px;
+}
+.ach-toast-desc {
+  font-family: "Press Start 2P", cursive;
+  font-size: 6px;
+  color: rgba(255, 255, 255, 0.55);
+  line-height: 1.5;
+}
+
 /* ── Nudge hint ── */
 #nudge-hint {
   position: absolute;

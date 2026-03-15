@@ -5,6 +5,7 @@
 function addScore(pts) {
   score += pts;
   updateScoreHUD();
+  if (typeof achOnClassicScore === "function") achOnClassicScore(score);
 }
 
 /** Re-render the score HUD from current state. */
@@ -162,6 +163,7 @@ function triggerGameOver() {
       state.linesCleared
     );
     renderDailyBestGameOver(isNewDailyBest);
+    if (typeof achOnDailyComplete === "function") achOnDailyComplete();
   } else {
     const dailyEl = document.getElementById('daily-go-section');
     if (dailyEl) dailyEl.style.display = 'none';
@@ -213,6 +215,7 @@ function resetGame() {
   blocksPlaced = 0;
   sessionCrafts = 0;
   sessionHighestComboCount = 0;
+  if (typeof achResetSession === "function") achResetSession();
 
   // Reset difficulty
   difficultyMultiplier = 1.0;
@@ -354,6 +357,7 @@ function updateDifficulty(delta) {
 
   if (tier > lastDifficultyTier) {
     lastDifficultyTier = tier;
+    if (typeof achOnDifficultyTier === "function") achOnDifficultyTier(tier);
     if (speedUpBannerEl) {
       speedUpBannerEl.textContent =
         "SPEED UP!  Level " + (lastDifficultyTier + 1);
