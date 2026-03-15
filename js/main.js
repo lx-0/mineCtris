@@ -283,6 +283,13 @@ function init() {
   initTrails();
   initPostProcessing();
 
+  // Lava point-light pool — positioned toward closest lava blocks each frame
+  for (let i = 0; i < LAVA_LIGHT_COUNT; i++) {
+    const pl = new THREE.PointLight(0xff4400, 0, 8);
+    scene.add(pl);
+    lavaLights.push(pl);
+  }
+
   renderHighScoresStart();
 
   console.log("Initialization complete. Starting animation loop.");
@@ -617,6 +624,31 @@ function animate() {
     crosshair.classList.remove("target-locked");
     isMining = false;
     if (pickaxeGroup) pickaxeGroup.rotation.z = Math.PI / 8;
+  }
+
+  // Animate lava: update shared time uniform and reposition point lights
+  lavaUniforms.uTime.value = elapsedTime;
+  {
+    const camPos = camera.position;
+    const lavaBlocks = [];
+    worldGroup.children.forEach(child => {
+      if (child.userData && child.userData.materialType === 'lava') {
+        lavaBlocks.push(child);
+      }
+    });
+    lavaBlocks.sort((a, b) =>
+      a.position.distanceToSquared(camPos) - b.position.distanceToSquared(camPos)
+    );
+    const pulse = 1.2 * (0.85 + 0.30 * Math.sin(elapsedTime * 4.4));
+    for (let i = 0; i < LAVA_LIGHT_COUNT; i++) {
+      if (i < lavaBlocks.length) {
+        const p = lavaBlocks[i].position;
+        lavaLights[i].position.set(p.x, p.y + 1, p.z);
+        lavaLights[i].intensity = pulse;
+      } else {
+        lavaLights[i].intensity = 0;
+      }
+    }
   }
 
   updatePostProcessing(delta);

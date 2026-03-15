@@ -1,6 +1,11 @@
 // Block shader materials — per-face brightness, procedural surface texture, and specular.
 // Requires: Three.js loaded first.
 
+// Shared time uniform for animated lava — updated every frame by main.js.
+const lavaUniforms = { uTime: { value: 0 } };
+
+const LAVA_COLOR_HEX = 0xff0000;
+
 // PBR properties keyed by color hex integer.
 // roughness/metalness drive specular character; noiseScale/noiseStrength drive texture.
 const BLOCK_MAT_PROPS = {
@@ -59,24 +64,73 @@ function createBlockMaterial(color) {
   const noiseScale = props.noiseScale;
   const noiseStrength = props.noiseStrength;
 
-  mat.onBeforeCompile = function(shader) {
-    shader.uniforms.uNoiseScale    = { value: noiseScale };
-    shader.uniforms.uNoiseStrength = { value: noiseStrength };
+  if (hexColor === LAVA_COLOR_HEX) {
+    // Animated lava: scrolling noise + pulsed emissive
+    mat.onBeforeCompile = function(shader) {
+      shader.uniforms.uTime = lavaUniforms.uTime;
 
-    // Vertex shader: expose world position as a varying
-    shader.vertexShader = shader.vertexShader.replace(
-      '#include <common>',
-      '#include <common>\nvarying vec3 vWorldPos;'
-    );
-    shader.vertexShader = shader.vertexShader.replace(
-      '#include <begin_vertex>',
-      '#include <begin_vertex>\nvWorldPos = (modelMatrix * vec4(transformed, 1.0)).xyz;'
-    );
+      // Vertex shader: expose world position as a varying
+      shader.vertexShader = shader.vertexShader.replace(
+        '#include <common>',
+        '#include <common>\nvarying vec3 vWorldPos;'
+      );
+      shader.vertexShader = shader.vertexShader.replace(
+        '#include <begin_vertex>',
+        '#include <begin_vertex>\nvWorldPos = (modelMatrix * vec4(transformed, 1.0)).xyz;'
+      );
 
-    // Fragment shader: declare varying + noise helper
-    shader.fragmentShader = shader.fragmentShader.replace(
-      '#include <common>',
-      `#include <common>
+      // Fragment shader: declare varying + uniforms + 2-D smooth noise helpers
+      shader.fragmentShader = shader.fragmentShader.replace(
+        '#include <common>',
+        `#include <common>
+varying vec3 vWorldPos;
+uniform float uTime;
+float lavaHash2(vec2 p) {
+  return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+}
+float lavaNoise(vec2 p) {
+  vec2 i = floor(p);
+  vec2 f = fract(p);
+  vec2 u = f * f * (3.0 - 2.0 * f);
+  return mix(
+    mix(lavaHash2(i),                lavaHash2(i + vec2(1.0, 0.0)), u.x),
+    mix(lavaHash2(i + vec2(0.0,1.0)),lavaHash2(i + vec2(1.0, 1.0)), u.x),
+    u.y);
+}`
+      );
+
+      // Override emissive with animated flowing lava color
+      shader.fragmentShader = shader.fragmentShader.replace(
+        '#include <emissivemap_fragment>',
+        `#include <emissivemap_fragment>
+{
+  vec2 uv1 = vWorldPos.xz * 3.0 + vec2(uTime * 0.3, uTime * 0.1);
+  vec2 uv2 = vWorldPos.xz * 5.0 + vec2(-uTime * 0.2, uTime * 0.4);
+  float n = clamp(lavaNoise(uv1) * 0.6 + lavaNoise(uv2) * 0.4, 0.0, 1.0);
+  float pulse = 0.85 + 0.30 * sin(uTime * 4.4);
+  totalEmissiveRadiance = mix(vec3(0.8, 0.2, 0.0), vec3(1.2, 0.5, 0.0), n) * pulse;
+}`
+      );
+    };
+  } else {
+    mat.onBeforeCompile = function(shader) {
+      shader.uniforms.uNoiseScale    = { value: noiseScale };
+      shader.uniforms.uNoiseStrength = { value: noiseStrength };
+
+      // Vertex shader: expose world position as a varying
+      shader.vertexShader = shader.vertexShader.replace(
+        '#include <common>',
+        '#include <common>\nvarying vec3 vWorldPos;'
+      );
+      shader.vertexShader = shader.vertexShader.replace(
+        '#include <begin_vertex>',
+        '#include <begin_vertex>\nvWorldPos = (modelMatrix * vec4(transformed, 1.0)).xyz;'
+      );
+
+      // Fragment shader: declare varying + noise helper
+      shader.fragmentShader = shader.fragmentShader.replace(
+        '#include <common>',
+        `#include <common>
 varying vec3 vWorldPos;
 uniform float uNoiseScale;
 uniform float uNoiseStrength;
@@ -85,15 +139,16 @@ float blockNoise(vec3 p) {
   vec3 fp = floor(p);
   return fract(sin(dot(fp, vec3(127.1, 311.7, 74.7))) * 43758.5453) * 2.0 - 1.0;
 }`
-    );
+      );
 
-    // Apply noise to diffuse color AFTER vertex-color brightness multiplication
-    shader.fragmentShader = shader.fragmentShader.replace(
-      '#include <color_fragment>',
-      `#include <color_fragment>
+      // Apply noise to diffuse color AFTER vertex-color brightness multiplication
+      shader.fragmentShader = shader.fragmentShader.replace(
+        '#include <color_fragment>',
+        `#include <color_fragment>
 diffuseColor.rgb += blockNoise(vWorldPos * uNoiseScale) * uNoiseStrength;`
-    );
-  };
+      );
+    };
+  }
 
   return mat;
 }

@@ -12,6 +12,11 @@ let pickaxeGroup;
 // ── Sky / lighting ────────────────────────────────────────────────────────────
 let skyMesh, skyStars, sunLight, hemisphereLight;
 
+// ── Lava point-light pool ─────────────────────────────────────────────────────
+// Max 4 PointLights shared across all lava blocks; positioned toward closest blocks.
+const LAVA_LIGHT_COUNT = 4;
+let lavaLights = [];
+
 // ── DOM element references (assigned in init()) ───────────────────────────────
 let rendererContainer;
 let blocker;
