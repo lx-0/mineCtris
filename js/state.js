@@ -51,10 +51,13 @@ let miningShakeBlock = null;
 let dustParticles = [];
 
 // ── Audio handles (assigned in initAudio()) ───────────────────────────────────
-let hitSynth = null;
-let breakSynth = null;
-let clearSynth = null;
-let rockCrackSynth = null;
+let hitSynth = null;       // landed_block hit (MembraneSynth)
+let breakSynth = null;     // landed_block / leaf break (NoiseSynth)
+let clearSynth = null;     // line-clear arpeggio
+let trunkHitSynth = null;  // deep woody thud for trunk hits/breaks
+let leafHitSynth = null;   // light high-pitched tone for leaf hits
+let rockHitSynth = null;   // metallic ping for rock hits
+let rockCrackSynth = null; // sharp crack for rock breaks
 let audioReady = false;
 
 // ── Grid occupancy ────────────────────────────────────────────────────────────

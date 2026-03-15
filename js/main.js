@@ -391,14 +391,25 @@ function onMouseDown(event) {
     );
     isMining = true;
     miningAnimStartTime = clock.getElapsedTime();
-    if (audioReady && hitSynth)
-      hitSynth.triggerAttackRelease("C2", "8n", Tone.now());
     applyMineDamage(targetedBlock, miningProgress);
     startMiningShake(targetedBlock);
 
     const clicksNeeded = targetedBlock.userData.miningClicks || MINING_CLICKS_NEEDED;
     const objType = targetedBlock.userData.objectType;
     const isBreak = miningProgress >= clicksNeeded;
+
+    // Per-material hit sound (played even on the breaking hit)
+    if (audioReady) {
+      if (objType === "trunk") {
+        if (trunkHitSynth) trunkHitSynth.triggerAttackRelease("A1", "8n", Tone.now());
+      } else if (objType === "leaf") {
+        if (leafHitSynth) leafHitSynth.triggerAttackRelease("G5", "32n", Tone.now());
+      } else if (objType === "rock") {
+        if (rockHitSynth) rockHitSynth.triggerAttackRelease("16n", Tone.now());
+      } else {
+        if (hitSynth) hitSynth.triggerAttackRelease("C2", "8n", Tone.now());
+      }
+    }
 
     if (!isBreak) {
       // Normal hit particles
@@ -432,8 +443,8 @@ function onMouseDown(event) {
       // Per-material break sound
       if (audioReady) {
         if (objType === "trunk") {
-          // Lower-pitch tone than default break
-          if (hitSynth) hitSynth.triggerAttackRelease("C1", "8n", Tone.now());
+          // Deep low thud on break — same synth type but lower note
+          if (trunkHitSynth) trunkHitSynth.triggerAttackRelease("C1", "8n", Tone.now());
         } else if (objType === "rock") {
           if (rockCrackSynth) rockCrackSynth.triggerAttackRelease("16n", Tone.now());
         } else {

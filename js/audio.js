@@ -27,7 +27,30 @@ function initAudio() {
     envelope: { attack: 0.001, decay: 0.08, sustain: 0, release: 0.1 },
   }).toDestination();
   placeSynth.volume.value = -18;
-  // Rock break: higher attack, shorter decay than the default wood break
+  // Deep wooden thud for trunk hits (lower & more resonant than generic hitSynth)
+  trunkHitSynth = new Tone.MembraneSynth({
+    pitchDecay: 0.12,
+    octaves: 6,
+    envelope: { attack: 0.001, decay: 0.35, sustain: 0 },
+  }).toDestination();
+  trunkHitSynth.volume.value = -6;
+  // Light airy tap for leaf hits — quiet high-pitched sine
+  leafHitSynth = new Tone.Synth({
+    oscillator: { type: "sine" },
+    envelope: { attack: 0.001, decay: 0.05, sustain: 0, release: 0.04 },
+  }).toDestination();
+  leafHitSynth.volume.value = -18;
+  // Metallic ping for rock hits — clearly distinct from wood/leaf
+  rockHitSynth = new Tone.MetalSynth({
+    frequency: 220,
+    envelope: { attack: 0.001, decay: 0.1, release: 0.08 },
+    harmonicity: 5.1,
+    modulationIndex: 16,
+    resonance: 3000,
+    octaves: 1.5,
+  }).toDestination();
+  rockHitSynth.volume.value = -10;
+  // Sharp crack for rock breaks: high attack, brief decay
   rockCrackSynth = new Tone.NoiseSynth({
     noise: { type: "white" },
     envelope: { attack: 0.02, decay: 0.06, sustain: 0 },
