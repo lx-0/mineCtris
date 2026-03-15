@@ -39,6 +39,9 @@ const DIFFICULTY_INTERVAL = 60;               // seconds between speed tiers
 const DIFFICULTY_MULTIPLIER_PER_TIER = 1.1;   // 10% faster each tier
 const DIFFICULTY_MAX_MULTIPLIER = 3.0;         // cap at 3x starting speed
 
+// Next-piece preview queue size (how many upcoming pieces to show)
+const NEXT_QUEUE_SIZE = 3;
+
 // Piece directional nudge constants
 const NUDGE_PROXIMITY_BLOCKS = 10;     // blocks above ground to activate nudge zone
 const NUDGE_MAX_OFFSET = 3;            // max cumulative nudge per piece, per axis (blocks)

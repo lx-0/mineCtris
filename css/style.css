@@ -175,10 +175,19 @@ body {
 }
 
 /* ── Score HUD ── */
-#score-display {
+/* ── Top-right HUD container (score + next-piece preview) ── */
+#top-right-hud {
   position: absolute;
   top: 16px;
   right: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: stretch;
+  pointer-events: none;
+}
+
+#score-display {
   font-family: "Press Start 2P", cursive;
   color: #0f0;
   text-shadow: 1px 1px 2px #000;
@@ -189,6 +198,47 @@ body {
   border-radius: 4px;
   padding: 10px 14px;
   line-height: 2;
+}
+
+/* ── Next-piece preview panel ── */
+#next-pieces-panel {
+  font-family: "Press Start 2P", cursive;
+  pointer-events: none;
+  display: none;
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(0, 255, 0, 0.3);
+  border-radius: 4px;
+  padding: 8px 12px;
+}
+.np-label {
+  font-size: 6px;
+  color: rgba(0, 255, 0, 0.85);
+  text-shadow: 1px 1px 2px #000;
+  text-align: center;
+  margin-bottom: 6px;
+  display: block;
+  letter-spacing: 1px;
+}
+.np-pieces-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+.np-piece {
+  display: flex;
+  flex-direction: column;
+}
+.np-row {
+  display: flex;
+}
+.np-cell {
+  width: 8px;
+  height: 8px;
+  margin: 1px;
+  border-radius: 1px;
+}
+.np-empty {
+  background: transparent;
 }
 .hud-score {
   font-size: 20px;

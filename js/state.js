@@ -77,6 +77,7 @@ let gameElapsedSeconds = 0;
 let gameTimerRunning = false;
 let lastHudSecond = -1;
 let scoreEl = null;
+let nextPiecesEl = null;
 let lineClearBannerEl = null;
 let bannerTimer = 0;
 

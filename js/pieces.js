@@ -85,9 +85,52 @@ function createPiece3D(shapeData, colorIndex) {
   return pieceGroup;
 }
 
+// ── Next-piece queue ──────────────────────────────────────────────────────────
+
+function _randomShapeIndex() {
+  return Math.floor(Math.random() * (SHAPES.length - 1)) + 1;
+}
+
+/** Populate pieceQueue with NEXT_QUEUE_SIZE entries from scratch. */
+function initPieceQueue() {
+  pieceQueue.length = 0;
+  for (let i = 0; i < NEXT_QUEUE_SIZE; i++) {
+    const idx = _randomShapeIndex();
+    pieceQueue.push({ index: idx, shape: SHAPES[idx] });
+  }
+  updateNextPiecesHUD();
+}
+
+/** Render the queue as mini piece grids inside #next-pieces-panel. */
+function updateNextPiecesHUD() {
+  if (!nextPiecesEl) nextPiecesEl = document.getElementById('next-pieces-panel');
+  if (!nextPiecesEl) return;
+  let html = '<div class="np-label">NEXT</div><div class="np-pieces-row">';
+  pieceQueue.forEach(({ index, shape }) => {
+    const hex = '#' + COLORS[index].toString(16).padStart(6, '0');
+    html += '<div class="np-piece">';
+    shape.forEach(row => {
+      html += '<div class="np-row">';
+      row.forEach(v => {
+        html += v
+          ? `<div class="np-cell" style="background:${hex};box-shadow:0 0 3px ${hex};"></div>`
+          : '<div class="np-cell np-empty"></div>';
+      });
+      html += '</div>';
+    });
+    html += '</div>';
+  });
+  html += '</div>';
+  nextPiecesEl.innerHTML = html;
+}
+
 function spawnFallingPiece() {
-  const index = Math.floor(Math.random() * (SHAPES.length - 1)) + 1;
-  const shape = SHAPES[index];
+  // Draw the next piece from the pre-generated queue; refill to keep it at NEXT_QUEUE_SIZE.
+  if (pieceQueue.length === 0) initPieceQueue();
+  const { index, shape } = pieceQueue.shift();
+  const newIdx = _randomShapeIndex();
+  pieceQueue.push({ index: newIdx, shape: SHAPES[newIdx] });
+  updateNextPiecesHUD();
   const piece3D = createPiece3D(shape, index);
   const spawnX = (Math.random() - 0.5) * (WORLD_SIZE * 0.8);
   const spawnZ = (Math.random() - 0.5) * (WORLD_SIZE * 0.8);

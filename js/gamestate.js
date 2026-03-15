@@ -163,6 +163,10 @@ function resetGame() {
   const nudgeHintEl = document.getElementById("nudge-hint");
   if (nudgeHintEl) nudgeHintEl.style.display = "none";
 
+  // Reset next-piece queue
+  initPieceQueue();
+  if (nextPiecesEl) nextPiecesEl.style.display = "none";
+
   // Reset mining feedback state
   miningShakeActive = false;
   miningShakeBlock = null;

@@ -193,9 +193,13 @@ function init() {
   }
 
   scoreEl = document.getElementById("score-display");
+  nextPiecesEl = document.getElementById("next-pieces-panel");
   lineClearBannerEl = document.getElementById("line-clear-banner");
   comboBannerEl = document.getElementById("combo-banner");
   speedUpBannerEl = document.getElementById("speed-up-banner");
+
+  // Pre-generate the next-piece queue before the first spawn.
+  initPieceQueue();
 
   raycaster = new THREE.Raycaster();
 
@@ -231,6 +235,7 @@ function init() {
       blocker.style.display = "none";
       crosshair.style.display = "block";
       if (scoreEl) scoreEl.style.display = "block";
+      if (nextPiecesEl) nextPiecesEl.style.display = "block";
       gameTimerRunning = true;
       // Restore inventory HUD if non-empty
       if (inventoryTotal() > 0) updateInventoryHUD();
@@ -247,6 +252,7 @@ function init() {
       }
       crosshair.style.display = "none";
       if (scoreEl) scoreEl.style.display = "none";
+      if (nextPiecesEl) nextPiecesEl.style.display = "none";
       const nudgeHintEl = document.getElementById("nudge-hint");
       if (nudgeHintEl) nudgeHintEl.style.display = "none";
       if (lineClearBannerEl) lineClearBannerEl.style.display = "none";
