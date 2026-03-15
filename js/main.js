@@ -179,6 +179,7 @@ function init() {
   const playAgainBtn = document.getElementById("play-again-btn");
   if (playAgainBtn) playAgainBtn.addEventListener("click", resetGame);
 
+  initLineClearFragmentPool();
   initTrails();
   initPostProcessing();
 

@@ -224,6 +224,28 @@ body {
   animation: danger-pulse 0.55s ease-in-out infinite alternate;
 }
 
+/* ── Line-clear screen flash overlay (triple / Tetris) ── */
+#lc-flash-overlay {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: #fff;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 100;
+}
+
+/* ── Score-slam bounce animation (Tetris clear) ── */
+@keyframes score-slam {
+  0%   { transform: scale(1.0); }
+  25%  { transform: scale(1.7); }
+  55%  { transform: scale(0.88); }
+  75%  { transform: scale(1.12); }
+  100% { transform: scale(1.0); }
+}
+#score-display.score-slam {
+  animation: score-slam 0.55s cubic-bezier(0.36, 0.07, 0.19, 0.97) forwards;
+}
+
 /* ── Game Over screen ── */
 @keyframes go-flicker {
   0%, 100% { opacity: 1; }

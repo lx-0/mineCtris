@@ -1,6 +1,8 @@
 // Audio system — Tone.js setup and sound playback.
 // Requires: state.js (hitSynth, breakSynth, clearSynth, audioReady)
 
+let rumbleSynth = null;
+
 function initAudio() {
   if (typeof Tone === "undefined") {
     console.warn("Tone.js not loaded! Audio will be disabled.");
@@ -25,8 +27,21 @@ function initAudio() {
     envelope: { attack: 0.001, decay: 0.08, sustain: 0, release: 0.1 },
   }).toDestination();
   placeSynth.volume.value = -18;
+  // Low rumble that plays during the anticipation phase of a line clear.
+  rumbleSynth = new Tone.MembraneSynth({
+    pitchDecay: 0.15,
+    octaves: 4,
+    envelope: { attack: 0.005, decay: 0.25, sustain: 0.5, release: 0.2 },
+  }).toDestination();
+  rumbleSynth.volume.value = -3;
   audioReady = true;
   console.log("Tone.js initialized.");
+}
+
+/** Low bass rumble that plays during the anticipation build-up. */
+function playLineClearRumble() {
+  if (!audioReady || !rumbleSynth) return;
+  rumbleSynth.triggerAttackRelease("C1", "4n", Tone.now());
 }
 
 /** Play a rising arpeggio when lines are cleared. */
