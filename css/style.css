@@ -447,6 +447,18 @@ body {
   transition: background 0.15s;
 }
 #play-again-btn:hover { background: #ff0; }
+#go-main-menu-btn {
+  font-family: "Press Start 2P", cursive;
+  font-size: 12px;
+  color: #000;
+  background: #0f0;
+  border: none;
+  padding: 14px 28px;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background 0.15s;
+}
+#go-main-menu-btn:hover { background: #c0f; color: #fff; }
 
 /* ── Sprint complete screen ── */
 #sprint-complete-screen {
@@ -504,6 +516,18 @@ body {
   transition: background 0.15s;
 }
 #sprint-play-again-btn:hover { background: #ff0; }
+#sprint-main-menu-btn {
+  font-family: "Press Start 2P", cursive;
+  font-size: 12px;
+  color: #000;
+  background: #0f0;
+  border: none;
+  padding: 14px 28px;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background 0.15s;
+}
+#sprint-main-menu-btn:hover { background: #c0f; color: #fff; }
 
 /* ── Blitz complete screen ── */
 #blitz-complete-screen {
@@ -561,6 +585,18 @@ body {
   transition: background 0.15s;
 }
 #blitz-play-again-btn:hover { background: #fff; }
+#blitz-main-menu-btn {
+  font-family: "Press Start 2P", cursive;
+  font-size: 12px;
+  color: #000;
+  background: #0f0;
+  border: none;
+  padding: 14px 28px;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background 0.15s;
+}
+#blitz-main-menu-btn:hover { background: #c0f; color: #fff; }
 
 /* ── Crafting panel ── */
 #crafting-panel {
@@ -869,7 +905,8 @@ body {
 }
 #pause-resume-btn,
 #pause-restart-btn,
-#pause-settings-btn {
+#pause-settings-btn,
+#pause-main-menu-btn {
   font-family: "Press Start 2P", cursive;
   font-size: 12px;
   color: #000;
@@ -884,6 +921,7 @@ body {
 #pause-resume-btn:hover  { background: #ff0; }
 #pause-restart-btn:hover { background: #f80; }
 #pause-settings-btn:hover { background: #08f; color: #fff; }
+#pause-main-menu-btn:hover { background: #c0f; color: #fff; }
 
 /* ── Audio settings overlay ── */
 #settings-overlay {

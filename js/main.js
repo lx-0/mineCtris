@@ -340,6 +340,14 @@ function init() {
       });
     }
 
+    // Wire up Blitz main menu button
+    const blitzMainMenuBtn = document.getElementById("blitz-main-menu-btn");
+    if (blitzMainMenuBtn) {
+      blitzMainMenuBtn.addEventListener("click", function () {
+        resetGame();
+      });
+    }
+
     const modeBackBtn = document.getElementById("mode-select-back");
     if (modeBackBtn) {
       modeBackBtn.addEventListener("click", function () {
@@ -445,8 +453,14 @@ function init() {
   const playAgainBtn = document.getElementById("play-again-btn");
   if (playAgainBtn) playAgainBtn.addEventListener("click", resetGame);
 
+  const goMainMenuBtn = document.getElementById("go-main-menu-btn");
+  if (goMainMenuBtn) goMainMenuBtn.addEventListener("click", resetGame);
+
   const sprintPlayAgainBtn = document.getElementById("sprint-play-again-btn");
   if (sprintPlayAgainBtn) sprintPlayAgainBtn.addEventListener("click", resetGame);
+
+  const sprintMainMenuBtn = document.getElementById("sprint-main-menu-btn");
+  if (sprintMainMenuBtn) sprintMainMenuBtn.addEventListener("click", resetGame);
 
   const pauseResumeBtn = document.getElementById("pause-resume-btn");
   if (pauseResumeBtn) pauseResumeBtn.addEventListener("click", function () {
@@ -468,6 +482,14 @@ function init() {
   const pauseSettingsBtn = document.getElementById("pause-settings-btn");
   if (pauseSettingsBtn) pauseSettingsBtn.addEventListener("click", function () {
     openSettings();
+  });
+
+  const pauseMainMenuBtn = document.getElementById("pause-main-menu-btn");
+  if (pauseMainMenuBtn) pauseMainMenuBtn.addEventListener("click", function () {
+    const pauseScreenEl = document.getElementById("pause-screen");
+    if (pauseScreenEl) pauseScreenEl.style.display = "none";
+    isPaused = false;
+    resetGame();
   });
 
   const startSettingsBtn = document.getElementById("start-settings-btn");
