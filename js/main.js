@@ -41,7 +41,8 @@ function spawnTree(tx, tz) {
           layer.y + BLOCK_SIZE / 2,
           tz + lz * BLOCK_SIZE
         );
-        leaf.name = "world_object";
+        leaf.name = "leaf_block";
+        leaf.userData.miningClicks = 2;
         worldGroup.add(leaf);
         meshes.push(leaf);
       }
@@ -356,9 +357,12 @@ function onMouseDown(event) {
         targetedBlock.userData.originalColor ||
         targetedBlock.material.color;
       const cssColor = threeColorToCss(blockColor);
-      const collected = addToInventory(cssColor);
-      if (!collected) {
-        console.log("Inventory full — block discarded.");
+      const crumbles = targetedBlock.name === "leaf_block" && Math.random() < 0.2;
+      if (!crumbles) {
+        const collected = addToInventory(cssColor);
+        if (!collected) {
+          console.log("Inventory full — block discarded.");
+        }
       }
 
       if (miningShakeBlock === targetedBlock) {

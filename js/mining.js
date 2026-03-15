@@ -31,7 +31,7 @@ function updateTargeting() {
   if (intersects.length > 0) {
     const intersection = intersects[0];
     if (
-      (intersection.object.name === "landed_block" || intersection.object.name === "trunk_block") &&
+      (intersection.object.name === "landed_block" || intersection.object.name === "trunk_block" || intersection.object.name === "leaf_block") &&
       intersection.distance <= MINING_RANGE
     ) {
       newTarget = intersection.object;
@@ -82,11 +82,12 @@ function applyMineDamage(block, hits) {
   if (!block || !block.material) return;
   const orig = block.userData.originalColor;
   if (!orig) return;
-  if (hits === 1) {
-    // Hit 1: light cracks — darken slightly
+  const maxClicks = block.userData.miningClicks || MINING_CLICKS_NEEDED;
+  if (maxClicks > 2 && hits === 1) {
+    // First hit on multi-hit block: light cracks — darken slightly
     block.material.color.setRGB(orig.r * 0.65, orig.g * 0.65, orig.b * 0.65);
-  } else if (hits === 2) {
-    // Hit 2: heavy cracks — dark with red tint
+  } else if (hits >= 1) {
+    // 2-click blocks go straight to heavy on hit 1; others at hit 2+
     block.material.color.setRGB(
       Math.min(orig.r * 0.35 + 0.08, 1),
       orig.g * 0.2,
