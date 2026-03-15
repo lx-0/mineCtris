@@ -214,10 +214,11 @@ function init() {
     scene.add(controls.getObject());
 
     blocker.addEventListener("click", function (e) {
-      // Daily challenge, settings, and stats buttons handle their own events — skip here
+      // Daily challenge, settings, stats, and achievements buttons handle their own events — skip here
       if (e.target.id === "daily-challenge-btn") return;
       if (e.target.id === "start-settings-btn") return;
       if (e.target.id === "start-stats-btn") return;
+      if (e.target.id === "start-achievements-btn") return;
       // Show mode select screen instead of jumping straight into the game
       showModeSelect();
     });
@@ -489,6 +490,18 @@ function init() {
   const statsCloseBtn = document.getElementById("stats-close-btn");
   if (statsCloseBtn) statsCloseBtn.addEventListener("click", function () {
     closeStatsPanel();
+  });
+
+  // Also need to block blocker click propagation for achievements button
+  const startAchBtn = document.getElementById("start-achievements-btn");
+  if (startAchBtn) startAchBtn.addEventListener("click", function (e) {
+    e.stopPropagation();
+    if (typeof openAchievementsPanel === "function") openAchievementsPanel();
+  });
+
+  const achCloseBtn = document.getElementById("achievements-close-btn");
+  if (achCloseBtn) achCloseBtn.addEventListener("click", function () {
+    if (typeof closeAchievementsPanel === "function") closeAchievementsPanel();
   });
 
   initLineClearFragmentPool();

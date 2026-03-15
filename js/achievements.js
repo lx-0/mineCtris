@@ -94,6 +94,69 @@ function _showAchievementToast(ach) {
   }, 3500);
 }
 
+// ── Panel rendering ───────────────────────────────────────────────────────────
+
+/** Open the achievements overlay and render the current state. */
+function openAchievementsPanel() {
+  const overlay = document.getElementById("achievements-overlay");
+  if (overlay) {
+    renderAchievementsPanel();
+    overlay.style.display = "flex";
+  }
+}
+
+/** Close the achievements overlay. */
+function closeAchievementsPanel() {
+  const overlay = document.getElementById("achievements-overlay");
+  if (overlay) overlay.style.display = "none";
+}
+
+/** Render all 18 achievement cards with current locked/unlocked state. */
+function renderAchievementsPanel() {
+  const unlocked = loadAchievements();
+  const count = Object.keys(unlocked).length;
+
+  const progressEl = document.getElementById("achievements-progress");
+  if (progressEl) progressEl.textContent = count + " / " + ACHIEVEMENTS.length + " Unlocked";
+
+  const gridEl = document.getElementById("achievements-grid");
+  if (!gridEl) return;
+
+  gridEl.innerHTML = "";
+  ACHIEVEMENTS.forEach(ach => {
+    const isUnlocked = !!unlocked[ach.id];
+    const card = document.createElement("div");
+    card.className = "ach-card " + (isUnlocked ? "ach-unlocked" : "ach-locked");
+
+    const iconEl = document.createElement("div");
+    iconEl.className = "ach-card-icon";
+    iconEl.textContent = ach.icon;
+
+    const infoEl = document.createElement("div");
+    infoEl.className = "ach-card-info";
+
+    const nameEl = document.createElement("div");
+    nameEl.className = "ach-card-name";
+    nameEl.textContent = ach.name;
+
+    const descEl = document.createElement("div");
+    descEl.className = "ach-card-desc";
+    descEl.textContent = ach.desc;
+
+    infoEl.appendChild(nameEl);
+    infoEl.appendChild(descEl);
+
+    const statusEl = document.createElement("div");
+    statusEl.className = "ach-card-status";
+    statusEl.textContent = isUnlocked ? "\u2714\uFE0F" : "\uD83D\uDD12";
+
+    card.appendChild(iconEl);
+    card.appendChild(infoEl);
+    card.appendChild(statusEl);
+    gridEl.appendChild(card);
+  });
+}
+
 // ── Trigger functions ─────────────────────────────────────────────────────────
 
 /** Call after each line-clear event with the number of lines cleared. */
