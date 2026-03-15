@@ -326,11 +326,11 @@ function placeBlock() {
   const blockPos = new THREE.Vector3();
   targetedBlock.getWorldPosition(blockPos);
   const placeX = snapGrid(blockPos.x + targetedFaceNormal.x * BLOCK_SIZE);
-  const placeY = snapGrid(blockPos.y + targetedFaceNormal.y * BLOCK_SIZE);
+  const placeY = snapGridY(blockPos.y + targetedFaceNormal.y * BLOCK_SIZE);
   const placeZ = snapGrid(blockPos.z + targetedFaceNormal.z * BLOCK_SIZE);
 
   // Cannot place underground
-  if (placeY < 1) return;
+  if (placeY < 0.5) return;
 
   // Cannot place on occupied cell
   const layer = gridOccupancy.get(placeY);

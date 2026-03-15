@@ -25,8 +25,8 @@ const MINING_SHAKE_AMOUNT = 0.05;
 const LINE_CLEAR_CELLS_NEEDED = 100;
 const LINE_CLEAR_FLASH_SECS = 0.5;
 
-const GAME_OVER_HEIGHT = 20;
-const DANGER_ZONE_HEIGHT = GAME_OVER_HEIGHT - 3;
+const GAME_OVER_HEIGHT = 19.5; // block top face reaches Y=20
+const DANGER_ZONE_HEIGHT = GAME_OVER_HEIGHT - 3; // 16.5
 
 const SHADOW_APPEAR_DIST = 20; // blocks of fall distance before shadow appears
 

@@ -5,12 +5,17 @@ function snapGrid(v) {
   return Math.round(v);
 }
 
+/** Snap a Y value to the world block grid: 0.5, 1.5, 2.5, … */
+function snapGridY(v) {
+  return Math.floor(v) + 0.5;
+}
+
 /** Register a landed block in the grid occupancy map. */
 function registerBlock(block) {
   const wp = new THREE.Vector3();
   block.getWorldPosition(wp);
   const gx = snapGrid(wp.x);
-  const gy = snapGrid(wp.y);
+  const gy = snapGridY(wp.y);
   const gz = snapGrid(wp.z);
   block.userData.gridPos = { x: gx, y: gy, z: gz };
   if (!gridOccupancy.has(gy)) gridOccupancy.set(gy, new Set());
