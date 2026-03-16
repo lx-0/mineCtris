@@ -13,6 +13,7 @@ const sfx = {};
 let clearSynth = null;
 let rumbleSynth = null;
 let gameOverSynth = null;
+let stormSwooshSynth = null;
 let masterCompressor = null;
 let masterReverb = null;
 let masterLimiter = null;
@@ -70,6 +71,13 @@ function initAudio() {
       envelope: { attack: 0.01, decay: 0.35, sustain: 0.0, release: 0.25 },
     }).connect(masterCompressor);
     gameOverSynth.volume.value = -10;
+
+    // Sawtooth stab for Piece Storm per-spawn swoosh
+    stormSwooshSynth = new Tone.Synth({
+      oscillator: { type: "sawtooth" },
+      envelope: { attack: 0.005, decay: 0.09, sustain: 0.0, release: 0.06 },
+    }).connect(masterCompressor);
+    stormSwooshSynth.volume.value = -18;
 
     _initBgMusic();
     console.log("Tone.js musical bus initialized.");
@@ -288,6 +296,23 @@ function playLineClearSound(numLines) {
   for (let i = 0; i < count; i++) {
     clearSynth.triggerAttackRelease(notes[i], "8n", now + i * 0.1);
   }
+}
+
+// ── Piece Storm sounds ────────────────────────────────────────────────────────
+
+/** Deep ominous rumble played when Piece Storm begins. */
+function playStormRumble() {
+  if (!audioReady || !rumbleSynth) return;
+  const now = Tone.now();
+  rumbleSynth.triggerAttackRelease("A1", "4n", now);
+  rumbleSynth.triggerAttackRelease("C1", "4n", now + 0.35);
+  rumbleSynth.triggerAttackRelease("E1", "4n", now + 0.7);
+}
+
+/** Short sawtooth swoosh played on each piece spawn during Piece Storm. */
+function playStormSwoosh() {
+  if (!audioReady || !stormSwooshSynth) return;
+  stormSwooshSynth.triggerAttackRelease("E4", "32n", Tone.now());
 }
 
 // ── Volume settings ───────────────────────────────────────────────────────────

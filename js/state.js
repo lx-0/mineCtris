@@ -248,6 +248,10 @@ let activeEvent      = "NONE";
 let eventRemainingMs = 0;
 let eventHistory     = [];
 
+// ── Piece Storm event state ───────────────────────────────────────────────────
+// true while the PIECE_STORM world event is active.
+let pieceStormActive = false;
+
 // ── Session stats (reset each game, accumulated for lifetime stats on game over) ──
 let blocksPlaced = 0;
 let sessionCrafts = 0;

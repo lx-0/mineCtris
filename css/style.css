@@ -3433,6 +3433,57 @@ body.theme-legendary #score-display {
   50%       { opacity: 1.0;  transform: scale(1.004); }
 }
 
+/* ── Piece Storm event ──────────────────────────────────────────────────────── */
+
+/* Atmospheric red tint — full-screen vignette while storm is active */
+#storm-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 183;
+  background: radial-gradient(ellipse at center, transparent 28%, rgba(200,0,0,0.20) 100%);
+  box-shadow: inset 0 0 90px rgba(255,30,0,0.26);
+  animation: storm-breathe 1.4s ease-in-out infinite;
+}
+@keyframes storm-breathe {
+  0%, 100% { opacity: 0.70; }
+  50%       { opacity: 1.00; }
+}
+
+/* Lightning strike flash — brief red burst on each piece spawn */
+#lightning-flash.active {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 191;
+  background: rgba(255, 60, 60, 0.68);
+  animation: lightning-strike 0.32s ease-out forwards;
+}
+@keyframes lightning-strike {
+  0%   { opacity: 1.0; }
+  35%  { opacity: 0.55; }
+  100% { opacity: 0.0; }
+}
+
+/* Storm countdown HUD — centered below the top HUD row */
+#storm-hud {
+  position: absolute;
+  top: 76px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: "Press Start 2P", cursive;
+  font-size: 13px;
+  color: #ff4444;
+  text-shadow: 0 0 10px #ff0000, 1px 1px 2px #000;
+  pointer-events: none;
+  white-space: nowrap;
+  animation: storm-hud-pulse 1.0s ease-in-out infinite;
+}
+@keyframes storm-hud-pulse {
+  0%, 100% { opacity: 0.85; }
+  50%       { opacity: 1.00; }
+}
+
 /* ── Season Banner (mode-select screen) ───────────────────────────────────── */
 #season-banner {
   display: none; /* shown by JS when season is active */

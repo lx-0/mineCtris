@@ -1213,6 +1213,25 @@ function _triggerPowerupFlash(type) {
   }, { once: true });
 }
 
+/**
+ * Trigger a brief red lightning-strike flash on piece spawn during Piece Storm.
+ * Resets the CSS animation each call by forcing a reflow.
+ */
+function triggerLightningFlash() {
+  const el = document.getElementById("lightning-flash");
+  if (!el) return;
+  el.style.display = "none";
+  el.classList.remove("active");
+  void el.offsetWidth; // force reflow to restart animation
+  el.classList.add("active");
+  el.style.display = "block";
+  el.addEventListener("animationend", function onEnd() {
+    el.style.display = "none";
+    el.classList.remove("active");
+    el.removeEventListener("animationend", onEnd);
+  }, { once: true });
+}
+
 /** Show/hide persistent power-up overlays based on current effect state. */
 function updatePowerupOverlays() {
   const sdEl = document.getElementById("slowdown-overlay");
@@ -1416,9 +1435,14 @@ function animate() {
       }
     }
 
+    const _stormSpawnInterval = pieceStormActive ? SPAWN_INTERVAL * 0.5 : SPAWN_INTERVAL;
     spawnTimer += delta;
-    if (spawnTimer > SPAWN_INTERVAL) {
+    if (spawnTimer > _stormSpawnInterval) {
       spawnFallingPiece();
+      if (pieceStormActive) {
+        triggerLightningFlash();
+        if (typeof playStormSwoosh === "function") playStormSwoosh();
+      }
       spawnTimer = 0;
       // Update puzzle HUD after each spawn
       if (isPuzzleMode && typeof updatePuzzleHUD === "function") updatePuzzleHUD();

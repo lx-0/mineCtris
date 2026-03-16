@@ -100,22 +100,70 @@ function endEvent() {
   _fireOnEnd(ended);
 }
 
-// ── Lifecycle callbacks (extend here when implementing individual events) ──────
+// ── Lifecycle callbacks ────────────────────────────────────────────────────────
 
 function _fireOnStart(type) {
   console.log("[EventEngine] Event started:", type);
-  // Future event modules call their own onStart here, e.g.:
-  // if (type === EVENT_TYPES.PIECE_STORM && typeof onPieceStormStart === "function") onPieceStormStart();
+  if (type === EVENT_TYPES.PIECE_STORM) _onPieceStormStart();
 }
 
 function _fireOnTick(delta, type) {
-  // Future per-event tick logic:
-  // if (type === EVENT_TYPES.EARTHQUAKE && typeof onEarthquakeTick === "function") onEarthquakeTick(delta);
+  if (type === EVENT_TYPES.PIECE_STORM) _onPieceStormTick();
 }
 
 function _fireOnEnd(type) {
   console.log("[EventEngine] Event ended:", type);
-  // Future event modules clean up here.
+  if (type === EVENT_TYPES.PIECE_STORM) _onPieceStormEnd();
+}
+
+// ── Piece Storm implementation ────────────────────────────────────────────────
+
+function _onPieceStormStart() {
+  pieceStormActive = true;
+
+  // Red atmospheric tint overlay
+  const overlay = document.getElementById("storm-overlay");
+  if (overlay) overlay.style.display = "block";
+
+  // Countdown HUD
+  const hud = document.getElementById("storm-hud");
+  if (hud) {
+    hud.textContent = "\u26A1 PIECE STORM \u26A1";
+    hud.style.display = "block";
+  }
+
+  // Ominous rumble SFX
+  if (typeof playStormRumble === "function") playStormRumble();
+
+  // Announcement banner
+  if (typeof showCraftedBanner === "function") {
+    showCraftedBanner("\u26A1 PIECE STORM! Survive 30s!");
+  }
+}
+
+function _onPieceStormTick() {
+  // Update countdown timer in HUD
+  const secs = Math.ceil(eventRemainingMs / 1000);
+  const hud = document.getElementById("storm-hud");
+  if (hud) hud.textContent = "\u26A1 " + secs + "s";
+}
+
+function _onPieceStormEnd() {
+  pieceStormActive = false;
+
+  // Hide overlays
+  const overlay = document.getElementById("storm-overlay");
+  if (overlay) overlay.style.display = "none";
+  const hud = document.getElementById("storm-hud");
+  if (hud) hud.style.display = "none";
+
+  // Survivor bonus: +500 pts if player is still alive
+  if (!isGameOver) {
+    if (typeof addScore === "function") addScore(500);
+    if (typeof showCraftedBanner === "function") {
+      showCraftedBanner("Storm survived! +500");
+    }
+  }
 }
 
 // ── Main update — called from game loop each frame ────────────────────────────
@@ -164,12 +212,21 @@ function updateEventEngine(delta) {
  * Reset all event engine state. Must be called whenever a game session resets.
  */
 function resetEventEngine() {
+  // Clean up any active Piece Storm visuals before clearing state
+  if (activeEvent === EVENT_TYPES.PIECE_STORM) {
+    const overlay = document.getElementById("storm-overlay");
+    if (overlay) overlay.style.display = "none";
+    const hud = document.getElementById("storm-hud");
+    if (hud) hud.style.display = "none";
+  }
+
   activeEvent          = EVENT_TYPES.NONE;
   eventRemainingMs     = 0;
   eventHistory         = [];
   _cooldownRemainingMs = 0;
   _schedulerAccumMs    = 0;
   _nextThresholdMs     = _pickInterval();
+  pieceStormActive     = false;
 }
 
 // ── Debug hook ────────────────────────────────────────────────────────────────
