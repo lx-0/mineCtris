@@ -386,6 +386,16 @@ function showShareFallback(text, anchorBtn) {
 
 /** Reset all game state and return to the start screen. */
 function resetGame() {
+  // Survival: if exiting without game over, record this as a survived session
+  if (isSurvivalMode && !isGameOver && typeof recordSurvivedSession === 'function') {
+    recordSurvivedSession({
+      score:        score,
+      blocksMined:  blocksMined,
+      linesCleared: linesCleared,
+      timeAlive:    gameElapsedSeconds,
+    });
+  }
+
   if (typeof resetBgMusic === "function") resetBgMusic();
   if (typeof clearSaveState === "function") clearSaveState();
   // Remove landed blocks (keep ground and trees)

@@ -328,6 +328,8 @@ function init() {
             : "";
         }
       }
+      // Render World Card stats panel
+      if (typeof renderWorldCard === "function") renderWorldCard();
       // Apply highlight to the specified mode card
       ["classic", "sprint", "blitz", "daily", "weekly", "puzzle", "survival"].forEach(function (mode) {
         const cardEl = document.getElementById("mode-card-" + mode);
@@ -585,6 +587,7 @@ function init() {
           survivalSessionNumber++;
         } else {
           survivalSessionNumber = 1;
+          if (typeof initWorldStats === "function") initWorldStats();
         }
         // Show survival HUD badge
         const survBadgeEl = document.getElementById("survival-badge");

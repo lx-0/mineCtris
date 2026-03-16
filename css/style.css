@@ -1528,6 +1528,43 @@ body {
   box-shadow: 0 0 28px rgba(180, 100, 255, 0.55);
 }
 
+/* ── Survival World Card (stats panel inside the Survival mode card) ── */
+.survival-world-card {
+  margin-top: 6px;
+  padding: 6px 8px;
+  background: rgba(255, 100, 0, 0.08);
+  border: 1px solid rgba(255, 100, 0, 0.25);
+  border-radius: 4px;
+  font-family: "Press Start 2P", cursive;
+  font-size: 0.38em;
+  text-align: left;
+}
+.survival-world-card .wc-title {
+  color: #ff6600;
+  text-shadow: 0 0 6px rgba(255, 100, 0, 0.6);
+  margin-bottom: 5px;
+  letter-spacing: 1px;
+}
+.survival-world-card .wc-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 6px;
+  margin-bottom: 2px;
+  line-height: 1.5;
+}
+.survival-world-card .wc-label {
+  color: rgba(255, 180, 100, 0.75);
+}
+.survival-world-card .wc-val {
+  color: #fff;
+  text-align: right;
+}
+.survival-world-card .wc-new {
+  color: rgba(255, 180, 100, 0.6);
+  text-align: center;
+  padding: 2px 0;
+}
+
 /* ── Puzzle badge (top-center HUD during puzzle runs) ── */
 #puzzle-badge {
   position: absolute;
