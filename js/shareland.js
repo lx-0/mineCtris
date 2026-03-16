@@ -74,25 +74,7 @@
         lbLink.textContent = "View " + data.sname + "'s rank on the leaderboard";
         lbLink.style.display = "block";
         lbLink.onclick = function () {
-          // Open leaderboard panel if available, otherwise no-op
-          var lbBtn = document.getElementById("mode-select-lb-btn");
-          modal.style.display = "none";
-          // Show mode select first, then trigger leaderboard
-          var modeSelectEl = document.getElementById("mode-select");
-          if (modeSelectEl && modeSelectEl.style.display !== "none") {
-            if (lbBtn) lbBtn.click();
-          } else {
-            // Trigger via start button click chain
-            var startBtn = document.getElementById("start-random-btn");
-            if (startBtn) {
-              startBtn.click();
-              // After mode select shows, open leaderboard
-              setTimeout(function () {
-                var lbBtn2 = document.getElementById("mode-select-lb-btn");
-                if (lbBtn2) lbBtn2.click();
-              }, 100);
-            }
-          }
+          window.open(LEADERBOARD_URL, "_blank");
         };
       } else {
         lbLink.style.display = "none";
