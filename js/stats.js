@@ -21,6 +21,7 @@ function _defaultStats() {
     puzzlesCompleted: 0,
     playerXP: 0,
     lastPlayedDate: null,
+    currentStreak: 0,
   };
 }
 
@@ -84,25 +85,36 @@ const XP_MODE_MULTIPLIERS = {
 };
 
 /**
- * Calculate and award XP for a completed session. Updates playerXP and
- * lastPlayedDate in lifetime stats.
+ * Calculate and award XP for a completed session. Updates playerXP,
+ * lastPlayedDate, and currentStreak in lifetime stats.
  * @param {number} finalScore  the session score
  * @param {string} modeKey     one of: classic, sprint, blitz, daily, weekly, puzzle
- * @returns {{ xpEarned: number, streakBonus: boolean }}
+ * @returns {{ xpEarned: number, streakBonus: boolean, currentStreak: number }}
  */
 function awardXP(finalScore, modeKey) {
   const stats = loadLifetimeStats();
   const today = new Date().toISOString().slice(0, 10);
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  const yesterdayStr = yesterday.toISOString().slice(0, 10);
 
-  // Streak bonus: +10% if last session was yesterday
-  let streakBonus = false;
-  if (stats.lastPlayedDate) {
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    if (stats.lastPlayedDate === yesterday.toISOString().slice(0, 10)) {
-      streakBonus = true;
+  let isNewStreakDay = false;
+  if (stats.lastPlayedDate !== today) {
+    // First session of a new calendar day
+    if (stats.lastPlayedDate === yesterdayStr) {
+      // Consecutive day — extend the streak
+      stats.currentStreak = (stats.currentStreak || 0) + 1;
+    } else {
+      // Missed a day (or first ever session) — reset streak
+      stats.currentStreak = 1;
     }
+    isNewStreakDay = true;
+    stats.lastPlayedDate = today;
   }
+
+  const streak = stats.currentStreak || 1;
+  // Streak bonus (+10% XP) applies on every session once you have 2+ consecutive days
+  const streakBonus = streak >= 2;
 
   const multiplier = XP_MODE_MULTIPLIERS[modeKey] || 1.0;
   const baseXP = Math.floor(finalScore / 50);
@@ -110,10 +122,16 @@ function awardXP(finalScore, modeKey) {
   if (streakBonus) xpEarned = Math.floor(xpEarned * 1.1);
 
   stats.playerXP = (stats.playerXP || 0) + xpEarned;
-  stats.lastPlayedDate = today;
   saveLifetimeStats(stats);
 
-  return { xpEarned, streakBonus };
+  // Fire milestone toast on new streak days only (3, 7, 30)
+  if (isNewStreakDay && (streak === 3 || streak === 7 || streak === 30)) {
+    if (typeof showStreakMilestoneToast === 'function') {
+      showStreakMilestoneToast(streak);
+    }
+  }
+
+  return { xpEarned, streakBonus, currentStreak: streak };
 }
 
 /** Render lifetime stats rows into #stats-panel-body. */
@@ -140,6 +158,7 @@ function renderStatsPanel() {
     ['PUZZLES COMPLETED', stats.puzzlesCompleted || 0],
     ['TOTAL XP',          stats.playerXP || 0],
     ['PLAYER LEVEL',      typeof getLevelFromXP === 'function' ? getLevelFromXP(stats.playerXP || 0) : 1],
+    ['CURRENT STREAK',    (stats.currentStreak || 0) + ' day' + ((stats.currentStreak || 0) === 1 ? '' : 's')],
   ];
   el.innerHTML = rows.map(([label, val]) =>
     `<div class="stats-row">` +

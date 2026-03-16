@@ -89,6 +89,7 @@ function triggerSprintComplete() {
     sprintXpEl.className = 'xp-earned-display' + (_sprintStreak ? ' xp-streak' : '');
   }
   if (typeof checkLevelUp === 'function') checkLevelUp(_sprintXpBefore, loadLifetimeStats().playerXP || 0);
+  if (typeof updateStreakHUD === 'function') updateStreakHUD();
 
   const finalTimeMs = sprintElapsedMs;
   const isNewBest   = saveSprintBest(finalTimeMs);

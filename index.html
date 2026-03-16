@@ -112,6 +112,15 @@
               <div class="mode-card-desc">2 minutes. Maximum score.</div>
               <div class="mode-card-pb" id="mode-pb-blitz"></div>
             </div>
+            <!-- Survival -->
+            <div class="mode-card mode-card-survival" id="mode-card-survival" data-mode="survival">
+              <div class="mode-card-icon">&#128165;</div>
+              <div class="mode-card-name">Survival</div>
+              <div class="mode-card-desc">One world. Permadeath. Die and it's all gone.</div>
+              <div class="mode-card-pb" id="mode-pb-survival"></div>
+              <div id="survival-world-card" class="survival-world-card"></div>
+              <button id="survival-reset-btn" class="survival-reset-btn" style="display:none;">&#128465; Reset World</button>
+            </div>
             <!-- Daily Challenge -->
             <div class="mode-card mode-card-daily" id="mode-card-daily" data-mode="daily">
               <div class="mode-card-icon">&#128197;</div>
@@ -132,14 +141,6 @@
               <div class="mode-card-name">Puzzle</div>
               <div class="mode-card-desc">10 curated mining puzzles. Solve them all.</div>
               <div class="mode-card-pb" id="mode-pb-puzzle"></div>
-            </div>
-            <!-- Survival -->
-            <div class="mode-card mode-card-survival" id="mode-card-survival" data-mode="survival">
-              <div class="mode-card-icon">&#128165;</div>
-              <div class="mode-card-name">Survival</div>
-              <div class="mode-card-desc">One world. Permadeath. Die and it's all gone.</div>
-              <div class="mode-card-pb" id="mode-pb-survival"></div>
-              <div id="survival-world-card" class="survival-world-card"></div>
             </div>
           </div>
           <!-- World modifier selector -->
@@ -573,6 +574,18 @@
           <button id="lb-panel-close-btn">Close</button>
         </div>
       </div>
+      <!-- Survival world reset confirmation dialog -->
+      <div id="survival-reset-confirm" style="display:none;">
+        <div id="survival-reset-confirm-box">
+          <div id="survival-reset-confirm-title">&#9888; RESET WORLD?</div>
+          <div id="survival-reset-confirm-msg">This will permanently delete your world. Are you sure?</div>
+          <div id="survival-reset-confirm-btns">
+            <button id="survival-reset-confirm-yes">Yes, delete it</button>
+            <button id="survival-reset-confirm-no">Cancel</button>
+          </div>
+        </div>
+      </div>
+
       <!-- End-of-season summary overlay -->
       <div id="season-end-overlay" style="display:none;">
         <div id="season-end-panel">

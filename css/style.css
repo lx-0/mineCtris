@@ -1564,6 +1564,134 @@ body {
   text-align: center;
   padding: 2px 0;
 }
+/* Prominent Day N heading inside world card */
+.survival-world-card .wc-day-age {
+  font-family: "Press Start 2P", cursive;
+  font-size: 1.5em;
+  color: #ff6600;
+  text-shadow: 0 0 10px rgba(255, 100, 0, 0.8), 0 0 20px rgba(255, 100, 0, 0.4);
+  text-align: center;
+  margin-bottom: 6px;
+  letter-spacing: 1px;
+}
+/* "Begin a new world" CTA inside world card */
+.survival-world-card .wc-cta-title {
+  color: #ff6600;
+  text-shadow: 0 0 6px rgba(255, 100, 0, 0.6);
+  text-align: center;
+  margin-bottom: 5px;
+  letter-spacing: 1px;
+}
+.survival-world-card .wc-cta-desc {
+  color: rgba(255, 180, 100, 0.7);
+  text-align: center;
+  line-height: 1.7;
+}
+
+/* ── Survival mode card — orange/fire accent ── */
+.mode-card-survival {
+  border-color: rgba(255, 100, 0, 0.5);
+  box-shadow: 0 0 14px rgba(255, 100, 0, 0.1);
+}
+.mode-card-survival .mode-card-name {
+  color: #ff6600;
+  text-shadow: 0 0 6px #ff6600;
+}
+.mode-card-survival .mode-card-desc {
+  color: #ffb380;
+}
+.mode-card-survival:hover {
+  border-color: #ff6600 !important;
+  box-shadow: 0 0 22px rgba(255, 100, 0, 0.4) !important;
+}
+.mode-card-survival.mode-card-highlighted {
+  border-color: #ff6600;
+  box-shadow: 0 0 28px rgba(255, 100, 0, 0.55);
+}
+
+/* Reset World button inside the survival card */
+.survival-reset-btn {
+  font-family: "Press Start 2P", cursive;
+  font-size: 0.36em;
+  color: #ff4444;
+  background: rgba(255, 50, 50, 0.1);
+  border: 1px solid rgba(255, 50, 50, 0.4);
+  border-radius: 3px;
+  padding: 4px 8px;
+  margin-top: 6px;
+  cursor: pointer;
+  width: 100%;
+  letter-spacing: 0.5px;
+  transition: background 0.15s, border-color 0.15s;
+}
+.survival-reset-btn:hover {
+  background: rgba(255, 50, 50, 0.22);
+  border-color: rgba(255, 50, 50, 0.7);
+}
+
+/* Survival world reset confirmation dialog */
+#survival-reset-confirm {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.82);
+  display: none;
+  justify-content: center;
+  align-items: center;
+  z-index: 900;
+}
+#survival-reset-confirm-box {
+  background: #111;
+  border: 2px solid #ff4444;
+  border-radius: 6px;
+  padding: 28px 32px;
+  text-align: center;
+  max-width: 340px;
+  box-shadow: 0 0 30px rgba(255, 50, 50, 0.5);
+}
+#survival-reset-confirm-title {
+  font-family: "Press Start 2P", cursive;
+  font-size: 0.9em;
+  color: #ff4444;
+  margin-bottom: 14px;
+  letter-spacing: 1px;
+}
+#survival-reset-confirm-msg {
+  font-family: "Press Start 2P", cursive;
+  font-size: 0.52em;
+  color: #ffaaaa;
+  line-height: 1.8;
+  margin-bottom: 20px;
+}
+#survival-reset-confirm-btns {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+#survival-reset-confirm-yes,
+#survival-reset-confirm-no {
+  font-family: "Press Start 2P", cursive;
+  font-size: 0.55em;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  border: none;
+}
+#survival-reset-confirm-yes {
+  background: #ff4444;
+  color: #fff;
+}
+#survival-reset-confirm-yes:hover {
+  background: #ff2222;
+}
+#survival-reset-confirm-no {
+  background: #333;
+  color: #aaa;
+  border: 1px solid #555;
+}
+#survival-reset-confirm-no:hover {
+  background: #444;
+  color: #fff;
+}
 
 /* ── Puzzle badge (top-center HUD during puzzle runs) ── */
 #puzzle-badge {

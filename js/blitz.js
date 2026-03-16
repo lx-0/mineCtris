@@ -73,6 +73,7 @@ function triggerBlitzComplete() {
     blitzXpEl.className = 'xp-earned-display' + (_blitzStreak ? ' xp-streak' : '');
   }
   if (typeof checkLevelUp === 'function') checkLevelUp(_blitzXpBefore, loadLifetimeStats().playerXP || 0);
+  if (typeof updateStreakHUD === 'function') updateStreakHUD();
 
   const finalScore = score;
   const isNewBest  = saveBlitzBest(finalScore);

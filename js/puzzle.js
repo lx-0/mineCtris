@@ -366,6 +366,7 @@ function _triggerPuzzleWin() {
     if (typeof checkLevelUp === 'function' && typeof loadLifetimeStats === 'function') {
       checkLevelUp(_pzXpBefore, loadLifetimeStats().playerXP || 0);
     }
+    if (typeof updateStreakHUD === 'function') updateStreakHUD();
   }
 
   // Achievements

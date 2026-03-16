@@ -158,6 +158,15 @@ function _showSkinUnlockToast(milestone) {
   if (!_levelUpToastRunning) _drainLevelUpQueue();
 }
 
+/**
+ * Show a streak milestone toast (called from stats.js awardXP at 3, 7, 30 days).
+ * @param {number} streak
+ */
+function showStreakMilestoneToast(streak) {
+  _levelUpToastQueue.push({ type: 'streak', streak });
+  if (!_levelUpToastRunning) _drainLevelUpQueue();
+}
+
 function _drainLevelUpQueue() {
   if (!_levelUpToastQueue.length) { _levelUpToastRunning = false; return; }
   _levelUpToastRunning = true;
@@ -176,12 +185,19 @@ function _displayLevelUpToast(item, done) {
   const bodyEl  = el.querySelector('.lu-toast-body');
 
   if (item.type === 'levelup') {
+    el.classList.remove('streak-toast');
     const title = getLevelTitle(item.level);
     if (iconEl)  iconEl.textContent  = item.level >= MAX_LEVEL ? '\u{1F947}' : '\u2B06';
     if (titleEl) titleEl.textContent = 'LEVEL UP!  ' + getLevelBadgeLabel(item.level);
     if (bodyEl)  bodyEl.textContent  = title ? 'Title unlocked: ' + title : '';
+  } else if (item.type === 'streak') {
+    el.classList.add('streak-toast');
+    if (iconEl)  iconEl.textContent  = '\uD83D\uDD25';
+    if (titleEl) titleEl.textContent = item.streak + '-DAY STREAK!';
+    if (bodyEl)  bodyEl.textContent  = '+10% XP bonus active!';
   } else {
     // skin unlock
+    el.classList.remove('streak-toast');
     const m = item.milestone;
     if (iconEl)  iconEl.textContent  = m.icon;
     if (titleEl) titleEl.textContent = 'SKIN UNLOCKED';
@@ -200,6 +216,21 @@ function _displayLevelUpToast(item, done) {
 }
 
 // ── HUD badge ─────────────────────────────────────────────────────────────────
+
+/** Update the in-game HUD streak badge element. */
+function updateStreakHUD() {
+  const el = document.getElementById('hud-streak-badge');
+  if (!el) return;
+  if (typeof loadLifetimeStats !== 'function') return;
+  const stats = loadLifetimeStats();
+  const streak = stats.currentStreak || 0;
+  if (streak >= 2) {
+    el.textContent = '\uD83D\uDD25 ' + streak + 'x';
+    el.style.display = 'block';
+  } else {
+    el.style.display = 'none';
+  }
+}
 
 /** Update the in-game HUD level badge element. */
 function updateLevelBadgeHUD() {

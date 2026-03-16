@@ -597,6 +597,31 @@ function init() {
       });
     }
 
+    // Survival: Reset World button + confirmation dialog
+    const survivalResetBtn = document.getElementById("survival-reset-btn");
+    const survivalResetConfirm = document.getElementById("survival-reset-confirm");
+    const survivalResetYes = document.getElementById("survival-reset-confirm-yes");
+    const survivalResetNo = document.getElementById("survival-reset-confirm-no");
+
+    if (survivalResetBtn && survivalResetConfirm) {
+      survivalResetBtn.addEventListener("click", function (e) {
+        e.stopPropagation();
+        survivalResetConfirm.style.display = "flex";
+      });
+      survivalResetYes.addEventListener("click", function () {
+        if (typeof clearSurvivalWorld === "function") clearSurvivalWorld();
+        if (typeof resetWorldStats === "function") resetWorldStats();
+        survivalResetConfirm.style.display = "none";
+        if (typeof renderWorldCard === "function") renderWorldCard();
+        // Refresh the survival PB text
+        const survivalPbEl = document.getElementById("mode-pb-survival");
+        if (survivalPbEl) survivalPbEl.textContent = "";
+      });
+      survivalResetNo.addEventListener("click", function () {
+        survivalResetConfirm.style.display = "none";
+      });
+    }
+
     // Puzzle select back button
     const puzzleSelectBackBtn = document.getElementById("puzzle-select-back");
     if (puzzleSelectBackBtn) {

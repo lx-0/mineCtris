@@ -180,7 +180,8 @@ function getWorldAge(stats) {
 
 /**
  * Render the World Card stats panel into #survival-world-card.
- * Shows world age, cumulative stats, and world start date.
+ * Shows world age prominently when a world exists, or a "Begin a new world"
+ * CTA when no world is saved. Also toggles the Reset World button visibility.
  * No-ops if the element does not exist.
  */
 function renderWorldCard() {
@@ -188,33 +189,31 @@ function renderWorldCard() {
   if (!el) return;
   const stats = loadSurvivalStats();
   const hasWorld = typeof hasSurvivalWorld === 'function' && hasSurvivalWorld();
+
+  // Show/hide the Reset World button based on whether a world exists
+  const resetBtn = document.getElementById('survival-reset-btn');
+  if (resetBtn) resetBtn.style.display = hasWorld ? 'block' : 'none';
+
   if (!hasWorld || !stats.worldStartedDate) {
-    el.innerHTML = '<div class="wc-new">New world — no history yet.</div>';
+    el.innerHTML =
+      '<div class="wc-cta-title">&#127758; BEGIN A NEW WORLD</div>' +
+      '<div class="wc-cta-desc">Build your legacy across many sessions. One world — when it\'s gone, it\'s gone forever.</div>';
     return;
   }
+
   const totalSecs = stats.totalTimePlayed;
   const hh = Math.floor(totalSecs / 3600);
   const mm = Math.floor((totalSecs % 3600) / 60).toString().padStart(2, '0');
   const ss = (totalSecs % 60).toString().padStart(2, '0');
-  const timeStr = hh > 0
-    ? hh + ':' + mm + ':' + ss
-    : mm + ':' + ss;
-  const startDate = new Date(stats.worldStartedDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
-  const rows = [
-    ['WORLD AGE',      getWorldAge(stats)],
-    ['TOTAL TIME',     timeStr],
-    ['SCORE',          stats.totalScore.toLocaleString()],
-    ['LINES CLEARED',  stats.totalLinesCleared],
-    ['BLOCKS MINED',   stats.totalBlocksMined],
-    ['EVENTS SURVIVED', stats.eventsSurvived || 0],
-    ['WORLD BORN',     startDate],
-  ];
+  const timeStr = hh > 0 ? hh + ':' + mm + ':' + ss : mm + ':' + ss;
+
   el.innerHTML =
-    '<div class="wc-title">&#127758; YOUR WORLD</div>' +
-    rows.map(function ([label, val]) {
-      return '<div class="wc-row"><span class="wc-label">' + label +
-             '</span><span class="wc-val">' + val + '</span></div>';
-    }).join('');
+    '<div class="wc-day-age">' + getWorldAge(stats) + '</div>' +
+    '<div class="wc-row"><span class="wc-label">SESSIONS</span><span class="wc-val">' + stats.sessionsSurvived + '</span></div>' +
+    '<div class="wc-row"><span class="wc-label">TIME</span><span class="wc-val">' + timeStr + '</span></div>' +
+    '<div class="wc-row"><span class="wc-label">SCORE</span><span class="wc-val">' + stats.totalScore.toLocaleString() + '</span></div>' +
+    '<div class="wc-row"><span class="wc-label">BLOCKS</span><span class="wc-val">' + stats.totalBlocksMined.toLocaleString() + '</span></div>' +
+    '<div class="wc-row"><span class="wc-label">LINES</span><span class="wc-val">' + stats.totalLinesCleared + '</span></div>';
 }
 
 /**
