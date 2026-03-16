@@ -123,6 +123,26 @@ const COLORBLIND_PATTERNS = [
   0, // dark navy - solid (very dark, clearly distinct)
 ];
 
+// Nether theme palette — dark stone, molten lava emphasis, crimson/obsidian tones.
+// Index maps 1:1 with COLORS. canonicalColor (Classic hex) is always preserved.
+const NETHER_COLORS = [
+  null,
+  0x7a1c0a, // 1 → dark red-brown   (was dirt brown)
+  0x3d3535, // 2 → dark charcoal    (was stone grey)
+  0xff6600, // 3 → molten amber     (was gold yellow)
+  0xff4400, // 4 → ember orange     (was ice cyan)
+  0x550000, // 5 → dark crimson     (was moss green)
+  0xff0000, // 6 → lava red         (same — animated lava shader applies)
+  0x2b003f, // 7 → obsidian         (was crystal purple)
+];
+
+// Nether trail emissive colors keyed by color index.
+const NETHER_TRAIL_EMISSIVE = {
+  3: 0xff6600, // molten amber (was gold's warm amber)
+  4: 0xff4400, // ember orange (was ice's blue)
+  6: 0xff3300, // lava red (same)
+};
+
 // Reverse lookup: COLORS hex integer → color index (used for live material swapping).
 const COLOR_TO_INDEX = {};
 (function () {

@@ -165,6 +165,11 @@ const BLITZ_FIXED_MULTIPLIER   = Math.pow(1.1, 4); // ≈ 1.4641 (same as Sprint
 // true = deuteranopia-safe palette + surface patterns are used for block rendering.
 let colorblindMode = false;
 
+// ── Visual theme ──────────────────────────────────────────────────────────────
+// "classic" = default Minecraft-inspired palette (always unlocked).
+// "nether"  = dark stone/lava palette (unlocked via "Iron Will" achievement).
+let activeTheme = "classic";
+
 // ── Session stats (reset each game, accumulated for lifetime stats on game over) ──
 let blocksPlaced = 0;
 let sessionCrafts = 0;

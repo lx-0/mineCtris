@@ -111,9 +111,14 @@ function updateNextPiecesHUD() {
   if (!nextPiecesEl) return;
   let html = '<div class="np-label">NEXT</div><div class="np-pieces-row">';
   pieceQueue.forEach(({ index, shape }) => {
-    const palette = (colorblindMode && COLORBLIND_COLORS[index] !== null)
-      ? COLORBLIND_COLORS[index]
-      : COLORS[index];
+    let palette;
+    if (colorblindMode && COLORBLIND_COLORS[index] !== null) {
+      palette = COLORBLIND_COLORS[index];
+    } else if (activeTheme === "nether" && NETHER_COLORS[index] !== null) {
+      palette = NETHER_COLORS[index];
+    } else {
+      palette = COLORS[index];
+    }
     const hex = '#' + palette.toString(16).padStart(6, '0');
     html += '<div class="np-piece">';
     shape.forEach(row => {

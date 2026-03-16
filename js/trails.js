@@ -35,8 +35,12 @@ function initTrails() {
  */
 function createPieceTrail(piece) {
   const colorIndex   = piece.userData.colorIndex;
-  const emissiveHex  = TRAIL_EMISSIVE_COLORS[colorIndex];
-  const trailColor   = new THREE.Color(emissiveHex !== undefined ? emissiveHex : COLORS[colorIndex]);
+  const themeEmissive = (activeTheme === "nether") ? NETHER_TRAIL_EMISSIVE : TRAIL_EMISSIVE_COLORS;
+  const emissiveHex  = themeEmissive[colorIndex];
+  const baseColorHex = (activeTheme === "nether" && NETHER_COLORS[colorIndex] !== null)
+    ? NETHER_COLORS[colorIndex]
+    : COLORS[colorIndex];
+  const trailColor   = new THREE.Color(emissiveHex !== undefined ? emissiveHex : baseColorHex);
   const emissiveColor = emissiveHex !== undefined ? trailColor.clone() : null;
   const isLava       = colorIndex === 6;
   const blockCount   = piece.children.length;

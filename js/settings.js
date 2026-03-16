@@ -1,9 +1,11 @@
 // Audio + accessibility settings panel — persists to localStorage.
-// Requires: audio.js (applyAudioSettings), state.js (colorblindMode),
-//           world.js (createBlockMesh), shaders.js (createBlockMaterialColorblind)
+// Requires: audio.js (applyAudioSettings), state.js (colorblindMode, activeTheme),
+//           world.js (createBlockMesh), shaders.js (createBlockMaterialColorblind),
+//           achievements.js (loadAchievements)
 
 const AUDIO_SETTINGS_KEY = "mineCtris_audioSettings";
 const COLORBLIND_KEY = "mineCtris_colorblindMode";
+const THEME_STORAGE_KEY = "mineCtris_theme";
 
 let _audioSettings = { master: 80, sfx: 100, music: 60 };
 let _settingsCloseCallback = null;
@@ -107,11 +109,114 @@ function applyColorblindMode(enabled) {
   if (toggle) toggle.checked = enabled;
 }
 
+// ── Theme system ───────────────────────────────────────────────────────────────
+
+function _loadTheme() {
+  try {
+    const raw = localStorage.getItem(THEME_STORAGE_KEY);
+    if (raw === "nether") activeTheme = "nether";
+    else activeTheme = "classic";
+  } catch (_) {}
+}
+
+function _saveTheme() {
+  try {
+    localStorage.setItem(THEME_STORAGE_KEY, activeTheme);
+  } catch (_) {}
+}
+
+/** Return true if the given theme key is currently unlocked. */
+function isThemeUnlocked(themeKey) {
+  if (themeKey === "classic") return true;
+  if (themeKey === "nether") {
+    try {
+      const achs = loadAchievements ? loadAchievements() : {};
+      return !!achs["iron_will"];
+    } catch (_) { return false; }
+  }
+  return false;
+}
+
+/**
+ * Apply a theme globally: swap materials on all existing block meshes,
+ * refresh next-piece HUD, and update HUD accent CSS class on <body>.
+ */
+function applyTheme(themeKey) {
+  if (!isThemeUnlocked(themeKey)) return;
+  activeTheme = themeKey;
+  _saveTheme();
+
+  // Update HUD accent class on body.
+  document.body.classList.toggle("theme-nether", themeKey === "nether");
+
+  // Swap materials on all existing block meshes (unless colorblind mode overrides).
+  if (!colorblindMode) {
+    [worldGroup, fallingPiecesGroup].forEach(function(group) {
+      if (!group) return;
+      group.traverse(function(obj) {
+        if (!obj.userData || !obj.userData.isBlock) return;
+        const canonHex = obj.userData.canonicalColor;
+        if (canonHex === undefined) return;
+
+        let newMat;
+        if (themeKey === "nether") {
+          const nIdx = COLOR_TO_INDEX[canonHex];
+          if (nIdx !== undefined && NETHER_COLORS[nIdx] !== null) {
+            newMat = createBlockMaterial(NETHER_COLORS[nIdx]);
+          } else {
+            newMat = createBlockMaterial(canonHex);
+          }
+        } else {
+          // Classic — restore canonical color material.
+          newMat = createBlockMaterial(canonHex);
+          // Re-apply lava emissive for classic mode.
+          const matName = COLOR_TO_MATERIAL[canonHex];
+          if (matName && BLOCK_TYPES[matName] && BLOCK_TYPES[matName].effect === "lava_glow") {
+            const lavaEmissive = new THREE.Color(0x220800);
+            newMat.emissive = lavaEmissive;
+            newMat.needsUpdate = true;
+            obj.userData.defaultEmissive = lavaEmissive.clone();
+          }
+        }
+
+        obj.material = newMat;
+        obj.userData.originalColor = newMat.color.clone();
+      });
+    });
+  }
+
+  // Refresh next-pieces HUD colors.
+  if (typeof updateNextPiecesHUD === 'function') updateNextPiecesHUD();
+
+  // Sync theme button visual state.
+  _syncThemeButtons();
+}
+
+/** Sync theme selector button states (locked/selected). */
+function _syncThemeButtons() {
+  const themes = [
+    { key: "classic", btnId: "theme-btn-classic" },
+    { key: "nether",  btnId: "theme-btn-nether"  },
+  ];
+  themes.forEach(function(t) {
+    const btn = document.getElementById(t.btnId);
+    if (!btn) return;
+    const unlocked = isThemeUnlocked(t.key);
+    btn.classList.toggle("theme-btn-selected", activeTheme === t.key);
+    btn.classList.toggle("theme-btn-locked", !unlocked);
+    btn.disabled = !unlocked;
+  });
+}
+
 /** Called once during init() — loads persisted settings and wires sliders. */
 function initSettings() {
   _loadAudioSettings();
   applyAudioSettings(_audioSettings.master, _audioSettings.sfx, _audioSettings.music);
   _loadColorblindMode();
+  _loadTheme();
+  // Apply persisted theme body class without triggering a material swap on init
+  // (blocks don't exist yet — createBlockMesh will pick up activeTheme directly).
+  document.body.classList.toggle("theme-nether", activeTheme === "nether");
 
   function makeHandler(key, valId) {
     return function () {
@@ -141,6 +246,15 @@ function initSettings() {
       applyColorblindMode(this.checked);
     });
   }
+
+  // Wire up theme buttons.
+  ["classic", "nether"].forEach(function(key) {
+    const btn = document.getElementById("theme-btn-" + key);
+    if (!btn) return;
+    btn.addEventListener("click", function() {
+      if (isThemeUnlocked(key)) applyTheme(key);
+    });
+  });
 }
 
 /** Show the settings overlay. Optional onClose callback fires when panel is dismissed. */
@@ -149,6 +263,7 @@ function openSettings(onClose) {
   _syncSliders();
   const cbToggle = document.getElementById("cb-toggle");
   if (cbToggle) cbToggle.checked = colorblindMode;
+  _syncThemeButtons();
   const overlay = document.getElementById("settings-overlay");
   if (overlay) overlay.style.display = "flex";
 }

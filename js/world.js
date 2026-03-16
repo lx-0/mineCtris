@@ -59,12 +59,19 @@ function createBlockMesh(color) {
   // Resolve the canonical game color (always the standard palette hex).
   const canonicalHex = (color instanceof THREE.Color) ? color.getHex() : new THREE.Color(color).getHex();
 
-  // Choose material: colorblind-safe or standard.
+  // Choose material: colorblind-safe takes priority, then theme, then standard.
   let material;
   if (colorblindMode) {
     const cbIdx = COLOR_TO_INDEX[canonicalHex];
     if (cbIdx !== undefined && COLORBLIND_COLORS[cbIdx] !== null) {
       material = createBlockMaterialColorblind(COLORBLIND_COLORS[cbIdx], COLORBLIND_PATTERNS[cbIdx]);
+    } else {
+      material = createBlockMaterial(color);
+    }
+  } else if (activeTheme === "nether") {
+    const nIdx = COLOR_TO_INDEX[canonicalHex];
+    if (nIdx !== undefined && NETHER_COLORS[nIdx] !== null) {
+      material = createBlockMaterial(NETHER_COLORS[nIdx]);
     } else {
       material = createBlockMaterial(color);
     }
