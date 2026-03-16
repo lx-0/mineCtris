@@ -3535,6 +3535,197 @@ body.theme-legendary #score-display {
   50%       { opacity: 1.00; }
 }
 
+/* ── Earthquake World Event ──────────────────────────────────────────────── */
+
+#earthquake-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 183;
+  background: radial-gradient(ellipse at center, transparent 28%, rgba(160,80,0,0.18) 100%);
+  box-shadow: inset 0 0 90px rgba(200,100,0,0.22);
+  animation: earthquake-breathe 0.9s ease-in-out infinite;
+}
+@keyframes earthquake-breathe {
+  0%, 100% { opacity: 0.65; }
+  50%       { opacity: 1.00; }
+}
+
+/* ── Event Announcement Card ─────────────────────────────────────────────── */
+
+/* Full-screen backdrop */
+#event-announcement {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 210;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.45);
+  animation: event-announce-backdrop-in 0.25s ease-out forwards;
+}
+@keyframes event-announce-backdrop-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+#event-announcement.dismissing {
+  animation: event-announce-backdrop-out 0.35s ease-in forwards;
+}
+@keyframes event-announce-backdrop-out {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+
+/* Inner card */
+#event-announcement-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 32px 48px;
+  border-radius: 12px;
+  border: 3px solid var(--event-accent, #ffffff);
+  background: var(--event-bg, rgba(20, 20, 20, 0.95));
+  box-shadow: 0 0 40px var(--event-glow, rgba(255,255,255,0.3)),
+              0 0 80px var(--event-glow, rgba(255,255,255,0.1)),
+              inset 0 0 20px rgba(0,0,0,0.5);
+  animation: event-card-in 0.30s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+  max-width: 420px;
+  text-align: center;
+}
+@keyframes event-card-in {
+  from { transform: scale(0.7); opacity: 0; }
+  to   { transform: scale(1.0); opacity: 1; }
+}
+#event-announcement.dismissing #event-announcement-card {
+  animation: event-card-out 0.30s ease-in forwards;
+}
+@keyframes event-card-out {
+  from { transform: scale(1.0); opacity: 1; }
+  to   { transform: scale(0.85); opacity: 0; }
+}
+
+#event-announcement-icon {
+  font-size: 3.2em;
+  line-height: 1;
+  filter: drop-shadow(0 0 12px var(--event-glow, rgba(255,255,255,0.5)));
+  animation: event-icon-bounce 0.5s ease-out 0.2s both;
+}
+@keyframes event-icon-bounce {
+  0%   { transform: scale(0.5) rotate(-15deg); }
+  60%  { transform: scale(1.15) rotate(5deg); }
+  100% { transform: scale(1.0) rotate(0deg); }
+}
+
+#event-announcement-name {
+  font-family: "Press Start 2P", cursive;
+  font-size: 18px;
+  color: var(--event-accent, #ffffff);
+  text-shadow: 0 0 16px var(--event-glow, rgba(255,255,255,0.8)),
+               2px 2px 4px rgba(0,0,0,0.9);
+  letter-spacing: 2px;
+  line-height: 1.4;
+}
+
+#event-announcement-desc {
+  font-family: "Press Start 2P", cursive;
+  font-size: 9px;
+  color: rgba(255, 255, 255, 0.80);
+  text-shadow: 1px 1px 2px rgba(0,0,0,0.9);
+  line-height: 1.6;
+  max-width: 320px;
+}
+
+/* ── Event Countdown HUD (corner timer) ──────────────────────────────────── */
+
+#event-countdown-hud {
+  position: absolute;
+  bottom: 16px;
+  right: 16px;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 7px;
+  background: rgba(0, 0, 0, 0.70);
+  border: 2px solid var(--event-hud-color, #ffffff);
+  border-radius: 8px;
+  padding: 8px 14px;
+  pointer-events: none;
+  z-index: 185;
+  box-shadow: 0 0 12px var(--event-hud-glow, rgba(255,255,255,0.25));
+  animation: event-hud-appear 0.3s ease-out forwards;
+}
+@keyframes event-hud-appear {
+  from { transform: translateY(20px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+#event-countdown-icon {
+  font-size: 1.1em;
+  line-height: 1;
+}
+
+#event-countdown-timer {
+  font-family: "Press Start 2P", cursive;
+  font-size: 13px;
+  color: var(--event-hud-color, #ffffff);
+  text-shadow: 0 0 8px var(--event-hud-glow, rgba(255,255,255,0.6)),
+               1px 1px 2px rgba(0,0,0,0.9);
+  letter-spacing: 1px;
+  white-space: nowrap;
+  transition: color 0.4s ease, text-shadow 0.4s ease;
+}
+
+/* Timer color states (applied via JS on the #event-countdown-hud element) */
+#event-countdown-hud.timer-green {
+  --event-hud-color: #44ff88;
+  --event-hud-glow: rgba(68, 255, 136, 0.5);
+}
+#event-countdown-hud.timer-yellow {
+  --event-hud-color: #ffdd00;
+  --event-hud-glow: rgba(255, 221, 0, 0.5);
+}
+#event-countdown-hud.timer-red {
+  --event-hud-color: #ff4444;
+  --event-hud-glow: rgba(255, 68, 68, 0.5);
+  animation: event-hud-urgent 0.6s ease-in-out infinite;
+}
+@keyframes event-hud-urgent {
+  0%, 100% { opacity: 0.85; }
+  50%       { opacity: 1.00; }
+}
+
+/* ── Event End Toast ─────────────────────────────────────────────────────── */
+
+#event-end-toast {
+  position: absolute;
+  bottom: 80px;
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  font-family: "Press Start 2P", cursive;
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.90);
+  text-shadow: 1px 1px 3px rgba(0,0,0,0.9);
+  background: rgba(0, 0, 0, 0.78);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 6px;
+  padding: 10px 18px;
+  pointer-events: none;
+  z-index: 190;
+  white-space: nowrap;
+  opacity: 0;
+}
+#event-end-toast.toast-visible {
+  animation: event-end-toast-show 3.0s ease forwards;
+}
+@keyframes event-end-toast-show {
+  0%   { opacity: 0;    transform: translateX(-50%) translateY(10px); }
+  12%  { opacity: 1;    transform: translateX(-50%) translateY(0);    }
+  70%  { opacity: 1;    transform: translateX(-50%) translateY(0);    }
+  100% { opacity: 0;    transform: translateX(-50%) translateY(-8px); }
+}
+
 /* ── Season Banner (mode-select screen) ───────────────────────────────────── */
 #season-banner {
   display: none; /* shown by JS when season is active */

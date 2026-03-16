@@ -198,15 +198,36 @@
       <div id="storm-overlay" style="display:none;"></div>
       <!-- Piece Storm: red lightning-strike flash (fires on each piece spawn) -->
       <div id="lightning-flash" style="display:none;"></div>
-      <!-- Piece Storm: countdown HUD -->
+      <!-- Piece Storm: countdown HUD (legacy — superseded by #event-countdown-hud) -->
       <div id="storm-hud" style="display:none;"></div>
 
       <!-- Golden Hour: warm golden ambient tint overlay -->
       <div id="golden-hour-overlay" style="display:none;"></div>
       <!-- Golden Hour: golden shimmer flash on line clear -->
       <div id="golden-hour-flash" style="display:none;"></div>
-      <!-- Golden Hour: countdown HUD -->
+      <!-- Golden Hour: countdown HUD (legacy — superseded by #event-countdown-hud) -->
       <div id="golden-hour-hud" style="display:none;"></div>
+
+      <!-- Earthquake: orange-brown atmospheric overlay -->
+      <div id="earthquake-overlay" style="display:none;"></div>
+
+      <!-- Event Announcement: full-screen dramatic card shown at event start -->
+      <div id="event-announcement" style="display:none;" aria-live="assertive">
+        <div id="event-announcement-card">
+          <div id="event-announcement-icon"></div>
+          <div id="event-announcement-name"></div>
+          <div id="event-announcement-desc"></div>
+        </div>
+      </div>
+
+      <!-- Event Countdown HUD: corner timer shown during active event -->
+      <div id="event-countdown-hud" style="display:none;">
+        <span id="event-countdown-icon"></span>
+        <span id="event-countdown-timer">00:00</span>
+      </div>
+
+      <!-- Event End Toast: small notification when an event ends -->
+      <div id="event-end-toast" style="display:none;"></div>
 
       <!-- Top-right HUD: score + next-piece preview -->
       <div id="top-right-hud">
