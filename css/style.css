@@ -2275,3 +2275,109 @@ body.theme-candy .inv-slot.selected {
   text-align: center;
   width: 100%;
 }
+
+/* ── Share card landing modal ── */
+#share-card-modal {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.82);
+  z-index: 9000;
+}
+#share-card-inner {
+  position: relative;
+  background: #0a0a0a;
+  border: 2px solid #00ff88;
+  border-radius: 6px;
+  padding: 36px 40px 32px;
+  max-width: 420px;
+  width: 90%;
+  text-align: center;
+  box-shadow: 0 0 40px rgba(0, 255, 136, 0.25);
+}
+#sc-dismiss-btn {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  background: none;
+  border: none;
+  color: #555;
+  font-size: 16px;
+  cursor: pointer;
+  line-height: 1;
+  padding: 4px;
+  transition: color 0.15s;
+}
+#sc-dismiss-btn:hover { color: #0f0; }
+#sc-logo {
+  font-family: "Press Start 2P", cursive;
+  font-size: 10px;
+  color: #00ff88;
+  letter-spacing: 2px;
+  margin-bottom: 18px;
+  opacity: 0.7;
+}
+#sc-headline {
+  font-family: "Press Start 2P", cursive;
+  font-size: 13px;
+  color: #fff;
+  margin-bottom: 8px;
+  line-height: 1.6;
+}
+#sc-subline {
+  font-family: "Press Start 2P", cursive;
+  font-size: 9px;
+  color: #0f0;
+  margin-bottom: 22px;
+}
+#sc-stats {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  flex-wrap: wrap;
+  margin-bottom: 22px;
+  background: rgba(0, 255, 136, 0.05);
+  border: 1px solid rgba(0, 255, 136, 0.15);
+  border-radius: 4px;
+  padding: 14px 10px;
+}
+#sc-stats > div {
+  font-family: "Press Start 2P", cursive;
+  font-size: 12px;
+  color: #fff;
+  min-width: 60px;
+}
+.sc-label {
+  font-size: 7px;
+  color: #0f0;
+  display: block;
+  margin-bottom: 5px;
+}
+#sc-lb-link {
+  display: block;
+  font-family: "Press Start 2P", cursive;
+  font-size: 8px;
+  color: #0af;
+  text-decoration: underline;
+  cursor: pointer;
+  margin-bottom: 18px;
+  transition: color 0.15s;
+}
+#sc-lb-link:hover { color: #fff; }
+#sc-play-btn {
+  font-family: "Press Start 2P", cursive;
+  font-size: 11px;
+  background: #00ff88;
+  color: #000;
+  border: none;
+  border-radius: 4px;
+  padding: 12px 28px;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+}
+#sc-play-btn:hover {
+  background: #0f0;
+  transform: scale(1.04);
+}

@@ -206,17 +206,31 @@ function triggerGameOver() {
       const modeLine = isDailyChallenge ? "Daily Challenge"
         : weeklyModeLabel ? weeklyModeLabel
         : isBlitzMode ? "Blitz" : "Classic";
-      const scoreFormatted = state.score.toLocaleString();
-      const shareText =
-        `MINETRIS\n` +
-        `${modeLine} — Score: ${scoreFormatted} | Lines: ${state.linesCleared} | Survived: ${mm}:${ss}`;
+
+      // Build deep link URL with encoded score data
+      const modeKey = isDailyChallenge ? "Daily"
+        : isWeeklyChallenge ? "Weekly"
+        : isBlitzMode ? "Blitz" : "Classic";
+      const timeStr = mm + ss; // e.g. "0342"
+      const shareParam = modeKey + "-" + state.score + "-" + state.linesCleared + "-" + timeStr;
+      const displayName = typeof loadDisplayName === "function" ? loadDisplayName() : "";
+      const baseUrl = location.href.split("?")[0].split("#")[0];
+      let shareUrl = baseUrl + "?share=" + encodeURIComponent(shareParam);
+      if (displayName) {
+        shareUrl += "&sname=" + encodeURIComponent(displayName);
+      }
+
+      // Fall back to plain text if URL somehow exceeds 2000 chars
+      const MAX_URL = 2000;
+      const copyContent = shareUrl.length <= MAX_URL ? shareUrl
+        : "MINETRIS\n" + modeLine + " \u2014 Score: " + state.score.toLocaleString() + " | Lines: " + state.linesCleared + " | Survived: " + mm + ":" + ss;
 
       // Remove any old fallback input
       const oldWrap = document.getElementById("go-share-fallback-wrap");
       if (oldWrap) oldWrap.remove();
 
       if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(shareText).then(function () {
+        navigator.clipboard.writeText(copyContent).then(function () {
           if (shareFeedback) {
             shareFeedback.textContent = "Copied!";
             shareFeedback.classList.add("visible");
@@ -226,10 +240,10 @@ function triggerGameOver() {
             }, 1500);
           }
         }).catch(function () {
-          showShareFallback(shareText, shareBtn);
+          showShareFallback(copyContent, shareBtn);
         });
       } else {
-        showShareFallback(shareText, shareBtn);
+        showShareFallback(copyContent, shareBtn);
       }
     };
   }
