@@ -159,13 +159,36 @@ function checkLineClear(newBlocks) {
   const blitzMult = (isBlitzMode && blitzBonusActive) ? BLITZ_BONUS_MULTIPLIER : 1.0;
   // Gold Rush: 2× score multiplier on all line clears.
   const goldMult = weeklyGoldRush ? 2.0 : 1.0;
+  // Golden Hour event: 3× score multiplier on all line clears.
+  const goldenHourMult = (typeof goldenHourActive !== "undefined" && goldenHourActive) ? 3.0 : 1.0;
   const baseScore = LINE_SCORES[Math.min(completeLevels.length, 4)];
-  addScore(Math.round(baseScore * comboMult * blitzMult * goldMult));
+  addScore(Math.round(baseScore * comboMult * blitzMult * goldMult * goldenHourMult));
+
+  // Golden Hour: trigger shimmer flash and show 3× label
+  if (typeof goldenHourActive !== "undefined" && goldenHourActive) {
+    const flash = document.getElementById("golden-hour-flash");
+    if (flash) {
+      flash.style.display = "none";
+      flash.classList.remove("active");
+      void flash.offsetWidth;
+      flash.classList.add("active");
+      flash.style.display = "block";
+      flash.addEventListener("animationend", function onEnd() {
+        flash.style.display = "none";
+        flash.classList.remove("active");
+        flash.removeEventListener("animationend", onEnd);
+      }, { once: true });
+    }
+  }
 
   // Line-clear banner
   if (lineClearBannerEl) {
     const labels = ["", "LINE CLEAR!", "DOUBLE!", "TRIPLE!", "TETRIS!"];
-    lineClearBannerEl.textContent = labels[Math.min(completeLevels.length, 4)];
+    const baseLabel = labels[Math.min(completeLevels.length, 4)];
+    const goldenLabel = (typeof goldenHourActive !== "undefined" && goldenHourActive)
+      ? baseLabel + "  3\xd7"
+      : baseLabel;
+    lineClearBannerEl.textContent = goldenLabel;
     lineClearBannerEl.style.display = "block";
     bannerTimer = 1.5;
   }

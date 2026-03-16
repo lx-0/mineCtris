@@ -252,6 +252,10 @@ let eventHistory     = [];
 // true while the PIECE_STORM world event is active.
 let pieceStormActive = false;
 
+// ── Golden Hour event state ───────────────────────────────────────────────────
+// true while the GOLDEN_HOUR world event is active.
+let goldenHourActive = false;
+
 // ── Session stats (reset each game, accumulated for lifetime stats on game over) ──
 let blocksPlaced = 0;
 let sessionCrafts = 0;

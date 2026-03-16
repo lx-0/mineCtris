@@ -3484,6 +3484,57 @@ body.theme-legendary #score-display {
   50%       { opacity: 1.00; }
 }
 
+/* ── Golden Hour World Event ─────────────────────────────────────────────── */
+
+/* Warm golden ambient tint — full-screen vignette while Golden Hour is active */
+#golden-hour-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 183;
+  background: radial-gradient(ellipse at center, transparent 25%, rgba(255,180,0,0.18) 100%);
+  box-shadow: inset 0 0 100px rgba(255,200,0,0.22);
+  animation: golden-hour-breathe 2.0s ease-in-out infinite;
+}
+@keyframes golden-hour-breathe {
+  0%, 100% { opacity: 0.75; }
+  50%       { opacity: 1.00; }
+}
+
+/* Golden shimmer flash — brief warm burst on each golden line clear */
+#golden-hour-flash.active {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 191;
+  background: rgba(255, 215, 0, 0.55);
+  animation: golden-hour-strike 0.40s ease-out forwards;
+}
+@keyframes golden-hour-strike {
+  0%   { opacity: 1.0; }
+  40%  { opacity: 0.45; }
+  100% { opacity: 0.0; }
+}
+
+/* Golden Hour countdown HUD — centered below the top HUD row */
+#golden-hour-hud {
+  position: absolute;
+  top: 76px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: "Press Start 2P", cursive;
+  font-size: 13px;
+  color: #ffd700;
+  text-shadow: 0 0 12px #ffaa00, 1px 1px 2px #000;
+  pointer-events: none;
+  white-space: nowrap;
+  animation: golden-hour-hud-pulse 1.2s ease-in-out infinite;
+}
+@keyframes golden-hour-hud-pulse {
+  0%, 100% { opacity: 0.85; }
+  50%       { opacity: 1.00; }
+}
+
 /* ── Season Banner (mode-select screen) ───────────────────────────────────── */
 #season-banner {
   display: none; /* shown by JS when season is active */

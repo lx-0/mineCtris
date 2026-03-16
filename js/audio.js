@@ -14,6 +14,8 @@ let clearSynth = null;
 let rumbleSynth = null;
 let gameOverSynth = null;
 let stormSwooshSynth = null;
+let goldenChimeSynth = null;
+let goldenFanfareSynth = null;
 let masterCompressor = null;
 let masterReverb = null;
 let masterLimiter = null;
@@ -78,6 +80,20 @@ function initAudio() {
       envelope: { attack: 0.005, decay: 0.09, sustain: 0.0, release: 0.06 },
     }).connect(masterCompressor);
     stormSwooshSynth.volume.value = -18;
+
+    // Bright triangle synth for Golden Hour angelic chime
+    goldenChimeSynth = new Tone.Synth({
+      oscillator: { type: "triangle" },
+      envelope: { attack: 0.01, decay: 0.5, sustain: 0.2, release: 1.0 },
+    }).connect(masterCompressor);
+    goldenChimeSynth.volume.value = -12;
+
+    // Warm sine synth for Golden Hour triumphant fanfare
+    goldenFanfareSynth = new Tone.Synth({
+      oscillator: { type: "sine" },
+      envelope: { attack: 0.02, decay: 0.3, sustain: 0.4, release: 0.6 },
+    }).connect(masterCompressor);
+    goldenFanfareSynth.volume.value = -10;
 
     _initBgMusic();
     console.log("Tone.js musical bus initialized.");
@@ -313,6 +329,28 @@ function playStormRumble() {
 function playStormSwoosh() {
   if (!audioReady || !stormSwooshSynth) return;
   stormSwooshSynth.triggerAttackRelease("E4", "32n", Tone.now());
+}
+
+// ── Golden Hour sounds ────────────────────────────────────────────────────────
+
+/** Ascending angelic chime arpeggio played when Golden Hour begins. */
+function playGoldenHourChime() {
+  if (!audioReady || !goldenChimeSynth) return;
+  const now = Tone.now();
+  const notes = ["C5", "E5", "G5", "B5", "C6"];
+  notes.forEach((note, i) => {
+    goldenChimeSynth.triggerAttackRelease(note, "8n", now + i * 0.12);
+  });
+}
+
+/** Triumphant fanfare played when Golden Hour ends. */
+function playGoldenHourFanfare() {
+  if (!audioReady || !goldenFanfareSynth) return;
+  const now = Tone.now();
+  const notes = ["G4", "C5", "E5", "G5", "C6"];
+  notes.forEach((note, i) => {
+    goldenFanfareSynth.triggerAttackRelease(note, "4n", now + i * 0.18);
+  });
 }
 
 // ── Volume settings ───────────────────────────────────────────────────────────

@@ -16,7 +16,7 @@ const EVENT_TYPES = {
 // ── Event durations (ms) ──────────────────────────────────────────────────────
 const EVENT_DURATIONS_MS = {
   [EVENT_TYPES.PIECE_STORM]: 30000,
-  [EVENT_TYPES.GOLDEN_HOUR]: 45000,
+  [EVENT_TYPES.GOLDEN_HOUR]: 20000,
   [EVENT_TYPES.EARTHQUAKE]:  20000,
 };
 
@@ -105,15 +105,18 @@ function endEvent() {
 function _fireOnStart(type) {
   console.log("[EventEngine] Event started:", type);
   if (type === EVENT_TYPES.PIECE_STORM) _onPieceStormStart();
+  if (type === EVENT_TYPES.GOLDEN_HOUR) _onGoldenHourStart();
 }
 
 function _fireOnTick(delta, type) {
   if (type === EVENT_TYPES.PIECE_STORM) _onPieceStormTick();
+  if (type === EVENT_TYPES.GOLDEN_HOUR) _onGoldenHourTick();
 }
 
 function _fireOnEnd(type) {
   console.log("[EventEngine] Event ended:", type);
   if (type === EVENT_TYPES.PIECE_STORM) _onPieceStormEnd();
+  if (type === EVENT_TYPES.GOLDEN_HOUR) _onGoldenHourEnd();
 }
 
 // ── Piece Storm implementation ────────────────────────────────────────────────
@@ -163,6 +166,107 @@ function _onPieceStormEnd() {
     if (typeof showCraftedBanner === "function") {
       showCraftedBanner("Storm survived! +500");
     }
+  }
+}
+
+// ── Golden Hour implementation ────────────────────────────────────────────────
+
+const _GOLD_COLOR    = new THREE.Color(0xffd700);
+const _GOLD_EMISSIVE = new THREE.Color(0x664400);
+
+/** Apply gold color + emissive shimmer to all block meshes in a piece group. */
+function _applyGoldToPiece(pieceGroup) {
+  if (!pieceGroup || pieceGroup.userData.goldenHourColored) return;
+  pieceGroup.traverse(function (node) {
+    if (node.isMesh && node.userData.isBlock) {
+      node.userData.goldenHourOriginalColor    = node.material.color.clone();
+      node.userData.goldenHourOriginalEmissive = node.material.emissive
+        ? node.material.emissive.clone()
+        : new THREE.Color(0x000000);
+      node.material.color.copy(_GOLD_COLOR);
+      node.material.emissive.copy(_GOLD_EMISSIVE);
+      node.material.needsUpdate = true;
+    }
+  });
+  pieceGroup.userData.goldenHourColored = true;
+}
+
+/** Revert a piece group to its pre-Golden Hour material colors. */
+function _revertGoldFromPiece(pieceGroup) {
+  if (!pieceGroup || !pieceGroup.userData.goldenHourColored) return;
+  pieceGroup.traverse(function (node) {
+    if (node.isMesh && node.userData.isBlock) {
+      if (node.userData.goldenHourOriginalColor) {
+        node.material.color.copy(node.userData.goldenHourOriginalColor);
+      }
+      if (node.userData.goldenHourOriginalEmissive) {
+        node.material.emissive.copy(node.userData.goldenHourOriginalEmissive);
+      }
+      node.material.needsUpdate = true;
+    }
+  });
+  pieceGroup.userData.goldenHourColored = false;
+}
+
+function _onGoldenHourStart() {
+  goldenHourActive = true;
+
+  // Golden ambient tint overlay
+  const overlay = document.getElementById("golden-hour-overlay");
+  if (overlay) overlay.style.display = "block";
+
+  // Countdown HUD
+  const hud = document.getElementById("golden-hour-hud");
+  if (hud) {
+    hud.textContent = "\u2728 GOLDEN HOUR \u2728";
+    hud.style.display = "block";
+  }
+
+  // Paint all currently active falling pieces gold
+  if (typeof fallingPiecesGroup !== "undefined" && fallingPiecesGroup) {
+    fallingPiecesGroup.children.forEach(_applyGoldToPiece);
+  }
+
+  // Angelic chime SFX
+  if (typeof playGoldenHourChime === "function") playGoldenHourChime();
+
+  // Announcement banner
+  if (typeof showCraftedBanner === "function") {
+    showCraftedBanner("\u2728 GOLDEN HOUR! 3\xd7 score for 20s!");
+  }
+}
+
+function _onGoldenHourTick() {
+  // Update countdown timer in HUD
+  const secs = Math.ceil(eventRemainingMs / 1000);
+  const hud = document.getElementById("golden-hour-hud");
+  if (hud) hud.textContent = "\u2728 " + secs + "s";
+
+  // Paint any newly spawned pieces gold (those without goldenHourColored flag)
+  if (typeof fallingPiecesGroup !== "undefined" && fallingPiecesGroup) {
+    fallingPiecesGroup.children.forEach(_applyGoldToPiece);
+  }
+}
+
+function _onGoldenHourEnd() {
+  goldenHourActive = false;
+
+  // Hide overlays
+  const overlay = document.getElementById("golden-hour-overlay");
+  if (overlay) overlay.style.display = "none";
+  const hud = document.getElementById("golden-hour-hud");
+  if (hud) hud.style.display = "none";
+
+  // Revert all falling pieces to their original materials
+  if (typeof fallingPiecesGroup !== "undefined" && fallingPiecesGroup) {
+    fallingPiecesGroup.children.forEach(_revertGoldFromPiece);
+  }
+
+  // Triumphant fanfare SFX
+  if (typeof playGoldenHourFanfare === "function") playGoldenHourFanfare();
+
+  if (typeof showCraftedBanner === "function") {
+    showCraftedBanner("Golden Hour over!");
   }
 }
 
@@ -220,6 +324,14 @@ function resetEventEngine() {
     if (hud) hud.style.display = "none";
   }
 
+  // Clean up any active Golden Hour visuals before clearing state
+  if (activeEvent === EVENT_TYPES.GOLDEN_HOUR) {
+    const overlay = document.getElementById("golden-hour-overlay");
+    if (overlay) overlay.style.display = "none";
+    const hud = document.getElementById("golden-hour-hud");
+    if (hud) hud.style.display = "none";
+  }
+
   activeEvent          = EVENT_TYPES.NONE;
   eventRemainingMs     = 0;
   eventHistory         = [];
@@ -227,6 +339,7 @@ function resetEventEngine() {
   _schedulerAccumMs    = 0;
   _nextThresholdMs     = _pickInterval();
   pieceStormActive     = false;
+  goldenHourActive     = false;
 }
 
 // ── Debug hook ────────────────────────────────────────────────────────────────
