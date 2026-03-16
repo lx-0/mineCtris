@@ -125,6 +125,10 @@ let hasCraftingBench = false;
 // Consumable item counts. Keys: "lava_flask" | "ice_bridge".
 let consumables = { lava_flask: 0, ice_bridge: 0 };
 
+// Power-up item counts (separate from blocks and consumables).
+// Keys: "row_bomb" | "slow_down" | "shield" | "magnet"
+let powerUps = { row_bomb: 0, slow_down: 0, shield: 0, magnet: 0 };
+
 // Ice Bridge slow — reduces falling piece speed by 20% for a duration.
 let iceBridgeSlowActive = false;
 let iceBridgeSlowTimer  = 0.0;
@@ -196,6 +200,45 @@ let colorblindMode = false;
 // "classic" = default Minecraft-inspired palette (always unlocked).
 // "nether"  = dark stone/lava palette (unlocked via "Iron Will" achievement).
 let activeTheme = "classic";
+
+// ── Power-up bank (persistent across runs via localStorage) ──────────────────
+const POWERUP_BANK_KEY = "mineCtris_powerups";
+
+function loadPowerUpBank() {
+  try {
+    const raw = localStorage.getItem(POWERUP_BANK_KEY);
+    if (!raw) return { row_bomb: 0, slow_down: 0, shield: 0, magnet: 0 };
+    const data = JSON.parse(raw);
+    return {
+      row_bomb:  data.row_bomb  || 0,
+      slow_down: data.slow_down || 0,
+      shield:    data.shield    || 0,
+      magnet:    data.magnet    || 0,
+    };
+  } catch (_) {
+    return { row_bomb: 0, slow_down: 0, shield: 0, magnet: 0 };
+  }
+}
+
+function savePowerUpBank(bank) {
+  try { localStorage.setItem(POWERUP_BANK_KEY, JSON.stringify(bank)); } catch (_) {}
+}
+
+// Equipped power-up for the current run (chosen on mode select screen).
+// null = none equipped.
+let equippedPowerUpType = null;
+
+// Slow Down power-up: 50% fall-speed reduction for 30 s.
+let slowDownActive = false;
+let slowDownTimer  = 0.0;
+
+// Shield power-up: absorb the next game-over event.
+let shieldActive = false;
+
+// Magnet power-up: auto-mine nearest block within 3 units, once/s, for 20 s.
+let magnetActive      = false;
+let magnetTimer       = 0.0;
+let magnetLastPullTime = 0.0;
 
 // ── Session stats (reset each game, accumulated for lifetime stats on game over) ──
 let blocksPlaced = 0;

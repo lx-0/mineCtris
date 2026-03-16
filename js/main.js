@@ -201,6 +201,15 @@ function init() {
   comboBannerEl = document.getElementById("combo-banner");
   speedUpBannerEl = document.getElementById("speed-up-banner");
 
+  // Restore last equipped power-up selection from localStorage
+  try {
+    const _savedEquip = localStorage.getItem("mineCtris_equippedPowerUp");
+    if (_savedEquip) {
+      const _bank = loadPowerUpBank();
+      equippedPowerUpType = (_bank[_savedEquip] || 0) > 0 ? _savedEquip : null;
+    }
+  } catch (_) {}
+
   // Pre-generate the next-piece queue before the first spawn.
   initPieceQueue();
 
@@ -311,6 +320,53 @@ function init() {
           }
         }
       });
+      // Populate power-up equip slot from the persistent bank
+      const pickerEl = document.getElementById("mode-powerup-picker");
+      if (pickerEl) {
+        pickerEl.innerHTML = "";
+        const puDefs = [
+          { type: "row_bomb",  icon: "\uD83D\uDCA3", name: "Row Bomb"  },
+          { type: "slow_down", icon: "\u23F1",        name: "Slow Down" },
+          { type: "shield",    icon: "\uD83D\uDEE1",  name: "Shield"    },
+          { type: "magnet",    icon: "\uD83E\uDDF2",  name: "Magnet"    },
+        ];
+        const bank = loadPowerUpBank();
+        const owned = puDefs.filter(function (d) { return (bank[d.type] || 0) > 0; });
+        if (owned.length === 0) {
+          pickerEl.innerHTML = '<div class="powerup-pick-none">No power-ups owned.<br>Craft some in Classic mode!</div>';
+          // Unequip if previously equipped something no longer available
+          equippedPowerUpType = null;
+        } else {
+          // Ensure the currently equipped type is still owned, otherwise clear
+          if (equippedPowerUpType && (bank[equippedPowerUpType] || 0) === 0) {
+            equippedPowerUpType = null;
+          }
+          owned.forEach(function (def) {
+            const btn = document.createElement("button");
+            btn.className = "powerup-pick-btn" + (equippedPowerUpType === def.type ? " pu-equipped" : "");
+            btn.dataset.type = def.type;
+            btn.innerHTML =
+              '<div class="ppu-icon">' + def.icon + '</div>' +
+              '<div class="ppu-name">' + def.name + '</div>' +
+              '<div class="ppu-qty">\xD7' + (bank[def.type] || 0) + '</div>';
+            btn.addEventListener("click", function (e) {
+              e.stopPropagation();
+              equippedPowerUpType = (equippedPowerUpType === def.type) ? null : def.type;
+              try { localStorage.setItem("mineCtris_equippedPowerUp", equippedPowerUpType || ""); } catch (_) {}
+              // Re-render picker to reflect new selection
+              pickerEl.querySelectorAll(".powerup-pick-btn").forEach(function (b) {
+                b.classList.toggle("pu-equipped", b.dataset.type === equippedPowerUpType);
+                b.querySelector(".ppu-name").style.cssText =
+                  b.dataset.type === equippedPowerUpType
+                    ? "color:#ffd700;text-shadow:0 0 6px #ffd700"
+                    : "";
+              });
+            });
+            pickerEl.appendChild(btn);
+          });
+        }
+      }
+
       blocker.style.display = "none";
       modeSelectEl.style.display = "flex";
     }
@@ -561,6 +617,8 @@ function init() {
           if (typeof updatePuzzleHUD === "function") updatePuzzleHUD();
         }
       }
+      // Show equipped power-up HUD badge if applicable
+      updatePowerupHUD();
     });
 
     controls.addEventListener("unlock", function () {
@@ -594,6 +652,8 @@ function init() {
       miningProgress = 0;
       const puzzleBadgeEl = document.getElementById("puzzle-badge");
       if (puzzleBadgeEl) puzzleBadgeEl.style.display = "none";
+      const powerupHudEl = document.getElementById("powerup-hud");
+      if (powerupHudEl) powerupHudEl.style.display = "none";
     });
   } catch (error) {
     console.error("Failed to initialize PointerLockControls:", error);
@@ -1074,6 +1134,98 @@ function activateIceBridge() {
   if (typeof onMissionPowerupActivated === "function") onMissionPowerupActivated();
 }
 
+/** Update the equipped power-up HUD badge visibility and used state. */
+function updatePowerupHUD() {
+  const hudEl = document.getElementById("powerup-hud");
+  if (!hudEl) return;
+  if (!equippedPowerUpType) {
+    hudEl.style.display = "none";
+    return;
+  }
+  const puDefs = {
+    row_bomb:  { icon: "\uD83D\uDCA3", name: "Row Bomb"  },
+    slow_down: { icon: "\u23F1",        name: "Slow Down" },
+    shield:    { icon: "\uD83D\uDEE1",  name: "Shield"    },
+    magnet:    { icon: "\uD83E\uDDF2",  name: "Magnet"    },
+  };
+  const def = puDefs[equippedPowerUpType];
+  if (!def) { hudEl.style.display = "none"; return; }
+  const bank = loadPowerUpBank();
+  const qty  = bank[equippedPowerUpType] || 0;
+  hudEl.style.display = "flex";
+  const iconEl = document.getElementById("powerup-hud-icon");
+  const nameEl = document.getElementById("powerup-hud-name");
+  if (iconEl) {
+    iconEl.textContent = def.icon;
+    iconEl.classList.toggle("pu-used", qty <= 0);
+  }
+  if (nameEl) nameEl.textContent = def.name + (qty > 0 ? " \xD7" + qty : " (used)");
+}
+
+/**
+ * Activate the currently equipped power-up.
+ * Called via the F key (when a power-up is equipped) or directly.
+ */
+function activateEquippedPowerup() {
+  if (!controls || !controls.isLocked || isGameOver) return;
+  if (!equippedPowerUpType) return;
+  const bank = loadPowerUpBank();
+  if ((bank[equippedPowerUpType] || 0) <= 0) return;
+
+  // Consume one from the bank
+  bank[equippedPowerUpType]--;
+  savePowerUpBank(bank);
+  // Also decrement in-session inventory (kept in sync)
+  if (powerUps[equippedPowerUpType] > 0) powerUps[equippedPowerUpType]--;
+
+  switch (equippedPowerUpType) {
+    case "row_bomb": {
+      let lowestY = Infinity;
+      for (const gy of gridOccupancy.keys()) {
+        if (gy < lowestY) lowestY = gy;
+      }
+      if (!isFinite(lowestY)) break;
+      showCraftedBanner("Row Bomb! Row cleared.");
+      const toRemove = worldGroup.children.filter(function (c) {
+        const gp = c.userData.gridPos;
+        return gp && gp.y === lowestY;
+      });
+      toRemove.forEach(function (block) {
+        spawnDustParticles(block, { breakBurst: true });
+        blocksMined++;
+        const oType = block.userData.objectType;
+        const mName = block.userData.materialType || (oType ? OBJECT_TYPE_TO_MATERIAL[oType] : null);
+        addScore(mName && BLOCK_TYPES[mName] ? BLOCK_TYPES[mName].points : 10);
+        unregisterBlock(block);
+        worldGroup.remove(block);
+      });
+      if (typeof achOnBlockMined === "function") achOnBlockMined(blocksMined, undefined);
+      break;
+    }
+    case "slow_down": {
+      slowDownActive = true;
+      slowDownTimer  = 30.0;
+      showCraftedBanner("Slow Down! 50% speed for 30s.");
+      break;
+    }
+    case "shield": {
+      shieldActive = true;
+      showCraftedBanner("Shield active! Next death absorbed.");
+      break;
+    }
+    case "magnet": {
+      magnetActive      = true;
+      magnetTimer       = 20.0;
+      magnetLastPullTime = 0.0;
+      showCraftedBanner("Magnet! Auto-mining nearby blocks for 20s.");
+      break;
+    }
+  }
+
+  updatePowerupHUD();
+  if (typeof onMissionPowerupActivated === "function") onMissionPowerupActivated();
+}
+
 function animate() {
   requestAnimationFrame(animate);
 
@@ -1115,6 +1267,56 @@ function animate() {
       if (iceBridgeSlowTimer <= 0) {
         iceBridgeSlowActive = false;
         iceBridgeSlowTimer  = 0;
+      }
+    }
+
+    // Tick Slow Down power-up timer
+    if (slowDownActive) {
+      slowDownTimer -= delta;
+      if (slowDownTimer <= 0) {
+        slowDownActive = false;
+        slowDownTimer  = 0;
+      }
+    }
+
+    // Tick Magnet power-up: auto-mine nearest block within 3 units, once per second
+    if (magnetActive) {
+      magnetTimer -= delta;
+      if (magnetTimer <= 0) {
+        magnetActive      = false;
+        magnetTimer       = 0;
+        magnetLastPullTime = 0;
+      } else if (controls && controls.isLocked) {
+        magnetLastPullTime += delta;
+        if (magnetLastPullTime >= 1.0) {
+          magnetLastPullTime = 0;
+          const playerPos = controls.getObject().position;
+          const MAGNET_RANGE = 3;
+          let nearestDist = Infinity;
+          let nearestBlock = null;
+          worldGroup.children.forEach(function (obj) {
+            if (!obj.userData.isBlock || !obj.userData.gridPos) return;
+            const dx = playerPos.x - obj.position.x;
+            const dy = playerPos.y - obj.position.y;
+            const dz = playerPos.z - obj.position.z;
+            const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+            if (dist < MAGNET_RANGE && dist < nearestDist) {
+              nearestDist  = dist;
+              nearestBlock = obj;
+            }
+          });
+          if (nearestBlock) {
+            spawnDustParticles(nearestBlock, { breakBurst: true });
+            blocksMined++;
+            const oType = nearestBlock.userData.objectType;
+            const mName = nearestBlock.userData.materialType || (oType ? OBJECT_TYPE_TO_MATERIAL[oType] : null);
+            if (mName) addToInventory(nearestBlock.material.color.getStyle());
+            addScore(mName && BLOCK_TYPES[mName] ? BLOCK_TYPES[mName].points : 10);
+            unregisterBlock(nearestBlock);
+            worldGroup.remove(nearestBlock);
+            if (typeof achOnBlockMined === "function") achOnBlockMined(blocksMined, undefined);
+          }
+        }
       }
     }
 

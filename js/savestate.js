@@ -63,6 +63,8 @@ function saveGameState() {
     pickaxeTier,
     hasCraftingBench,
     consumables:         Object.assign({}, consumables),
+    powerUps:            Object.assign({}, powerUps),
+    equippedPowerUpType,
     iceBridgeSlowActive,
     iceBridgeSlowTimer,
     sprintElapsedMs,
@@ -109,6 +111,20 @@ function restoreGameState() {
   pickaxeTier         = data.pickaxeTier         || "none";
   hasCraftingBench    = !!data.hasCraftingBench;
   consumables         = Object.assign({ lava_flask: 0, ice_bridge: 0 }, data.consumables || {});
+  // Power-ups do not persist across Daily/Weekly Challenge sessions (fairness for leaderboard modes)
+  const savedMode = data.mode || "classic";
+  if (savedMode === "classic") {
+    powerUps = Object.assign({ row_bomb: 0, slow_down: 0, shield: 0, magnet: 0 }, data.powerUps || {});
+    equippedPowerUpType = data.equippedPowerUpType || null;
+    // Validate against bank
+    if (equippedPowerUpType) {
+      const _bank = loadPowerUpBank();
+      if ((_bank[equippedPowerUpType] || 0) === 0) equippedPowerUpType = null;
+    }
+  } else {
+    powerUps = { row_bomb: 0, slow_down: 0, shield: 0, magnet: 0 };
+    equippedPowerUpType = null;
+  }
   iceBridgeSlowActive = !!data.iceBridgeSlowActive;
   iceBridgeSlowTimer  = typeof data.iceBridgeSlowTimer === "number" ? data.iceBridgeSlowTimer : 0;
 

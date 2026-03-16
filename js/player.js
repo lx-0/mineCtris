@@ -115,6 +115,8 @@ function onKeyDown(event) {
     case "KeyF":
       if (isPuzzleMode) {
         if (typeof setThinkMode === "function") setThinkMode(true);
+      } else if (equippedPowerUpType) {
+        if (typeof activateEquippedPowerup === "function") activateEquippedPowerup();
       } else {
         if (typeof activateLavaFlask === "function") activateLavaFlask();
       }

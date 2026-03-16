@@ -124,6 +124,11 @@
               <div class="mode-card-pb" id="mode-pb-puzzle"></div>
             </div>
           </div>
+          <!-- Power-up equip slot -->
+          <div id="mode-powerup-slot">
+            <div id="mode-powerup-label">&#9889; EQUIP POWER-UP</div>
+            <div id="mode-powerup-picker"></div>
+          </div>
           <button id="mode-select-lb-btn">&#127942; Leaderboard</button>
           <button id="mode-select-back">&#8592; Back</button>
         </div>
@@ -151,6 +156,13 @@
 
       <!-- Puzzle mode badge (shown during puzzle runs) -->
       <div id="puzzle-badge" style="display:none;"></div>
+
+      <!-- Equipped power-up HUD (bottom-right, shown during gameplay) -->
+      <div id="powerup-hud" style="display:none;">
+        <div id="powerup-hud-icon"></div>
+        <div id="powerup-hud-name"></div>
+        <div id="powerup-hud-hint">Press F to activate</div>
+      </div>
 
       <!-- Top-right HUD: score + next-piece preview -->
       <div id="top-right-hud">

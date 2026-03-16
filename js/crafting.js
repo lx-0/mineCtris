@@ -90,11 +90,19 @@ function renderCraftingPanel() {
   }
   const flaskCount  = consumables.lava_flask  || 0;
   const bridgeCount = consumables.ice_bridge  || 0;
-  if (flaskCount > 0 || bridgeCount > 0) {
-    const parts = [];
-    if (flaskCount  > 0) parts.push("Lava Flask x" + flaskCount  + " [F]");
-    if (bridgeCount > 0) parts.push("Ice Bridge x" + bridgeCount + " [G]");
-    consumableStatusEl.textContent = "Consumables: " + parts.join("  |  ");
+  const rowBombCount = powerUps.row_bomb  || 0;
+  const slowDownCount = powerUps.slow_down || 0;
+  const shieldCount  = powerUps.shield    || 0;
+  const magnetCount  = powerUps.magnet    || 0;
+  const parts = [];
+  if (flaskCount  > 0) parts.push("Lava Flask x" + flaskCount  + " [F]");
+  if (bridgeCount > 0) parts.push("Ice Bridge x" + bridgeCount + " [G]");
+  if (rowBombCount > 0) parts.push("Row Bomb x" + rowBombCount);
+  if (slowDownCount > 0) parts.push("Slow Down x" + slowDownCount);
+  if (shieldCount  > 0) parts.push("Shield x" + shieldCount);
+  if (magnetCount  > 0) parts.push("Magnet x" + magnetCount);
+  if (parts.length > 0) {
+    consumableStatusEl.textContent = "Inventory: " + parts.join("  |  ");
   } else {
     consumableStatusEl.textContent = "";
   }
@@ -109,6 +117,8 @@ function renderCraftingPanel() {
     if (recipe.outputType === "tool" && tierRank[pickaxeTier] >= tierRank[recipe.toolTier]) return;
     // Skip advanced recipes gated behind Crafting Bench if bench not built
     if (recipe.requiresBench && !hasCraftingBench) return;
+    // Skip power-up recipes in puzzle mode (Row Bomb and Magnet trivially solve puzzles)
+    if (recipe.outputType === "powerup" && typeof isPuzzleMode !== "undefined" && isPuzzleMode) return;
 
     const canCraft = canCraftRecipe(recipe);
     const row = document.createElement("div");
@@ -159,6 +169,9 @@ function renderCraftingPanel() {
     } else if (recipe.outputType === "consumable") {
       const existing = consumables[recipe.consumableType] || 0;
       outputEl.textContent = "\u2192 " + recipe.name + (existing > 0 ? " (have " + existing + ")" : "");
+    } else if (recipe.outputType === "powerup") {
+      const existing = powerUps[recipe.powerUpType] || 0;
+      outputEl.textContent = "\u2192 " + recipe.name + (existing > 0 ? " (have " + existing + ")" : "");
     } else {
       outputEl.textContent = "\u2192 " + recipe.name;
     }
@@ -187,7 +200,7 @@ function renderCraftingPanel() {
     const gateNote = document.createElement("div");
     gateNote.className = "craft-empty";
     gateNote.style.cssText = "color:#aaa;font-size:0.8em;margin-top:6px;";
-    gateNote.textContent = "Craft a Crafting Bench to unlock Diamond Pickaxe, Lava Flask, and Ice Bridge.";
+    gateNote.textContent = "Craft a Crafting Bench to unlock Diamond Pickaxe, Lava Flask, Ice Bridge, and Power-ups.";
     recipesEl.appendChild(gateNote);
   }
 
@@ -221,6 +234,14 @@ function craftRecipe(recipe) {
     hasCraftingBench = true;
   } else if (recipe.outputType === "consumable") {
     consumables[recipe.consumableType] = (consumables[recipe.consumableType] || 0) + recipe.outputCount;
+    sessionConsumableCrafts++;
+    if (typeof achOnConsumableCraft === "function") achOnConsumableCraft(sessionConsumableCrafts);
+  } else if (recipe.outputType === "powerup") {
+    powerUps[recipe.powerUpType] = (powerUps[recipe.powerUpType] || 0) + recipe.outputCount;
+    // Also persist to the cross-run power-up bank
+    const _puBank = loadPowerUpBank();
+    _puBank[recipe.powerUpType] = (_puBank[recipe.powerUpType] || 0) + recipe.outputCount;
+    savePowerUpBank(_puBank);
     sessionConsumableCrafts++;
     if (typeof achOnConsumableCraft === "function") achOnConsumableCraft(sessionConsumableCrafts);
   }

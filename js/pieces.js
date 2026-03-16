@@ -379,8 +379,8 @@ function updateFallingPieces(delta) {
   // Think Mode (puzzle): zero gravity while F is held.
   if (typeof isThinkModeActive === "function" && isThinkModeActive()) return;
 
-  // Apply ice bridge slow factor (0.8 = 20% speed reduction).
-  const effectiveDelta = iceBridgeSlowActive ? delta * 0.8 : delta;
+  // Apply fall-speed modifiers: Slow Down power-up (0.5×) or Ice Bridge (0.8×).
+  const effectiveDelta = slowDownActive ? delta * 0.5 : iceBridgeSlowActive ? delta * 0.8 : delta;
 
   const landedPieces = [];
   fallingPieces.forEach((piece, i) => {

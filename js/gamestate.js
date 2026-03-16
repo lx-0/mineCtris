@@ -95,6 +95,13 @@ function checkGameOver() {
   if (isGameOver) return;
   for (const gy of gridOccupancy.keys()) {
     if (gy >= GAME_OVER_HEIGHT) {
+      // Shield power-up: absorb the first game-over trigger
+      if (shieldActive) {
+        shieldActive = false;
+        showCraftedBanner("Shield absorbed the blow! Keep going.");
+        if (typeof updatePowerupHUD === "function") updatePowerupHUD();
+        return;
+      }
       triggerGameOver();
       return;
     }
@@ -374,8 +381,19 @@ function resetGame() {
   pickaxeTier        = "none";
   hasCraftingBench   = false;
   consumables        = { lava_flask: 0, ice_bridge: 0 };
+  powerUps           = { row_bomb: 0, slow_down: 0, shield: 0, magnet: 0 };
   iceBridgeSlowActive = false;
   iceBridgeSlowTimer  = 0.0;
+  // Reset power-up effect state
+  equippedPowerUpType = null;
+  slowDownActive = false;
+  slowDownTimer  = 0.0;
+  shieldActive   = false;
+  magnetActive   = false;
+  magnetTimer    = 0.0;
+  magnetLastPullTime = 0.0;
+  const powerupHudEl = document.getElementById("powerup-hud");
+  if (powerupHudEl) powerupHudEl.style.display = "none";
   closeCraftingPanel();
 
   // Clear tree respawn queue
