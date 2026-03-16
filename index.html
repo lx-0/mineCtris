@@ -133,6 +133,13 @@
               <div class="mode-card-desc">10 curated mining puzzles. Solve them all.</div>
               <div class="mode-card-pb" id="mode-pb-puzzle"></div>
             </div>
+            <!-- Survival -->
+            <div class="mode-card mode-card-survival" id="mode-card-survival" data-mode="survival">
+              <div class="mode-card-icon">&#128165;</div>
+              <div class="mode-card-name">Survival</div>
+              <div class="mode-card-desc">One world. Permadeath. Die and it's all gone.</div>
+              <div class="mode-card-pb" id="mode-pb-survival"></div>
+            </div>
           </div>
           <!-- World modifier selector -->
           <div id="mode-worldmod-slot">
@@ -177,6 +184,9 @@
 
       <!-- World modifier badge (shown when a non-normal modifier is active) -->
       <div id="world-modifier-badge" style="display:none;"></div>
+
+      <!-- Survival mode badge (shown during survival runs) -->
+      <div id="survival-badge" style="display:none;">&#128165; Survival</div>
 
       <!-- Equipped power-up HUD (bottom-right, shown during gameplay) -->
       <div id="powerup-hud" style="display:none;">
@@ -270,6 +280,7 @@
         <div id="hs-go-table"></div>
         <div id="daily-go-section" style="display:none;"></div>
         <div id="weekly-go-section" style="display:none;"></div>
+        <div id="survival-go-section" style="display:none;"></div>
         <button id="go-share-btn">Share Score</button>
         <div id="go-share-feedback"></div>
         <button id="lb-submit-btn" style="display:none;">Submit to Leaderboard</button>
@@ -613,6 +624,7 @@
     <script src="js/leaderboard.js"></script>
     <script src="js/missions.js"></script>
     <script src="js/savestate.js"></script>
+    <script src="js/survival.js"></script>
     <script src="js/shareland.js"></script>
     <script src="js/events.js"></script>
     <script src="js/main.js"></script>

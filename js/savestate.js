@@ -25,6 +25,8 @@ function clearSaveState() {
  */
 function saveGameState() {
   if (isGameOver || lineClearInProgress) return;
+  // Survival mode uses its own persistence key — skip mid-session savestate
+  if (isSurvivalMode) return;
 
   // Collect all landed blocks (position + color)
   const landedBlocks = [];

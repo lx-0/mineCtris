@@ -129,6 +129,32 @@ function triggerGameOver() {
   gameTimerRunning = false;
   if (typeof clearSaveState === "function") clearSaveState();
 
+  // Survival mode: record run, clear the world, then show special summary
+  if (isSurvivalMode) {
+    const survStats = typeof submitSurvivalStats === "function"
+      ? submitSurvivalStats(score, gameElapsedSeconds, survivalSessionNumber)
+      : null;
+    if (typeof clearSurvivalWorld === "function") clearSurvivalWorld();
+
+    // Build survival summary section in game-over overlay
+    const survGoEl = document.getElementById("survival-go-section");
+    if (survGoEl && survStats) {
+      const bestMin = Math.floor(survStats.bestTimeAlive / 60).toString().padStart(2, "0");
+      const bestSec = (Math.floor(survStats.bestTimeAlive) % 60).toString().padStart(2, "0");
+      survGoEl.innerHTML =
+        '<div class="go-label" style="margin-bottom:4px;">SURVIVAL WORLD LOST</div>' +
+        '<div>Sessions on this world: ' + survivalSessionNumber + '</div>' +
+        '<div>All-time runs: ' + survStats.totalRuns + '</div>' +
+        '<div>Best score: ' + survStats.bestScore + '</div>' +
+        '<div>Best survival time: ' + bestMin + ':' + bestSec + '</div>';
+      survGoEl.style.display = "block";
+    }
+
+    // Change game-over title for survival mode
+    const goTitleEl = document.getElementById("game-over-title");
+    if (goTitleEl) goTitleEl.textContent = "WORLD LOST";
+  }
+
   // Hide danger overlay immediately
   const dangerEl = document.getElementById("danger-overlay");
   const dangerTextEl = document.getElementById("danger-text");
@@ -210,14 +236,22 @@ function triggerGameOver() {
       (_goTitle ? `<span class="go-level-title"> ${_goTitle}</span>` : '');
   }
 
-  // Submit and render high scores
-  const hsRank = submitHighScore(
-    state.score,
-    state.elapsedSeconds,
-    state.blocksMined,
-    state.linesCleared
-  );
-  renderHighScoresGameOver(hsRank);
+  // Submit and render high scores (not for survival — it has its own table)
+  if (!isSurvivalMode) {
+    const hsRank = submitHighScore(
+      state.score,
+      state.elapsedSeconds,
+      state.blocksMined,
+      state.linesCleared
+    );
+    renderHighScoresGameOver(hsRank);
+  } else {
+    // Hide classic HS table in survival mode
+    const hsLabelEl = document.getElementById("hs-go-label");
+    const hsTableEl = document.getElementById("hs-go-table");
+    if (hsLabelEl) hsLabelEl.style.display = "none";
+    if (hsTableEl) hsTableEl.style.display = "none";
+  }
 
   // Daily challenge score tracking
   if (isDailyChallenge) {
@@ -258,6 +292,12 @@ function triggerGameOver() {
     if (!isDailyChallenge && typeof hideLeaderboardSubmitBtn === "function") {
       hideLeaderboardSubmitBtn();
     }
+  }
+
+  // Hide survival section when not in survival mode
+  if (!isSurvivalMode) {
+    const survGoEl = document.getElementById('survival-go-section');
+    if (survGoEl) survGoEl.style.display = 'none';
   }
 
   // Wire up Share Score button
@@ -462,6 +502,20 @@ function resetGame() {
   weeklyBlindDrop = false;
   const weeklyBadgeEl = document.getElementById('weekly-challenge-badge');
   if (weeklyBadgeEl) weeklyBadgeEl.style.display = 'none';
+
+  // Reset survival mode state
+  isSurvivalMode = false;
+  survivalSessionNumber = 1;
+  const survivalBadgeEl = document.getElementById('survival-badge');
+  if (survivalBadgeEl) survivalBadgeEl.style.display = 'none';
+  const survGoEl2 = document.getElementById('survival-go-section');
+  if (survGoEl2) survGoEl2.style.display = 'none';
+  const goTitleEl2 = document.getElementById('game-over-title');
+  if (goTitleEl2) goTitleEl2.textContent = 'GAME OVER';
+  const hsLabelEl2 = document.getElementById('hs-go-label');
+  if (hsLabelEl2) hsLabelEl2.style.display = '';
+  const hsTableEl2 = document.getElementById('hs-go-table');
+  if (hsTableEl2) hsTableEl2.style.display = '';
 
   // Reset event engine
   if (typeof resetEventEngine === "function") resetEventEngine();

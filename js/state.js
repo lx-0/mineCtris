@@ -263,6 +263,12 @@ let earthquakeActive = false;
 let _eqShakeOffX = 0;
 let _eqShakeOffY = 0;
 
+// ── Survival mode state ───────────────────────────────────────────────────────
+// isSurvivalMode: true while a Survival session is active.
+// survivalSessionNumber: increments each time the player continues on the same world.
+let isSurvivalMode      = false;
+let survivalSessionNumber = 1;
+
 // ── Session stats (reset each game, accumulated for lifetime stats on game over) ──
 let blocksPlaced = 0;
 let sessionCrafts = 0;

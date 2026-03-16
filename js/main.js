@@ -311,8 +311,25 @@ function init() {
           puzzlePbEl.textContent = "";
         }
       }
+      // Populate Survival personal best
+      const survivalPbEl = document.getElementById("mode-pb-survival");
+      if (survivalPbEl && typeof loadSurvivalStats === "function") {
+        const survStats = loadSurvivalStats();
+        if (survStats.totalRuns > 0) {
+          const aliveMin = Math.floor(survStats.bestTimeAlive / 60).toString().padStart(2, "0");
+          const aliveSec = (Math.floor(survStats.bestTimeAlive) % 60).toString().padStart(2, "0");
+          survivalPbEl.textContent = "Best: " + survStats.bestScore + " (" + aliveMin + ":" + aliveSec + ")";
+          if (typeof hasSurvivalWorld === "function" && hasSurvivalWorld()) {
+            survivalPbEl.textContent += " \u2022 World saved";
+          }
+        } else {
+          survivalPbEl.textContent = typeof hasSurvivalWorld === "function" && hasSurvivalWorld()
+            ? "World in progress"
+            : "";
+        }
+      }
       // Apply highlight to the specified mode card
-      ["classic", "sprint", "blitz", "daily", "weekly", "puzzle"].forEach(function (mode) {
+      ["classic", "sprint", "blitz", "daily", "weekly", "puzzle", "survival"].forEach(function (mode) {
         const cardEl = document.getElementById("mode-card-" + mode);
         if (cardEl) {
           if (mode === highlightMode) {
@@ -552,6 +569,28 @@ function init() {
         lastDifficultyTier = 0;
         hideModeSelect();
         if (typeof showPuzzleSelect === "function") showPuzzleSelect();
+      });
+    }
+
+    // Survival mode card
+    const survivalCardEl = document.getElementById("mode-card-survival");
+    if (survivalCardEl) {
+      survivalCardEl.addEventListener("click", function () {
+        isSurvivalMode = true;
+        isDailyChallenge = false;
+        gameRng = null;
+        // If a survival world is saved, restore it; otherwise start fresh
+        if (typeof hasSurvivalWorld === "function" && hasSurvivalWorld()) {
+          if (typeof restoreSurvivalWorld === "function") restoreSurvivalWorld();
+          survivalSessionNumber++;
+        } else {
+          survivalSessionNumber = 1;
+        }
+        // Show survival HUD badge
+        const survBadgeEl = document.getElementById("survival-badge");
+        if (survBadgeEl) survBadgeEl.style.display = "block";
+        hideModeSelect();
+        requestPointerLock();
       });
     }
 

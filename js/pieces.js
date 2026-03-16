@@ -509,6 +509,7 @@ function updateFallingPieces(delta) {
       checkGameOver();
     }
     if (typeof saveGameState === "function") saveGameState();
+    if (isSurvivalMode && typeof saveSurvivalWorld === "function") saveSurvivalWorld();
     if (typeof tutorialNotify === "function") tutorialNotify("pieceLand");
   }
 
