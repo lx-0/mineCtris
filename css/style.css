@@ -1662,3 +1662,104 @@ body {
   transition: background 0.15s, color 0.15s;
 }
 #go-stats-btn:hover { background: rgba(0, 204, 255, 0.15); }
+
+/* ═══════════════════════════════════════════════════════════
+   RESPONSIVE HUD — small viewports (<600px / <480px)
+   Applied via .vp-small / .vp-xs body classes set by
+   applyResponsiveHUD() in main.js on every resize event.
+   ═══════════════════════════════════════════════════════════ */
+
+/* ── Shared scale variable (set inline by JS, fallback 1) ── */
+:root { --hud-scale: 1; }
+
+/* ── Small viewport (<600px) ── */
+@media (max-width: 599px) {
+  /* Score HUD */
+  .hud-score        { font-size: calc(20px * var(--hud-scale)); }
+  .hud-stat         { font-size: calc(8px  * var(--hud-scale)); }
+  #top-right-hud    { top: 8px; right: 8px; }
+  #score-display    { padding: 6px 10px; }
+
+  /* Next-piece panel */
+  #next-pieces-panel { padding: 6px 8px; }
+  .np-cell           { width: 6px; height: 6px; }
+
+  /* Inventory HUD — shrink slots */
+  #inventory-hud  { bottom: 8px; gap: 4px; }
+  #inventory-slots { gap: 4px; padding: 4px 6px; }
+  .inv-slot        { width: 36px; height: 36px; }
+  .inv-slot-color  { width: 22px; height: 22px; }
+  .inv-slot-count  { font-size: 6px; }
+  .inv-slot-num    { font-size: 5px; }
+  #inventory-total { font-size: 6px; }
+
+  /* Material tooltip — move up with smaller inventory */
+  #material-tooltip { bottom: 80px; font-size: 6px; padding: 4px 10px; }
+
+  /* Banners */
+  #line-clear-banner { font-size: 16px; }
+  #combo-banner      { font-size: 14px; }
+  #speed-up-banner   { font-size: 14px; }
+
+  /* Crafting panel — full-width, scrollable */
+  #crafting-panel {
+    min-width: unset;
+    max-width: calc(100vw - 24px);
+    max-height: 80vh;
+    overflow-y: auto;
+    padding: 12px 14px;
+  }
+  #crafting-title { font-size: 10px; }
+  .craft-name     { font-size: 8px; }
+  .craft-desc     { font-size: 6px; }
+
+  /* Stats / Achievements / Settings overlays — full screen friendly */
+  #stats-overlay,
+  #achievements-overlay,
+  #settings-overlay {
+    padding: 12px 8px;
+  }
+  #stats-panel,
+  #achievements-panel,
+  #settings-panel {
+    width: calc(100vw - 24px);
+    max-width: unset;
+    max-height: 85vh;
+    overflow-y: auto;
+    padding: 12px 14px;
+  }
+
+  /* Game-over screen — tighter spacing */
+  #go-lifetime-stats {
+    gap: 12px;
+    font-size: 7px;
+  }
+  #go-lifetime-stats .go-label { font-size: 6px; }
+
+  /* Danger overlay text */
+  #danger-text { font-size: 10px; }
+}
+
+/* ── Extra-small viewport (<480px) ── */
+@media (max-width: 479px) {
+  .hud-score { font-size: calc(14px * var(--hud-scale)); }
+  .hud-stat  { font-size: calc(6px  * var(--hud-scale)); }
+
+  /* Stack inventory slots in two rows on very narrow screens */
+  #inventory-slots {
+    flex-wrap: wrap;
+    max-width: calc(100vw - 24px);
+    justify-content: center;
+  }
+  .inv-slot { width: 30px; height: 30px; }
+  .inv-slot-color { width: 18px; height: 18px; }
+
+  /* Material tooltip — keep it above wrapped inventory */
+  #material-tooltip { bottom: 110px; }
+
+  /* Mode-select cards — single column */
+  #mode-select .mode-cards {
+    flex-direction: column;
+    align-items: center;
+  }
+}
