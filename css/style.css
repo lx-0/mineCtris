@@ -1588,6 +1588,23 @@ body {
   line-height: 1.7;
 }
 
+/* Event journal inside world card */
+.survival-world-card .wc-journal {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  margin-top: 3px;
+  margin-bottom: 2px;
+}
+.survival-world-card .wc-journal-entry {
+  font-size: 0.72em;
+  color: rgba(255, 200, 120, 0.8);
+  background: rgba(255, 150, 50, 0.1);
+  border: 1px solid rgba(255, 150, 50, 0.2);
+  border-radius: 3px;
+  padding: 1px 5px;
+}
+
 /* ── Survival mode card — orange/fire accent ── */
 .mode-card-survival {
   border-color: rgba(255, 100, 0, 0.5);

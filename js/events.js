@@ -292,6 +292,11 @@ function _fireOnEnd(type) {
   if (type === EVENT_TYPES.PIECE_STORM) _onPieceStormEnd();
   if (type === EVENT_TYPES.GOLDEN_HOUR) _onGoldenHourEnd();
   if (type === EVENT_TYPES.EARTHQUAKE)  _onEarthquakeEnd();
+  // Survival: record survived event for stats tracking and journal
+  if (!isGameOver && typeof isSurvivalMode !== "undefined" && isSurvivalMode &&
+      typeof recordSurvivedEvent === "function") {
+    recordSurvivedEvent(type);
+  }
   _hideEventCountdownHud();
   _dismissEventAnnouncement();
   _showEventEndToast(type);

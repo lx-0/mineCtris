@@ -98,6 +98,7 @@ function _defaultSurvivalStats() {
     totalScore:       0,       // cumulative score
     worldStartedDate: null,    // ISO date string (set on world init)
     eventsSurvived:   0,       // populated by events module
+    eventJournal:     [],      // last 5 survived events [{type, at}]
     // Lifetime stats — never reset
     totalRuns:     0,
     bestScore:     0,
@@ -132,6 +133,7 @@ function initWorldStats() {
   stats.totalScore       = 0;
   stats.worldStartedDate = new Date().toISOString();
   stats.eventsSurvived   = 0;
+  stats.eventJournal     = [];
   saveSurvivalStats(stats);
 }
 
@@ -157,6 +159,21 @@ function recordSurvivedSession({ score, blocksMined, linesCleared, timeAlive }) 
 }
 
 /**
+ * Record a survived world event. Call when an event ends and the player is still alive
+ * in Survival mode. Increments eventsSurvived and appends to the event journal (max 5).
+ * @param {string} type  One of the EVENT_TYPES values (e.g. "PIECE_STORM").
+ */
+function recordSurvivedEvent(type) {
+  if (!isSurvivalMode) return;
+  const stats = loadSurvivalStats();
+  stats.eventsSurvived++;
+  if (!Array.isArray(stats.eventJournal)) stats.eventJournal = [];
+  stats.eventJournal.push({ type, at: Date.now() });
+  if (stats.eventJournal.length > 5) stats.eventJournal = stats.eventJournal.slice(-5);
+  saveSurvivalStats(stats);
+}
+
+/**
  * Clear all world-scoped stats (call when the world is lost).
  * Lifetime stats (totalRuns, bestScore, bestTimeAlive, bestSessionNumber) are preserved.
  */
@@ -169,6 +186,7 @@ function resetWorldStats() {
   stats.totalScore        = 0;
   stats.worldStartedDate  = null;
   stats.eventsSurvived    = 0;
+  stats.eventJournal      = [];
   saveSurvivalStats(stats);
 }
 
@@ -210,13 +228,36 @@ function renderWorldCard() {
   const ss = (totalSecs % 60).toString().padStart(2, '0');
   const timeStr = hh > 0 ? hh + ':' + mm + ':' + ss : mm + ':' + ss;
 
+  // Event journal: last 5 survived events with human-readable names
+  const _EVENT_DISPLAY_NAMES = {
+    PIECE_STORM: '⚡ Piece Storm',
+    GOLDEN_HOUR: '✨ Golden Hour',
+    EARTHQUAKE:  '🌋 Earthquake',
+  };
+  const journal = Array.isArray(stats.eventJournal) ? stats.eventJournal : [];
+  let journalHtml = '';
+  if (journal.length > 0) {
+    const items = journal.slice().reverse().map(function (e) {
+      const name = _EVENT_DISPLAY_NAMES[e.type] || e.type;
+      return '<span class="wc-journal-entry">' + name + '</span>';
+    }).join('');
+    journalHtml =
+      '<div class="wc-row wc-journal-row"><span class="wc-label">EVENTS</span>' +
+      '<span class="wc-val wc-val-events">' + stats.eventsSurvived + '</span></div>' +
+      '<div class="wc-journal">' + items + '</div>';
+  } else {
+    journalHtml =
+      '<div class="wc-row"><span class="wc-label">EVENTS</span><span class="wc-val">' + stats.eventsSurvived + '</span></div>';
+  }
+
   el.innerHTML =
     '<div class="wc-day-age">' + getWorldAge(stats) + '</div>' +
     '<div class="wc-row"><span class="wc-label">SESSIONS</span><span class="wc-val">' + stats.sessionsSurvived + '</span></div>' +
     '<div class="wc-row"><span class="wc-label">TIME</span><span class="wc-val">' + timeStr + '</span></div>' +
     '<div class="wc-row"><span class="wc-label">SCORE</span><span class="wc-val">' + stats.totalScore.toLocaleString() + '</span></div>' +
     '<div class="wc-row"><span class="wc-label">BLOCKS</span><span class="wc-val">' + stats.totalBlocksMined.toLocaleString() + '</span></div>' +
-    '<div class="wc-row"><span class="wc-label">LINES</span><span class="wc-val">' + stats.totalLinesCleared + '</span></div>';
+    '<div class="wc-row"><span class="wc-label">LINES</span><span class="wc-val">' + stats.totalLinesCleared + '</span></div>' +
+    journalHtml;
 }
 
 /**
@@ -248,6 +289,7 @@ function submitSurvivalStats(finalScore, timeAlive, sessionNum) {
   stats.totalScore        = 0;
   stats.worldStartedDate  = null;
   stats.eventsSurvived    = 0;
+  stats.eventJournal      = [];
   saveSurvivalStats(stats);
   // Return an object with lifetime fields for the game-over overlay
   return Object.assign({}, stats, lifetime);
