@@ -243,6 +243,7 @@ function updateMaterialTooltip() {
   let totalHits = targetedBlock.userData.miningClicks || MINING_CLICKS_NEEDED;
   if (pickaxeTier === "stone") totalHits = Math.min(totalHits, 2);
   else if (pickaxeTier === "iron" || pickaxeTier === "diamond") totalHits = 1;
+  if (earthquakeActive) totalHits = Math.max(1, Math.floor(totalHits / 2));
 
   const hitsDealt = miningProgress;
   const hitsRemaining = Math.max(0, totalHits - hitsDealt);

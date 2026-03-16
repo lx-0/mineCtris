@@ -353,6 +353,23 @@ function playGoldenHourFanfare() {
   });
 }
 
+// ── Earthquake sounds ─────────────────────────────────────────────────────────
+
+/** Deep seismic rumble sequence played when Earthquake begins. */
+function playEarthquakeRumble() {
+  if (!audioReady || !rumbleSynth) return;
+  const now = Tone.now();
+  rumbleSynth.triggerAttackRelease("D1", "4n", now);
+  rumbleSynth.triggerAttackRelease("G1", "4n", now + 0.5);
+  rumbleSynth.triggerAttackRelease("B1", "4n", now + 1.0);
+}
+
+/** Short crumbling stone pulse played during Earthquake shake bursts. */
+function playEarthquakeCrumble() {
+  if (!audioReady || !rumbleSynth) return;
+  rumbleSynth.triggerAttackRelease("E1", "16n", Tone.now());
+}
+
 // ── Volume settings ───────────────────────────────────────────────────────────
 
 /**

@@ -45,7 +45,7 @@ const EVENT_META = {
 const EVENT_DURATIONS_MS = {
   [EVENT_TYPES.PIECE_STORM]: 30000,
   [EVENT_TYPES.GOLDEN_HOUR]: 20000,
-  [EVENT_TYPES.EARTHQUAKE]:  20000,
+  [EVENT_TYPES.EARTHQUAKE]:  10000,
 };
 
 // ── Scheduler config ──────────────────────────────────────────────────────────
@@ -412,31 +412,97 @@ function _onGoldenHourEnd() {
 
 // ── Earthquake implementation ─────────────────────────────────────────────────
 
+// Pulsing red ambient light added to scene during earthquake.
+let _earthquakeAmbient = null;
+
 function _onEarthquakeStart() {
+  earthquakeActive = true;
+
   // Orange-brown atmospheric overlay
   const overlay = document.getElementById("earthquake-overlay");
   if (overlay) overlay.style.display = "block";
 
-  // Trigger screen shake
-  if (typeof screenShakeActive !== "undefined") {
-    screenShakeActive = true;
-    screenShakeStart  = performance.now();
+  // Mining bonus HUD notification
+  const hud = document.getElementById("earthquake-hud");
+  if (hud) hud.style.display = "block";
+
+  // Red ambient light pulse
+  if (typeof THREE !== "undefined" && typeof scene !== "undefined" && scene) {
+    _earthquakeAmbient = new THREE.AmbientLight(0xff2200, 0.2);
+    scene.add(_earthquakeAmbient);
   }
+
+  // Crack particle burst from ground level
+  _spawnEarthquakeCracks();
+
+  // Seismic rumble SFX
+  if (typeof playEarthquakeRumble === "function") playEarthquakeRumble();
 }
 
 function _onEarthquakeTick() {
-  // Periodic screen shake bursts
-  if (typeof screenShakeActive !== "undefined" && !screenShakeActive) {
-    if (Math.random() < 0.02) {
-      screenShakeActive = true;
-      screenShakeStart  = performance.now();
-    }
+  // Pulse red ambient light intensity
+  if (_earthquakeAmbient) {
+    const t = performance.now() / 1000;
+    _earthquakeAmbient.intensity = 0.10 + 0.12 * Math.abs(Math.sin(t * Math.PI * 2.8));
+  }
+
+  // Occasional crumbling stone SFX
+  if (Math.random() < 0.012) {
+    if (typeof playEarthquakeCrumble === "function") playEarthquakeCrumble();
   }
 }
 
 function _onEarthquakeEnd() {
+  earthquakeActive = false;
+
   const overlay = document.getElementById("earthquake-overlay");
   if (overlay) overlay.style.display = "none";
+
+  const hud = document.getElementById("earthquake-hud");
+  if (hud) hud.style.display = "none";
+
+  // Remove red ambient light
+  if (_earthquakeAmbient) {
+    if (typeof scene !== "undefined" && scene) scene.remove(_earthquakeAmbient);
+    _earthquakeAmbient = null;
+  }
+}
+
+/** Spawn a burst of dark crack particles from ground level around the player. */
+function _spawnEarthquakeCracks() {
+  if (typeof scene === "undefined" || !scene) return;
+  if (typeof dustParticles === "undefined" || typeof clock === "undefined") return;
+
+  const cx = (typeof camera !== "undefined" && camera) ? camera.position.x : 0;
+  const cz = (typeof camera !== "undefined" && camera) ? camera.position.z : 0;
+  const crackColor = new THREE.Color(0x2a1a0a);
+
+  for (let i = 0; i < 22; i++) {
+    const angle  = Math.random() * Math.PI * 2;
+    const radius = 1.5 + Math.random() * 5.5;
+    const x = cx + Math.cos(angle) * radius;
+    const z = cz + Math.sin(angle) * radius;
+
+    const geo = new THREE.BoxGeometry(0.07, 0.05, 0.07);
+    const mat = new THREE.MeshLambertMaterial({
+      color:       crackColor,
+      transparent: true,
+      opacity:     0.9,
+    });
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.position.set(x, 0, z);
+    scene.add(mesh);
+    dustParticles.push({
+      mesh,
+      velocity: new THREE.Vector3(
+        (Math.random() - 0.5) * 3.5,
+        Math.random() * 4.5 + 1.0,
+        (Math.random() - 0.5) * 3.5
+      ),
+      startTime: clock.getElapsedTime(),
+      lifetime:  0.45 + Math.random() * 0.35,
+    });
+  }
 }
 
 // ── Main update — called from game loop each frame ────────────────────────────
@@ -501,6 +567,12 @@ function resetEventEngine() {
   if (activeEvent === EVENT_TYPES.EARTHQUAKE) {
     const overlay = document.getElementById("earthquake-overlay");
     if (overlay) overlay.style.display = "none";
+    const hud = document.getElementById("earthquake-hud");
+    if (hud) hud.style.display = "none";
+    if (_earthquakeAmbient) {
+      if (typeof scene !== "undefined" && scene) scene.remove(_earthquakeAmbient);
+      _earthquakeAmbient = null;
+    }
   }
 
   // Clean up shared HUD/announcement elements
@@ -524,6 +596,9 @@ function resetEventEngine() {
   _nextThresholdMs     = _pickInterval();
   pieceStormActive     = false;
   goldenHourActive     = false;
+  earthquakeActive     = false;
+  _eqShakeOffX         = 0;
+  _eqShakeOffY         = 0;
 }
 
 // ── Debug hook ────────────────────────────────────────────────────────────────

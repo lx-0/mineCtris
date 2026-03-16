@@ -3551,6 +3551,26 @@ body.theme-legendary #score-display {
   50%       { opacity: 1.00; }
 }
 
+/* Earthquake mining bonus HUD — centered below top HUD row, shown for full event */
+#earthquake-hud {
+  position: absolute;
+  top: 76px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: "Press Start 2P", cursive;
+  font-size: 12px;
+  color: #ff8c00;
+  text-shadow: 0 0 10px rgba(255, 100, 0, 0.9), 1px 1px 2px #000;
+  pointer-events: none;
+  white-space: nowrap;
+  z-index: 184;
+  animation: earthquake-hud-pulse 0.9s ease-in-out infinite;
+}
+@keyframes earthquake-hud-pulse {
+  0%, 100% { opacity: 0.88; }
+  50%       { opacity: 1.00; }
+}
+
 /* ── Event Announcement Card ─────────────────────────────────────────────── */
 
 /* Full-screen backdrop */

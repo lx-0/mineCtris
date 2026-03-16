@@ -998,6 +998,8 @@ function onMouseDown(event) {
     let clicksNeeded = targetedBlock.userData.miningClicks || MINING_CLICKS_NEEDED;
     if (pickaxeTier === "stone") clicksNeeded = Math.min(clicksNeeded, 2);
     else if (pickaxeTier === "iron" || pickaxeTier === "diamond") clicksNeeded = 1;
+    // Earthquake bonus: halve all hit requirements (rounded down, minimum 1)
+    if (earthquakeActive) clicksNeeded = Math.max(1, Math.floor(clicksNeeded / 2));
     isMining = true;
     miningAnimStartTime = clock.getElapsedTime();
     updateMaterialTooltip();
@@ -1602,6 +1604,25 @@ function animate() {
   } else {
     renderer.render(scene, camera);
   }
+
+  // Earthquake camera shake: sinusoidal position offset applied post-render
+  // to avoid post-processing (SSAO) conflicts. Max ±0.15 units on X/Y.
+  if (earthquakeActive) {
+    const t   = clock.getElapsedTime();
+    const newX = Math.sin(t * 18.3) * 0.15;
+    const newY = Math.sin(t * 23.7 + 1.2) * 0.15;
+    camera.position.x += newX - _eqShakeOffX;
+    camera.position.y += newY - _eqShakeOffY;
+    _eqShakeOffX = newX;
+    _eqShakeOffY = newY;
+  } else if (_eqShakeOffX !== 0 || _eqShakeOffY !== 0) {
+    // Undo last offset when earthquake just ended
+    camera.position.x -= _eqShakeOffX;
+    camera.position.y -= _eqShakeOffY;
+    _eqShakeOffX = 0;
+    _eqShakeOffY = 0;
+  }
+
   lastTime = time;
 }
 

@@ -256,6 +256,13 @@ let pieceStormActive = false;
 // true while the GOLDEN_HOUR world event is active.
 let goldenHourActive = false;
 
+// ── Earthquake event state ────────────────────────────────────────────────────
+// true while the EARTHQUAKE world event is active (enables mining hit halving).
+let earthquakeActive = false;
+// Camera shake offset tracking for sinusoidal earthquake shake (applied in main.js).
+let _eqShakeOffX = 0;
+let _eqShakeOffY = 0;
+
 // ── Session stats (reset each game, accumulated for lifetime stats on game over) ──
 let blocksPlaced = 0;
 let sessionCrafts = 0;
