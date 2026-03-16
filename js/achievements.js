@@ -26,6 +26,12 @@ const ACHIEVEMENTS = [
   { id: "weekly_champion",  name: "Weekly Champion",  icon: "\u{1F3C5}", desc: "Complete a Weekly Challenge" },
   { id: "puzzle_master",    name: "Puzzle Master",    icon: "\u{1F9E9}", desc: "3-star all 10 puzzles" },
   { id: "completionist",    name: "Completionist",    icon: "\u{1F3C6}", desc: "Unlock 10 achievements" },
+  // Survival Mode achievements
+  { id: "survival_first",   name: "Born Survivor",    icon: "\u{1F331}", desc: "Complete your first Survival session" },
+  { id: "survival_5",       name: "Settled In",       icon: "\u{1F3E0}", desc: "Survive 5 sessions in the same world" },
+  { id: "survival_30",      name: "Ancient World",    icon: "\u{1F30D}", desc: "Reach Day 30 in one world" },
+  { id: "storm_rider",      name: "Storm Rider",      icon: "\u26C8\uFE0F", desc: "Survive a Piece Storm in Survival mode" },
+  { id: "earthquake_proof", name: "Unshakeable",      icon: "\u{1FAA8}", desc: "Survive an Earthquake without dying" },
 ];
 
 // Session counters — reset at the start of each game
@@ -263,4 +269,26 @@ function achOnPuzzleComplete(puzzleId, stars) {
   if (typeof countThreeStarPuzzles === "function" && countThreeStarPuzzles() >= 10) {
     unlockAchievement("puzzle_master");
   }
+}
+
+/**
+ * Call after a Survival session is recorded (session survived, not game-over).
+ * @param {number} sessionsSurvived  total sessions survived in the current world (after increment)
+ */
+function achOnSurvivalSessionEnd(sessionsSurvived) {
+  if (sessionsSurvived >= 1)  unlockAchievement("survival_first");
+  if (sessionsSurvived >= 5)  unlockAchievement("survival_5");
+  if (sessionsSurvived >= 30) unlockAchievement("survival_30");
+}
+
+/**
+ * Call when a world event ends and the player is still alive in Survival mode.
+ * Only fires during Survival mode — Storm Rider and Unshakeable must NOT unlock
+ * in Classic or other modes.
+ * @param {string} eventType  one of the EVENT_TYPES values ("PIECE_STORM", "EARTHQUAKE", …)
+ */
+function achOnSurvivalEventEnd(eventType) {
+  if (typeof isSurvivalMode === "undefined" || !isSurvivalMode) return;
+  if (eventType === "PIECE_STORM") unlockAchievement("storm_rider");
+  if (eventType === "EARTHQUAKE")  unlockAchievement("earthquake_proof");
 }

@@ -327,6 +327,7 @@ function _onPieceStormEnd() {
     if (typeof showCraftedBanner === "function") {
       showCraftedBanner("Storm survived! +500");
     }
+    if (typeof achOnSurvivalEventEnd === "function") achOnSurvivalEventEnd("PIECE_STORM");
   }
 }
 
@@ -465,6 +466,10 @@ function _onEarthquakeEnd() {
   if (_earthquakeAmbient) {
     if (typeof scene !== "undefined" && scene) scene.remove(_earthquakeAmbient);
     _earthquakeAmbient = null;
+  }
+
+  if (!isGameOver && typeof achOnSurvivalEventEnd === "function") {
+    achOnSurvivalEventEnd("EARTHQUAKE");
   }
 }
 

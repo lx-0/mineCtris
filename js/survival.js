@@ -150,6 +150,9 @@ function recordSurvivedSession({ score, blocksMined, linesCleared, timeAlive }) 
     stats.bestSessionNumber = stats.sessionsSurvived;
   }
   saveSurvivalStats(stats);
+  if (typeof achOnSurvivalSessionEnd === "function") {
+    achOnSurvivalSessionEnd(stats.sessionsSurvived);
+  }
   return stats;
 }
 
