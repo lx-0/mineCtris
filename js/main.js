@@ -1134,6 +1134,38 @@ function activateIceBridge() {
   if (typeof onMissionPowerupActivated === "function") onMissionPowerupActivated();
 }
 
+/**
+ * Trigger a one-shot activation flash for the given power-up type.
+ * @param {"row-bomb"|"slow-down"|"shield"|"magnet"} type
+ */
+function _triggerPowerupFlash(type) {
+  const el = document.getElementById("powerup-flash");
+  if (!el) return;
+  // Reset animation by forcing reflow
+  el.style.display = "none";
+  el.className = "";
+  void el.offsetWidth; // reflow
+  el.className = type + " active";
+  el.style.display = "block";
+  el.addEventListener("animationend", function onEnd() {
+    el.style.display = "none";
+    el.className = "";
+    el.removeEventListener("animationend", onEnd);
+  }, { once: true });
+}
+
+/** Show/hide persistent power-up overlays based on current effect state. */
+function updatePowerupOverlays() {
+  const sdEl = document.getElementById("slowdown-overlay");
+  const shEl = document.getElementById("shield-overlay");
+  const mgEl = document.getElementById("magnet-overlay");
+  if (sdEl) sdEl.style.display = (!isGameOver && slowDownActive) ? "block" : "none";
+  if (shEl && !shEl.classList.contains("absorb")) {
+    shEl.style.display = (!isGameOver && shieldActive) ? "block" : "none";
+  }
+  if (mgEl) mgEl.style.display = (!isGameOver && magnetActive) ? "block" : "none";
+}
+
 /** Update the equipped power-up HUD badge visibility and used state. */
 function updatePowerupHUD() {
   const hudEl = document.getElementById("powerup-hud");
@@ -1200,24 +1232,29 @@ function activateEquippedPowerup() {
         worldGroup.remove(block);
       });
       if (typeof achOnBlockMined === "function") achOnBlockMined(blocksMined, undefined);
+      _triggerPowerupFlash("row-bomb");
+      triggerChromaticAberration(0.008, 0.45);
       break;
     }
     case "slow_down": {
       slowDownActive = true;
-      slowDownTimer  = 30.0;
-      showCraftedBanner("Slow Down! 50% speed for 30s.");
+      slowDownTimer  = 60.0;
+      showCraftedBanner("Slow Down! 50% speed for 60s.");
+      _triggerPowerupFlash("slow-down");
       break;
     }
     case "shield": {
       shieldActive = true;
       showCraftedBanner("Shield active! Next death absorbed.");
+      _triggerPowerupFlash("shield");
       break;
     }
     case "magnet": {
       magnetActive      = true;
-      magnetTimer       = 20.0;
+      magnetTimer       = 30.0;
       magnetLastPullTime = 0.0;
-      showCraftedBanner("Magnet! Auto-mining nearby blocks for 20s.");
+      showCraftedBanner("Magnet! Auto-mining nearby blocks for 30s.");
+      _triggerPowerupFlash("magnet");
       break;
     }
   }
@@ -1279,7 +1316,7 @@ function animate() {
       }
     }
 
-    // Tick Magnet power-up: auto-mine nearest block within 3 units, once per second
+    // Tick Magnet power-up: auto-mine nearest block within 5 units, once per second
     if (magnetActive) {
       magnetTimer -= delta;
       if (magnetTimer <= 0) {
@@ -1291,7 +1328,7 @@ function animate() {
         if (magnetLastPullTime >= 1.0) {
           magnetLastPullTime = 0;
           const playerPos = controls.getObject().position;
-          const MAGNET_RANGE = 3;
+          const MAGNET_RANGE = 5;
           let nearestDist = Infinity;
           let nearestBlock = null;
           worldGroup.children.forEach(function (obj) {
@@ -1470,6 +1507,7 @@ function animate() {
     }
   }
 
+  updatePowerupOverlays();
   updatePostProcessing(delta);
 
   if (composer) {

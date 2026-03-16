@@ -228,14 +228,14 @@ function savePowerUpBank(bank) {
 // null = none equipped.
 let equippedPowerUpType = null;
 
-// Slow Down power-up: 50% fall-speed reduction for 30 s.
+// Slow Down power-up: 50% fall-speed reduction for 60 s.
 let slowDownActive = false;
 let slowDownTimer  = 0.0;
 
 // Shield power-up: absorb the next game-over event.
 let shieldActive = false;
 
-// Magnet power-up: auto-mine nearest block within 3 units, once/s, for 20 s.
+// Magnet power-up: auto-mine nearest block within 5 units, once/s, for 30 s.
 let magnetActive      = false;
 let magnetTimer       = 0.0;
 let magnetLastPullTime = 0.0;

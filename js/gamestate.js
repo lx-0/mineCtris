@@ -100,6 +100,18 @@ function checkGameOver() {
         shieldActive = false;
         showCraftedBanner("Shield absorbed the blow! Keep going.");
         if (typeof updatePowerupHUD === "function") updatePowerupHUD();
+        // Visual: absorption burst flash + chromatic hit
+        const shEl = document.getElementById("shield-overlay");
+        if (shEl) {
+          shEl.style.display = "block";
+          shEl.classList.add("absorb");
+          shEl.addEventListener("animationend", function onEnd() {
+            shEl.style.display = "none";
+            shEl.classList.remove("absorb");
+            shEl.removeEventListener("animationend", onEnd);
+          }, { once: true });
+        }
+        if (typeof triggerChromaticAberration === "function") triggerChromaticAberration(0.007, 0.5);
         return;
       }
       triggerGameOver();

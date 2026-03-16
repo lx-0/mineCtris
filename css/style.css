@@ -3238,3 +3238,76 @@ body.theme-legendary #score-display {
   0%, 100% { transform: scale(1);    opacity: 1;   }
   50%       { transform: scale(1.15); opacity: 0.8; }
 }
+
+/* ── Power-up activation overlays ── */
+
+/* One-shot flash on activation */
+#powerup-flash {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 200;
+  opacity: 0;
+}
+#powerup-flash.row-bomb  { background: radial-gradient(circle, rgba(255,160,0,0.75) 0%, rgba(255,40,0,0.35) 55%, transparent 100%); }
+#powerup-flash.slow-down { background: radial-gradient(ellipse at center, transparent 35%, rgba(0,100,255,0.5) 100%); }
+#powerup-flash.shield    { background: radial-gradient(ellipse at center, transparent 35%, rgba(0,220,90,0.55) 100%); }
+#powerup-flash.magnet    { background: radial-gradient(ellipse at center, transparent 45%, rgba(255,215,0,0.45) 100%); }
+#powerup-flash.active    { animation: pu-flash-out 0.45s ease-out forwards; }
+@keyframes pu-flash-out {
+  0%   { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* Slow Down: persistent blue vignette while active */
+#slowdown-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 185;
+  background: radial-gradient(ellipse at center, transparent 38%, rgba(0,80,220,0.28) 100%);
+  box-shadow: inset 0 0 60px rgba(0,100,255,0.35);
+  animation: slowdown-breathe 2.2s ease-in-out infinite;
+}
+@keyframes slowdown-breathe {
+  0%, 100% { opacity: 0.75; }
+  50%       { opacity: 1.0;  }
+}
+
+/* Shield: persistent green aura while active */
+#shield-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 185;
+  background: radial-gradient(ellipse at center, transparent 45%, rgba(0,200,80,0.22) 100%);
+  box-shadow: inset 0 0 55px rgba(0,255,100,0.3);
+  animation: shield-breathe 2.8s ease-in-out infinite;
+}
+@keyframes shield-breathe {
+  0%, 100% { opacity: 0.65; }
+  50%       { opacity: 1.0;  }
+}
+/* Shield absorption burst */
+#shield-overlay.absorb {
+  animation: shield-absorb 0.6s ease-out forwards;
+}
+@keyframes shield-absorb {
+  0%   { opacity: 1; background: radial-gradient(ellipse at center, transparent 20%, rgba(0,255,100,0.75) 100%); box-shadow: inset 0 0 80px rgba(0,255,100,0.6); }
+  100% { opacity: 0; }
+}
+
+/* Magnet: golden ring pulse while active */
+#magnet-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 185;
+  background: radial-gradient(ellipse at center, transparent 50%, rgba(220,170,0,0.22) 100%);
+  box-shadow: inset 0 0 50px rgba(255,200,0,0.25);
+  animation: magnet-ring 1.1s ease-in-out infinite;
+}
+@keyframes magnet-ring {
+  0%, 100% { opacity: 0.55; transform: scale(1);     }
+  50%       { opacity: 1.0;  transform: scale(1.004); }
+}

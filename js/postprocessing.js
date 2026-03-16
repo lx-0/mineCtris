@@ -19,6 +19,7 @@ const _GRADE_TARGET = {
   danger:    { saturation: 0.55, temperature:  0.30, brightness: 0.90, vignette: 0.50 },
   lineclear: { saturation: 1.90, temperature:  0.10, brightness: 1.25, vignette: 0.08 },
   gameover:  { saturation: 0.10, temperature: -0.50, brightness: 0.75, vignette: 5.00 },
+  slowdown:  { saturation: 1.00, temperature: -0.45, brightness: 0.95, vignette: 0.38 },
 };
 
 const _LERP_NORMAL   = 2.5;  // fast transitions (normal / danger / lineclear)
@@ -191,6 +192,8 @@ function updatePostProcessing(delta) {
     key = 'lineclear';
   } else if (getMaxBlockHeight() >= DANGER_ZONE_HEIGHT) {
     key = 'danger';
+  } else if (typeof slowDownActive !== 'undefined' && slowDownActive) {
+    key = 'slowdown';
   }
 
   const tgt = _GRADE_TARGET[key];
