@@ -108,7 +108,7 @@ function renderCraftingPanel() {
   }
 
   recipesEl.innerHTML = "";
-  const tierRank = { none: 0, stone: 1, iron: 2, diamond: 3 };
+  const tierRank = { none: 0, stone: 1, iron: 2, diamond: 3, obsidian: 4 };
 
   RECIPES.forEach((recipe) => {
     // Skip bench recipe if already built
@@ -200,7 +200,7 @@ function renderCraftingPanel() {
     const gateNote = document.createElement("div");
     gateNote.className = "craft-empty";
     gateNote.style.cssText = "color:#aaa;font-size:0.8em;margin-top:6px;";
-    gateNote.textContent = "Craft a Crafting Bench to unlock Diamond Pickaxe, Lava Flask, Ice Bridge, and Power-ups.";
+    gateNote.textContent = "Craft a Crafting Bench to unlock Diamond Pickaxe, Obsidian Pickaxe, Lava Flask, Ice Bridge, and Power-ups.";
     recipesEl.appendChild(gateNote);
   }
 
@@ -229,6 +229,7 @@ function craftRecipe(recipe) {
     }
   } else if (recipe.outputType === "tool") {
     pickaxeTier = recipe.toolTier;
+    if (recipe.toolTier === "obsidian") obsidianPickaxeActive = true;
     if (typeof achOnCraft === "function") achOnCraft(recipe.toolTier);
   } else if (recipe.outputType === "bench") {
     hasCraftingBench = true;

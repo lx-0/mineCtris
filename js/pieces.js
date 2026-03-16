@@ -230,6 +230,15 @@ function spawnFallingPiece() {
   piece3D.userData.nudgePulseEnd = -1;
   fallingPiecesGroup.add(piece3D);
   fallingPieces.push(piece3D);
+  // Apply freeze glow immediately if Time Freeze is active when this piece spawns
+  if (timeFreezeActive) {
+    piece3D.children.forEach(function (block) {
+      if (block.material) {
+        block.material.emissive.setRGB(0.55, 0.85, 1.0);
+        block.material.needsUpdate = true;
+      }
+    });
+  }
   createPieceShadow(piece3D);
   createPieceTrail(piece3D);
 }
@@ -391,6 +400,9 @@ function applyNudge(dx, dz) {
 function updateFallingPieces(delta) {
   // Think Mode (puzzle): zero gravity while F is held.
   if (typeof isThinkModeActive === "function" && isThinkModeActive()) return;
+
+  // Time Freeze: all pieces stop falling (player can mine/reposition freely).
+  if (timeFreezeActive) return;
 
   // Apply fall-speed modifiers: Slow Down power-up (0.5×) or Ice Bridge (0.8×).
   const effectiveDelta = slowDownActive ? delta * 0.5 : iceBridgeSlowActive ? delta * 0.8 : delta;

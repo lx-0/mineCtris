@@ -451,7 +451,7 @@ function resetGame() {
   pickaxeTier        = "none";
   hasCraftingBench   = false;
   consumables        = { lava_flask: 0, ice_bridge: 0 };
-  powerUps           = { row_bomb: 0, slow_down: 0, shield: 0, magnet: 0 };
+  powerUps           = { row_bomb: 0, slow_down: 0, shield: 0, magnet: 0, time_freeze: 0 };
   iceBridgeSlowActive = false;
   iceBridgeSlowTimer  = 0.0;
   // Reset power-up effect state
@@ -462,6 +462,9 @@ function resetGame() {
   magnetActive   = false;
   magnetTimer    = 0.0;
   magnetLastPullTime = 0.0;
+  timeFreezeActive = false;
+  timeFreezeTimer  = 0.0;
+  obsidianPickaxeActive = false;
   const powerupHudEl = document.getElementById("powerup-hud");
   if (powerupHudEl) powerupHudEl.style.display = "none";
   closeCraftingPanel();

@@ -1111,6 +1111,8 @@ function onMouseDown(event) {
     let clicksNeeded = targetedBlock.userData.miningClicks || MINING_CLICKS_NEEDED;
     if (pickaxeTier === "stone") clicksNeeded = Math.min(clicksNeeded, 2);
     else if (pickaxeTier === "iron" || pickaxeTier === "diamond") clicksNeeded = 1;
+    // Obsidian Pickaxe: -1 hit to all blocks (min 1), stacks with Earthquake
+    if (obsidianPickaxeActive) clicksNeeded = Math.max(1, clicksNeeded - 1);
     // Earthquake bonus: halve all hit requirements (rounded down, minimum 1)
     if (earthquakeActive) clicksNeeded = Math.max(1, Math.floor(clicksNeeded / 2));
     isMining = true;
@@ -1174,9 +1176,13 @@ function onMouseDown(event) {
         targetedBlock.userData.originalColor ||
         targetedBlock.material.color;
       const cssColor = threeColorToCss(blockColor);
+      // Use the dropMaterial color if defined (e.g. obsidian → obsidian_shard)
+      const _matType = targetedBlock.userData.materialType;
+      const _dropMat = _matType && BLOCK_TYPES[_matType] && BLOCK_TYPES[_matType].dropMaterial;
+      const _invColor = _dropMat === "obsidian_shard" ? OBSIDIAN_SHARD_COLOR : cssColor;
       const crumbles = targetedBlock.name === "leaf_block" && Math.random() < 0.2;
       if (!crumbles) {
-        const collected = addToInventory(cssColor);
+        const collected = addToInventory(_invColor);
         if (!collected) {
           console.log("Inventory full — block discarded.");
         }
@@ -1313,7 +1319,7 @@ function activateIceBridge() {
 
 /**
  * Trigger a one-shot activation flash for the given power-up type.
- * @param {"row-bomb"|"slow-down"|"shield"|"magnet"} type
+ * @param {"row-bomb"|"slow-down"|"shield"|"magnet"|"time-freeze"} type
  */
 function _triggerPowerupFlash(type) {
   const el = document.getElementById("powerup-flash");
@@ -1350,16 +1356,37 @@ function triggerLightningFlash() {
   }, { once: true });
 }
 
+/**
+ * Apply or remove blue-white emissive glow on all currently falling pieces.
+ * Called when Time Freeze activates or expires.
+ * @param {boolean} on  true = apply glow, false = restore default emissive
+ */
+function _applyTimeFreezeGlow(on) {
+  fallingPieces.forEach(function (piece) {
+    piece.children.forEach(function (block) {
+      if (!block.material) return;
+      if (on) {
+        block.material.emissive.setRGB(0.55, 0.85, 1.0);
+      } else {
+        block.material.emissive.setRGB(0, 0, 0);
+      }
+      block.material.needsUpdate = true;
+    });
+  });
+}
+
 /** Show/hide persistent power-up overlays based on current effect state. */
 function updatePowerupOverlays() {
   const sdEl = document.getElementById("slowdown-overlay");
   const shEl = document.getElementById("shield-overlay");
   const mgEl = document.getElementById("magnet-overlay");
+  const tfEl = document.getElementById("time-freeze-overlay");
   if (sdEl) sdEl.style.display = (!isGameOver && slowDownActive) ? "block" : "none";
   if (shEl && !shEl.classList.contains("absorb")) {
     shEl.style.display = (!isGameOver && shieldActive) ? "block" : "none";
   }
   if (mgEl) mgEl.style.display = (!isGameOver && magnetActive) ? "block" : "none";
+  if (tfEl) tfEl.style.display = (!isGameOver && timeFreezeActive) ? "block" : "none";
 }
 
 /** Update the equipped power-up HUD badge visibility and used state. */
@@ -1371,10 +1398,11 @@ function updatePowerupHUD() {
     return;
   }
   const puDefs = {
-    row_bomb:  { icon: "\uD83D\uDCA3", name: "Row Bomb"  },
-    slow_down: { icon: "\u23F1",        name: "Slow Down" },
-    shield:    { icon: "\uD83D\uDEE1",  name: "Shield"    },
-    magnet:    { icon: "\uD83E\uDDF2",  name: "Magnet"    },
+    row_bomb:   { icon: "\uD83D\uDCA3", name: "Row Bomb"    },
+    slow_down:  { icon: "\u23F1",        name: "Slow Down"  },
+    shield:     { icon: "\uD83D\uDEE1",  name: "Shield"     },
+    magnet:     { icon: "\uD83E\uDDF2",  name: "Magnet"     },
+    time_freeze: { icon: "\u2744",       name: "Time Freeze" },
   };
   const def = puDefs[equippedPowerUpType];
   if (!def) { hudEl.style.display = "none"; return; }
@@ -1453,7 +1481,24 @@ function activateEquippedPowerup() {
       _triggerPowerupFlash("magnet");
       break;
     }
-  }
+    case "time_freeze": {
+      if (timeFreezeActive) {
+        // Re-activation while active extends by 2s (no full reset)
+        timeFreezeTimer += 2.0;
+        showCraftedBanner("Time Freeze extended! +" + timeFreezeTimer.toFixed(0) + "s remaining.");
+        // Don't consume from bank for extend — refund the decrement above
+        bank[equippedPowerUpType]++;
+        savePowerUpBank(bank);
+        if (powerUps[equippedPowerUpType] < (bank[equippedPowerUpType] || 0)) powerUps[equippedPowerUpType]++;
+      } else {
+        timeFreezeActive = true;
+        timeFreezeTimer  = 5.0;
+        showCraftedBanner("Time Freeze! Pieces frozen for 5s.");
+        _applyTimeFreezeGlow(true);
+        _triggerPowerupFlash("time-freeze");
+      }
+      break;
+    }
 
   updatePowerupHUD();
   if (typeof onMissionPowerupActivated === "function") onMissionPowerupActivated();
@@ -1550,6 +1595,17 @@ function animate() {
             if (typeof achOnBlockMined === "function") achOnBlockMined(blocksMined, undefined);
           }
         }
+      }
+    }
+
+    // Tick Time Freeze power-up timer
+    if (timeFreezeActive) {
+      timeFreezeTimer -= delta;
+      if (timeFreezeTimer <= 0) {
+        timeFreezeActive = false;
+        timeFreezeTimer  = 0;
+        _applyTimeFreezeGlow(false);
+        if (typeof updatePowerupHUD === "function") updatePowerupHUD();
       }
     }
 

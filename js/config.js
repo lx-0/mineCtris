@@ -71,6 +71,10 @@ const PLANK_COLOR = "#d4a56a";
 // Diamond block color (deep blue — rare, spawns in Classic at Level 7+).
 const DIAMOND_COLOR = "#1a237e";
 
+// Obsidian Shard item color — distinct from the block color (#1a0020) so the
+// crafting ingredient is clearly identifiable in inventory.
+const OBSIDIAN_SHARD_COLOR = "#6600cc";
+
 // Maps color hex integer (from COLORS array) to material name.
 const COLOR_TO_MATERIAL = {
   0x8b4513: "dirt",
@@ -447,6 +451,30 @@ const RECIPES = [
     ],
     outputType: "powerup",
     powerUpType: "magnet",
+    requiresBench: true,
+    outputCount: 1,
+  },
+  {
+    id: "obsidian_pickaxe",
+    name: "Obsidian Pickaxe",
+    description: "Reduces all block hit counts by 1 (min 1); stacks with Earthquake (requires Crafting Bench)",
+    inputs: [
+      { cssColor: OBSIDIAN_SHARD_COLOR, label: "Obsidian Shard", count: 4 },
+    ],
+    outputType: "tool",
+    toolTier: "obsidian",
+    requiresBench: true,
+    outputCount: 1,
+  },
+  {
+    id: "time_freeze",
+    name: "Time Freeze",
+    description: "Power-up: freeze all falling pieces for 5s; re-activate while active extends by 2s (requires Crafting Bench)",
+    inputs: [
+      { cssColor: OBSIDIAN_SHARD_COLOR, label: "Obsidian Shard", count: 3 },
+    ],
+    outputType: "powerup",
+    powerUpType: "time_freeze",
     requiresBench: true,
     outputCount: 1,
   },

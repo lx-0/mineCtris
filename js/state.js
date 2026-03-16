@@ -130,8 +130,8 @@ let hasCraftingBench = false;
 let consumables = { lava_flask: 0, ice_bridge: 0 };
 
 // Power-up item counts (separate from blocks and consumables).
-// Keys: "row_bomb" | "slow_down" | "shield" | "magnet"
-let powerUps = { row_bomb: 0, slow_down: 0, shield: 0, magnet: 0 };
+// Keys: "row_bomb" | "slow_down" | "shield" | "magnet" | "time_freeze"
+let powerUps = { row_bomb: 0, slow_down: 0, shield: 0, magnet: 0, time_freeze: 0 };
 
 // Ice Bridge slow — reduces falling piece speed by 20% for a duration.
 let iceBridgeSlowActive = false;
@@ -211,16 +211,17 @@ const POWERUP_BANK_KEY = "mineCtris_powerups";
 function loadPowerUpBank() {
   try {
     const raw = localStorage.getItem(POWERUP_BANK_KEY);
-    if (!raw) return { row_bomb: 0, slow_down: 0, shield: 0, magnet: 0 };
+    if (!raw) return { row_bomb: 0, slow_down: 0, shield: 0, magnet: 0, time_freeze: 0 };
     const data = JSON.parse(raw);
     return {
-      row_bomb:  data.row_bomb  || 0,
-      slow_down: data.slow_down || 0,
-      shield:    data.shield    || 0,
-      magnet:    data.magnet    || 0,
+      row_bomb:   data.row_bomb   || 0,
+      slow_down:  data.slow_down  || 0,
+      shield:     data.shield     || 0,
+      magnet:     data.magnet     || 0,
+      time_freeze: data.time_freeze || 0,
     };
   } catch (_) {
-    return { row_bomb: 0, slow_down: 0, shield: 0, magnet: 0 };
+    return { row_bomb: 0, slow_down: 0, shield: 0, magnet: 0, time_freeze: 0 };
   }
 }
 
@@ -243,6 +244,13 @@ let shieldActive = false;
 let magnetActive      = false;
 let magnetTimer       = 0.0;
 let magnetLastPullTime = 0.0;
+
+// Time Freeze power-up: freeze all falling pieces for 5 s (re-activation extends by 2 s).
+let timeFreezeActive = false;
+let timeFreezeTimer  = 0.0;
+
+// Obsidian Pickaxe: passive -1 hit reduction on all blocks (min 1).
+let obsidianPickaxeActive = false;
 
 // ── World event engine state ──────────────────────────────────────────────────
 // activeEvent: currently running event type string (see EVENT_TYPES in events.js).

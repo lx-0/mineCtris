@@ -271,6 +271,7 @@ function updateMaterialTooltip() {
   let totalHits = targetedBlock.userData.miningClicks || MINING_CLICKS_NEEDED;
   if (pickaxeTier === "stone") totalHits = Math.min(totalHits, 2);
   else if (pickaxeTier === "iron" || pickaxeTier === "diamond") totalHits = 1;
+  if (obsidianPickaxeActive) totalHits = Math.max(1, totalHits - 1);
   if (earthquakeActive) totalHits = Math.max(1, Math.floor(totalHits / 2));
 
   const hitsDealt = miningProgress;
@@ -296,7 +297,7 @@ function updateMaterialTooltip() {
   if (hitsEl) hitsEl.textContent = hitsLabel;
   if (pickaxeEl) {
     if (pickaxeTier !== "none") {
-      const tierLabels = { stone: "Stone Pickaxe", iron: "Iron Pickaxe", diamond: "Diamond Pickaxe (AOE)" };
+      const tierLabels = { stone: "Stone Pickaxe", iron: "Iron Pickaxe", diamond: "Diamond Pickaxe (AOE)", obsidian: "Obsidian Pickaxe (-1 hit)" };
       pickaxeEl.textContent = "[" + (tierLabels[pickaxeTier] || pickaxeTier) + "]";
       pickaxeEl.style.display = "";
     } else {

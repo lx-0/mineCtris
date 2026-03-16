@@ -3538,7 +3538,8 @@ body.theme-legendary #score-display {
 #powerup-flash.row-bomb  { background: radial-gradient(circle, rgba(255,160,0,0.75) 0%, rgba(255,40,0,0.35) 55%, transparent 100%); }
 #powerup-flash.slow-down { background: radial-gradient(ellipse at center, transparent 35%, rgba(0,100,255,0.5) 100%); }
 #powerup-flash.shield    { background: radial-gradient(ellipse at center, transparent 35%, rgba(0,220,90,0.55) 100%); }
-#powerup-flash.magnet    { background: radial-gradient(ellipse at center, transparent 45%, rgba(255,215,0,0.45) 100%); }
+#powerup-flash.magnet      { background: radial-gradient(ellipse at center, transparent 45%, rgba(255,215,0,0.45) 100%); }
+#powerup-flash.time-freeze { background: radial-gradient(ellipse at center, rgba(140,220,255,0.55) 0%, rgba(80,180,255,0.3) 55%, transparent 100%); }
 #powerup-flash.active    { animation: pu-flash-out 0.45s ease-out forwards; }
 @keyframes pu-flash-out {
   0%   { opacity: 1; }
@@ -3596,6 +3597,21 @@ body.theme-legendary #score-display {
 @keyframes magnet-ring {
   0%, 100% { opacity: 0.55; transform: scale(1);     }
   50%       { opacity: 1.0;  transform: scale(1.004); }
+}
+
+/* Time Freeze: ice-blue shimmer vignette while active */
+#time-freeze-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 185;
+  background: radial-gradient(ellipse at center, transparent 30%, rgba(80,180,255,0.22) 100%);
+  box-shadow: inset 0 0 60px rgba(140,220,255,0.35);
+  animation: time-freeze-shimmer 1.5s ease-in-out infinite;
+}
+@keyframes time-freeze-shimmer {
+  0%, 100% { opacity: 0.65; }
+  50%       { opacity: 1.0;  }
 }
 
 /* ── Piece Storm event ──────────────────────────────────────────────────────── */
