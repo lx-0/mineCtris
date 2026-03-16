@@ -169,6 +169,40 @@ function triggerGameOver() {
     if (dailyEl) dailyEl.style.display = 'none';
   }
 
+  // Wire up Share Score button
+  const shareBtn = document.getElementById("go-share-btn");
+  const shareFeedback = document.getElementById("go-share-feedback");
+  if (shareBtn) {
+    shareBtn.onclick = function () {
+      const modeLine = isDailyChallenge ? "Daily Challenge" : isBlitzMode ? "Blitz" : "Classic";
+      const scoreFormatted = state.score.toLocaleString();
+      const shareText =
+        `MINETRIS\n` +
+        `${modeLine} — Score: ${scoreFormatted} | Lines: ${state.linesCleared} | Survived: ${mm}:${ss}`;
+
+      // Remove any old fallback input
+      const oldWrap = document.getElementById("go-share-fallback-wrap");
+      if (oldWrap) oldWrap.remove();
+
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(shareText).then(function () {
+          if (shareFeedback) {
+            shareFeedback.textContent = "Copied!";
+            shareFeedback.classList.add("visible");
+            clearTimeout(shareFeedback._fadeTimer);
+            shareFeedback._fadeTimer = setTimeout(function () {
+              shareFeedback.classList.remove("visible");
+            }, 1500);
+          }
+        }).catch(function () {
+          showShareFallback(shareText, shareBtn);
+        });
+      } else {
+        showShareFallback(shareText, shareBtn);
+      }
+    };
+  }
+
   // Fade out background music, then play game-over jingle
   if (typeof stopBgMusic === "function") stopBgMusic();
   if (typeof playGameOverJingle === "function") playGameOverJingle();
@@ -179,6 +213,24 @@ function triggerGameOver() {
 
   // Release pointer lock so the Play Again button is clickable
   if (controls && controls.isLocked) controls.unlock();
+}
+
+/** Show a selectable text input as fallback when clipboard API is unavailable. */
+function showShareFallback(text, anchorBtn) {
+  const wrap = document.createElement("div");
+  wrap.id = "go-share-fallback-wrap";
+  wrap.className = "go-share-fallback-wrap";
+  const label = document.createElement("label");
+  label.textContent = "Copy manually:";
+  const input = document.createElement("input");
+  input.id = "go-share-fallback-input";
+  input.type = "text";
+  input.readOnly = true;
+  input.value = text.replace(/\n/g, " | ");
+  wrap.appendChild(label);
+  wrap.appendChild(input);
+  anchorBtn.insertAdjacentElement("afterend", wrap);
+  input.select();
 }
 
 /** Reset all game state and return to the start screen. */
