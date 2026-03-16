@@ -80,6 +80,14 @@ function triggerSprintComplete() {
     isDailyChallenge:      false,
   });
 
+  // Award XP
+  const { xpEarned: _sprintXP, streakBonus: _sprintStreak } = awardXP(score, 'sprint');
+  const sprintXpEl = document.getElementById('sprint-xp-earned');
+  if (sprintXpEl) {
+    sprintXpEl.textContent = '+ ' + _sprintXP + ' XP' + (_sprintStreak ? '  (Streak Bonus!)' : '');
+    sprintXpEl.className = 'xp-earned-display' + (_sprintStreak ? ' xp-streak' : '');
+  }
+
   const finalTimeMs = sprintElapsedMs;
   const isNewBest   = saveSprintBest(finalTimeMs);
   const best        = loadSprintBest();

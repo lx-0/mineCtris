@@ -19,6 +19,8 @@ function _defaultStats() {
     highestLevel: 1,
     dailyChallengesCompleted: 0,
     puzzlesCompleted: 0,
+    playerXP: 0,
+    lastPlayedDate: null,
   };
 }
 
@@ -71,6 +73,49 @@ function submitLifetimeStats({ score, blocksMined, linesCleared, blocksPlaced, t
   return stats;
 }
 
+// XP multipliers per game mode
+const XP_MODE_MULTIPLIERS = {
+  classic: 1.0,
+  sprint:  1.1,
+  blitz:   1.2,
+  daily:   1.3,
+  weekly:  1.5,
+  puzzle:  1.0,
+};
+
+/**
+ * Calculate and award XP for a completed session. Updates playerXP and
+ * lastPlayedDate in lifetime stats.
+ * @param {number} finalScore  the session score
+ * @param {string} modeKey     one of: classic, sprint, blitz, daily, weekly, puzzle
+ * @returns {{ xpEarned: number, streakBonus: boolean }}
+ */
+function awardXP(finalScore, modeKey) {
+  const stats = loadLifetimeStats();
+  const today = new Date().toISOString().slice(0, 10);
+
+  // Streak bonus: +10% if last session was yesterday
+  let streakBonus = false;
+  if (stats.lastPlayedDate) {
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    if (stats.lastPlayedDate === yesterday.toISOString().slice(0, 10)) {
+      streakBonus = true;
+    }
+  }
+
+  const multiplier = XP_MODE_MULTIPLIERS[modeKey] || 1.0;
+  const baseXP = Math.floor(finalScore / 50);
+  let xpEarned = Math.floor(baseXP * multiplier);
+  if (streakBonus) xpEarned = Math.floor(xpEarned * 1.1);
+
+  stats.playerXP = (stats.playerXP || 0) + xpEarned;
+  stats.lastPlayedDate = today;
+  saveLifetimeStats(stats);
+
+  return { xpEarned, streakBonus };
+}
+
 /** Render lifetime stats rows into #stats-panel-body. */
 function renderStatsPanel() {
   const el = document.getElementById('stats-panel-body');
@@ -93,6 +138,7 @@ function renderStatsPanel() {
     ['HIGHEST LEVEL',     stats.highestLevel],
     ['DAILY CHALLENGES',  stats.dailyChallengesCompleted],
     ['PUZZLES COMPLETED', stats.puzzlesCompleted || 0],
+    ['TOTAL XP',          stats.playerXP || 0],
   ];
   el.innerHTML = rows.map(([label, val]) =>
     `<div class="stats-row">` +

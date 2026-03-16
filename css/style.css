@@ -1955,6 +1955,28 @@ body {
   color: rgba(0, 204, 255, 0.55);
   font-size: 7px;
 }
+/* ── XP earned display (shown on all completion screens) ── */
+.xp-earned-display {
+  font-family: "Press Start 2P", cursive;
+  font-size: 14px;
+  color: #ffd700;
+  text-shadow: 0 0 8px rgba(255, 215, 0, 0.7), 2px 2px #7a5000;
+  margin-bottom: 12px;
+  min-height: 22px;
+  text-align: center;
+  animation: xp-pop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
+}
+.xp-earned-display:empty { animation: none; }
+.xp-earned-display.xp-streak {
+  color: #ff0;
+  text-shadow: 0 0 12px rgba(255, 255, 0, 0.9), 2px 2px #806000;
+}
+@keyframes xp-pop {
+  0%   { transform: scale(0.5); opacity: 0; }
+  70%  { transform: scale(1.15); opacity: 1; }
+  100% { transform: scale(1); }
+}
+
 #go-stats-btn {
   font-family: "Press Start 2P", cursive;
   font-size: 8px;

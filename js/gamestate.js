@@ -140,6 +140,17 @@ function triggerGameOver() {
     isDailyChallenge,
   });
 
+  // Award XP
+  const _xpModeKey = isDailyChallenge ? 'daily'
+    : isWeeklyChallenge ? 'weekly'
+    : 'classic';
+  const { xpEarned: _xpEarned, streakBonus: _xpStreak } = awardXP(state.score, _xpModeKey);
+  const goXpEl = document.getElementById('go-xp-earned');
+  if (goXpEl) {
+    goXpEl.textContent = '+ ' + _xpEarned + ' XP' + (_xpStreak ? '  (Streak Bonus!)' : '');
+    goXpEl.className = 'xp-earned-display' + (_xpStreak ? ' xp-streak' : '');
+  }
+
   // Key lifetime stats on game-over screen
   const lifetimeStats = loadLifetimeStats();
   const goLifetimeEl = document.getElementById('go-lifetime-stats');

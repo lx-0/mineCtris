@@ -64,6 +64,14 @@ function triggerBlitzComplete() {
     isDailyChallenge:      false,
   });
 
+  // Award XP
+  const { xpEarned: _blitzXP, streakBonus: _blitzStreak } = awardXP(score, 'blitz');
+  const blitzXpEl = document.getElementById('blitz-xp-earned');
+  if (blitzXpEl) {
+    blitzXpEl.textContent = '+ ' + _blitzXP + ' XP' + (_blitzStreak ? '  (Streak Bonus!)' : '');
+    blitzXpEl.className = 'xp-earned-display' + (_blitzStreak ? ' xp-streak' : '');
+  }
+
   const finalScore = score;
   const isNewBest  = saveBlitzBest(finalScore);
   const best       = loadBlitzBest();

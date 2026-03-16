@@ -354,6 +354,16 @@ function _triggerPuzzleWin() {
     });
   }
 
+  // Award XP (puzzle win)
+  if (typeof awardXP === "function") {
+    const { xpEarned: _pzXP, streakBonus: _pzStreak } = awardXP(score, 'puzzle');
+    const pzXpEl = document.getElementById('puzzle-xp-earned');
+    if (pzXpEl) {
+      pzXpEl.textContent = '+ ' + _pzXP + ' XP' + (_pzStreak ? '  (Streak Bonus!)' : '');
+      pzXpEl.className = 'xp-earned-display' + (_pzStreak ? ' xp-streak' : '');
+    }
+  }
+
   // Achievements
   if (typeof achOnPuzzleComplete === "function") {
     achOnPuzzleComplete(puzzlePuzzleId, stars);
@@ -371,6 +381,9 @@ function _triggerPuzzleLose() {
   puzzleComplete = true;
   isGameOver = true;
   gameTimerRunning = false;
+
+  const pzXpElLose = document.getElementById('puzzle-xp-earned');
+  if (pzXpElLose) { pzXpElLose.textContent = ''; pzXpElLose.className = 'xp-earned-display'; }
 
   _showPuzzleCompleteOverlay(false, 0, false, getPuzzleById(puzzlePuzzleId));
 
