@@ -107,6 +107,10 @@ let inventory = {};
 // Each entry: { x, z, timer, growing, growStart, meshes }
 let treeRespawnQueue = [];
 
+// ── Obsidian block shimmer tracking ──────────────────────────────────────────
+// Holds all living obsidian world objects for per-frame emissive shimmer update.
+let obsidianBlocks = [];
+
 // ── Block placement state ─────────────────────────────────────────────────────
 let selectedBlockColor = null;  // CSS hex color key of selected block type
 let targetedFaceNormal = null;  // THREE.Vector3 world-space face normal from last raycast

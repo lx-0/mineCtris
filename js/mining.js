@@ -97,7 +97,21 @@ function applyMineDamage(block, hits, effectiveMax) {
   const orig = block.userData.originalColor;
   if (!orig) return;
   const maxClicks = effectiveMax || block.userData.miningClicks || MINING_CLICKS_NEEDED;
-  if (maxClicks > 2 && hits === 1) {
+  if (maxClicks >= 8) {
+    // 3 visual crack stages for very hard blocks (obsidian):
+    // Stage 1 (hits 1–3): light cracks, Stage 2 (hits 4–6): medium, Stage 3 (hits 7+): heavy
+    if (hits <= 3) {
+      block.material.color.setRGB(orig.r * 0.65, orig.g * 0.65, orig.b * 0.65);
+    } else if (hits <= 6) {
+      block.material.color.setRGB(orig.r * 0.38, orig.g * 0.38, orig.b * 0.38);
+    } else {
+      block.material.color.setRGB(
+        Math.min(orig.r * 0.2 + 0.04, 1),
+        orig.g * 0.15,
+        orig.b * 0.15
+      );
+    }
+  } else if (maxClicks > 2 && hits === 1) {
     // First hit on multi-hit block: light cracks — darken slightly
     block.material.color.setRGB(orig.r * 0.65, orig.g * 0.65, orig.b * 0.65);
   } else if (hits >= 1) {
@@ -170,6 +184,20 @@ function spawnDustParticles(block, opts) {
       return new THREE.Vector3(
         (Math.random() - 0.5) * 2,
         Math.random() * 0.8 + 0.2,
+        (Math.random() - 0.5) * 2
+      ).normalize().multiplyScalar(speed);
+    };
+  } else if (objType === "obsidian") {
+    count = opts.breakBurst
+      ? Math.floor(Math.random() * 4) + 12  // 12–15 on break
+      : Math.floor(Math.random() * 3) + 4;  // 4–6 per hit
+    dustColor = new THREE.Color(0x3d0066);   // deep purple shard particles
+    lifetime = 0.4;
+    velocityFn = () => {
+      const speed = 2 + Math.random() * 3;
+      return new THREE.Vector3(
+        (Math.random() - 0.5) * 2,
+        Math.random() * 1.5 + 0.3,
         (Math.random() - 0.5) * 2
       ).normalize().multiplyScalar(speed);
     };
@@ -253,7 +281,9 @@ function updateMaterialTooltip() {
     barStr += i < hitsRemaining ? "█" : "░";
   }
 
-  const displayName = matType.charAt(0).toUpperCase() + matType.slice(1);
+  const _dropMat = BLOCK_TYPES[matType] && BLOCK_TYPES[matType].dropMaterial;
+  const _displayKey = _dropMat || matType;
+  const displayName = _displayKey.split("_").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
   const hitsLabel = hitsRemaining === 1 ? "1 hit remaining" : `${hitsRemaining} hits remaining`;
 
   const nameEl = document.getElementById("material-tooltip-name");

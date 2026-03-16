@@ -62,6 +62,7 @@ const BLOCK_TYPES = {
   rock:    { hits: 5, points: 20, effect: null },
   plank:   { hits: 4, points: 15, effect: null },
   diamond: { hits: 6, points: 100, effect: null },
+  obsidian: { hits: 8, points: 100, effect: null, dropMaterial: "obsidian_shard" },
 };
 
 // Crafted plank block color (light tan, distinct from all spawned palette colors).
@@ -81,13 +82,15 @@ const COLOR_TO_MATERIAL = {
   0x800080: "crystal",
   0xd4a56a: "plank",
   0x1a237e: "diamond",
+  0x1a0020: "obsidian",
 };
 
 // Maps objectType string to material name for world objects.
 const OBJECT_TYPE_TO_MATERIAL = {
-  trunk: "wood",
-  leaf:  "leaf",
-  rock:  "rock",
+  trunk:    "wood",
+  leaf:     "leaf",
+  rock:     "rock",
+  obsidian: "obsidian",
 };
 
 // Block color palette (index 0 = unused/null).

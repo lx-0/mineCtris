@@ -74,6 +74,30 @@ function spawnRock(rx, rz, size) {
 }
 
 /**
+ * Spawn a single obsidian block at (ox, oz), partially buried in the ground.
+ * Obsidian does NOT respawn when destroyed.
+ */
+function spawnObsidian(ox, oz) {
+  const geo = new THREE.BoxGeometry(BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
+  const mat = new THREE.MeshLambertMaterial({
+    color: 0x1a0020,
+    emissive: new THREE.Color(0x000000),
+  });
+  const block = new THREE.Mesh(geo, mat);
+  // Partially bury: y center between 0.1 (mostly buried) and BLOCK_SIZE/2 (surface)
+  const buryY = Math.random() * (BLOCK_SIZE / 2 - 0.1) + 0.1;
+  block.position.set(ox, buryY, oz);
+  block.name = "world_object";
+  block.userData.miningClicks = BLOCK_TYPES.obsidian.hits;
+  block.userData.objectType   = "obsidian";
+  block.userData.materialType = "obsidian";
+  block.userData.shimmerOffset = Math.random() * Math.PI * 2;
+  worldGroup.add(block);
+  obsidianBlocks.push(block);
+  return block;
+}
+
+/**
  * Tick tree respawn queue. Call every frame while game is active.
  * @param {number} delta        Seconds since last frame.
  * @param {number} elapsedTime  Total elapsed time (for grow animation).
@@ -194,6 +218,28 @@ function init() {
       const size = r < 0.4 ? 1 : r < 0.8 ? 2 : 3;
       spawnRock(rx, rz, size);
       spawnedPositions.push({ x: rx, z: rz });
+    }
+  }
+
+  // Obsidian: 1–2 blocks per world, rare, partially buried, spaced from other objects
+  const numObsidian = Math.floor(Math.random() * 2) + 1;
+  for (let i = 0; i < numObsidian; i++) {
+    let ox, oz, valid;
+    let attempts = 0;
+    do {
+      ox = (Math.random() - 0.5) * WORLD_SIZE * 0.8;
+      oz = (Math.random() - 0.5) * WORLD_SIZE * 0.8;
+      valid = true;
+      for (const pos of spawnedPositions) {
+        const dx = ox - pos.x;
+        const dz = oz - pos.z;
+        if (Math.sqrt(dx * dx + dz * dz) < 3) { valid = false; break; }
+      }
+      attempts++;
+    } while (!valid && attempts < 50);
+    if (valid) {
+      spawnObsidian(ox, oz);
+      spawnedPositions.push({ x: ox, z: oz });
     }
   }
 
@@ -1155,6 +1201,9 @@ function onMouseDown(event) {
 
       unregisterBlock(targetedBlock);
       worldGroup.remove(targetedBlock);
+      // Remove from obsidian shimmer tracking if applicable
+      const _obIdx = obsidianBlocks.indexOf(targetedBlock);
+      if (_obIdx !== -1) obsidianBlocks.splice(_obIdx, 1);
       // Diamond Pickaxe AOE — mine up to 4 adjacent blocks in a cross pattern
       if (pickaxeTier === "diamond" && _brokenBlock) {
         _applyDiamondAOE(_brokenBlock);
@@ -1661,6 +1710,19 @@ function animate() {
         lavaLights[i].intensity = 0;
       }
     }
+  }
+
+  // Animate obsidian shimmer: subtle emissive purple pulse at ~0.8 Hz
+  for (let _oi = 0; _oi < obsidianBlocks.length; _oi++) {
+    const _ob = obsidianBlocks[_oi];
+    if (!_ob.material) continue;
+    const _t = Math.sin(elapsedTime * 1.6 + _ob.userData.shimmerOffset) * 0.5 + 0.5;
+    _ob.material.emissive.setRGB(
+      (0x3d / 255) * _t * 0.35,
+      0,
+      (0x66 / 255) * _t * 0.35
+    );
+    _ob.material.needsUpdate = true;
   }
 
   updatePowerupOverlays();
