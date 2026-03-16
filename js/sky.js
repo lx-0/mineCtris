@@ -232,6 +232,17 @@ function updateSky(elapsedSeconds, delta = 0.016) {
     horArr = _lerpArr(horArr, _seasonTheme.hor, _seasonTheme.tint);
   }
 
+  // World modifier sky override — blend toward modifier fog color
+  const _wmodSky = typeof getWorldModifier === 'function' ? getWorldModifier() : null;
+  if (_wmodSky && _wmodSky.fogColor !== null) {
+    const _wfc = new THREE.Color(_wmodSky.fogColor);
+    // Zenith: darker tinted version of the fog color; horizon: full fog color
+    const _wzen = [_wfc.r * 255 * 0.4, _wfc.g * 255 * 0.4, _wfc.b * 255 * 0.4];
+    const _whor = [_wfc.r * 255, _wfc.g * 255, _wfc.b * 255];
+    zenArr = _lerpArr(zenArr, _wzen, 0.55);
+    horArr = _lerpArr(horArr, _whor, 0.55);
+  }
+
   _applySkyColors(zenArr, horArr);
 
   // Keep scene.background in sync with horizon (fills any uncovered pixels)
@@ -378,6 +389,15 @@ function updateSky(elapsedSeconds, delta = 0.016) {
     // Season fog tint (applied before danger override)
     if (_seasonTheme && _seasonTheme.fog) {
       fogColor.lerp(_seasonTheme.fog, _seasonTheme.tint * 0.7);
+    }
+
+    // World modifier fog tint
+    const _wmodFog = typeof getWorldModifier === 'function' ? getWorldModifier() : null;
+    if (_wmodFog && _wmodFog.fogColor !== null) {
+      fogColor.lerp(new THREE.Color(_wmodFog.fogColor), 0.65);
+      if (_wmodFog.fogDensityBase !== null) {
+        fogDensity = Math.max(fogDensity, _wmodFog.fogDensityBase + heightFactor * 0.015);
+      }
     }
 
     // Danger zone: reddish, thicker fog

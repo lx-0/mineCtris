@@ -3,7 +3,9 @@
 //           mining.js (unhighlightTarget), world.js (gridOccupancy)
 
 function addScore(pts) {
-  score += pts;
+  const _wmod = typeof getWorldModifier === 'function' ? getWorldModifier() : null;
+  const _mult = _wmod ? _wmod.scoreMultiplier : 1.0;
+  score += (_mult !== 1.0) ? Math.round(pts * _mult) : pts;
   updateScoreHUD();
   if (typeof achOnClassicScore === "function") achOnClassicScore(score);
 }
@@ -140,7 +142,12 @@ function triggerGameOver() {
   const ss = (totalSecs % 60).toString().padStart(2, "0");
   const statsEl = document.getElementById("game-over-stats");
   if (statsEl) {
+    const _goMod = typeof getWorldModifier === 'function' ? getWorldModifier() : null;
+    const _modBadge = (_goMod && _goMod.id !== 'normal')
+      ? `<div class="go-modifier-badge">${_goMod.icon} ${_goMod.name} <span class="go-modifier-mult">\xD7${_goMod.scoreMultiplier}</span></div>`
+      : '';
     statsEl.innerHTML =
+      _modBadge +
       `<div><span class="go-label">SCORE</span><br>${state.score}</div>` +
       `<div><span class="go-label">BLOCKS MINED</span><br>${state.blocksMined}</div>` +
       `<div><span class="go-label">LINES CLEARED</span><br>${state.linesCleared}</div>` +
@@ -179,6 +186,7 @@ function triggerGameOver() {
   // Level-up detection after XP award
   const _xpAfter = (loadLifetimeStats().playerXP || 0);
   if (typeof checkLevelUp === 'function') checkLevelUp(_xpBefore, _xpAfter);
+  if (typeof updateStreakHUD === 'function') updateStreakHUD();
 
   // Key lifetime stats on game-over screen
   const lifetimeStats = loadLifetimeStats();
@@ -454,6 +462,11 @@ function resetGame() {
   weeklyBlindDrop = false;
   const weeklyBadgeEl = document.getElementById('weekly-challenge-badge');
   if (weeklyBadgeEl) weeklyBadgeEl.style.display = 'none';
+
+  // Reset world modifier
+  if (typeof resetWorldModifier === 'function') resetWorldModifier();
+  const worldModBadgeEl = document.getElementById('world-modifier-badge');
+  if (worldModBadgeEl) worldModBadgeEl.style.display = 'none';
 
   // Reset puzzle mode state
   isPuzzleMode = false;

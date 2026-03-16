@@ -1546,6 +1546,99 @@ body {
   white-space: nowrap;
 }
 
+/* ── World modifier HUD badge ── */
+#world-modifier-badge {
+  position: absolute;
+  top: 66px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: "Press Start 2P", cursive;
+  font-size: 8px;
+  color: #ffcc44;
+  text-shadow: 0 0 8px #ffcc44;
+  background: rgba(0, 0, 0, 0.55);
+  padding: 4px 10px;
+  border-radius: 3px;
+  pointer-events: none;
+  z-index: 150;
+  white-space: nowrap;
+}
+
+/* ── World modifier mode-select slot ── */
+#mode-worldmod-slot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding-top: 14px;
+  border-top: 1px solid rgba(255, 200, 50, 0.2);
+}
+#mode-worldmod-label {
+  font-family: "Press Start 2P", cursive;
+  font-size: 0.58em;
+  color: #ffcc44;
+  letter-spacing: 2px;
+  text-shadow: 0 0 8px #ffcc44;
+}
+#mode-worldmod-picker {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.worldmod-pick-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  background: rgba(10, 10, 0, 0.75);
+  border: 2px solid rgba(255, 200, 50, 0.25);
+  border-radius: 6px;
+  padding: 8px 12px;
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  min-width: 80px;
+  font-family: "Press Start 2P", cursive;
+  color: inherit;
+  outline: none;
+}
+.worldmod-pick-btn:hover {
+  border-color: #ffcc44;
+  box-shadow: 0 0 10px rgba(255, 200, 50, 0.3);
+}
+.worldmod-pick-btn.wm-selected {
+  border-color: #ffcc44;
+  box-shadow: 0 0 16px rgba(255, 200, 50, 0.5);
+}
+.wm-icon { font-size: 1.3em; }
+.wm-name {
+  font-size: 0.34em;
+  color: #ffeeaa;
+}
+.wm-mult {
+  font-size: 0.38em;
+  color: #ffd700;
+  text-shadow: 0 0 5px #ffd700;
+}
+
+/* ── World modifier game-over badge ── */
+.go-modifier-badge {
+  font-family: "Press Start 2P", cursive;
+  font-size: 9px;
+  color: #ffcc44;
+  text-shadow: 0 0 8px #ffaa00;
+  background: rgba(30, 20, 0, 0.7);
+  border: 1px solid rgba(255, 200, 50, 0.5);
+  border-radius: 4px;
+  padding: 5px 12px;
+  margin-bottom: 10px;
+  display: inline-block;
+}
+.go-modifier-mult {
+  color: #ffd700;
+}
+
 /* ── Puzzle select screen ── */
 #puzzle-select-screen {
   position: absolute;
@@ -2646,6 +2739,23 @@ body.theme-candy .inv-slot.selected {
   50%       { box-shadow: 0 0 14px #ffd700, 0 0 28px #cc9900; }
 }
 
+/* ── Streak HUD badge (top-left, below level badge) ───────────────────────── */
+#hud-streak-badge {
+  position: absolute;
+  top: 42px;
+  left: 12px;
+  font-family: "Press Start 2P", cursive;
+  font-size: 9px;
+  padding: 3px 7px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.55);
+  border: 1px solid #ff6600;
+  color: #ff6600;
+  pointer-events: none;
+  z-index: 20;
+  text-align: center;
+}
+
 /* ── Level-up toast (bottom-center) ───────────────────────────────────────── */
 #level-up-toast {
   position: absolute;
@@ -2692,6 +2802,10 @@ body.theme-candy .inv-slot.selected {
   color: #cccccc;
   line-height: 1.4;
 }
+
+/* Streak milestone variant of level-up toast */
+#level-up-toast.streak-toast { border-color: #ff6600; }
+#level-up-toast.streak-toast .lu-toast-title { color: #ff6600; }
 
 /* ── Game-over level badge ────────────────────────────────────────────────── */
 #go-level-badge-row {

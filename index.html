@@ -134,6 +134,11 @@
               <div class="mode-card-pb" id="mode-pb-puzzle"></div>
             </div>
           </div>
+          <!-- World modifier selector -->
+          <div id="mode-worldmod-slot">
+            <div id="mode-worldmod-label">&#127758; WORLD MODIFIER</div>
+            <div id="mode-worldmod-picker"></div>
+          </div>
           <!-- Power-up equip slot -->
           <div id="mode-powerup-slot">
             <div id="mode-powerup-label">&#9889; EQUIP POWER-UP</div>
@@ -158,6 +163,9 @@
       <!-- Player level badge (top-left HUD) -->
       <div id="hud-player-level-badge" class="level-badge"></div>
 
+      <!-- Daily streak badge (top-left HUD, below level badge) -->
+      <div id="hud-streak-badge" style="display:none;"></div>
+
       <!-- Daily challenge badge (shown during daily runs) -->
       <div id="daily-challenge-badge" style="display:none;"></div>
 
@@ -166,6 +174,9 @@
 
       <!-- Puzzle mode badge (shown during puzzle runs) -->
       <div id="puzzle-badge" style="display:none;"></div>
+
+      <!-- World modifier badge (shown when a non-normal modifier is active) -->
+      <div id="world-modifier-badge" style="display:none;"></div>
 
       <!-- Equipped power-up HUD (bottom-right, shown during gameplay) -->
       <div id="powerup-hud" style="display:none;">
@@ -536,6 +547,7 @@
     <script src="js/shaders.js"></script>
     <script src="js/state.js"></script>
     <script src="js/audio.js"></script>
+    <script src="js/worldmodifier.js"></script>
     <script src="js/inventory.js"></script>
     <script src="js/world.js"></script>
     <script src="js/gamestate.js"></script>

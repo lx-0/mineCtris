@@ -129,6 +129,7 @@ function init() {
   if (typeof initLeaderboard === "function") initLeaderboard();
   if (typeof initSeasonBanner === "function") initSeasonBanner();
   if (typeof updateLevelBadgeHUD === "function") updateLevelBadgeHUD();
+  if (typeof updateStreakHUD === "function") updateStreakHUD();
 
   scene = new THREE.Scene();
   camera = new THREE.PerspectiveCamera(
@@ -368,6 +369,31 @@ function init() {
         }
       }
 
+      // Populate world modifier picker
+      const wmodPickerEl = document.getElementById("mode-worldmod-picker");
+      if (wmodPickerEl && typeof WORLD_MODIFIER_DEFS !== 'undefined') {
+        wmodPickerEl.innerHTML = "";
+        Object.values(WORLD_MODIFIER_DEFS).forEach(function (def) {
+          const btn = document.createElement("button");
+          const isSelected = (activeWorldModifierId || 'normal') === def.id;
+          btn.className = "worldmod-pick-btn" + (isSelected ? " wm-selected" : "");
+          btn.dataset.id = def.id;
+          btn.innerHTML =
+            '<div class="wm-icon">' + def.icon + '</div>' +
+            '<div class="wm-name">' + def.name + '</div>' +
+            (def.scoreMultiplier !== 1.0 ? '<div class="wm-mult">\xD7' + def.scoreMultiplier + '</div>' : '');
+          btn.title = def.description;
+          btn.addEventListener("click", function (e) {
+            e.stopPropagation();
+            if (typeof setWorldModifier === 'function') setWorldModifier(def.id);
+            wmodPickerEl.querySelectorAll(".worldmod-pick-btn").forEach(function (b) {
+              b.classList.toggle("wm-selected", b.dataset.id === def.id);
+            });
+          });
+          wmodPickerEl.appendChild(btn);
+        });
+      }
+
       blocker.style.display = "none";
       modeSelectEl.style.display = "flex";
     }
@@ -385,11 +411,25 @@ function init() {
       }
     }
 
+    // Show world modifier HUD badge if a non-normal modifier is active.
+    function applyWorldModifierHUD() {
+      const badgeEl = document.getElementById('world-modifier-badge');
+      if (!badgeEl || typeof getWorldModifier !== 'function') return;
+      const mod = getWorldModifier();
+      if (mod && mod.id !== 'normal') {
+        badgeEl.textContent = mod.icon + ' ' + mod.name + ' \xD7' + mod.scoreMultiplier;
+        badgeEl.style.display = 'block';
+      } else {
+        badgeEl.style.display = 'none';
+      }
+    }
+
     const classicCardEl = document.getElementById("mode-card-classic");
     if (classicCardEl) {
       classicCardEl.addEventListener("click", function () {
         isDailyChallenge = false;
         gameRng = null;
+        applyWorldModifierHUD();
         try { localStorage.setItem("mineCtris_lastMode", "classic"); } catch (_) {}
         hideModeSelect();
         requestPointerLock();
@@ -405,6 +445,7 @@ function init() {
         // Fixed speed from the start; difficulty escalation is disabled in sprint
         difficultyMultiplier = SPRINT_FIXED_MULTIPLIER;
         lastDifficultyTier   = 4; // Level 5 display
+        applyWorldModifierHUD();
         try { localStorage.setItem("mineCtris_lastMode", "sprint"); } catch (_) {}
         hideModeSelect();
         requestPointerLock();
@@ -420,6 +461,7 @@ function init() {
         difficultyMultiplier = BLITZ_FIXED_MULTIPLIER;
         lastDifficultyTier   = 4; // Level 5 display
         blitzRemainingMs     = BLITZ_DURATION_MS;
+        applyWorldModifierHUD();
         try { localStorage.setItem("mineCtris_lastMode", "blitz"); } catch (_) {}
         hideModeSelect();
         requestPointerLock();
@@ -455,6 +497,7 @@ function init() {
           badgeEl.textContent = "Daily: " + getTodayLabel();
           badgeEl.style.display = "block";
         }
+        applyWorldModifierHUD();
         try { localStorage.setItem("mineCtris_lastMode", "daily"); } catch (_) {}
         hideModeSelect();
         requestPointerLock();
@@ -478,6 +521,7 @@ function init() {
           badgeEl.textContent = getCurrentWeekLabel() + (mod ? ": " + mod.name : "");
           badgeEl.style.display = "block";
         }
+        applyWorldModifierHUD();
         try { localStorage.setItem("mineCtris_lastMode", "weekly"); } catch (_) {}
         hideModeSelect();
         requestPointerLock();
@@ -1394,7 +1438,10 @@ function animate() {
 
     const playerPosition = controls.getObject().position;
     if (!playerOnGround) playerVelocity.y -= GRAVITY * delta;
-    const speedDelta = MOVEMENT_SPEED * (playerStandingOnIce ? 1.2 : 1.0) * delta;
+    const _movWmod = typeof getWorldModifier === 'function' ? getWorldModifier() : null;
+    const _modSpeedMult = _movWmod ? _movWmod.playerSpeedMult : 1.0;
+    const _iceEffect = playerStandingOnIce || (_movWmod && _movWmod.iceAllBlocks);
+    const speedDelta = MOVEMENT_SPEED * _modSpeedMult * (_iceEffect ? 1.2 : 1.0) * delta;
     if (moveForward) controls.moveForward(speedDelta);
     if (moveBackward) controls.moveForward(-speedDelta);
     if (moveLeft) controls.moveRight(-speedDelta);

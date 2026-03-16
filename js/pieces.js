@@ -107,6 +107,15 @@ function _randomShapeIndex() {
     return pool[Math.floor(_rng() * pool.length)];
   }
 
+  // World modifier block weights.
+  const _wmod = typeof getWorldModifier === 'function' ? getWorldModifier() : null;
+  if (_wmod && _wmod.blockWeights) {
+    const weights = Object.assign({}, _wmod.blockWeights);
+    // Exclude diamond unless eligible.
+    if (!diamondEligible) delete weights[8];
+    return worldModifierWeightedIndex(weights, _rng);
+  }
+
   // Standard pool is indices 1–7; diamond adds index 8.
   const poolSize = diamondEligible ? SHAPES.length - 1 : 7;
   return Math.floor(_rng() * poolSize) + 1;
@@ -168,6 +177,10 @@ function spawnFallingPiece() {
     blitzTimerActive = true;
   }
 
+  // World modifier fall speed multiplier (1.0 for Normal/Ice World/Ocean; 1.35 for Nether).
+  const _wmodSpawn = typeof getWorldModifier === 'function' ? getWorldModifier() : null;
+  const _fallMult = _wmodSpawn ? _wmodSpawn.fallSpeedMult : 1.0;
+
   // In Puzzle mode, draw from the fixed queue; stop spawning when exhausted.
   if (isPuzzleMode) {
     const next = typeof drawPuzzlePiece === "function" ? drawPuzzlePiece() : null;
@@ -180,7 +193,7 @@ function spawnFallingPiece() {
     const spawnZ = (_rng() - 0.5) * (WORLD_SIZE * 0.8);
     const spawnY = WORLD_SIZE * 0.6;
     piece3D.position.set(spawnX, spawnY, spawnZ);
-    piece3D.userData.velocity = new THREE.Vector3(0, -(GRAVITY / 4) * difficultyMultiplier, 0);
+    piece3D.userData.velocity = new THREE.Vector3(0, -(GRAVITY / 4) * difficultyMultiplier * _fallMult, 0);
     piece3D.userData.colorIndex = next.index;
     piece3D.userData.timeSinceRotation = 0;
     piece3D.userData.rotationInterval =
@@ -206,7 +219,7 @@ function spawnFallingPiece() {
   const spawnZ = (_rng() - 0.5) * (WORLD_SIZE * 0.8);
   const spawnY = WORLD_SIZE * 0.6;
   piece3D.position.set(spawnX, spawnY, spawnZ);
-  piece3D.userData.velocity = new THREE.Vector3(0, -(GRAVITY / 4) * difficultyMultiplier, 0);
+  piece3D.userData.velocity = new THREE.Vector3(0, -(GRAVITY / 4) * difficultyMultiplier * _fallMult, 0);
   piece3D.userData.colorIndex = index;
   piece3D.userData.timeSinceRotation = 0;
   piece3D.userData.rotationInterval =
