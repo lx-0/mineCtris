@@ -584,6 +584,14 @@ function resetGame() {
     moveForward = moveBackward = moveLeft = moveRight = false;
   }
 
+  // Reset editor mode state
+  if (isEditorMode && typeof cleanupEditorMode === "function") cleanupEditorMode();
+  isEditorMode = false;
+  moveUp = false;
+  moveDown = false;
+  const editorHudEl = document.getElementById("editor-hud");
+  if (editorHudEl) editorHudEl.style.display = "none";
+
   // Reset game over / pause flags
   isGameOver = false;
   isPaused = false;

@@ -68,6 +68,7 @@
           <div class="start-buttons">
             <div class="click-info" id="start-random-btn">Click to Start</div>
             <button id="start-resume-btn" style="display:none;">&#9654; Resume Game</button>
+            <button id="start-create-btn">&#128736; Create</button>
             <button id="daily-challenge-btn">&#127374; Daily Challenge</button>
             <button id="start-settings-btn">&#9881; Settings</button>
             <button id="start-stats-btn">&#128202; Stats</button>
@@ -604,6 +605,15 @@
           <button id="season-end-close-btn">Continue</button>
         </div>
       </div>
+
+      <!-- Editor mode HUD — visible while in editor mode with pointer locked -->
+      <div id="editor-hud" style="display:none;">
+        <div id="editor-hud-badge">&#128736; EDITOR MODE</div>
+        <div id="editor-controls-hint">WASD — Move &nbsp;&#124;&nbsp; Space — Up &nbsp;&#124;&nbsp; Shift — Down &nbsp;&#124;&nbsp; Left Click — Place &nbsp;&#124;&nbsp; Right Click — Erase &nbsp;&#124;&nbsp; 1–9 — Block &nbsp;&#124;&nbsp; Esc — Exit</div>
+        <button id="editor-exit-btn">&#8592; Exit Editor</button>
+        <!-- Block palette strip -->
+        <div id="editor-palette"></div>
+      </div>
     </div>
 
     <!-- Game modules — order matters: dependencies before dependents -->
@@ -643,6 +653,7 @@
     <script src="js/survival.js"></script>
     <script src="js/shareland.js"></script>
     <script src="js/events.js"></script>
+    <script src="js/editor.js"></script>
     <script src="js/main.js"></script>
   </body>
 </html>

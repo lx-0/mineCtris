@@ -280,6 +280,9 @@ function init() {
       if (e.target.id === "start-achievements-btn") return;
       if (e.target.id === "start-missions-btn") return;
       if (e.target.id === "start-resume-btn") return;
+      if (e.target.id === "start-create-btn") return;
+      // If ?editor=1 URL param preset editor mode, go straight into editor
+      if (isEditorMode) { requestPointerLock(); return; }
       // Show mode select screen instead of jumping straight into the game
       showModeSelect();
     });
@@ -735,6 +738,20 @@ function init() {
 
     controls.addEventListener("lock", function () {
       console.log("Pointer lock successful ('lock' event fired).");
+
+      // ── Editor mode: show editor HUD only, skip game setup ───────────────
+      if (isEditorMode) {
+        instructions.style.display = "none";
+        blocker.style.display = "none";
+        crosshair.style.display = "block";
+        const editorHudEl = document.getElementById("editor-hud");
+        if (editorHudEl) editorHudEl.style.display = "flex";
+        if (typeof initEditorMode === "function") initEditorMode();
+        if (typeof startBgMusic === "function") startBgMusic();
+        return;
+      }
+      // ─────────────────────────────────────────────────────────────────────
+
       if (isPaused) {
         // Resuming from pause — hide pause screen, restore paused state
         isPaused = false;
@@ -796,6 +813,21 @@ function init() {
     controls.addEventListener("unlock", function () {
       console.log("Pointer lock released ('unlock' event fired).");
       gameTimerRunning = false;
+
+      // ── Editor mode: hide editor HUD and return to main menu ─────────────
+      if (isEditorMode) {
+        const editorHudEl = document.getElementById("editor-hud");
+        if (editorHudEl) editorHudEl.style.display = "none";
+        if (typeof cleanupEditorMode === "function") cleanupEditorMode();
+        isEditorMode = false;
+        moveUp = false;
+        moveDown = false;
+        crosshair.style.display = "none";
+        resetGame();
+        return;
+      }
+      // ─────────────────────────────────────────────────────────────────────
+
       // If the crafting panel intentionally released the lock, don't show the pause/blocker screen
       if (!craftingPanelOpen) {
         closeCraftingPanel();
@@ -946,6 +978,33 @@ function init() {
   if (missionsCloseBtn) missionsCloseBtn.addEventListener("click", function () {
     if (typeof closeMissionsPanel === "function") closeMissionsPanel();
   });
+
+  // ── Editor mode ────────────────────────────────────────────────────────────
+  // "Create" button on main menu
+  const startCreateBtn = document.getElementById("start-create-btn");
+  if (startCreateBtn) {
+    startCreateBtn.addEventListener("click", function (e) {
+      e.stopPropagation();
+      isEditorMode = true;
+      blocker.style.display = "none";
+      requestPointerLock();
+    });
+  }
+
+  // Editor exit button (inside HUD)
+  const editorExitBtn = document.getElementById("editor-exit-btn");
+  if (editorExitBtn) {
+    editorExitBtn.addEventListener("click", function (e) {
+      e.stopPropagation();
+      controls.unlock(); // triggers unlock handler which resets editor mode
+    });
+  }
+
+  // Pre-set editor mode if ?editor=1 URL param is present
+  if (new URLSearchParams(window.location.search).get("editor") === "1") {
+    isEditorMode = true;
+  }
+  // ──────────────────────────────────────────────────────────────────────────
 
   initLineClearFragmentPool();
   initTrails();
@@ -1098,6 +1157,16 @@ function placeBlock() {
 
 function onMouseDown(event) {
   if (!controls || !controls.isLocked || isGameOver) return;
+  // ── Editor mode: left-click places, right-click erases ───────────────────
+  if (isEditorMode) {
+    if (event.button === 0) {
+      if (typeof editorPlaceBlock === "function") editorPlaceBlock();
+    } else if (event.button === 2) {
+      if (typeof editorEraseBlock === "function") editorEraseBlock();
+    }
+    return;
+  }
+  // ─────────────────────────────────────────────────────────────────────────
   if (event.button === 2) {
     placeBlock();
     return;
@@ -1609,27 +1678,30 @@ function animate() {
       }
     }
 
-    const _stormSpawnInterval = pieceStormActive ? SPAWN_INTERVAL * 0.5 : SPAWN_INTERVAL;
-    spawnTimer += delta;
-    if (spawnTimer > _stormSpawnInterval) {
-      spawnFallingPiece();
-      if (pieceStormActive) {
-        triggerLightningFlash();
-        if (typeof playStormSwoosh === "function") playStormSwoosh();
+    // Suppress piece spawning in editor mode
+    if (!isEditorMode) {
+      const _stormSpawnInterval = pieceStormActive ? SPAWN_INTERVAL * 0.5 : SPAWN_INTERVAL;
+      spawnTimer += delta;
+      if (spawnTimer > _stormSpawnInterval) {
+        spawnFallingPiece();
+        if (pieceStormActive) {
+          triggerLightningFlash();
+          if (typeof playStormSwoosh === "function") playStormSwoosh();
+        }
+        spawnTimer = 0;
+        // Update puzzle HUD after each spawn
+        if (isPuzzleMode && typeof updatePuzzleHUD === "function") updatePuzzleHUD();
       }
-      spawnTimer = 0;
-      // Update puzzle HUD after each spawn
-      if (isPuzzleMode && typeof updatePuzzleHUD === "function") updatePuzzleHUD();
+      updateLineClear(delta);
+      updateFallingPieces(delta);
+      updateLandingRings(delta);
+      updateTrails(delta, elapsedTime);
+      updateAuras(delta, camera);
+      updateDifficulty(delta);
+      updateTreeRespawn(delta, elapsedTime);
+      if (typeof updateEventEngine === "function") updateEventEngine(delta);
+      if (typeof updateTutorial === "function") updateTutorial(delta);
     }
-    updateLineClear(delta);
-    updateFallingPieces(delta);
-    updateLandingRings(delta);
-    updateTrails(delta, elapsedTime);
-    updateAuras(delta, camera);
-    updateDifficulty(delta);
-    updateTreeRespawn(delta, elapsedTime);
-    if (typeof updateEventEngine === "function") updateEventEngine(delta);
-    if (typeof updateTutorial === "function") updateTutorial(delta);
   }
   updateDangerWarning();
 
@@ -1650,7 +1722,12 @@ function animate() {
     }
 
     const playerPosition = controls.getObject().position;
-    if (!playerOnGround) playerVelocity.y -= GRAVITY * delta;
+    if (isEditorMode) {
+      // Free-fly: vertical velocity driven by Space (up) / Shift (down) keys
+      playerVelocity.y = moveUp ? MOVEMENT_SPEED : (moveDown ? -MOVEMENT_SPEED : 0);
+    } else {
+      if (!playerOnGround) playerVelocity.y -= GRAVITY * delta;
+    }
     const _movWmod = typeof getWorldModifier === 'function' ? getWorldModifier() : null;
     const _modSpeedMult = _movWmod ? _movWmod.playerSpeedMult : 1.0;
     const _iceEffect = playerStandingOnIce || (_movWmod && _movWmod.iceAllBlocks);
@@ -1660,6 +1737,11 @@ function animate() {
     if (moveLeft) controls.moveRight(-speedDelta);
     if (moveRight) controls.moveRight(speedDelta);
     playerPosition.y += playerVelocity.y * delta;
+    // Prevent flying below ground in editor mode
+    if (isEditorMode && playerPosition.y < PLAYER_HEIGHT) {
+      playerPosition.y = PLAYER_HEIGHT;
+      if (playerVelocity.y < 0) playerVelocity.y = 0;
+    }
 
     // Apply lateral push impulse from nearby landing pieces
     if (playerPushVelocity.lengthSq() > 0.01) {
@@ -1681,8 +1763,9 @@ function animate() {
       }
     }
 
-    checkPlayerCollision(playerVelocity.y * delta);
+    if (!isEditorMode) checkPlayerCollision(playerVelocity.y * delta);
     updateTargeting();
+    if (isEditorMode && typeof updateEditorGhost === "function") updateEditorGhost();
 
     if (pickaxeGroup) {
       const defaultRotationZ = Math.PI / 8;

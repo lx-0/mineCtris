@@ -80,9 +80,14 @@ function onKeyDown(event) {
       moveRight = true;
       break;
     case "Space":
+      if (isEditorMode) { moveUp = true; break; }
       if (canJump && playerOnGround) playerVelocity.y += JUMP_VELOCITY;
       canJump = false;
       playerOnGround = false;
+      break;
+    case "ShiftLeft":
+    case "ShiftRight":
+      if (isEditorMode) moveDown = true;
       break;
     case "Digit1":
     case "Digit2":
@@ -90,10 +95,16 @@ function onKeyDown(event) {
     case "Digit4":
     case "Digit5":
     case "Digit6":
-    case "Digit7": {
+    case "Digit7":
+    case "Digit8":
+    case "Digit9": {
       const idx = parseInt(event.code.replace("Digit", "")) - 1;
-      const entries = Object.entries(inventory).filter(([, n]) => n > 0);
-      if (idx < entries.length) selectBlockColor(entries[idx][0]);
+      if (isEditorMode) {
+        if (typeof selectEditorBlock === "function") selectEditorBlock(idx);
+      } else {
+        const entries = Object.entries(inventory).filter(([, n]) => n > 0);
+        if (idx < entries.length) selectBlockColor(entries[idx][0]);
+      }
       break;
     }
     case "KeyC":
@@ -142,7 +153,12 @@ function onKeyUp(event) {
       moveRight = false;
       break;
     case "Space":
+      if (isEditorMode) { moveUp = false; break; }
       canJump = true;
+      break;
+    case "ShiftLeft":
+    case "ShiftRight":
+      moveDown = false;
       break;
     case "KeyF":
       if (isPuzzleMode && typeof setThinkMode === "function") setThinkMode(false);

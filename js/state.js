@@ -286,3 +286,9 @@ let blocksPlaced = 0;
 let sessionCrafts = 0;
 let sessionConsumableCrafts = 0;
 let sessionHighestComboCount = 0;
+
+// ── Editor mode state ─────────────────────────────────────────────────────────
+// Free-fly no-gravity mode accessible via main menu "Create" or ?editor=1 URL param.
+let isEditorMode = false;
+let moveUp   = false;  // fly upward  (Space in editor mode)
+let moveDown = false;  // fly downward (Shift in editor mode)
