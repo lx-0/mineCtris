@@ -8,6 +8,7 @@ const WORLD_MODIFIER_DEFS = {
     name: 'Normal',
     icon: '\u2605',
     description: 'Standard world. No modifiers.',
+    swatchColor: '#88bb44',   // grass green
     blockWeights: null,       // null = use default uniform distribution
     fogColor: null,           // null = use default sky-derived fog
     fogDensityBase: null,     // null = use default base (0.002)
@@ -21,6 +22,7 @@ const WORLD_MODIFIER_DEFS = {
     name: 'Ice World',
     icon: '\u2744',
     description: '60% ice pieces. Ice friction everywhere. \xD71.1 score.',
+    swatchColor: '#aad4ff',   // blue-white
     // ~60% ice (index 4), reduced lava, no change to others
     blockWeights: { 1: 1, 2: 2, 3: 1, 4: 12, 5: 1, 6: 1, 7: 2 },
     fogColor: 0xaad4ff,       // blue-white fog
@@ -35,6 +37,7 @@ const WORLD_MODIFIER_DEFS = {
     name: 'Nether',
     icon: '\uD83D\uDD25',
     description: '60% lava/gold. No wood. Faster fall. \xD71.2 score.',
+    swatchColor: '#cc4400',   // orange-red
     // ~67% lava+gold (indices 6+3), no ice (4) or moss (5)
     blockWeights: { 1: 1, 2: 2, 3: 5, 4: 0, 5: 0, 6: 5, 7: 2 },
     fogColor: 0xcc4400,       // orange haze
@@ -49,6 +52,7 @@ const WORLD_MODIFIER_DEFS = {
     name: 'Ocean Depths',
     icon: '\u224B',
     description: '60% ocean blocks. Rare diamond. Slow movement. \xD71.15 score.',
+    swatchColor: '#1a7a55',   // blue-green
     // ~60% ocean/ice (index 4), rare diamond (index 8)
     blockWeights: { 1: 1, 2: 1, 3: 1, 4: 12, 5: 1, 6: 1, 7: 2, 8: 1 },
     fogColor: 0x004433,       // blue-green murk

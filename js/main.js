@@ -372,13 +372,26 @@ function init() {
       // Populate world modifier picker
       const wmodPickerEl = document.getElementById("mode-worldmod-picker");
       if (wmodPickerEl && typeof WORLD_MODIFIER_DEFS !== 'undefined') {
+        // Restore last-used modifier from localStorage on first open
+        if (!activeWorldModifierId) {
+          try {
+            const saved = localStorage.getItem("mineCtris_lastWorldMod");
+            if (saved && saved in WORLD_MODIFIER_DEFS) {
+              if (typeof setWorldModifier === 'function') setWorldModifier(saved);
+            }
+          } catch (_) {}
+        }
         wmodPickerEl.innerHTML = "";
         Object.values(WORLD_MODIFIER_DEFS).forEach(function (def) {
           const btn = document.createElement("button");
           const isSelected = (activeWorldModifierId || 'normal') === def.id;
           btn.className = "worldmod-pick-btn" + (isSelected ? " wm-selected" : "");
           btn.dataset.id = def.id;
+          const swatchStyle = def.swatchColor
+            ? ' style="background:' + def.swatchColor + '"'
+            : ' style="background:#888"';
           btn.innerHTML =
+            '<div class="wm-swatch"' + swatchStyle + '></div>' +
             '<div class="wm-icon">' + def.icon + '</div>' +
             '<div class="wm-name">' + def.name + '</div>' +
             (def.scoreMultiplier !== 1.0 ? '<div class="wm-mult">\xD7' + def.scoreMultiplier + '</div>' : '');
@@ -386,6 +399,7 @@ function init() {
           btn.addEventListener("click", function (e) {
             e.stopPropagation();
             if (typeof setWorldModifier === 'function') setWorldModifier(def.id);
+            try { localStorage.setItem("mineCtris_lastWorldMod", def.id); } catch (_) {}
             wmodPickerEl.querySelectorAll(".worldmod-pick-btn").forEach(function (b) {
               b.classList.toggle("wm-selected", b.dataset.id === def.id);
             });

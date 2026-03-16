@@ -1611,6 +1611,13 @@ body {
   border-color: #ffcc44;
   box-shadow: 0 0 16px rgba(255, 200, 50, 0.5);
 }
+.wm-swatch {
+  width: 28px;
+  height: 8px;
+  border-radius: 3px;
+  border: 1px solid rgba(255,255,255,0.25);
+  flex-shrink: 0;
+}
 .wm-icon { font-size: 1.3em; }
 .wm-name {
   font-size: 0.34em;
