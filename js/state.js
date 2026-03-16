@@ -240,6 +240,14 @@ let magnetActive      = false;
 let magnetTimer       = 0.0;
 let magnetLastPullTime = 0.0;
 
+// ── World event engine state ──────────────────────────────────────────────────
+// activeEvent: currently running event type string (see EVENT_TYPES in events.js).
+// eventRemainingMs: milliseconds left for the active event (0 when idle).
+// eventHistory: array of { type, startedAt } records for the current session.
+let activeEvent      = "NONE";
+let eventRemainingMs = 0;
+let eventHistory     = [];
+
 // ── Session stats (reset each game, accumulated for lifetime stats on game over) ──
 let blocksPlaced = 0;
 let sessionCrafts = 0;

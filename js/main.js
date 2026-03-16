@@ -1430,6 +1430,7 @@ function animate() {
     updateAuras(delta, camera);
     updateDifficulty(delta);
     updateTreeRespawn(delta, elapsedTime);
+    if (typeof updateEventEngine === "function") updateEventEngine(delta);
     if (typeof updateTutorial === "function") updateTutorial(delta);
   }
   updateDangerWarning();

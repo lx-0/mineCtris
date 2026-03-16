@@ -463,6 +463,9 @@ function resetGame() {
   const weeklyBadgeEl = document.getElementById('weekly-challenge-badge');
   if (weeklyBadgeEl) weeklyBadgeEl.style.display = 'none';
 
+  // Reset event engine
+  if (typeof resetEventEngine === "function") resetEventEngine();
+
   // Reset world modifier
   if (typeof resetWorldModifier === 'function') resetWorldModifier();
   const worldModBadgeEl = document.getElementById('world-modifier-badge');
