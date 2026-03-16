@@ -45,9 +45,11 @@ function updateScoreHUD() {
     scoreEl.querySelector(".hud-stat:nth-child(4)").textContent =
       "Time: " + mm + ":" + ss;
     scoreEl.querySelector(".hud-stat:nth-child(5)").textContent =
-      isWeeklyChallenge
-        ? (weeklyModifier ? weeklyModifier.name : "Weekly")
-        : "Level " + (lastDifficultyTier + 1);
+      isPuzzleMode
+        ? "Puzzle " + puzzlePuzzleId
+        : isWeeklyChallenge
+          ? (weeklyModifier ? weeklyModifier.name : "Weekly")
+          : "Level " + (lastDifficultyTier + 1);
   }
 }
 
@@ -72,8 +74,8 @@ function getMaxBlockHeight() {
 
 /** Show/hide the danger overlay based on current max block height. */
 function updateDangerWarning() {
-  // Sprint and Blitz have no lose condition — never show danger warning
-  if (isSprintMode || isBlitzMode) return;
+  // Sprint, Blitz, and Puzzle have no lose-by-height condition
+  if (isSprintMode || isBlitzMode || isPuzzleMode) return;
   const dangerEl = document.getElementById("danger-overlay");
   const dangerTextEl = document.getElementById("danger-text");
   if (!dangerEl || !dangerTextEl) return;
@@ -386,6 +388,18 @@ function resetGame() {
   const weeklyBadgeEl = document.getElementById('weekly-challenge-badge');
   if (weeklyBadgeEl) weeklyBadgeEl.style.display = 'none';
 
+  // Reset puzzle mode state
+  isPuzzleMode = false;
+  puzzlePuzzleId = 1;
+  puzzleComplete = false;
+  if (typeof resetPuzzleState === "function") resetPuzzleState();
+  if (typeof puzzleFixedQueue !== "undefined") puzzleFixedQueue.length = 0;
+  if (typeof hidePuzzleSelect === "function") hidePuzzleSelect();
+  const puzzleCompleteEl = document.getElementById("puzzle-complete-screen");
+  if (puzzleCompleteEl) puzzleCompleteEl.style.display = "none";
+  const puzzleBadgeEl2 = document.getElementById("puzzle-badge");
+  if (puzzleBadgeEl2) puzzleBadgeEl2.style.display = "none";
+
   // Reset next-piece queue
   initPieceQueue();
   if (nextPiecesEl) nextPiecesEl.style.display = "none";
@@ -455,6 +469,8 @@ function updateDifficulty(delta) {
     difficultyMultiplier = BLITZ_FIXED_MULTIPLIER;
     return;
   }
+  // Puzzle mode: fixed slow speed; no escalation
+  if (isPuzzleMode) return;
 
   // Tick banner display timer
   if (speedUpBannerTimer > 0) {

@@ -24,6 +24,7 @@ const ACHIEVEMENTS = [
   { id: "rock_collector",   name: "Rock Collector",   icon: "\u{1FAA8}", desc: "Mine 10 rocks" },
   { id: "alchemist",        name: "Alchemist",        icon: "\u2697\uFE0F", desc: "Craft 5 consumable items" },
   { id: "weekly_champion",  name: "Weekly Champion",  icon: "\u{1F3C5}", desc: "Complete a Weekly Challenge" },
+  { id: "puzzle_master",    name: "Puzzle Master",    icon: "\u{1F9E9}", desc: "3-star all 10 puzzles" },
   { id: "completionist",    name: "Completionist",    icon: "\u{1F3C6}", desc: "Unlock 10 achievements" },
 ];
 
@@ -254,4 +255,12 @@ function achOnSurvivalTime(seconds) {
 /** Call at game over in Weekly Challenge mode; pass final score. */
 function achOnWeeklyComplete(finalScore) {
   if (finalScore > 0) unlockAchievement("weekly_champion");
+}
+
+/** Call when a puzzle is completed; pass puzzleId and stars earned. */
+function achOnPuzzleComplete(puzzleId, stars) {
+  // Puzzle Master: 3-star all 10 puzzles
+  if (typeof countThreeStarPuzzles === "function" && countThreeStarPuzzles() >= 10) {
+    unlockAchievement("puzzle_master");
+  }
 }

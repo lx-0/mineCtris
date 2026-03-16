@@ -102,6 +102,13 @@
               <div class="mode-card-desc" id="mode-weekly-modifier-desc">This week's challenge.</div>
               <div class="mode-card-pb" id="mode-pb-weekly"></div>
             </div>
+            <!-- Puzzle -->
+            <div class="mode-card mode-card-puzzle" id="mode-card-puzzle" data-mode="puzzle">
+              <div class="mode-card-icon">&#129513;</div>
+              <div class="mode-card-name">Puzzle</div>
+              <div class="mode-card-desc">10 curated mining puzzles. Solve them all.</div>
+              <div class="mode-card-pb" id="mode-pb-puzzle"></div>
+            </div>
           </div>
           <button id="mode-select-lb-btn">&#127942; Leaderboard</button>
           <button id="mode-select-back">&#8592; Back</button>
@@ -124,6 +131,9 @@
 
       <!-- Weekly challenge badge (shown during weekly runs) -->
       <div id="weekly-challenge-badge" style="display:none;"></div>
+
+      <!-- Puzzle mode badge (shown during puzzle runs) -->
+      <div id="puzzle-badge" style="display:none;"></div>
 
       <!-- Top-right HUD: score + next-piece preview -->
       <div id="top-right-hud">
@@ -179,6 +189,29 @@
         <div id="blitz-personal-best"></div>
         <button id="blitz-play-again-btn">Play Again</button>
         <button id="blitz-main-menu-btn">Main Menu</button>
+      </div>
+
+      <!-- Puzzle select screen -->
+      <div id="puzzle-select-screen" style="display:none;">
+        <div id="puzzle-select-inner">
+          <div id="puzzle-select-title">SELECT PUZZLE</div>
+          <div id="puzzle-select-hint">Hold F for Think Mode (zero gravity)</div>
+          <div id="puzzle-select-list"></div>
+          <button id="puzzle-select-back">&#8592; Back</button>
+        </div>
+      </div>
+
+      <!-- Puzzle complete screen -->
+      <div id="puzzle-complete-screen" style="display:none;">
+        <div id="puzzle-complete-title">PUZZLE SOLVED!</div>
+        <div id="puzzle-complete-name"></div>
+        <div id="puzzle-complete-stars"></div>
+        <div id="puzzle-complete-pb"></div>
+        <div id="puzzle-complete-remain"></div>
+        <button id="puzzle-next-btn" style="display:none;">Next Puzzle &#9654;</button>
+        <button id="puzzle-retry-btn">Try Again</button>
+        <button id="puzzle-select-btn">Puzzle Select</button>
+        <button id="puzzle-main-menu-btn">Main Menu</button>
       </div>
 
       <!-- Sprint complete screen -->
@@ -406,6 +439,7 @@
     <script src="js/stats.js"></script>
     <script src="js/sprint.js"></script>
     <script src="js/blitz.js"></script>
+    <script src="js/puzzle.js"></script>
     <script src="js/achievements.js"></script>
     <script src="js/aura.js"></script>
     <script src="js/tutorial.js"></script>

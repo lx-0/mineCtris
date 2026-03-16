@@ -168,6 +168,33 @@ function spawnFallingPiece() {
     blitzTimerActive = true;
   }
 
+  // In Puzzle mode, draw from the fixed queue; stop spawning when exhausted.
+  if (isPuzzleMode) {
+    const next = typeof drawPuzzlePiece === "function" ? drawPuzzlePiece() : null;
+    if (!next) {
+      // No pieces left — check lose condition after current pieces finish landing
+      return;
+    }
+    const piece3D = createPiece3D(next.shape, next.index);
+    const spawnX = (_rng() - 0.5) * (WORLD_SIZE * 0.8);
+    const spawnZ = (_rng() - 0.5) * (WORLD_SIZE * 0.8);
+    const spawnY = WORLD_SIZE * 0.6;
+    piece3D.position.set(spawnX, spawnY, spawnZ);
+    piece3D.userData.velocity = new THREE.Vector3(0, -(GRAVITY / 4) * difficultyMultiplier, 0);
+    piece3D.userData.colorIndex = next.index;
+    piece3D.userData.timeSinceRotation = 0;
+    piece3D.userData.rotationInterval =
+      _rng() * (MAX_ROTATION_INTERVAL - MIN_ROTATION_INTERVAL) + MIN_ROTATION_INTERVAL;
+    piece3D.userData.nudgeOffsetX = 0;
+    piece3D.userData.nudgeOffsetZ = 0;
+    piece3D.userData.nudgePulseEnd = -1;
+    fallingPiecesGroup.add(piece3D);
+    fallingPieces.push(piece3D);
+    createPieceShadow(piece3D);
+    createPieceTrail(piece3D);
+    return;
+  }
+
   // Draw the next piece from the pre-generated queue; refill to keep it at NEXT_QUEUE_SIZE.
   if (pieceQueue.length === 0) initPieceQueue();
   const { index, shape } = pieceQueue.shift();
@@ -349,6 +376,9 @@ function applyNudge(dx, dz) {
 }
 
 function updateFallingPieces(delta) {
+  // Think Mode (puzzle): zero gravity while F is held.
+  if (typeof isThinkModeActive === "function" && isThinkModeActive()) return;
+
   // Apply ice bridge slow factor (0.8 = 20% speed reduction).
   const effectiveDelta = iceBridgeSlowActive ? delta * 0.8 : delta;
 
@@ -460,7 +490,11 @@ function updateFallingPieces(delta) {
     fallingPiecesGroup.remove(pieceToLand);
     fallingPieces.splice(index, 1);
     checkLineClear(newBlocks);
-    checkGameOver();
+    if (isPuzzleMode) {
+      if (typeof checkPuzzleConditions === "function") checkPuzzleConditions();
+    } else {
+      checkGameOver();
+    }
     if (typeof saveGameState === "function") saveGameState();
     if (typeof tutorialNotify === "function") tutorialNotify("pieceLand");
   }

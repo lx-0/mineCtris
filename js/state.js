@@ -146,6 +146,12 @@ let isDailyChallenge = false;
 // null → use Math.random(); function → seeded daily PRNG from daily.js
 let gameRng = null;
 
+// ── Puzzle mode state ─────────────────────────────────────────────────────────
+// Fixed-sequence puzzles with pre-placed block layouts and a win/lose condition.
+let isPuzzleMode    = false;
+let puzzlePuzzleId  = 1;     // Which puzzle (1–10) is currently active
+let puzzleComplete  = false;
+
 // ── Weekly challenge state ────────────────────────────────────────────────────
 let isWeeklyChallenge = false;
 let weeklyModifier = null; // { id, name, description, applyFn }

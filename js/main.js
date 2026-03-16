@@ -286,8 +286,20 @@ function init() {
           weeklyPbEl.textContent = getCurrentWeekLabel();
         }
       }
+      // Populate Puzzle personal best
+      const puzzlePbEl = document.getElementById("mode-pb-puzzle");
+      if (puzzlePbEl && typeof countCompletedPuzzles === "function") {
+        const completed = countCompletedPuzzles();
+        const threeStars = typeof countThreeStarPuzzles === "function" ? countThreeStarPuzzles() : 0;
+        if (completed > 0) {
+          puzzlePbEl.textContent = completed + "/" + (typeof PUZZLES !== "undefined" ? PUZZLES.length : 10) + " solved" +
+            (threeStars > 0 ? " | " + threeStars + " \u2605\u2605\u2605" : "");
+        } else {
+          puzzlePbEl.textContent = "";
+        }
+      }
       // Apply highlight to the specified mode card
-      ["classic", "sprint", "blitz", "daily", "weekly"].forEach(function (mode) {
+      ["classic", "sprint", "blitz", "daily", "weekly", "puzzle"].forEach(function (mode) {
         const cardEl = document.getElementById("mode-card-" + mode);
         if (cardEl) {
           if (mode === highlightMode) {
@@ -413,6 +425,73 @@ function init() {
       });
     }
 
+    const puzzleCardEl = document.getElementById("mode-card-puzzle");
+    if (puzzleCardEl) {
+      puzzleCardEl.addEventListener("click", function () {
+        isPuzzleMode = true;
+        puzzleComplete = false;
+        // Fixed slow speed for puzzle mode (half normal)
+        difficultyMultiplier = 0.5;
+        lastDifficultyTier = 0;
+        hideModeSelect();
+        if (typeof showPuzzleSelect === "function") showPuzzleSelect();
+      });
+    }
+
+    // Puzzle select back button
+    const puzzleSelectBackBtn = document.getElementById("puzzle-select-back");
+    if (puzzleSelectBackBtn) {
+      puzzleSelectBackBtn.addEventListener("click", function () {
+        if (typeof hidePuzzleSelect === "function") hidePuzzleSelect();
+        isPuzzleMode = false;
+        difficultyMultiplier = 1.0;
+        lastDifficultyTier = 0;
+        showModeSelect("puzzle");
+      });
+    }
+
+    // Puzzle complete screen buttons
+    const puzzleNextBtn = document.getElementById("puzzle-next-btn");
+    if (puzzleNextBtn) {
+      puzzleNextBtn.addEventListener("click", function () {
+        const nextId = puzzlePuzzleId + 1;
+        if (nextId <= PUZZLES.length) puzzlePuzzleId = nextId;
+        resetGame();
+        // Re-enter puzzle mode for next puzzle
+        isPuzzleMode = true;
+        puzzleComplete = false;
+        difficultyMultiplier = 0.5;
+        lastDifficultyTier = 0;
+        if (typeof hidePuzzleSelect === "function") hidePuzzleSelect();
+        requestPointerLock();
+      });
+    }
+    const puzzleRetryBtn = document.getElementById("puzzle-retry-btn");
+    if (puzzleRetryBtn) {
+      puzzleRetryBtn.addEventListener("click", function () {
+        const currentPuzzleId = puzzlePuzzleId;
+        resetGame();
+        isPuzzleMode = true;
+        puzzlePuzzleId = currentPuzzleId;
+        puzzleComplete = false;
+        difficultyMultiplier = 0.5;
+        lastDifficultyTier = 0;
+        requestPointerLock();
+      });
+    }
+    const puzzleSelectBtn = document.getElementById("puzzle-select-btn");
+    if (puzzleSelectBtn) {
+      puzzleSelectBtn.addEventListener("click", function () {
+        resetGame();
+      });
+    }
+    const puzzleMainMenuBtn = document.getElementById("puzzle-main-menu-btn");
+    if (puzzleMainMenuBtn) {
+      puzzleMainMenuBtn.addEventListener("click", function () {
+        resetGame();
+      });
+    }
+
     const modeBackBtn = document.getElementById("mode-select-back");
     if (modeBackBtn) {
       modeBackBtn.addEventListener("click", function () {
@@ -467,6 +546,18 @@ function init() {
       gameTimerRunning = true;
       // Restore inventory HUD if non-empty
       if (inventoryTotal() > 0) updateInventoryHUD();
+
+      // Puzzle mode: place preset blocks and init fixed piece queue
+      if (isPuzzleMode) {
+        if (typeof resetPuzzleState === "function") resetPuzzleState();
+        if (typeof setupPuzzleLayout === "function") setupPuzzleLayout();
+        if (typeof initPuzzlePieceQueue === "function") initPuzzlePieceQueue();
+        const badgeEl = document.getElementById("puzzle-badge");
+        if (badgeEl) {
+          badgeEl.style.display = "block";
+          if (typeof updatePuzzleHUD === "function") updatePuzzleHUD();
+        }
+      }
     });
 
     controls.addEventListener("unlock", function () {
@@ -498,6 +589,8 @@ function init() {
       unhighlightTarget();
       targetedBlock = null;
       miningProgress = 0;
+      const puzzleBadgeEl = document.getElementById("puzzle-badge");
+      if (puzzleBadgeEl) puzzleBadgeEl.style.display = "none";
     });
   } catch (error) {
     console.error("Failed to initialize PointerLockControls:", error);
@@ -863,6 +956,10 @@ function onMouseDown(event) {
       if (pickaxeTier === "diamond" && _brokenBlock) {
         _applyDiamondAOE(_brokenBlock);
       }
+      // Puzzle mode: check win/lose after every mined block
+      if (isPuzzleMode && typeof checkPuzzleConditions === "function") {
+        checkPuzzleConditions();
+      }
       targetedBlock = null;
       miningProgress = 0;
       crosshair.classList.remove("target-locked");
@@ -1003,6 +1100,8 @@ function animate() {
     if (spawnTimer > SPAWN_INTERVAL) {
       spawnFallingPiece();
       spawnTimer = 0;
+      // Update puzzle HUD after each spawn
+      if (isPuzzleMode && typeof updatePuzzleHUD === "function") updatePuzzleHUD();
     }
     updateLineClear(delta);
     updateFallingPieces(delta);

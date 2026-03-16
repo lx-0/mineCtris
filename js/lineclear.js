@@ -417,6 +417,10 @@ function _lcDetonate() {
     worldGroup.remove(b);
   });
   lineClearFlashBlocks = [];
+  // Puzzle mode: check win/lose after line clear removes blocks
+  if (isPuzzleMode && typeof checkPuzzleConditions === "function") {
+    checkPuzzleConditions();
+  }
 
   // 3. Apply gravity to blocks above, with spring bounce ────────────────────
   const toShift = [];

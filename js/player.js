@@ -113,7 +113,11 @@ function onKeyDown(event) {
       applyNudge(0, 1);
       break;
     case "KeyF":
-      if (typeof activateLavaFlask === "function") activateLavaFlask();
+      if (isPuzzleMode) {
+        if (typeof setThinkMode === "function") setThinkMode(true);
+      } else {
+        if (typeof activateLavaFlask === "function") activateLavaFlask();
+      }
       break;
     case "KeyG":
       if (typeof activateIceBridge === "function") activateIceBridge();
@@ -137,6 +141,9 @@ function onKeyUp(event) {
       break;
     case "Space":
       canJump = true;
+      break;
+    case "KeyF":
+      if (isPuzzleMode && typeof setThinkMode === "function") setThinkMode(false);
       break;
   }
 }
