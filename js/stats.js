@@ -18,6 +18,7 @@ function _defaultStats() {
     highestComboMultiplier: 1.0,
     highestLevel: 1,
     dailyChallengesCompleted: 0,
+    puzzlesCompleted: 0,
   };
 }
 
@@ -51,7 +52,7 @@ function saveLifetimeStats(stats) {
  * @param {boolean} params.isDailyChallenge
  * @returns {object} updated stats
  */
-function submitLifetimeStats({ score, blocksMined, linesCleared, blocksPlaced, totalCrafts, highestComboCount, highestDifficultyTier, isDailyChallenge }) {
+function submitLifetimeStats({ score, blocksMined, linesCleared, blocksPlaced, totalCrafts, highestComboCount, highestDifficultyTier, isDailyChallenge, isPuzzleMode }) {
   const stats = loadLifetimeStats();
   stats.gamesPlayed++;
   stats.totalScore += score;
@@ -65,6 +66,7 @@ function submitLifetimeStats({ score, blocksMined, linesCleared, blocksPlaced, t
   const level = highestDifficultyTier + 1;
   if (level > stats.highestLevel) stats.highestLevel = level;
   if (isDailyChallenge) stats.dailyChallengesCompleted++;
+  if (isPuzzleMode) stats.puzzlesCompleted = (stats.puzzlesCompleted || 0) + 1;
   saveLifetimeStats(stats);
   return stats;
 }
@@ -90,6 +92,7 @@ function renderStatsPanel() {
     ['BEST COMBO',        comboStr],
     ['HIGHEST LEVEL',     stats.highestLevel],
     ['DAILY CHALLENGES',  stats.dailyChallengesCompleted],
+    ['PUZZLES COMPLETED', stats.puzzlesCompleted || 0],
   ];
   el.innerHTML = rows.map(([label, val]) =>
     `<div class="stats-row">` +

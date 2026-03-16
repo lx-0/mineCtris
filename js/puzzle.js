@@ -350,6 +350,7 @@ function _triggerPuzzleWin() {
       highestComboCount:     sessionHighestComboCount,
       highestDifficultyTier: lastDifficultyTier,
       isDailyChallenge:      false,
+      isPuzzleMode:          true,
     });
   }
 
