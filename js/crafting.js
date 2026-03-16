@@ -15,6 +15,8 @@ function toggleCraftingPanel() {
 
 function openCraftingPanel() {
   craftingPanelOpen = true;
+  // Notify tutorial that crafting panel was opened
+  if (typeof tutorialNotify === "function") tutorialNotify("craftingOpen");
   // Release pointer lock so the mouse cursor is visible and can click buttons
   if (typeof controls !== "undefined" && controls && controls.isLocked) {
     controls.unlock();

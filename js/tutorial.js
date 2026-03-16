@@ -1,12 +1,13 @@
 // tutorial.js — First-run tutorial overlay.
-// Shows a 6-step guided intro on the player's very first visit.
+// Shows a 7-step guided intro on the player's very first visit.
 // Each step advances on a specific player action; a Skip button is always visible.
 // Requires: state.js loaded first (for global flags).
 
 const TUTORIAL_DONE_KEY = 'mineCtris_tutorialDone';
+const CRAFT_HINT_KEY    = 'mineCtris_craftHintShown';
 
 // Step definitions — trigger values matched by tutorialNotify(event).
-// 'auto' steps advance automatically after autoDelay seconds.
+// Steps with autoDelay auto-advance after that many seconds regardless of trigger.
 // 'dismiss' steps show a "Got it!" button.
 const TUTORIAL_STEPS = [
   {
@@ -37,8 +38,16 @@ const TUTORIAL_STEPS = [
     id: 'lines',
     text: 'Fill rows to clear lines and score points!',
     subtext: null,
-    trigger: 'auto',
+    trigger: 'lineClear',
     autoDelay: 4,
+  },
+  {
+    id: 'craft',
+    text: 'Press C to open the Crafting Panel. Combine materials to build better tools!',
+    subtext: null,
+    trigger: 'craftingOpen',
+    autoDelay: 8,
+    showCKey: true,
   },
   {
     id: 'done',
@@ -83,7 +92,11 @@ function updateTutorial(delta) {
   if (!_tutorialActive) return;
   _tutorialStepAge += delta;
   const step = TUTORIAL_STEPS[_tutorialStep];
-  if (step && step.trigger === 'auto' && _tutorialStepAge >= (step.autoDelay || 4)) {
+  if (step && step.autoDelay && _tutorialStepAge >= step.autoDelay) {
+    if (step.id === 'craft') {
+      // Auto-advance with a note that the player can try crafting later
+      _showAutoAdvanceNote();
+    }
     _advanceStep();
   }
 }
@@ -91,6 +104,21 @@ function updateTutorial(delta) {
 /** Skip the tutorial immediately. */
 function skipTutorial() {
   _endTutorial();
+}
+
+// ── Public API (context-sensitive crafting hint) ───────────────────────────────
+
+/**
+ * Check if the context-sensitive crafting hint should fire.
+ * Call after any wood block is added to inventory.
+ * @param {object} inv  The current inventory map (cssColor → count).
+ */
+function craftHintCheck(inv) {
+  if (_isCraftHintShown()) return;
+  // '#8b4513' is the CSS color for Wood blocks
+  if ((inv['#8b4513'] || 0) < 1) return;
+  _markCraftHintShown();
+  _showCraftHintToast();
 }
 
 // ── Internal helpers ──────────────────────────────────────────────────────────
@@ -109,6 +137,35 @@ function _markTutorialDone() {
   } catch (_e) {}
 }
 
+function _isCraftHintShown() {
+  try {
+    return localStorage.getItem(CRAFT_HINT_KEY) === '1';
+  } catch (_e) {
+    return true;
+  }
+}
+
+function _markCraftHintShown() {
+  try {
+    localStorage.setItem(CRAFT_HINT_KEY, '1');
+  } catch (_e) {}
+}
+
+function _showCraftHintToast() {
+  const toast = document.getElementById('craft-hint-toast');
+  if (!toast) return;
+  toast.style.display = 'block';
+  setTimeout(() => { toast.style.display = 'none'; }, 4000);
+}
+
+function _showAutoAdvanceNote() {
+  const subtextEl = document.getElementById('tutorial-subtext');
+  if (subtextEl) {
+    subtextEl.textContent = "Try pressing C later!";
+    subtextEl.style.display = 'block';
+  }
+}
+
 function _showStep(idx) {
   if (idx >= TUTORIAL_STEPS.length) { _endTutorial(); return; }
 
@@ -117,6 +174,7 @@ function _showStep(idx) {
   const subtextEl   = document.getElementById('tutorial-subtext');
   const dismissBtn  = document.getElementById('tutorial-dismiss-btn');
   const stepCountEl = document.getElementById('tutorial-step-count');
+  const ckeyEl      = document.getElementById('tutorial-ckey-icon');
 
   if (!overlayEl || !textEl) return;
 
@@ -134,7 +192,12 @@ function _showStep(idx) {
     dismissBtn.style.display = step.trigger === 'dismiss' ? 'inline-block' : 'none';
   }
 
-  // Step counter e.g. "3 / 6"
+  // Show pulsing C-key icon on crafting step
+  if (ckeyEl) {
+    ckeyEl.style.display = step.showCKey ? 'flex' : 'none';
+  }
+
+  // Step counter e.g. "3 / 7"
   if (stepCountEl) {
     stepCountEl.textContent = (idx + 1) + ' / ' + TUTORIAL_STEPS.length;
   }

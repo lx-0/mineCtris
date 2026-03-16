@@ -123,6 +123,9 @@ function checkLineClear(newBlocks) {
   const LINE_SCORES = [0, 100, 300, 500, 800];
   linesCleared += completeLevels.length;
 
+  // Tutorial: notify first line clear
+  if (typeof tutorialNotify === "function") tutorialNotify("lineClear");
+
   // Achievement: first line clear, Tetramino
   if (typeof achOnLineClear === "function") achOnLineClear(completeLevels.length);
 
