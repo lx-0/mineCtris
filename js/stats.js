@@ -76,9 +76,12 @@ function renderStatsPanel() {
   const stats = loadLifetimeStats();
   const comboStr = stats.highestComboMultiplier === 1.0 ? '1x'
     : stats.highestComboMultiplier + 'x';
+  const sprintBest = loadSprintBest();
+  const sprintBestStr = sprintBest ? fmtSprintTime(sprintBest.timeMs) : '--';
   const rows = [
     ['GAMES PLAYED',      stats.gamesPlayed],
     ['BEST SCORE',        stats.bestScore],
+    ['SPRINT BEST',       sprintBestStr],
     ['TOTAL SCORE',       stats.totalScore],
     ['LINES CLEARED',     stats.totalLinesCleared],
     ['BLOCKS MINED',      stats.totalBlocksMined],
