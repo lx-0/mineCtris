@@ -126,6 +126,9 @@ async function initDailyMissions() {
 
   // If we already have today's missions loaded, keep them
   if (state && state.date === today && Array.isArray(state.missions) && state.missions.length === 3) {
+    renderMissionsPanel();
+    renderMenuMissionsPanel();
+    _maybeShowMissionsTooltip();
     return state;
   }
 
@@ -158,6 +161,8 @@ async function initDailyMissions() {
   };
   _saveMissionState(state);
   renderMissionsPanel();
+  renderMenuMissionsPanel();
+  _maybeShowMissionsTooltip();
   return state;
 }
 
@@ -220,6 +225,7 @@ function _updateMetric(metric, value, op) {
 
   _saveMissionState(state);
   renderMissionsPanel();
+  renderMenuMissionsPanel();
 }
 
 // ── XP award ─────────────────────────────────────────────────────────────────
@@ -454,13 +460,144 @@ function closeMissionsPanel() {
   if (el) el.style.display = 'none';
 }
 
+// ── Inline menu missions panel ────────────────────────────────────────────────
+
+const MISSIONS_TOOLTIP_KEY = 'mineCtris_missionsTooltipSeen';
+let _countdownInterval = null;
+
+/** Render the compact 3-card row on the main menu. */
+function renderMenuMissionsPanel() {
+  const body = document.getElementById('menu-missions-body');
+  if (!body) return;
+
+  const today = _todayUTC();
+  const state = _loadMissionState();
+
+  if (!state || state.date !== today || !Array.isArray(state.missions)) {
+    body.innerHTML = '<div class="missions-loading">Loading missions\u2026</div>';
+    return;
+  }
+
+  const progress  = state.progress;
+  const completed = state.completed;
+  const xpTotal   = state.xpFromMissions || 0;
+  const allDone   = completed.length >= state.missions.length;
+
+  if (allDone) {
+    body.innerHTML =
+      '<div id="menu-missions-alldone">&#10003; ALL MISSIONS COMPLETE!</div>' +
+      '<div id="menu-missions-alldone-sub">+' + xpTotal + ' XP earned today</div>';
+    return;
+  }
+
+  const diffLabel = { easy: 'EASY', medium: 'MED', hard: 'HARD' };
+  const diffColor = { easy: '#4ade80', medium: '#facc15', hard: '#f87171' };
+
+  let html = '';
+  for (const mission of state.missions) {
+    const isDone = completed.includes(mission.id);
+    const val    = progress[mission.metric];
+    let pct = 0, valDisplay = '';
+
+    if (mission.condition === 'lte') {
+      if (val !== null && val !== undefined) {
+        const m = Math.floor(val / 60).toString().padStart(2, '0');
+        const s = (val % 60).toString().padStart(2, '0');
+        valDisplay = m + ':' + s;
+        pct = isDone ? 100 : Math.min(99, Math.max(0, Math.round((1 - (val - mission.target) / mission.target) * 100)));
+      }
+    } else if (mission.accumulation === 'flag') {
+      pct = isDone ? 100 : 0;
+      valDisplay = isDone ? '1/1' : '0/1';
+    } else {
+      const cur = val || 0;
+      pct = isDone ? 100 : Math.min(100, Math.round((cur / mission.target) * 100));
+      if (mission.metric === 'classic_survival_seconds' || mission.metric === 'sprint_best_time_seconds') {
+        const mm = Math.floor(cur / 60).toString().padStart(2, '0');
+        const ss = (cur % 60).toString().padStart(2, '0');
+        valDisplay = mm + ':' + ss;
+      } else {
+        valDisplay = cur + '/' + mission.target;
+      }
+    }
+
+    const doneClass = isDone ? ' menu-mission-card-done' : '';
+    const dLabel    = diffLabel[mission.difficulty] || mission.difficulty.toUpperCase();
+    const dColor    = diffColor[mission.difficulty] || '#fff';
+
+    html +=
+      '<div class="menu-mission-card' + doneClass + '">' +
+        '<div class="menu-mission-card-header">' +
+          '<span class="mission-diff-badge" style="color:' + dColor + '">' + dLabel + '</span>' +
+          '<span class="menu-mission-xp">+' + mission.xp + ' XP</span>' +
+          (isDone ? '<span class="menu-mission-done-check">&#10003;</span>' : '') +
+        '</div>' +
+        '<div class="menu-mission-text">' + mission.text + '</div>' +
+        '<div class="menu-mission-bar-row">' +
+          '<div class="menu-mission-bar"><div class="menu-mission-fill" style="width:' + pct + '%"></div></div>' +
+          '<span class="menu-mission-val">' + valDisplay + '</span>' +
+        '</div>' +
+      '</div>';
+  }
+  body.innerHTML = html;
+}
+
+/** Start (or restart) the countdown timer shown in the menu panel header. */
+function _startMissionsCountdown() {
+  const el = document.getElementById('menu-missions-countdown');
+  if (!el) return;
+
+  function _tick() {
+    const now      = new Date();
+    const midnight = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1));
+    const diff     = midnight - now;
+    if (diff <= 0) {
+      // Day rolled over — reinit missions
+      initDailyMissions();
+      return;
+    }
+    const h = Math.floor(diff / 3600000).toString().padStart(2, '0');
+    const m = Math.floor((diff % 3600000) / 60000).toString().padStart(2, '0');
+    const s = Math.floor((diff % 60000) / 1000).toString().padStart(2, '0');
+    el.textContent = 'Resets in ' + h + ':' + m + ':' + s;
+  }
+
+  _tick();
+  if (_countdownInterval) clearInterval(_countdownInterval);
+  _countdownInterval = setInterval(_tick, 1000);
+}
+
+/** Show first-time tooltip if the player hasn't dismissed it before. */
+function _maybeShowMissionsTooltip() {
+  try {
+    if (!localStorage.getItem(MISSIONS_TOOLTIP_KEY)) {
+      const el = document.getElementById('missions-first-tooltip');
+      if (el) el.style.display = 'flex';
+    }
+  } catch (_) {}
+}
+
 // ── Auto-init on page load ────────────────────────────────────────────────────
 
 (function () {
+  function _boot() {
+    // Wire tooltip dismiss button
+    const okBtn = document.getElementById('missions-tooltip-ok');
+    if (okBtn) {
+      okBtn.addEventListener('click', function () {
+        try { localStorage.setItem(MISSIONS_TOOLTIP_KEY, '1'); } catch (_) {}
+        const tooltip = document.getElementById('missions-first-tooltip');
+        if (tooltip) tooltip.style.display = 'none';
+      });
+    }
+    initDailyMissions();
+    _startMissionsCountdown();
+  }
+
   // Delay slightly so LEADERBOARD_WORKER_URL is available
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', function () { initDailyMissions(); });
+    document.addEventListener('DOMContentLoaded', _boot);
   } else {
-    setTimeout(initDailyMissions, 0);
+    setTimeout(_boot, 0);
   }
 }());
