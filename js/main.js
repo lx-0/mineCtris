@@ -228,26 +228,13 @@ function init() {
     if (dailyChallengeBtn) {
       dailyChallengeBtn.addEventListener("click", function (e) {
         e.stopPropagation();
-        isDailyChallenge = true;
-        gameRng = getDailyPrng();
-        // Re-seed the piece queue with today's PRNG
-        initPieceQueue();
-        // Show daily badge in HUD
-        const badgeEl = document.getElementById("daily-challenge-badge");
-        if (badgeEl) {
-          badgeEl.textContent = "Daily: " + getTodayLabel();
-          badgeEl.style.display = "block";
-        }
-        if (Tone.context.state !== "running") {
-          Tone.start().then(() => controls.lock()).catch(() => controls.lock());
-        } else {
-          controls.lock();
-        }
+        // Show mode select with Daily highlighted as a shortcut
+        showModeSelect("daily");
       });
     }
 
     // ── Mode select helpers ───────────────────────────────────────────
-    function showModeSelect() {
+    function showModeSelect(highlightMode) {
       const modeSelectEl = document.getElementById("mode-select");
       if (!modeSelectEl) return;
       // Populate Classic personal best
@@ -275,6 +262,27 @@ function init() {
         const blitzBest = loadBlitzBest();
         blitzPbEl.textContent = blitzBest ? "Best: " + blitzBest.score : "";
       }
+      // Populate Daily Challenge personal best
+      const dailyPbEl = document.getElementById("mode-pb-daily");
+      if (dailyPbEl) {
+        const dailyBest = loadDailyBest();
+        if (dailyBest) {
+          dailyPbEl.textContent = getTodayLabel() + " Best: " + dailyBest.score;
+        } else {
+          dailyPbEl.textContent = getTodayLabel();
+        }
+      }
+      // Apply highlight to the specified mode card
+      ["classic", "sprint", "blitz", "daily"].forEach(function (mode) {
+        const cardEl = document.getElementById("mode-card-" + mode);
+        if (cardEl) {
+          if (mode === highlightMode) {
+            cardEl.classList.add("mode-card-highlighted");
+          } else {
+            cardEl.classList.remove("mode-card-highlighted");
+          }
+        }
+      });
       blocker.style.display = "none";
       modeSelectEl.style.display = "flex";
     }
@@ -346,6 +354,25 @@ function init() {
     if (blitzMainMenuBtn) {
       blitzMainMenuBtn.addEventListener("click", function () {
         resetGame();
+      });
+    }
+
+    const dailyCardEl = document.getElementById("mode-card-daily");
+    if (dailyCardEl) {
+      dailyCardEl.addEventListener("click", function () {
+        isDailyChallenge = true;
+        gameRng = getDailyPrng();
+        // Re-seed the piece queue with today's PRNG
+        initPieceQueue();
+        // Show daily badge in HUD
+        const badgeEl = document.getElementById("daily-challenge-badge");
+        if (badgeEl) {
+          badgeEl.textContent = "Daily: " + getTodayLabel();
+          badgeEl.style.display = "block";
+        }
+        try { localStorage.setItem("mineCtris_lastMode", "daily"); } catch (_) {}
+        hideModeSelect();
+        requestPointerLock();
       });
     }
 
