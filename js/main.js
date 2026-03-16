@@ -455,9 +455,10 @@ function init() {
     if (puzzleNextBtn) {
       puzzleNextBtn.addEventListener("click", function () {
         const nextId = puzzlePuzzleId + 1;
-        if (nextId <= PUZZLES.length) puzzlePuzzleId = nextId;
         resetGame();
-        // Re-enter puzzle mode for next puzzle
+        // Re-enter puzzle mode for next puzzle (must set puzzlePuzzleId AFTER resetGame
+        // since resetGame resets it to 1)
+        if (nextId <= PUZZLES.length) puzzlePuzzleId = nextId;
         isPuzzleMode = true;
         puzzleComplete = false;
         difficultyMultiplier = 0.5;
