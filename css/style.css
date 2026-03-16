@@ -3365,3 +3365,114 @@ body.theme-legendary #score-display {
 .lb-season-badge-1 { filter: drop-shadow(0 0 4px gold); }
 .lb-season-badge-2 { filter: drop-shadow(0 0 4px silver); }
 .lb-season-badge-3 { filter: drop-shadow(0 0 4px #cd7f32); }
+
+/* ── End-of-season summary overlay ───────────────────────────────────────── */
+#season-end-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.88);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9000;
+  backdrop-filter: blur(4px);
+}
+#season-end-panel {
+  background: #0a160e;
+  border: 2px solid var(--season-end-accent, #00ff88);
+  border-radius: 10px;
+  padding: 28px 32px 24px;
+  max-width: 480px;
+  width: 90%;
+  max-height: 85vh;
+  overflow-y: auto;
+  box-shadow: 0 0 40px rgba(0, 255, 136, 0.2), 0 0 80px rgba(0, 0, 0, 0.6);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+#season-end-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  text-align: center;
+}
+#season-end-icon {
+  font-size: 2.6em;
+  filter: drop-shadow(0 0 12px gold);
+}
+#season-end-title {
+  font-family: "Press Start 2P", cursive;
+  font-size: 13px;
+  color: #fff;
+  letter-spacing: 0.1em;
+}
+#season-end-name {
+  font-family: "Press Start 2P", cursive;
+  font-size: 10px;
+  color: var(--season-end-accent, #00ff88);
+  text-shadow: 0 0 10px var(--season-end-accent, #00ff88);
+  letter-spacing: 0.06em;
+}
+#season-end-subtitle {
+  font-family: "Press Start 2P", cursive;
+  font-size: 7px;
+  color: rgba(255, 255, 255, 0.4);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  text-align: center;
+}
+#season-end-body {
+  width: 100%;
+}
+#season-end-body .season-end-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: "Press Start 2P", cursive;
+  font-size: 7px;
+}
+#season-end-body .season-end-table th {
+  color: rgba(255, 255, 255, 0.35);
+  padding: 4px 6px;
+  text-align: left;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+#season-end-body .season-end-table td {
+  color: rgba(255, 255, 255, 0.8);
+  padding: 6px 6px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+#season-end-body .season-end-row-me td {
+  color: #00ff88;
+  background: rgba(0, 255, 136, 0.06);
+}
+#season-end-body .season-end-row-1 td:first-child { color: gold; }
+#season-end-body .season-end-row-2 td:first-child { color: silver; }
+#season-end-body .season-end-row-3 td:first-child { color: #cd7f32; }
+#season-end-your-result {
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  padding-top: 10px;
+  text-align: center;
+}
+#season-end-your-rank {
+  font-family: "Press Start 2P", cursive;
+  font-size: 8px;
+  color: rgba(255, 255, 255, 0.5);
+}
+#season-end-close-btn {
+  align-self: center;
+  font-family: "Press Start 2P", cursive;
+  font-size: 9px;
+  background: var(--season-end-accent, #00ff88);
+  color: #000;
+  border: none;
+  border-radius: 4px;
+  padding: 10px 28px;
+  cursor: pointer;
+  letter-spacing: 0.08em;
+  margin-top: 4px;
+}
+#season-end-close-btn:hover {
+  filter: brightness(1.15);
+}

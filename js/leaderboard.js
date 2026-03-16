@@ -54,6 +54,20 @@ async function apiFetchSeasonLeaderboard() {
   return resp.json();
 }
 
+async function apiFetchSeasonArchive(seasonId) {
+  const resp = await fetch(LEADERBOARD_WORKER_URL + '/api/season/archive/' + seasonId);
+  return resp.json();
+}
+
+async function apiFetchPlayerBadges(displayName) {
+  try {
+    const resp = await fetch(LEADERBOARD_WORKER_URL + '/api/badges/' + encodeURIComponent(displayName));
+    if (!resp.ok) return [];
+    const data = await resp.json();
+    return data.badges || [];
+  } catch (_) { return []; }
+}
+
 // ── Display Name Modal ────────────────────────────────────────────────────────
 
 /**
@@ -160,10 +174,47 @@ async function _loadLbTab(tab) {
 
   try {
     if (tab === 'season') {
-      const data = await apiFetchSeasonLeaderboard();
-      if (!data || !data.entries) throw new Error('bad response');
-      const label = data.seasonName || 'Current Season';
-      _renderLeaderboard(body, data.entries, null, label, true);
+      // Try active season first; fall back to ended-season archive
+      let rendered = false;
+
+      const activeSeason = typeof getSeasonConfig === 'function' ? getSeasonConfig() : null;
+      const endedSeason  = typeof getEndedSeasonConfig === 'function' ? getEndedSeasonConfig() : null;
+
+      if (activeSeason && activeSeason.seasonId) {
+        // Active season — show live leaderboard
+        const data = await apiFetchSeasonLeaderboard();
+        if (data && data.entries) {
+          const label = data.seasonName || 'Current Season';
+          _renderLeaderboard(body, data.entries, null, label, true);
+          rendered = true;
+        }
+      }
+
+      if (!rendered && endedSeason && endedSeason.seasonId) {
+        // Season just ended — show archive
+        const archive = await apiFetchSeasonArchive(endedSeason.seasonId);
+        if (archive && archive.top10) {
+          const entries = archive.top10.map(function(e) {
+            return {
+              rank: e.rank,
+              displayName: e.displayName,
+              totalScore: e.totalScore,
+              gamesPlayed: e.gamesPlayed,
+              _archiveBadge: e.badge,
+            };
+          });
+          _renderLeaderboard(body, entries, null, (archive.name || 'Season') + ' — Final', true);
+          rendered = true;
+        }
+      }
+
+      if (!rendered) {
+        // Fallback: try the live endpoint anyway (operator may not have set ended flag yet)
+        const data = await apiFetchSeasonLeaderboard();
+        if (!data || !data.entries) throw new Error('bad response');
+        const label = data.seasonName || 'Season';
+        _renderLeaderboard(body, data.entries, null, label, true);
+      }
     } else if (tab === 'thisweek' || tab === 'lastweek') {
       const weekStr = tab === 'thisweek' ? getWeeklyDateString() : _getLastWeekString();
       const data = await apiFetchWeeklyLeaderboard(weekStr);

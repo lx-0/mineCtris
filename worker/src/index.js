@@ -8,6 +8,8 @@
  *   GET  /api/leaderboard/week/:w  — return top 20 for a given ISO week (YYYY-Www)
  *   GET  /api/season               — return current season config (or { active: false })
  *   GET  /api/leaderboard/season   — return top 20 for the current season
+ *   GET  /api/season/archive/:id   — return permanently archived end-of-season results
+ *   GET  /api/badges/:displayName  — return all season badges earned by a player
  *
  * KV Structure (binding: LEADERBOARD_KV):
  *   leaderboard:YYYY-MM-DD        → JSON array of top 100 daily entries, sorted desc by score
@@ -23,6 +25,12 @@
  *   season:{seasonId}:leaderboard → JSON array of top 100 season entries, sorted desc by totalScore
  *                                     Each entry: { displayName, totalScore, gamesPlayed,
  *                                                   firstSubmittedAt, lastSubmittedAt }
+ *   season:{seasonId}:archive     → JSON permanent archive (no TTL):
+ *                                     { seasonId, name, theme, endDate, archivedAt,
+ *                                       top10: [{ rank, displayName, totalScore, gamesPlayed, badge }] }
+ *   season:{seasonId}:archived    → "1" flag to prevent double-archiving
+ *   badge:{displayName}           → JSON array (no TTL), each entry:
+ *                                     { seasonId, seasonName, rank, label, icon, awardedAt }
  */
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -447,7 +455,15 @@ async function handleGetSeason(env) {
   }
   const today = todayUTC();
   const active = today >= config.startDate && today <= config.endDate;
-  return jsonResponse({ active, ...config });
+  const ended  = today > config.endDate;
+
+  // Trigger archiving in the background when season has just ended
+  if (ended) {
+    // Use waitUntil if available (proper Cloudflare pattern); fall back to fire-and-forget
+    _tryArchiveSeason(config, env).catch(() => {});
+  }
+
+  return jsonResponse({ active, ended: ended || undefined, ...config });
 }
 
 // ── Season Leaderboard Fetch ──────────────────────────────────────────────────
@@ -471,6 +487,79 @@ async function handleGetSeasonLeaderboard(env) {
     entries: top20,
     total: leaderboard.length,
   });
+}
+
+// ── Season Archive ────────────────────────────────────────────────────────────
+
+const _BADGE_LABELS = ['Champion', 'Veteran', 'Contender'];
+const _BADGE_ICONS  = ['🏆', '🥈', '🥉'];
+
+/**
+ * Archive the top-10 season leaderboard and distribute badges to top-3.
+ * Idempotent: guarded by season:{seasonId}:archived flag.
+ */
+async function _tryArchiveSeason(config, env) {
+  const flagKey = `season:${config.seasonId}:archived`;
+  const alreadyDone = await env.LEADERBOARD_KV.get(flagKey);
+  if (alreadyDone) return;
+
+  // Set flag first to prevent race conditions (Cloudflare KV is eventually consistent
+  // but this is best-effort dedup for the common case).
+  await env.LEADERBOARD_KV.put(flagKey, '1');
+
+  const lbKey = `season:${config.seasonId}:leaderboard`;
+  const leaderboard = (await env.LEADERBOARD_KV.get(lbKey, { type: 'json' })) || [];
+  const top10 = leaderboard.slice(0, 10).map((e, i) => ({
+    rank: i + 1,
+    displayName: e.displayName,
+    totalScore: e.totalScore,
+    gamesPlayed: e.gamesPlayed,
+    badge: i < 3 ? _BADGE_LABELS[i] : null,
+  }));
+
+  const archive = {
+    seasonId: config.seasonId,
+    name: config.name,
+    theme: config.theme,
+    endDate: config.endDate,
+    archivedAt: new Date().toISOString(),
+    top10,
+  };
+
+  // Permanent storage (no TTL)
+  await env.LEADERBOARD_KV.put(`season:${config.seasonId}:archive`, JSON.stringify(archive));
+
+  // Distribute badges to top-3 players
+  const badgePromises = top10.slice(0, 3).map(async (player, i) => {
+    const badgeKey = `badge:${player.displayName.toLowerCase()}`;
+    const existing = (await env.LEADERBOARD_KV.get(badgeKey, { type: 'json' })) || [];
+    existing.push({
+      seasonId: config.seasonId,
+      seasonName: config.name,
+      rank: i + 1,
+      label: _BADGE_LABELS[i],
+      icon: _BADGE_ICONS[i],
+      awardedAt: archive.archivedAt,
+    });
+    await env.LEADERBOARD_KV.put(badgeKey, JSON.stringify(existing));
+  });
+  await Promise.all(badgePromises);
+}
+
+async function handleGetSeasonArchive(seasonId, env) {
+  if (!seasonId) return jsonResponse({ error: 'Missing seasonId' }, 400);
+  const archive = await env.LEADERBOARD_KV.get(`season:${seasonId}:archive`, { type: 'json' });
+  if (!archive) return jsonResponse({ error: 'Archive not found' }, 404);
+  return jsonResponse(archive);
+}
+
+async function handleGetBadges(displayName, env) {
+  if (!displayName || !DISPLAY_NAME_REGEX.test(displayName)) {
+    return jsonResponse({ error: 'Invalid display name' }, 400);
+  }
+  const badgeKey = `badge:${displayName.toLowerCase()}`;
+  const badges = (await env.LEADERBOARD_KV.get(badgeKey, { type: 'json' })) || [];
+  return jsonResponse({ displayName, badges });
 }
 
 // ── Router ────────────────────────────────────────────────────────────────────
@@ -499,6 +588,12 @@ export default {
       response = await handlePostWeeklyScore(request, env);
     } else if (method === 'GET' && url.pathname === '/api/season') {
       response = await handleGetSeason(env);
+    } else if (method === 'GET' && url.pathname.startsWith('/api/season/archive/')) {
+      const seasonId = url.pathname.replace('/api/season/archive/', '');
+      response = await handleGetSeasonArchive(seasonId, env);
+    } else if (method === 'GET' && url.pathname.startsWith('/api/badges/')) {
+      const displayName = url.pathname.replace('/api/badges/', '');
+      response = await handleGetBadges(displayName, env);
     } else if (method === 'GET' && url.pathname === '/api/leaderboard/season') {
       response = await handleGetSeasonLeaderboard(env);
     } else if (method === 'GET' && url.pathname.startsWith('/api/leaderboard/week/')) {
