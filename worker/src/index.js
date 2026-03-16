@@ -6,6 +6,8 @@
  *   GET  /api/leaderboard/:date    — return top 20 for a given date (YYYY-MM-DD)
  *   POST /api/scores/weekly        — validate and submit a weekly score
  *   GET  /api/leaderboard/week/:w  — return top 20 for a given ISO week (YYYY-Www)
+ *   GET  /api/season               — return current season config (or { active: false })
+ *   GET  /api/leaderboard/season   — return top 20 for the current season
  *
  * KV Structure (binding: LEADERBOARD_KV):
  *   leaderboard:YYYY-MM-DD        → JSON array of top 100 daily entries, sorted desc by score
@@ -14,6 +16,13 @@
  *   leaderboard:week:YYYY-Www     → JSON array of top 100 weekly entries, sorted desc by score
  *   player:week:{name}:{weekStr}  → JSON { submittedAt } for weekly rate limiting
  *   ip:week:{hash}:{weekStr}      → JSON { count } for weekly IP rate limiting
+ *   ip:{hash}:{date}              → JSON { count } for daily IP rate limiting
+ *   season:current                → JSON season config (operator-managed):
+ *                                     { seasonId, name, theme, startDate, endDate,
+ *                                       leaderboardNamespace, exclusiveSkin, modifier }
+ *   season:{seasonId}:leaderboard → JSON array of top 100 season entries, sorted desc by totalScore
+ *                                     Each entry: { displayName, totalScore, gamesPlayed,
+ *                                                   firstSubmittedAt, lastSubmittedAt }
  */
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -259,6 +268,46 @@ async function handlePostScore(request, env) {
   // Return the entry's rank (position in leaderboard, 1-indexed)
   const rank = leaderboard.findIndex(e => e.displayName === displayName && e.score === scoreNum) + 1;
 
+  // 10. Update season leaderboard if a season is currently active
+  const seasonConfig = await env.LEADERBOARD_KV.get('season:current', { type: 'json' });
+  if (seasonConfig && date >= seasonConfig.startDate && date <= seasonConfig.endDate) {
+    const seasonLbKey = `season:${seasonConfig.seasonId}:leaderboard`;
+    let seasonBoard = (await env.LEADERBOARD_KV.get(seasonLbKey, { type: 'json' })) || [];
+
+    const playerIdx = seasonBoard.findIndex(
+      e => e.displayName.toLowerCase() === displayName.toLowerCase()
+    );
+    if (playerIdx >= 0) {
+      seasonBoard[playerIdx].totalScore += scoreNum;
+      seasonBoard[playerIdx].gamesPlayed += 1;
+      seasonBoard[playerIdx].lastSubmittedAt = entry.submittedAt;
+    } else {
+      seasonBoard.push({
+        displayName,
+        totalScore: scoreNum,
+        gamesPlayed: 1,
+        firstSubmittedAt: entry.submittedAt,
+        lastSubmittedAt: entry.submittedAt,
+      });
+    }
+
+    // Sort: desc totalScore, then asc gamesPlayed (efficiency), then asc firstSubmittedAt
+    seasonBoard.sort((a, b) => {
+      if (b.totalScore !== a.totalScore) return b.totalScore - a.totalScore;
+      if (a.gamesPlayed !== b.gamesPlayed) return a.gamesPlayed - b.gamesPlayed;
+      return a.firstSubmittedAt.localeCompare(b.firstSubmittedAt);
+    });
+    if (seasonBoard.length > LEADERBOARD_MAX) {
+      seasonBoard = seasonBoard.slice(0, LEADERBOARD_MAX);
+    }
+
+    // TTL: 6-week season + 7-day off-season + 30-day buffer
+    const seasonTtl = 60 * 60 * 24 * (7 * 6 + 7 + 30);
+    await env.LEADERBOARD_KV.put(seasonLbKey, JSON.stringify(seasonBoard), {
+      expirationTtl: seasonTtl,
+    });
+  }
+
   return jsonResponse({ ok: true, rank, total: leaderboard.length });
 }
 
@@ -389,6 +438,41 @@ async function handleGetWeeklyLeaderboard(weekStr, env) {
   return jsonResponse({ week: weekStr, entries: top20, total: leaderboard.length });
 }
 
+// ── Season Config Fetch ───────────────────────────────────────────────────────
+
+async function handleGetSeason(env) {
+  const config = await env.LEADERBOARD_KV.get('season:current', { type: 'json' });
+  if (!config) {
+    return jsonResponse({ active: false });
+  }
+  const today = todayUTC();
+  const active = today >= config.startDate && today <= config.endDate;
+  return jsonResponse({ active, ...config });
+}
+
+// ── Season Leaderboard Fetch ──────────────────────────────────────────────────
+
+async function handleGetSeasonLeaderboard(env) {
+  const config = await env.LEADERBOARD_KV.get('season:current', { type: 'json' });
+  if (!config) {
+    return jsonResponse({ error: 'No active season' }, 404);
+  }
+  const lbKey = `season:${config.seasonId}:leaderboard`;
+  const leaderboard = (await env.LEADERBOARD_KV.get(lbKey, { type: 'json' })) || [];
+  const top20 = leaderboard.slice(0, TOP_N).map((entry, i) => ({
+    rank: i + 1,
+    displayName: entry.displayName,
+    totalScore: entry.totalScore,
+    gamesPlayed: entry.gamesPlayed,
+  }));
+  return jsonResponse({
+    seasonId: config.seasonId,
+    seasonName: config.name,
+    entries: top20,
+    total: leaderboard.length,
+  });
+}
+
 // ── Router ────────────────────────────────────────────────────────────────────
 
 export default {
@@ -413,6 +497,10 @@ export default {
       response = await handlePostScore(request, env);
     } else if (method === 'POST' && url.pathname === '/api/scores/weekly') {
       response = await handlePostWeeklyScore(request, env);
+    } else if (method === 'GET' && url.pathname === '/api/season') {
+      response = await handleGetSeason(env);
+    } else if (method === 'GET' && url.pathname === '/api/leaderboard/season') {
+      response = await handleGetSeasonLeaderboard(env);
     } else if (method === 'GET' && url.pathname.startsWith('/api/leaderboard/week/')) {
       const weekStr = url.pathname.replace('/api/leaderboard/week/', '');
       response = await handleGetWeeklyLeaderboard(weekStr, env);
