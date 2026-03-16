@@ -165,9 +165,13 @@ function triggerGameOver() {
     );
     renderDailyBestGameOver(isNewDailyBest);
     if (typeof achOnDailyComplete === "function") achOnDailyComplete();
+    if (typeof initLeaderboardSubmitBtn === "function") {
+      initLeaderboardSubmitBtn(state.score, state.linesCleared);
+    }
   } else {
     const dailyEl = document.getElementById('daily-go-section');
     if (dailyEl) dailyEl.style.display = 'none';
+    if (typeof hideLeaderboardSubmitBtn === "function") hideLeaderboardSubmitBtn();
   }
 
   // Wire up Share Score button

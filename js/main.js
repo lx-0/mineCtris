@@ -126,6 +126,7 @@ function init() {
 
   initAudio();
   initSettings();
+  if (typeof initLeaderboard === "function") initLeaderboard();
 
   scene = new THREE.Scene();
   camera = new THREE.PerspectiveCamera(

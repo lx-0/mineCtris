@@ -96,6 +96,7 @@
               <div class="mode-card-pb" id="mode-pb-daily"></div>
             </div>
           </div>
+          <button id="mode-select-lb-btn">&#127942; Leaderboard</button>
           <button id="mode-select-back">&#8592; Back</button>
         </div>
       </div>
@@ -152,6 +153,9 @@
         <div id="daily-go-section" style="display:none;"></div>
         <button id="go-share-btn">Share Score</button>
         <div id="go-share-feedback"></div>
+        <button id="lb-submit-btn" style="display:none;">Submit to Leaderboard</button>
+        <div id="lb-submit-feedback" class="lb-submit-feedback"></div>
+        <button id="go-lb-btn">&#127942; Leaderboard</button>
         <button id="play-again-btn">Play Again <span class="key-hint">[P]</span></button>
         <button id="go-main-menu-btn">Main Menu</button>
       </div>
@@ -232,6 +236,13 @@
             </label>
           </div>
           <div class="settings-hint">Deuteranopia-safe palette + surface patterns</div>
+          <div class="settings-section-divider"></div>
+          <div class="settings-label settings-label-section">Leaderboard Name</div>
+          <div id="settings-displayname-row" class="settings-row">
+            <input type="text" id="settings-displayname-input" maxlength="16" autocomplete="off" spellcheck="false" placeholder="YourName">
+            <button id="settings-displayname-save-btn">Save</button>
+          </div>
+          <div id="settings-displayname-feedback"></div>
           <div class="settings-section-divider"></div>
           <div class="settings-label settings-label-section">Block Skin Theme</div>
           <div id="theme-selector">
@@ -314,6 +325,36 @@
 
       <!-- Context-sensitive crafting hint toast -->
       <div id="craft-hint-toast">Tip: Press C to craft with your materials!</div>
+
+      <!-- Display name modal -->
+      <div id="lb-name-modal" style="display:none;">
+        <div id="lb-name-box">
+          <div id="lb-name-title">DISPLAY NAME</div>
+          <div id="lb-name-hint">Letters, numbers, and _ (max 16)</div>
+          <input type="text" id="lb-name-input" maxlength="16" autocomplete="off" spellcheck="false" placeholder="YourName">
+          <div id="lb-name-error"></div>
+          <div id="lb-name-actions">
+            <button id="lb-name-save-btn">Save</button>
+            <button id="lb-name-cancel-btn">Cancel</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Leaderboard panel overlay -->
+      <div id="lb-panel-overlay" style="display:none;">
+        <div id="lb-panel">
+          <div id="lb-panel-header">
+            <div id="lb-panel-title">LEADERBOARD</div>
+            <button id="lb-panel-refresh-btn" title="Refresh">&#8635;</button>
+          </div>
+          <div id="lb-tabs">
+            <button id="lb-tab-today" class="lb-tab lb-tab-active">Today</button>
+            <button id="lb-tab-yesterday" class="lb-tab">Yesterday</button>
+          </div>
+          <div id="lb-panel-body"></div>
+          <button id="lb-panel-close-btn">Close</button>
+        </div>
+      </div>
     </div>
 
     <!-- Game modules — order matters: dependencies before dependents -->
@@ -342,6 +383,7 @@
     <script src="js/aura.js"></script>
     <script src="js/tutorial.js"></script>
     <script src="js/settings.js"></script>
+    <script src="js/leaderboard.js"></script>
     <script src="js/savestate.js"></script>
     <script src="js/main.js"></script>
   </body>

@@ -1948,3 +1948,281 @@ body.theme-candy .inv-slot.selected {
   border-color: #ff99cc;
   box-shadow: 0 0 8px rgba(255, 153, 204, 0.65);
 }
+
+/* ── Leaderboard: display name modal ── */
+#lb-name-modal {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.85);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 500;
+}
+#lb-name-box {
+  background: #0d1117;
+  border: 2px solid #00ff88;
+  border-radius: 6px;
+  padding: 28px 32px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  width: 320px;
+  max-width: 90vw;
+  box-shadow: 0 0 24px rgba(0, 255, 136, 0.3);
+}
+#lb-name-title {
+  font-family: "Press Start 2P", cursive;
+  font-size: 11px;
+  color: #00ff88;
+  letter-spacing: 2px;
+  text-shadow: 0 0 8px #00ff88;
+}
+#lb-name-hint {
+  font-family: "Press Start 2P", cursive;
+  font-size: 7px;
+  color: rgba(0, 255, 136, 0.55);
+}
+#lb-name-input {
+  font-family: "Press Start 2P", cursive;
+  font-size: 12px;
+  background: rgba(0, 255, 136, 0.07);
+  border: 1px solid rgba(0, 255, 136, 0.45);
+  border-radius: 4px;
+  color: #0f0;
+  padding: 10px 14px;
+  width: 100%;
+  box-sizing: border-box;
+  text-align: center;
+  outline: none;
+}
+#lb-name-input:focus { border-color: #00ff88; box-shadow: 0 0 8px rgba(0,255,136,0.3); }
+#lb-name-error {
+  font-family: "Press Start 2P", cursive;
+  font-size: 7px;
+  color: #f55;
+  min-height: 14px;
+  text-align: center;
+}
+#lb-name-actions {
+  display: flex;
+  gap: 12px;
+}
+#lb-name-save-btn, #lb-name-cancel-btn {
+  font-family: "Press Start 2P", cursive;
+  font-size: 9px;
+  border: none;
+  border-radius: 4px;
+  padding: 10px 18px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+#lb-name-save-btn   { background: #0f0; color: #000; }
+#lb-name-save-btn:hover   { background: #ff0; }
+#lb-name-cancel-btn { background: rgba(255,255,255,0.1); color: #aaa; }
+#lb-name-cancel-btn:hover { background: rgba(255,255,255,0.2); color: #fff; }
+
+/* ── Leaderboard: panel overlay ── */
+#lb-panel-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.88);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 400;
+}
+#lb-panel {
+  background: #0d1117;
+  border: 2px solid #00ff88;
+  border-radius: 6px;
+  padding: 24px 28px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  width: 480px;
+  max-width: 94vw;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 0 28px rgba(0, 255, 136, 0.25);
+}
+#lb-panel-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  justify-content: center;
+}
+#lb-panel-title {
+  font-family: "Press Start 2P", cursive;
+  font-size: 12px;
+  color: #00ff88;
+  letter-spacing: 3px;
+  text-shadow: 0 0 10px #00ff88;
+}
+#lb-panel-refresh-btn {
+  font-size: 16px;
+  background: transparent;
+  border: 1px solid rgba(0,255,136,0.35);
+  border-radius: 4px;
+  color: #00ff88;
+  cursor: pointer;
+  padding: 2px 8px;
+  line-height: 1;
+  transition: background 0.15s;
+}
+#lb-panel-refresh-btn:hover { background: rgba(0,255,136,0.15); }
+#lb-tabs {
+  display: flex;
+  gap: 8px;
+}
+.lb-tab {
+  font-family: "Press Start 2P", cursive;
+  font-size: 8px;
+  background: transparent;
+  border: 1px solid rgba(0,255,136,0.3);
+  border-radius: 4px;
+  color: rgba(0,255,136,0.5);
+  padding: 7px 14px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.lb-tab:hover  { color: #00ff88; border-color: #00ff88; }
+.lb-tab-active { color: #00ff88; border-color: #00ff88; background: rgba(0,255,136,0.1); }
+#lb-panel-body {
+  width: 100%;
+  min-height: 80px;
+}
+.lb-loading, .lb-error, .lb-empty {
+  font-family: "Press Start 2P", cursive;
+  font-size: 8px;
+  color: rgba(0,255,136,0.6);
+  text-align: center;
+  padding: 24px 0;
+}
+.lb-error { color: #f55; }
+.lb-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: "Press Start 2P", cursive;
+  font-size: 8px;
+  color: #0f0;
+}
+.lb-table thead th {
+  color: rgba(0,255,0,0.55);
+  font-size: 7px;
+  padding: 4px 8px;
+  border-bottom: 1px solid rgba(0,255,0,0.2);
+  text-align: left;
+}
+.lb-table tbody td {
+  padding: 6px 8px;
+  border-bottom: 1px solid rgba(0,255,0,0.08);
+}
+.lb-row-me td { color: #ff0; }
+#lb-panel-close-btn {
+  font-family: "Press Start 2P", cursive;
+  font-size: 9px;
+  background: transparent;
+  border: 1px solid rgba(0,255,136,0.4);
+  border-radius: 4px;
+  color: #aaffcc;
+  padding: 10px 22px;
+  cursor: pointer;
+  transition: all 0.15s;
+  margin-top: 4px;
+}
+#lb-panel-close-btn:hover { color: #00ff88; border-color: #00ff88; }
+
+/* ── Leaderboard: game-over submit button ── */
+#lb-submit-btn {
+  font-family: "Press Start 2P", cursive;
+  font-size: 12px;
+  color: #000;
+  background: #ffb400;
+  border: none;
+  padding: 14px 28px;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background 0.15s;
+}
+#lb-submit-btn:hover:not(:disabled) { background: #ffd040; }
+#lb-submit-btn:disabled { opacity: 0.5; cursor: default; }
+.lb-submit-feedback {
+  font-family: "Press Start 2P", cursive;
+  font-size: 9px;
+  height: 18px;
+  margin-bottom: 4px;
+  text-align: center;
+}
+.lb-submit-ok  { color: #0f0; }
+.lb-submit-err { color: #f55; }
+#go-lb-btn {
+  font-family: "Press Start 2P", cursive;
+  font-size: 12px;
+  color: #000;
+  background: #00ff88;
+  border: none;
+  padding: 14px 28px;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background 0.15s;
+}
+#go-lb-btn:hover { background: #00ddaa; }
+#mode-select-lb-btn {
+  font-family: "Press Start 2P", cursive;
+  font-size: 0.65em;
+  background: transparent;
+  border: 1px solid rgba(0, 255, 136, 0.4);
+  color: #aaffcc;
+  padding: 10px 22px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+#mode-select-lb-btn:hover { color: #00ff88; border-color: #00ff88; }
+
+/* ── Settings: display name row ── */
+#settings-displayname-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  gap: 10px;
+}
+#settings-displayname-input {
+  font-family: "Press Start 2P", cursive;
+  font-size: 9px;
+  background: rgba(0,255,136,0.07);
+  border: 1px solid rgba(0,255,136,0.35);
+  border-radius: 4px;
+  color: #0f0;
+  padding: 7px 10px;
+  width: 140px;
+  outline: none;
+  text-align: center;
+}
+#settings-displayname-input:focus { border-color: #00ff88; }
+#settings-displayname-save-btn {
+  font-family: "Press Start 2P", cursive;
+  font-size: 8px;
+  background: #0f0;
+  color: #000;
+  border: none;
+  border-radius: 4px;
+  padding: 7px 12px;
+  cursor: pointer;
+  transition: background 0.15s;
+  white-space: nowrap;
+}
+#settings-displayname-save-btn:hover { background: #ff0; }
+#settings-displayname-feedback {
+  font-family: "Press Start 2P", cursive;
+  font-size: 7px;
+  color: #0f0;
+  height: 14px;
+  text-align: center;
+  width: 100%;
+}

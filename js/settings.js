@@ -257,6 +257,27 @@ function initSettings() {
     });
   }
 
+  // Wire up display name field.
+  const dnInput    = document.getElementById("settings-displayname-input");
+  const dnSaveBtn  = document.getElementById("settings-displayname-save-btn");
+  const dnFeedback = document.getElementById("settings-displayname-feedback");
+  if (dnSaveBtn && dnInput) {
+    dnSaveBtn.addEventListener("click", function() {
+      const val = dnInput.value.trim();
+      if (!/^[a-zA-Z0-9_]{1,16}$/.test(val)) {
+        if (dnFeedback) { dnFeedback.textContent = "Letters, numbers and _ only (max 16)"; dnFeedback.style.color = "#f55"; }
+        return;
+      }
+      if (typeof saveDisplayName === "function") saveDisplayName(val);
+      if (dnFeedback) {
+        dnFeedback.textContent = "Saved!";
+        dnFeedback.style.color = "#0f0";
+        clearTimeout(dnFeedback._t);
+        dnFeedback._t = setTimeout(function() { dnFeedback.textContent = ""; }, 1500);
+      }
+    });
+  }
+
   // Wire up theme buttons.
   ["classic", "nether", "ocean", "candy"].forEach(function(key) {
     const btn = document.getElementById("theme-btn-" + key);
@@ -267,6 +288,11 @@ function initSettings() {
   });
 }
 
+function _syncDisplayNameField() {
+  const input = document.getElementById("settings-displayname-input");
+  if (input && typeof loadDisplayName === "function") input.value = loadDisplayName();
+}
+
 /** Show the settings overlay. Optional onClose callback fires when panel is dismissed. */
 function openSettings(onClose) {
   _settingsCloseCallback = onClose || null;
@@ -274,6 +300,7 @@ function openSettings(onClose) {
   const cbToggle = document.getElementById("cb-toggle");
   if (cbToggle) cbToggle.checked = colorblindMode;
   _syncThemeButtons();
+  _syncDisplayNameField();
   const overlay = document.getElementById("settings-overlay");
   if (overlay) overlay.style.display = "flex";
 }
