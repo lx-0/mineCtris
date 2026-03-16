@@ -97,6 +97,40 @@ const COLORS = [
   0x800080,
 ];
 
+// Deuteranopia-safe palette — blue/orange/amber/yellow/purple; never relies on red-green.
+// Index maps 1:1 with COLORS.
+const COLORBLIND_COLORS = [
+  null,
+  0xee6600, // 1 → deep orange   (was dirt brown)
+  0x2277dd, // 2 → bright blue   (was stone grey)
+  0xffdd00, // 3 → yellow        (was gold)
+  0x55aaff, // 4 → sky blue      (was ice cyan)
+  0xff8c00, // 5 → amber         (was moss green)
+  0x9933cc, // 6 → violet        (was lava red)
+  0x004499, // 7 → dark navy     (was crystal purple)
+];
+
+// Surface pattern index per color index (makes color never the sole differentiator).
+// 0=solid, 1=h-stripes, 2=dots, 3=crosshatch, 4=diagonal, 5=grid, 6=checkerboard
+const COLORBLIND_PATTERNS = [
+  0, // unused
+  1, // orange    - horizontal stripes
+  2, // blue      - polka dots
+  3, // yellow    - crosshatch
+  4, // sky blue  - diagonal stripes
+  5, // amber     - grid
+  6, // violet    - checkerboard
+  0, // dark navy - solid (very dark, clearly distinct)
+];
+
+// Reverse lookup: COLORS hex integer → color index (used for live material swapping).
+const COLOR_TO_INDEX = {};
+(function () {
+  for (let _i = 1; _i < COLORS.length; _i++) {
+    if (COLORS[_i] !== null) COLOR_TO_INDEX[COLORS[_i]] = _i;
+  }
+}());
+
 // Tetromino shape definitions (row-major, value = color index).
 const SHAPES = [
   [],

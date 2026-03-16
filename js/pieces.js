@@ -111,7 +111,10 @@ function updateNextPiecesHUD() {
   if (!nextPiecesEl) return;
   let html = '<div class="np-label">NEXT</div><div class="np-pieces-row">';
   pieceQueue.forEach(({ index, shape }) => {
-    const hex = '#' + COLORS[index].toString(16).padStart(6, '0');
+    const palette = (colorblindMode && COLORBLIND_COLORS[index] !== null)
+      ? COLORBLIND_COLORS[index]
+      : COLORS[index];
+    const hex = '#' + palette.toString(16).padStart(6, '0');
     html += '<div class="np-piece">';
     shape.forEach(row => {
       html += '<div class="np-row">';

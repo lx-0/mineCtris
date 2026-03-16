@@ -35,7 +35,11 @@ function saveGameState() {
         x: gp.x,
         y: gp.y,
         z: gp.z,
-        color: obj.material.color.getHex()
+        // Always save the canonical (standard palette) color so the block
+        // renders correctly regardless of colorblind mode on reload.
+        color: (obj.userData.canonicalColor !== undefined)
+          ? obj.userData.canonicalColor
+          : obj.material.color.getHex()
       });
     }
   });

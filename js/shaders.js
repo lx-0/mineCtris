@@ -232,3 +232,109 @@ diffuseColor.rgb += blockNoise(vWorldPos * uNoiseScale) * uNoiseStrength;`
 
   return mat;
 }
+
+/**
+ * Create a MeshStandardMaterial for colorblind mode.
+ * Uses a deuteranopia-safe color and overlays a bold surface pattern so that
+ * color is never the only differentiator between block types.
+ *
+ * patternType: 0=solid, 1=h-stripes, 2=dots, 3=crosshatch,
+ *              4=diagonal, 5=grid, 6=checkerboard
+ */
+function createBlockMaterialColorblind(colorHex, patternType) {
+  const threeColor = new THREE.Color(colorHex);
+  const pType = (typeof patternType === 'number') ? patternType : 0;
+
+  const mat = new THREE.MeshStandardMaterial({
+    color: threeColor,
+    roughness: 0.75,
+    metalness: 0.0,
+    vertexColors: true,
+  });
+
+  // Build pattern GLSL snippet (world-space coords for scale-consistent patterns).
+  let patternGlsl = '';
+  if (pType === 1) {
+    // Horizontal stripes — alternating Y bands
+    patternGlsl = `
+{
+  float _s = step(0.45, mod(vWorldPos.y * 2.5, 1.0));
+  diffuseColor.rgb = mix(diffuseColor.rgb * 0.40, diffuseColor.rgb, _s);
+}`;
+  } else if (pType === 2) {
+    // Polka dots in the XZ plane
+    patternGlsl = `
+{
+  vec2 _dp = mod(vWorldPos.xz * 2.2, 1.0) - 0.5;
+  float _dot = step(length(_dp), 0.28);
+  diffuseColor.rgb = mix(diffuseColor.rgb * 0.35, diffuseColor.rgb, _dot);
+}`;
+  } else if (pType === 3) {
+    // Crosshatch — thin dark lines on X and Z
+    patternGlsl = `
+{
+  float _lx = step(0.82, mod(vWorldPos.x * 3.5, 1.0));
+  float _lz = step(0.82, mod(vWorldPos.z * 3.5, 1.0));
+  float _ch = max(_lx, _lz);
+  diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.0), _ch * 0.65);
+}`;
+  } else if (pType === 4) {
+    // Diagonal stripes (XZ diagonal)
+    patternGlsl = `
+{
+  float _diag = mod((vWorldPos.x + vWorldPos.z) * 2.5, 1.0);
+  float _ds = step(0.5, _diag);
+  diffuseColor.rgb = mix(diffuseColor.rgb * 0.40, diffuseColor.rgb, _ds);
+}`;
+  } else if (pType === 5) {
+    // Small square grid lines
+    patternGlsl = `
+{
+  float _gx = step(0.88, mod(vWorldPos.x * 3.5, 1.0));
+  float _gz = step(0.88, mod(vWorldPos.z * 3.5, 1.0));
+  float _grid = max(_gx, _gz);
+  diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.0), _grid * 0.65);
+}`;
+  } else if (pType === 6) {
+    // Checkerboard
+    patternGlsl = `
+{
+  float _ck = mod(floor(vWorldPos.x * 2.0) + floor(vWorldPos.y * 2.0) + floor(vWorldPos.z * 2.0), 2.0);
+  diffuseColor.rgb = mix(diffuseColor.rgb * 0.50, diffuseColor.rgb * 1.35, _ck);
+}`;
+  }
+
+  mat.onBeforeCompile = function(shader) {
+    shader.uniforms.uNoiseScale    = { value: 5.0 };
+    shader.uniforms.uNoiseStrength = { value: 0.08 };
+
+    shader.vertexShader = shader.vertexShader.replace(
+      '#include <common>',
+      '#include <common>\nvarying vec3 vWorldPos;'
+    );
+    shader.vertexShader = shader.vertexShader.replace(
+      '#include <begin_vertex>',
+      '#include <begin_vertex>\nvWorldPos = (modelMatrix * vec4(transformed, 1.0)).xyz;'
+    );
+
+    shader.fragmentShader = shader.fragmentShader.replace(
+      '#include <common>',
+      `#include <common>
+varying vec3 vWorldPos;
+uniform float uNoiseScale;
+uniform float uNoiseStrength;
+float cbBlockNoise(vec3 p) {
+  vec3 fp = floor(p);
+  return fract(sin(dot(fp, vec3(127.1, 311.7, 74.7))) * 43758.5453) * 2.0 - 1.0;
+}`
+    );
+
+    shader.fragmentShader = shader.fragmentShader.replace(
+      '#include <color_fragment>',
+      `#include <color_fragment>
+diffuseColor.rgb += cbBlockNoise(vWorldPos * uNoiseScale) * uNoiseStrength;` + patternGlsl
+    );
+  };
+
+  return mat;
+}

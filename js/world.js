@@ -55,19 +55,37 @@ function createBlockMesh(color) {
     linewidth: 2,
   });
   const edgesMesh = new THREE.LineSegments(edges, lineMaterial);
-  const material = createBlockMaterial(color);
+
+  // Resolve the canonical game color (always the standard palette hex).
+  const canonicalHex = (color instanceof THREE.Color) ? color.getHex() : new THREE.Color(color).getHex();
+
+  // Choose material: colorblind-safe or standard.
+  let material;
+  if (colorblindMode) {
+    const cbIdx = COLOR_TO_INDEX[canonicalHex];
+    if (cbIdx !== undefined && COLORBLIND_COLORS[cbIdx] !== null) {
+      material = createBlockMaterialColorblind(COLORBLIND_COLORS[cbIdx], COLORBLIND_PATTERNS[cbIdx]);
+    } else {
+      material = createBlockMaterial(color);
+    }
+  } else {
+    material = createBlockMaterial(color);
+  }
+
   const cube = new THREE.Mesh(geometry, material);
   cube.add(edgesMesh);
   cube.userData.isBlock = true;
+  // originalColor tracks the current display color (used by mining.js damage tinting).
   cube.userData.originalColor = material.color.clone();
+  // canonicalColor always holds the standard palette hex for save/restore and mode-switching.
+  cube.userData.canonicalColor = canonicalHex;
 
-  // Tag with material type and per-material properties.
-  const hexColor = material.color.getHex();
-  const materialName = COLOR_TO_MATERIAL[hexColor];
+  // Tag with material type and per-material properties (keyed on canonical color).
+  const materialName = COLOR_TO_MATERIAL[canonicalHex];
   if (materialName) {
     cube.userData.materialType = materialName;
     cube.userData.miningClicks = BLOCK_TYPES[materialName].hits;
-    if (BLOCK_TYPES[materialName].effect === "lava_glow") {
+    if (BLOCK_TYPES[materialName].effect === "lava_glow" && !colorblindMode) {
       const lavaEmissive = new THREE.Color(0x220800);
       cube.material.emissive = lavaEmissive;
       cube.material.needsUpdate = true;

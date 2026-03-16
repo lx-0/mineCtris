@@ -161,6 +161,10 @@ const BLITZ_BONUS_THRESHOLD_MS = 30000;  // final 30 seconds
 const BLITZ_BONUS_MULTIPLIER   = 1.5;
 const BLITZ_FIXED_MULTIPLIER   = Math.pow(1.1, 4); // ≈ 1.4641 (same as Sprint)
 
+// ── Accessibility ─────────────────────────────────────────────────────────────
+// true = deuteranopia-safe palette + surface patterns are used for block rendering.
+let colorblindMode = false;
+
 // ── Session stats (reset each game, accumulated for lifetime stats on game over) ──
 let blocksPlaced = 0;
 let sessionCrafts = 0;
