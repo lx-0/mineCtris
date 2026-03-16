@@ -184,6 +184,7 @@ function triggerGameOver() {
       state.linesCleared
     );
     renderWeeklyBestGameOver(isNewWeeklyBest);
+    if (typeof achOnWeeklyComplete === "function") achOnWeeklyComplete(state.score);
     if (typeof initWeeklyLeaderboardSubmitBtn === "function") {
       initWeeklyLeaderboardSubmitBtn(state.score, state.linesCleared);
     }

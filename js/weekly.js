@@ -39,6 +39,31 @@ function getCurrentWeekLabel() {
   return 'W' + getWeeklyDateString().split('-W')[1];
 }
 
+/** Returns the UTC Monday Date for the given ISO week string "YYYY-Www". */
+function _getWeekMonday(weekStr) {
+  const parts = weekStr.split('-W');
+  const year = parseInt(parts[0], 10);
+  const week = parseInt(parts[1], 10);
+  // Jan 4 is always in ISO week 1
+  const jan4 = new Date(Date.UTC(year, 0, 4));
+  const dayOfWeek = jan4.getUTCDay() || 7; // Mon=1 … Sun=7
+  const week1Mon = new Date(Date.UTC(year, 0, 4 - (dayOfWeek - 1)));
+  return new Date(Date.UTC(week1Mon.getUTCFullYear(), week1Mon.getUTCMonth(),
+    week1Mon.getUTCDate() + (week - 1) * 7));
+}
+
+/**
+ * Returns a human-readable date range for the ISO week, e.g. "Mar 16\u2013Mar 22".
+ */
+function formatWeeklyDateRange(weekStr) {
+  const mon = _getWeekMonday(weekStr);
+  const sun = new Date(Date.UTC(mon.getUTCFullYear(), mon.getUTCMonth(), mon.getUTCDate() + 6));
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const monStr = months[mon.getUTCMonth()] + '\u00a0' + mon.getUTCDate();
+  const sunStr = months[sun.getUTCMonth()] + '\u00a0' + sun.getUTCDate();
+  return monStr + '\u2013' + sunStr;
+}
+
 /** Returns a fresh seeded PRNG for the current week (reuses mulberry32/_hashDate from daily.js). */
 function getWeeklyPrng() {
   return mulberry32(_hashDate(getWeeklyDateString()));

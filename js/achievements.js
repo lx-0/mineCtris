@@ -23,6 +23,7 @@ const ACHIEVEMENTS = [
   { id: "survivor",         name: "Survivor",         icon: "\u{1F6E1}\uFE0F", desc: "Survive 10 minutes in Classic" },
   { id: "rock_collector",   name: "Rock Collector",   icon: "\u{1FAA8}", desc: "Mine 10 rocks" },
   { id: "alchemist",        name: "Alchemist",        icon: "\u2697\uFE0F", desc: "Craft 5 consumable items" },
+  { id: "weekly_champion",  name: "Weekly Champion",  icon: "\u{1F3C5}", desc: "Complete a Weekly Challenge" },
   { id: "completionist",    name: "Completionist",    icon: "\u{1F3C6}", desc: "Unlock 10 achievements" },
 ];
 
@@ -248,4 +249,9 @@ function achOnSurvivalTime(seconds) {
   if (!isSprintMode && !isBlitzMode && seconds >= 600) {
     unlockAchievement("survivor");
   }
+}
+
+/** Call at game over in Weekly Challenge mode; pass final score. */
+function achOnWeeklyComplete(finalScore) {
+  if (finalScore > 0) unlockAchievement("weekly_champion");
 }

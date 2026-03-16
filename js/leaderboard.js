@@ -149,7 +149,10 @@ async function _loadLbTab(tab) {
       const weekStr = tab === 'thisweek' ? getWeeklyDateString() : _getLastWeekString();
       const data = await apiFetchWeeklyLeaderboard(weekStr);
       if (!data || !data.entries) throw new Error('bad response');
-      const label = formatWeeklyLabel(weekStr);
+      const label = formatWeeklyLabel(weekStr) +
+        (typeof formatWeeklyDateRange === 'function'
+          ? ' \u00b7 ' + formatWeeklyDateRange(weekStr)
+          : '');
       _renderLeaderboard(body, data.entries, null, label);
     } else {
       const date = tab === 'today' ? getDailyDateString() : _getYesterdayString();
