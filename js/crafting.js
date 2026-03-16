@@ -51,30 +51,62 @@ function renderCraftingPanel() {
   const tierEl = document.getElementById("crafting-pickaxe-tier");
   if (!recipesEl) return;
 
-  // Pickaxe tier indicator
+  // Pickaxe tier indicator — shows current tier and next upgrade hint
   if (tierEl) {
     const tierLabels = {
-      none:  "Default Pickaxe",
-      stone: "Stone Pickaxe (max 2 hits)",
-      iron:  "Iron Pickaxe (1-hit)",
+      none:    "Default Pickaxe",
+      stone:   "Stone Pickaxe (max 2 hits)",
+      iron:    "Iron Pickaxe (1-hit)",
+      diamond: "Diamond Pickaxe (1-hit + AOE)",
     };
     const tierColors = {
-      none:  "rgba(255,255,255,0.4)",
-      stone: "#aaaaaa",
-      iron:  "#88ccff",
+      none:    "rgba(255,255,255,0.4)",
+      stone:   "#aaaaaa",
+      iron:    "#88ccff",
+      diamond: "#7986cb",
     };
-    tierEl.textContent = "Current: " + (tierLabels[pickaxeTier] || "Default Pickaxe");
+    let tierText = "Mining Tier: " + (tierLabels[pickaxeTier] || "Default Pickaxe");
+    if (pickaxeTier === "iron" && hasCraftingBench) {
+      tierText += " → [Craft Diamond?]";
+    } else if (pickaxeTier === "iron" && !hasCraftingBench) {
+      tierText += " → [Need Crafting Bench for Diamond]";
+    }
+    tierEl.textContent = tierText;
     tierEl.style.color = tierColors[pickaxeTier] || "rgba(255,255,255,0.4)";
   }
 
+  // Consumable status line
+  let consumableStatusEl = document.getElementById("crafting-consumables");
+  if (!consumableStatusEl) {
+    consumableStatusEl = document.createElement("div");
+    consumableStatusEl.id = "crafting-consumables";
+    consumableStatusEl.style.cssText = "font-size:0.8em;color:#ccc;padding:4px 0 6px;";
+    const header = document.getElementById("crafting-header");
+    if (header && header.parentNode) {
+      header.parentNode.insertBefore(consumableStatusEl, recipesEl);
+    }
+  }
+  const flaskCount  = consumables.lava_flask  || 0;
+  const bridgeCount = consumables.ice_bridge  || 0;
+  if (flaskCount > 0 || bridgeCount > 0) {
+    const parts = [];
+    if (flaskCount  > 0) parts.push("Lava Flask x" + flaskCount  + " [F]");
+    if (bridgeCount > 0) parts.push("Ice Bridge x" + bridgeCount + " [G]");
+    consumableStatusEl.textContent = "Consumables: " + parts.join("  |  ");
+  } else {
+    consumableStatusEl.textContent = "";
+  }
+
   recipesEl.innerHTML = "";
-  const tierRank = { none: 0, stone: 1, iron: 2 };
+  const tierRank = { none: 0, stone: 1, iron: 2, diamond: 3 };
 
   RECIPES.forEach((recipe) => {
+    // Skip bench recipe if already built
+    if (recipe.outputType === "bench" && hasCraftingBench) return;
     // Skip pickaxe recipes already met or exceeded by current tier
-    if (recipe.outputType === "tool" && tierRank[pickaxeTier] >= tierRank[recipe.toolTier]) {
-      return;
-    }
+    if (recipe.outputType === "tool" && tierRank[pickaxeTier] >= tierRank[recipe.toolTier]) return;
+    // Skip advanced recipes gated behind Crafting Bench if bench not built
+    if (recipe.requiresBench && !hasCraftingBench) return;
 
     const canCraft = canCraftRecipe(recipe);
     const row = document.createElement("div");
@@ -122,6 +154,9 @@ function renderCraftingPanel() {
       outputEl.appendChild(document.createTextNode("\u2192 "));
       outputEl.appendChild(swatch);
       outputEl.appendChild(document.createTextNode(" \xd7" + recipe.outputCount));
+    } else if (recipe.outputType === "consumable") {
+      const existing = consumables[recipe.consumableType] || 0;
+      outputEl.textContent = "\u2192 " + recipe.name + (existing > 0 ? " (have " + existing + ")" : "");
     } else {
       outputEl.textContent = "\u2192 " + recipe.name;
     }
@@ -145,7 +180,16 @@ function renderCraftingPanel() {
     recipesEl.appendChild(row);
   });
 
-  // Empty state
+  // If bench not built yet, show a note about advanced recipes being locked
+  if (!hasCraftingBench) {
+    const gateNote = document.createElement("div");
+    gateNote.className = "craft-empty";
+    gateNote.style.cssText = "color:#aaa;font-size:0.8em;margin-top:6px;";
+    gateNote.textContent = "Craft a Crafting Bench to unlock Diamond Pickaxe, Lava Flask, and Ice Bridge.";
+    recipesEl.appendChild(gateNote);
+  }
+
+  // Empty state (no craftable or available recipes)
   if (!recipesEl.children.length) {
     const empty = document.createElement("div");
     empty.className = "craft-empty";
@@ -171,6 +215,12 @@ function craftRecipe(recipe) {
   } else if (recipe.outputType === "tool") {
     pickaxeTier = recipe.toolTier;
     if (typeof achOnCraft === "function") achOnCraft(recipe.toolTier);
+  } else if (recipe.outputType === "bench") {
+    hasCraftingBench = true;
+  } else if (recipe.outputType === "consumable") {
+    consumables[recipe.consumableType] = (consumables[recipe.consumableType] || 0) + recipe.outputCount;
+    sessionConsumableCrafts++;
+    if (typeof achOnConsumableCraft === "function") achOnConsumableCraft(sessionConsumableCrafts);
   }
 
   updateInventoryHUD();

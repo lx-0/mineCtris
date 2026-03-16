@@ -735,7 +735,7 @@ function onMouseDown(event) {
     );
     let clicksNeeded = targetedBlock.userData.miningClicks || MINING_CLICKS_NEEDED;
     if (pickaxeTier === "stone") clicksNeeded = Math.min(clicksNeeded, 2);
-    else if (pickaxeTier === "iron") clicksNeeded = 1;
+    else if (pickaxeTier === "iron" || pickaxeTier === "diamond") clicksNeeded = 1;
     isMining = true;
     miningAnimStartTime = clock.getElapsedTime();
     updateMaterialTooltip();
@@ -787,6 +787,10 @@ function onMouseDown(event) {
         (_objType ? OBJECT_TYPE_TO_MATERIAL[_objType] : null);
       addScore(_matName && BLOCK_TYPES[_matName] ? BLOCK_TYPES[_matName].points : 10);
       if (typeof achOnBlockMined === "function") achOnBlockMined(blocksMined, _objType);
+      // Save grid pos for diamond AOE (before block is removed from world)
+      const _brokenBlock = pickaxeTier === "diamond" ? (targetedBlock.userData.gridPos
+        ? { x: targetedBlock.userData.gridPos.x, y: targetedBlock.userData.gridPos.y, z: targetedBlock.userData.gridPos.z }
+        : null) : null;
 
       const blockColor =
         targetedBlock.userData.originalColor ||
@@ -819,6 +823,10 @@ function onMouseDown(event) {
 
       unregisterBlock(targetedBlock);
       worldGroup.remove(targetedBlock);
+      // Diamond Pickaxe AOE — mine up to 4 adjacent blocks in a cross pattern
+      if (pickaxeTier === "diamond" && _brokenBlock) {
+        _applyDiamondAOE(_brokenBlock);
+      }
       targetedBlock = null;
       miningProgress = 0;
       crosshair.classList.remove("target-locked");
@@ -826,6 +834,89 @@ function onMouseDown(event) {
       if (pickaxeGroup) pickaxeGroup.rotation.z = Math.PI / 8;
     }
   }
+}
+
+/**
+ * Find a landed block at the given grid coordinates (integer X/Y/Z).
+ * Only searches blocks that have a valid gridPos.
+ */
+function _findBlockAtGrid(gx, gy, gz) {
+  for (let i = 0; i < worldGroup.children.length; i++) {
+    const child = worldGroup.children[i];
+    const gp = child.userData.gridPos;
+    if (gp && gp.x === gx && gp.y === gy && gp.z === gz) return child;
+  }
+  return null;
+}
+
+/**
+ * Mine up to 4 adjacent blocks (N/S/E/W same Y) when diamond pickaxe breaks a block.
+ * @param {{ x:number, y:number, z:number }} origin  The grid position of the primary broken block.
+ */
+function _applyDiamondAOE(origin) {
+  const offsets = [[-1,0],[1,0],[0,-1],[0,1]];
+  offsets.forEach(([dx, dz]) => {
+    const neighbor = _findBlockAtGrid(origin.x + dx, origin.y, origin.z + dz);
+    if (!neighbor) return;
+    spawnDustParticles(neighbor, { breakBurst: true });
+    blocksMined++;
+    const nobjType = neighbor.userData.objectType;
+    const nmatName = neighbor.userData.materialType ||
+      (nobjType ? OBJECT_TYPE_TO_MATERIAL[nobjType] : null);
+    addScore(nmatName && BLOCK_TYPES[nmatName] ? BLOCK_TYPES[nmatName].points : 10);
+    if (typeof achOnBlockMined === "function") achOnBlockMined(blocksMined, nobjType);
+    const nColor = neighbor.userData.originalColor || neighbor.material.color;
+    addToInventory(threeColorToCss(nColor));
+    unregisterBlock(neighbor);
+    worldGroup.remove(neighbor);
+  });
+}
+
+/**
+ * Lava Flask activation: removes all blocks on the lowest occupied Y layer.
+ * Activated via keyboard shortcut F.
+ */
+function activateLavaFlask() {
+  if (!controls || !controls.isLocked || isGameOver) return;
+  if (!consumables.lava_flask || consumables.lava_flask <= 0) return;
+  // Find the lowest non-empty Y layer
+  let lowestY = Infinity;
+  for (const gy of gridOccupancy.keys()) {
+    if (gy < lowestY) lowestY = gy;
+  }
+  if (!isFinite(lowestY)) return;
+
+  consumables.lava_flask--;
+  showCraftedBanner("Lava Flask! Layer destroyed.");
+
+  // Collect all blocks at lowestY and remove them
+  const toRemove = worldGroup.children.filter(c => {
+    const gp = c.userData.gridPos;
+    return gp && gp.y === lowestY;
+  });
+  toRemove.forEach(block => {
+    spawnDustParticles(block, { breakBurst: true });
+    blocksMined++;
+    const oType = block.userData.objectType;
+    const mName = block.userData.materialType || (oType ? OBJECT_TYPE_TO_MATERIAL[oType] : null);
+    addScore(mName && BLOCK_TYPES[mName] ? BLOCK_TYPES[mName].points : 10);
+    unregisterBlock(block);
+    worldGroup.remove(block);
+  });
+  if (typeof achOnBlockMined === "function") achOnBlockMined(blocksMined, undefined);
+}
+
+/**
+ * Ice Bridge activation: slows all falling pieces by 20% for 10 seconds.
+ * Activated via keyboard shortcut G.
+ */
+function activateIceBridge() {
+  if (!controls || !controls.isLocked || isGameOver) return;
+  if (!consumables.ice_bridge || consumables.ice_bridge <= 0) return;
+  consumables.ice_bridge--;
+  iceBridgeSlowActive = true;
+  iceBridgeSlowTimer  = 10.0;
+  showCraftedBanner("Ice Bridge! 20% slow for 10s.");
 }
 
 function animate() {
@@ -860,6 +951,15 @@ function animate() {
           speedUpBannerTimer = 2.5;
         }
         updateScoreHUD();
+      }
+    }
+
+    // Tick ice bridge slow timer
+    if (iceBridgeSlowActive) {
+      iceBridgeSlowTimer -= delta;
+      if (iceBridgeSlowTimer <= 0) {
+        iceBridgeSlowActive = false;
+        iceBridgeSlowTimer  = 0;
       }
     }
 

@@ -272,6 +272,7 @@ function resetGame() {
   // Reset session stats for lifetime tracking
   blocksPlaced = 0;
   sessionCrafts = 0;
+  sessionConsumableCrafts = 0;
   sessionHighestComboCount = 0;
   if (typeof achResetSession === "function") achResetSession();
 
@@ -290,7 +291,11 @@ function resetGame() {
   updateInventoryHUD();
 
   // Reset crafting state
-  pickaxeTier = "none";
+  pickaxeTier        = "none";
+  hasCraftingBench   = false;
+  consumables        = { lava_flask: 0, ice_bridge: 0 };
+  iceBridgeSlowActive = false;
+  iceBridgeSlowTimer  = 0.0;
   closeCraftingPanel();
 
   // Clear tree respawn queue

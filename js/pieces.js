@@ -92,7 +92,12 @@ function _rng() {
 }
 
 function _randomShapeIndex() {
-  return Math.floor(_rng() * (SHAPES.length - 1)) + 1;
+  // Diamond (index 8) only spawns in Classic mode at Level 7+ (lastDifficultyTier >= 6).
+  // Never in Sprint or Blitz modes.
+  const diamondEligible = !isSprintMode && !isBlitzMode && lastDifficultyTier >= 6;
+  // Standard pool is indices 1–7; diamond adds index 8.
+  const poolSize = diamondEligible ? SHAPES.length - 1 : 7;
+  return Math.floor(_rng() * poolSize) + 1;
 }
 
 /** Populate pieceQueue with NEXT_QUEUE_SIZE entries from scratch. */
@@ -327,6 +332,9 @@ function applyNudge(dx, dz) {
 }
 
 function updateFallingPieces(delta) {
+  // Apply ice bridge slow factor (0.8 = 20% speed reduction).
+  const effectiveDelta = iceBridgeSlowActive ? delta * 0.8 : delta;
+
   const landedPieces = [];
   fallingPieces.forEach((piece, i) => {
     piece.userData.timeSinceRotation += delta;
@@ -339,7 +347,7 @@ function updateFallingPieces(delta) {
         _rng() * (MAX_ROTATION_INTERVAL - MIN_ROTATION_INTERVAL) +
         MIN_ROTATION_INTERVAL;
     }
-    piece.position.y += piece.userData.velocity.y * delta;
+    piece.position.y += piece.userData.velocity.y * effectiveDelta;
     updatePieceShadow(piece);
     let lowestPoint = Infinity;
     piece.children.forEach((block) => {

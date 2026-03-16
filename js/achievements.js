@@ -1,4 +1,4 @@
-// Achievement system — 18 unlockable achievements with toast notifications.
+// Achievement system — 19 unlockable achievements with toast notifications.
 // Requires: state.js (isSprintMode, isBlitzMode, linesCleared),
 //           stats.js (loadLifetimeStats)
 
@@ -22,6 +22,7 @@ const ACHIEVEMENTS = [
   { id: "century_club",     name: "Century Club",     icon: "\u{1F4AF}", desc: "Score 10000 points in Classic" },
   { id: "survivor",         name: "Survivor",         icon: "\u{1F6E1}\uFE0F", desc: "Survive 10 minutes in Classic" },
   { id: "rock_collector",   name: "Rock Collector",   icon: "\u{1FAA8}", desc: "Mine 10 rocks" },
+  { id: "alchemist",        name: "Alchemist",        icon: "\u2697\uFE0F", desc: "Craft 5 consumable items" },
   { id: "completionist",    name: "Completionist",    icon: "\u{1F3C6}", desc: "Unlock 10 achievements" },
 ];
 
@@ -195,8 +196,13 @@ function achOnBlockMined(totalMined, objectType) {
 
 /** Call after a tool is crafted with its toolTier. */
 function achOnCraft(tier) {
-  if (tier === "stone") unlockAchievement("stone_age");
-  if (tier === "iron")  unlockAchievement("iron_will");
+  if (tier === "stone")   unlockAchievement("stone_age");
+  if (tier === "iron")    unlockAchievement("iron_will");
+}
+
+/** Call after a consumable item is crafted; pass cumulative session count. */
+function achOnConsumableCraft(total) {
+  if (total >= 5) unlockAchievement("alchemist");
 }
 
 /** Call after placing a block; pass current blocksPlaced total. */

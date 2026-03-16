@@ -61,6 +61,10 @@ function saveGameState() {
     inventory:           Object.assign({}, inventory),
     selectedBlockColor,
     pickaxeTier,
+    hasCraftingBench,
+    consumables:         Object.assign({}, consumables),
+    iceBridgeSlowActive,
+    iceBridgeSlowTimer,
     sprintElapsedMs,
     sprintTimerActive,
     blitzRemainingMs,
@@ -100,9 +104,13 @@ function restoreGameState() {
   difficultyMultiplier = data.difficultyMultiplier || 1.0;
 
   // ── Inventory & crafting ──────────────────────────────────────────────────
-  inventory          = Object.assign({}, data.inventory || {});
-  selectedBlockColor = data.selectedBlockColor  || null;
-  pickaxeTier        = data.pickaxeTier         || "none";
+  inventory           = Object.assign({}, data.inventory || {});
+  selectedBlockColor  = data.selectedBlockColor  || null;
+  pickaxeTier         = data.pickaxeTier         || "none";
+  hasCraftingBench    = !!data.hasCraftingBench;
+  consumables         = Object.assign({ lava_flask: 0, ice_bridge: 0 }, data.consumables || {});
+  iceBridgeSlowActive = !!data.iceBridgeSlowActive;
+  iceBridgeSlowTimer  = typeof data.iceBridgeSlowTimer === "number" ? data.iceBridgeSlowTimer : 0;
 
   // ── Game mode ─────────────────────────────────────────────────────────────
   const mode        = data.mode || "classic";

@@ -116,8 +116,18 @@ let groundPlacementPoint = null; // THREE.Vector3 world intersection point on gr
 let playerStandingOnIce = false;
 
 // ── Crafting / pickaxe tier ───────────────────────────────────────────────────
-// Values: "none" | "stone" | "iron"
+// Values: "none" | "stone" | "iron" | "diamond"
 let pickaxeTier = "none";
+
+// Whether the player has crafted a Crafting Bench (gates advanced recipes).
+let hasCraftingBench = false;
+
+// Consumable item counts. Keys: "lava_flask" | "ice_bridge".
+let consumables = { lava_flask: 0, ice_bridge: 0 };
+
+// Ice Bridge slow — reduces falling piece speed by 20% for a duration.
+let iceBridgeSlowActive = false;
+let iceBridgeSlowTimer  = 0.0;
 
 // ── Player push (from landing pieces) ────────────────────────────────────────
 let playerPushVelocity = new THREE.Vector3();
@@ -173,4 +183,5 @@ let activeTheme = "classic";
 // ── Session stats (reset each game, accumulated for lifetime stats on game over) ──
 let blocksPlaced = 0;
 let sessionCrafts = 0;
+let sessionConsumableCrafts = 0;
 let sessionHighestComboCount = 0;

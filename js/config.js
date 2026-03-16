@@ -61,10 +61,14 @@ const BLOCK_TYPES = {
   leaf:    { hits: 1, points: 2,  effect: null },
   rock:    { hits: 5, points: 20, effect: null },
   plank:   { hits: 4, points: 15, effect: null },
+  diamond: { hits: 6, points: 100, effect: null },
 };
 
 // Crafted plank block color (light tan, distinct from all spawned palette colors).
 const PLANK_COLOR = "#d4a56a";
+
+// Diamond block color (deep blue — rare, spawns in Classic at Level 7+).
+const DIAMOND_COLOR = "#1a237e";
 
 // Maps color hex integer (from COLORS array) to material name.
 const COLOR_TO_MATERIAL = {
@@ -76,6 +80,7 @@ const COLOR_TO_MATERIAL = {
   0xff0000: "lava",
   0x800080: "crystal",
   0xd4a56a: "plank",
+  0x1a237e: "diamond",
 };
 
 // Maps objectType string to material name for world objects.
@@ -86,6 +91,7 @@ const OBJECT_TYPE_TO_MATERIAL = {
 };
 
 // Block color palette (index 0 = unused/null).
+// Index 8 = diamond (deep blue) — only spawns in Classic at Level 7+.
 const COLORS = [
   null,
   0x8b4513,
@@ -95,6 +101,7 @@ const COLORS = [
   0x008000,
   0xff0000,
   0x800080,
+  0x1a237e,
 ];
 
 // Deuteranopia-safe palette — blue/orange/amber/yellow/purple; never relies on red-green.
@@ -108,6 +115,7 @@ const COLORBLIND_COLORS = [
   0xff8c00, // 5 → amber         (was moss green)
   0x9933cc, // 6 → violet        (was lava red)
   0x004499, // 7 → dark navy     (was crystal purple)
+  0x0066cc, // 8 → medium blue   (was diamond deep blue)
 ];
 
 // Surface pattern index per color index (makes color never the sole differentiator).
@@ -121,6 +129,7 @@ const COLORBLIND_PATTERNS = [
   5, // amber     - grid
   6, // violet    - checkerboard
   0, // dark navy - solid (very dark, clearly distinct)
+  3, // medium blue - crosshatch (distinct from polka dots at index 2)
 ];
 
 // Nether theme palette — dark stone, molten lava emphasis, crimson/obsidian tones.
@@ -134,6 +143,7 @@ const NETHER_COLORS = [
   0x550000, // 5 → dark crimson     (was moss green)
   0xff0000, // 6 → lava red         (same — animated lava shader applies)
   0x2b003f, // 7 → obsidian         (was crystal purple)
+  0x0a0a2e, // 8 → void blue        (was diamond deep blue)
 ];
 
 // Nether trail emissive colors keyed by color index.
@@ -154,6 +164,7 @@ const OCEAN_COLORS = [
   0x009977, // 5 → seaweed teal        (was moss green)
   0xff4488, // 6 → bioluminescent pink (was lava red)
   0x0a2060, // 7 → deep sea navy       (was crystal purple)
+  0x1565c0, // 8 → ocean sapphire      (was diamond deep blue)
 ];
 
 // Ocean trail emissive colors keyed by color index.
@@ -174,6 +185,7 @@ const CANDY_COLORS = [
   0xb8ffcc, // 5 → pastel green   (was moss green)
   0xff99cc, // 6 → bubblegum pink (was lava red)
   0xe0a8ff, // 7 → pastel lilac   (was crystal purple)
+  0xa0c4ff, // 8 → pastel sky blue (was diamond deep blue)
 ];
 
 // Candy trail emissive colors keyed by color index.
@@ -192,6 +204,7 @@ const COLOR_TO_INDEX = {};
 }());
 
 // Tetromino shape definitions (row-major, value = color index).
+// Index 8 = diamond — only used when eligible (Classic Level 7+).
 const SHAPES = [
   [],
   [
@@ -218,6 +231,11 @@ const SHAPES = [
   [
     [7, 0, 0],
     [7, 7, 7],
+  ],
+  // Diamond: compact 2-block vertical pair (rare, hard to mine)
+  [
+    [8, 8],
+    [8, 0],
   ],
 ];
 
@@ -256,6 +274,54 @@ const RECIPES = [
     ],
     outputType: "tool",
     toolTier: "iron",
+    outputCount: 1,
+  },
+  {
+    id: "crafting_bench",
+    name: "Crafting Bench",
+    description: "Unlocks advanced recipes (Diamond Pickaxe, consumables)",
+    inputs: [
+      { cssColor: PLANK_COLOR, label: "Plank", count: 4 },
+    ],
+    outputType: "bench",
+    outputCount: 1,
+  },
+  {
+    id: "diamond_pickaxe",
+    name: "Diamond Pickaxe",
+    description: "1-hit mine + AOE: cross-pattern blast (requires Crafting Bench)",
+    inputs: [
+      { cssColor: DIAMOND_COLOR, label: "Diamond", count: 7 },
+      { cssColor: "#8b4513", label: "Wood", count: 2 },
+    ],
+    outputType: "tool",
+    toolTier: "diamond",
+    requiresBench: true,
+    outputCount: 1,
+  },
+  {
+    id: "lava_flask",
+    name: "Lava Flask",
+    description: "Consumable: destroys the lowest block layer (requires Crafting Bench)",
+    inputs: [
+      { cssColor: "#ff0000", label: "Lava", count: 3 },
+      { cssColor: "#800080", label: "Crystal", count: 1 },
+    ],
+    outputType: "consumable",
+    consumableType: "lava_flask",
+    requiresBench: true,
+    outputCount: 1,
+  },
+  {
+    id: "ice_bridge",
+    name: "Ice Bridge",
+    description: "Consumable: slows falling pieces 20% for 10s (requires Crafting Bench)",
+    inputs: [
+      { cssColor: "#00ffff", label: "Ice", count: 4 },
+    ],
+    outputType: "consumable",
+    consumableType: "ice_bridge",
+    requiresBench: true,
     outputCount: 1,
   },
 ];

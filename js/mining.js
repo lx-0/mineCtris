@@ -242,7 +242,7 @@ function updateMaterialTooltip() {
 
   let totalHits = targetedBlock.userData.miningClicks || MINING_CLICKS_NEEDED;
   if (pickaxeTier === "stone") totalHits = Math.min(totalHits, 2);
-  else if (pickaxeTier === "iron") totalHits = 1;
+  else if (pickaxeTier === "iron" || pickaxeTier === "diamond") totalHits = 1;
 
   const hitsDealt = miningProgress;
   const hitsRemaining = Math.max(0, totalHits - hitsDealt);
@@ -265,7 +265,7 @@ function updateMaterialTooltip() {
   if (hitsEl) hitsEl.textContent = hitsLabel;
   if (pickaxeEl) {
     if (pickaxeTier !== "none") {
-      const tierLabels = { stone: "Stone Pickaxe", iron: "Iron Pickaxe" };
+      const tierLabels = { stone: "Stone Pickaxe", iron: "Iron Pickaxe", diamond: "Diamond Pickaxe (AOE)" };
       pickaxeEl.textContent = "[" + (tierLabels[pickaxeTier] || pickaxeTier) + "]";
       pickaxeEl.style.display = "";
     } else {

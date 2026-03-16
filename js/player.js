@@ -112,6 +112,12 @@ function onKeyDown(event) {
     case "KeyX":
       applyNudge(0, 1);
       break;
+    case "KeyF":
+      if (typeof activateLavaFlask === "function") activateLavaFlask();
+      break;
+    case "KeyG":
+      if (typeof activateIceBridge === "function") activateIceBridge();
+      break;
   }
 }
 
