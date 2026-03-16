@@ -1,13 +1,13 @@
 // High score table — localStorage persistence, top 10 entries.
 // Requires: nothing (standalone module).
 
-const HS_KEY = 'mineCtris_highScores';
+const HS_KEY = "minetris_highScores";
 const HS_MAX = 10;
 
 /** Load scores array from localStorage. Returns [] on any error. */
 function loadHighScores() {
   try {
-    return JSON.parse(localStorage.getItem(HS_KEY) || '[]');
+    return JSON.parse(localStorage.getItem(HS_KEY) || "[]");
   } catch (_) {
     return [];
   }
@@ -46,12 +46,16 @@ function submitHighScore(score, timeSurvived, blocksMined, linesCleared) {
 /** Format seconds as mm:ss. */
 function fmtTime(secs) {
   const s = Math.floor(secs);
-  return String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0');
+  return (
+    String(Math.floor(s / 60)).padStart(2, "0") +
+    ":" +
+    String(s % 60).padStart(2, "0")
+  );
 }
 
 /** Render top-3 scores into #hs-start-panel on the start screen. */
 function renderHighScoresStart() {
-  const el = document.getElementById('hs-start-panel');
+  const el = document.getElementById("hs-start-panel");
   if (!el) return;
   const scores = loadHighScores().slice(0, 3);
   if (scores.length === 0) {
@@ -59,14 +63,15 @@ function renderHighScoresStart() {
     return;
   }
   el.innerHTML = scores
-    .map((e, i) =>
-      `<div class="hs-start-row">` +
-      `<span class="hs-start-rank">#${i + 1}</span>` +
-      `<span class="hs-start-score">${e.score}</span>` +
-      `<span class="hs-start-time">${fmtTime(e.timeSurvived)}</span>` +
-      `</div>`
+    .map(
+      (e, i) =>
+        `<div class="hs-start-row">` +
+        `<span class="hs-start-rank">#${i + 1}</span>` +
+        `<span class="hs-start-score">${e.score}</span>` +
+        `<span class="hs-start-time">${fmtTime(e.timeSurvived)}</span>` +
+        `</div>`
     )
-    .join('');
+    .join("");
 }
 
 /**
@@ -74,7 +79,7 @@ function renderHighScoresStart() {
  * @param {number|null} highlightRank  1-based rank to highlight (new entry), or null.
  */
 function renderHighScoresGameOver(highlightRank) {
-  const el = document.getElementById('hs-go-table');
+  const el = document.getElementById("hs-go-table");
   if (!el) return;
   const scores = loadHighScores();
   if (scores.length === 0) {
@@ -84,7 +89,7 @@ function renderHighScoresGameOver(highlightRank) {
   el.innerHTML = scores
     .map((e, i) => {
       const rank = i + 1;
-      const cls = rank === highlightRank ? 'hs-go-row hs-go-new' : 'hs-go-row';
+      const cls = rank === highlightRank ? "hs-go-row hs-go-new" : "hs-go-row";
       return (
         `<div class="${cls}">` +
         `<span class="hs-go-rank">#${rank}</span>` +
@@ -94,5 +99,5 @@ function renderHighScoresGameOver(highlightRank) {
         `</div>`
       );
     })
-    .join('');
+    .join("");
 }

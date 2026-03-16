@@ -1,8 +1,8 @@
-# MineCtris Roadmap
+# minetris Roadmap
 
 **Design Thesis:** *"Tetrominos build the world; you mine the world to survive and shape it."*
 **Vision:** The first game where Tetris pieces are not puzzles to solve — they're the living, breathing landscape you inhabit, mine, and reshape to survive.
-**Source:** https://github.com/lx-0/mineCtris
+**Source:** <https://github.com/lx-0/minetris>
 
 ---
 
@@ -12,7 +12,7 @@ Imagine a game where every session tells a different story. The world is generat
 
 The more you play, the faster the world builds itself. Your only tools: your pickaxe, your wits, and the blocks you've mined. Mine strategically. Fill the gaps. Trigger line-clears to buy yourself time. Survive longer. Score higher.
 
-That's MineCtris at v1.0.
+That's minetris at v1.0.
 
 ---
 
@@ -26,7 +26,7 @@ That's MineCtris at v1.0.
 | 4 | v0.5 | **Truly Beautiful** | Planned | — | Shaders, bloom, glow trails, sky, explosions — random, chaotic, *beautiful* |
 | 5 | v0.6 | **Strategic Depth** | Planned | — | Piece influence, tool tiers, block types — skill ceiling rises |
 | 6 | v0.7 | **The Meta** | Planned | — | Cross-session goals, unlockables, daily challenge — reason to return |
-| 7 | v1.0 | **Launch** | Planned | — | Polished, shareable, leaderboard-ready — the complete MineCtris experience |
+| 7 | v1.0 | **Launch** | Planned | — | Polished, shareable, leaderboard-ready — the complete minetris experience |
 
 ---
 
@@ -50,7 +50,7 @@ All four foundational features now exist: inventory, line-clear, lose condition,
 
 ## Milestone 2: The Loop Closes (v0.3) 🔄 Active
 
-**Theme:** The two halves of MineCtris finally talk to each other.
+**Theme:** The two halves of minetris finally talk to each other.
 
 Right now, mining and Tetris are parallel tracks. When block placement exists and line-clear thresholds are realistic, a player can think strategically for the first time: *"If I fill that hole with this block, I complete the row."* That's the moment the game's thesis becomes real.
 
@@ -62,7 +62,7 @@ Right now, mining and Tetris are parallel tracks. When block placement exists an
 |:--------|:---------|:------------|
 | Fix line-clear threshold | P0 | Match threshold to achievable fill rate; possibly constrain spawn corridor |
 | Block placement | P1 | Right-click to place block from inventory onto any surface in reach. Closes the full Minecraft loop. |
-| English UI / rename | P1 | Replace all German strings. "KI Welt Baumeister" → "MineCtris." "Inventar" → "Inventory." Full English first. |
+| English UI / rename | P1 | Replace all German strings. "KI Welt Baumeister" → "minetris." "Inventar" → "Inventory." Full English first. |
 | Player landing push | P1 | Eject player laterally when a piece lands within 1 block. Prevents trapping without removing challenge. |
 | Mineable trees | P2 | Trees yield "wood" blocks (2 hits). Creates a visual resource distinction and early-game material. |
 
@@ -95,7 +95,7 @@ Every action should have weight. Every second of play should ramp the tension. B
 
 **Theme:** Random, chaotic, *beautiful.*
 
-The world of MineCtris is already visually interesting. This milestone makes it genuinely stunning — the kind of thing you screenshot and share before you even think about it. Every visual system gets elevated: lighting, shaders, particle explosions, post-processing. When this milestone is done, MineCtris should look like it was made by a studio, not a weekend prototype.
+The world of minetris is already visually interesting. This milestone makes it genuinely stunning — the kind of thing you screenshot and share before you even think about it. Every visual system gets elevated: lighting, shaders, particle explosions, post-processing. When this milestone is done, minetris should look like it was made by a studio, not a weekend prototype.
 
 | Feature | Issue | Priority | Description |
 |:--------|:------|:---------|:------------|
@@ -105,7 +105,7 @@ The world of MineCtris is already visually interesting. This milestone makes it 
 | Post-processing: bloom & cinematic color grading | [MINAA-22](/MINAA/issues/MINAA-22) | Medium | UnrealBloom on emissive blocks, emotional color grading per game state (calm → dread → euphoria → finality), vignette |
 | Line-clear visual explosion & shockwave | [MINAA-23](/MINAA/issues/MINAA-23) | Medium | 4-phase clear: anticipation vibration → block detonation with fragments → expanding shockwave ring → spring drop aftermath |
 
-**Done when:** You can record a 10-second clip of MineCtris, post it with no context, and people ask "what game is this?" because it looks extraordinary.
+**Done when:** You can record a 10-second clip of minetris, post it with no context, and people ask "what game is this?" because it looks extraordinary.
 
 ---
 
@@ -113,7 +113,7 @@ The world of MineCtris is already visually interesting. This milestone makes it 
 
 **Theme:** Raise the skill ceiling. Give experts something to master.
 
-MineCtris has a promising skill depth that's currently locked away: if you could influence where pieces land, the game becomes a spatial strategy puzzle. This milestone introduces the mechanics that let skilled players outperform casual ones.
+minetris has a promising skill depth that's currently locked away: if you could influence where pieces land, the game becomes a spatial strategy puzzle. This milestone introduces the mechanics that let skilled players outperform casual ones.
 
 | Feature | Priority | Description |
 |:--------|:---------|:------------|
@@ -149,7 +149,7 @@ A game you play once is a curiosity. A game you play every day is a habit. This 
 
 ## Milestone 7: Launch (v1.0) Planned
 
-**Theme:** The complete, polished, shareable MineCtris experience.
+**Theme:** The complete, polished, shareable minetris experience.
 
 | Feature | Priority | Description |
 |:--------|:---------|:------------|
@@ -167,7 +167,7 @@ A game you play once is a curiosity. A game you play every day is a habit. This 
 
 ## Beyond v1.0: The Horizon
 
-These are not on the roadmap yet but represent where MineCtris could go if it finds an audience.
+These are not on the roadmap yet but represent where minetris could go if it finds an audience.
 
 **Co-op (2 players, same world):**
 Two players in the same falling world. One focuses on mining (clears space). One focuses on building (sets up line-clears). Pieces fall twice as fast. Communication and coordination are the game.
@@ -208,4 +208,4 @@ Pre-built starting worlds with specific piece sequences. "Solve this Tetris boar
 
 - Tech spec: `docs/tech-spec.md`
 - Game design review (updated): `docs/game-design-review.md`
-- Source repo: https://github.com/lx-0/mineCtris
+- Source repo: <https://github.com/lx-0/minetris>
