@@ -95,6 +95,13 @@
               <div class="mode-card-desc">Today's seed. Everyone gets the same pieces.</div>
               <div class="mode-card-pb" id="mode-pb-daily"></div>
             </div>
+            <!-- Weekly Challenge -->
+            <div class="mode-card mode-card-weekly" id="mode-card-weekly" data-mode="weekly">
+              <div class="mode-card-icon">&#127381;</div>
+              <div class="mode-card-name">Weekly</div>
+              <div class="mode-card-desc" id="mode-weekly-modifier-desc">This week's challenge.</div>
+              <div class="mode-card-pb" id="mode-pb-weekly"></div>
+            </div>
           </div>
           <button id="mode-select-lb-btn">&#127942; Leaderboard</button>
           <button id="mode-select-back">&#8592; Back</button>
@@ -114,6 +121,9 @@
 
       <!-- Daily challenge badge (shown during daily runs) -->
       <div id="daily-challenge-badge" style="display:none;"></div>
+
+      <!-- Weekly challenge badge (shown during weekly runs) -->
+      <div id="weekly-challenge-badge" style="display:none;"></div>
 
       <!-- Top-right HUD: score + next-piece preview -->
       <div id="top-right-hud">
@@ -151,6 +161,7 @@
         <div id="hs-go-label">HIGH SCORES</div>
         <div id="hs-go-table"></div>
         <div id="daily-go-section" style="display:none;"></div>
+        <div id="weekly-go-section" style="display:none;"></div>
         <button id="go-share-btn">Share Score</button>
         <div id="go-share-feedback"></div>
         <button id="lb-submit-btn" style="display:none;">Submit to Leaderboard</button>
@@ -350,6 +361,8 @@
           <div id="lb-tabs">
             <button id="lb-tab-today" class="lb-tab lb-tab-active">Today</button>
             <button id="lb-tab-yesterday" class="lb-tab">Yesterday</button>
+            <button id="lb-tab-thisweek" class="lb-tab">This Week</button>
+            <button id="lb-tab-lastweek" class="lb-tab">Last Week</button>
           </div>
           <div id="lb-panel-body"></div>
           <button id="lb-panel-close-btn">Close</button>
@@ -375,6 +388,7 @@
     <script src="js/postprocessing.js"></script>
     <script src="js/crafting.js"></script>
     <script src="js/daily.js"></script>
+    <script src="js/weekly.js"></script>
     <script src="js/highscores.js"></script>
     <script src="js/stats.js"></script>
     <script src="js/sprint.js"></script>

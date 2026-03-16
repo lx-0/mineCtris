@@ -106,13 +106,13 @@ function openDisplayNameModal(onConfirm) {
 
 // ── Leaderboard Panel ─────────────────────────────────────────────────────────
 
-let _lbActiveTab = 'today'; // 'today' | 'yesterday'
+let _lbActiveTab = 'today'; // 'today' | 'yesterday' | 'thisweek' | 'lastweek'
 
-function openLeaderboardPanel() {
+function openLeaderboardPanel(defaultTab) {
   const overlay = document.getElementById('lb-panel-overlay');
   if (!overlay) return;
   overlay.style.display = 'flex';
-  _lbActiveTab = 'today';
+  _lbActiveTab = defaultTab || 'today';
   _syncLbTabs();
   _loadLbTab(_lbActiveTab);
 }
@@ -123,10 +123,14 @@ function closeLeaderboardPanel() {
 }
 
 function _syncLbTabs() {
-  const todayBtn = document.getElementById('lb-tab-today');
-  const yestBtn  = document.getElementById('lb-tab-yesterday');
-  if (todayBtn) todayBtn.classList.toggle('lb-tab-active', _lbActiveTab === 'today');
-  if (yestBtn)  yestBtn.classList.toggle('lb-tab-active', _lbActiveTab === 'yesterday');
+  const todayBtn    = document.getElementById('lb-tab-today');
+  const yestBtn     = document.getElementById('lb-tab-yesterday');
+  const thisWeekBtn = document.getElementById('lb-tab-thisweek');
+  const lastWeekBtn = document.getElementById('lb-tab-lastweek');
+  if (todayBtn)    todayBtn.classList.toggle('lb-tab-active',    _lbActiveTab === 'today');
+  if (yestBtn)     yestBtn.classList.toggle('lb-tab-active',     _lbActiveTab === 'yesterday');
+  if (thisWeekBtn) thisWeekBtn.classList.toggle('lb-tab-active', _lbActiveTab === 'thisweek');
+  if (lastWeekBtn) lastWeekBtn.classList.toggle('lb-tab-active', _lbActiveTab === 'lastweek');
 }
 
 function _getYesterdayString() {
@@ -136,23 +140,31 @@ function _getYesterdayString() {
 }
 
 async function _loadLbTab(tab) {
-  const date = tab === 'today' ? getDailyDateString() : _getYesterdayString();
   const body = document.getElementById('lb-panel-body');
   if (!body) return;
   body.innerHTML = '<div class="lb-loading">Loading...</div>';
 
   try {
-    const data = await apiFetchLeaderboard(date);
-    if (!data || !data.entries) throw new Error('bad response');
-    _renderLeaderboard(body, data.entries, date);
+    if (tab === 'thisweek' || tab === 'lastweek') {
+      const weekStr = tab === 'thisweek' ? getWeeklyDateString() : _getLastWeekString();
+      const data = await apiFetchWeeklyLeaderboard(weekStr);
+      if (!data || !data.entries) throw new Error('bad response');
+      const label = formatWeeklyLabel(weekStr);
+      _renderLeaderboard(body, data.entries, null, label);
+    } else {
+      const date = tab === 'today' ? getDailyDateString() : _getYesterdayString();
+      const data = await apiFetchLeaderboard(date);
+      if (!data || !data.entries) throw new Error('bad response');
+      _renderLeaderboard(body, data.entries, date);
+    }
   } catch (_) {
     body.innerHTML = '<div class="lb-error">Could not load leaderboard.</div>';
   }
 }
 
-function _renderLeaderboard(container, entries, date) {
+function _renderLeaderboard(container, entries, date, labelOverride) {
   const myName = loadDisplayName().toLowerCase();
-  const dateLabel = formatDailyLabel(date);
+  const dateLabel = labelOverride || formatDailyLabel(date);
 
   if (!entries.length) {
     container.innerHTML = '<div class="lb-empty">No scores yet for ' + dateLabel + '.</div>';
@@ -277,8 +289,10 @@ function initLeaderboard() {
   if (closeBtn) closeBtn.addEventListener('click', closeLeaderboardPanel);
 
   // Leaderboard panel tab buttons
-  const todayBtn = document.getElementById('lb-tab-today');
-  const yestBtn  = document.getElementById('lb-tab-yesterday');
+  const todayBtn    = document.getElementById('lb-tab-today');
+  const yestBtn     = document.getElementById('lb-tab-yesterday');
+  const thisWeekBtn = document.getElementById('lb-tab-thisweek');
+  const lastWeekBtn = document.getElementById('lb-tab-lastweek');
   if (todayBtn) {
     todayBtn.addEventListener('click', function() {
       _lbActiveTab = 'today';
@@ -291,6 +305,20 @@ function initLeaderboard() {
       _lbActiveTab = 'yesterday';
       _syncLbTabs();
       _loadLbTab('yesterday');
+    });
+  }
+  if (thisWeekBtn) {
+    thisWeekBtn.addEventListener('click', function() {
+      _lbActiveTab = 'thisweek';
+      _syncLbTabs();
+      _loadLbTab('thisweek');
+    });
+  }
+  if (lastWeekBtn) {
+    lastWeekBtn.addEventListener('click', function() {
+      _lbActiveTab = 'lastweek';
+      _syncLbTabs();
+      _loadLbTab('lastweek');
     });
   }
 
@@ -308,10 +336,12 @@ function initLeaderboard() {
     modeSelectLbBtn.addEventListener('click', openLeaderboardPanel);
   }
 
-  // Leaderboard button on game-over screen
+  // Leaderboard button on game-over screen — open weekly tab if in weekly mode
   const goLbBtn = document.getElementById('go-lb-btn');
   if (goLbBtn) {
-    goLbBtn.addEventListener('click', openLeaderboardPanel);
+    goLbBtn.addEventListener('click', function () {
+      openLeaderboardPanel(isWeeklyChallenge ? 'thisweek' : 'today');
+    });
   }
 
   // Hide submit btn by default (shown only by initLeaderboardSubmitBtn)

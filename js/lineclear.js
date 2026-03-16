@@ -147,12 +147,17 @@ function checkLineClear(newBlocks) {
   // Achievement: Combo Starter, Combo King
   if (typeof achOnComboUpdate === "function") achOnComboUpdate(comboCount);
 
-  const COMBO_MULTIPLIERS = [1.0, 1.0, 1.5, 2.0, 3.0]; // index by comboCount (capped at 4)
+  // Double or Nothing: flat 3× at any combo; normal multipliers otherwise.
+  const COMBO_MULTIPLIERS = weeklyDoubleOrNothing
+    ? [1.0, 1.0, 3.0, 3.0, 3.0]
+    : [1.0, 1.0, 1.5, 2.0, 3.0]; // index by comboCount (capped at 4)
   const comboIdx = Math.min(comboCount, 4);
   const comboMult = COMBO_MULTIPLIERS[comboIdx];
   const blitzMult = (isBlitzMode && blitzBonusActive) ? BLITZ_BONUS_MULTIPLIER : 1.0;
+  // Gold Rush: 2× score multiplier on all line clears.
+  const goldMult = weeklyGoldRush ? 2.0 : 1.0;
   const baseScore = LINE_SCORES[Math.min(completeLevels.length, 4)];
-  addScore(Math.round(baseScore * comboMult * blitzMult));
+  addScore(Math.round(baseScore * comboMult * blitzMult * goldMult));
 
   // Line-clear banner
   if (lineClearBannerEl) {
@@ -164,7 +169,9 @@ function checkLineClear(newBlocks) {
 
   // Combo banner (shown only from 2nd consecutive clear onward)
   if (comboCount >= 2 && comboBannerEl) {
-    const comboLabels = ["", "", "COMBO x1.5!", "COMBO x2!", "COMBO x3!"];
+    const comboLabels = weeklyDoubleOrNothing
+      ? ["", "", "COMBO x3!", "COMBO x3!", "COMBO x3!"]
+      : ["", "", "COMBO x1.5!", "COMBO x2!", "COMBO x3!"];
     const comboColors = ["", "", "#f80", "#ffd700", "#ff3300"];
     comboBannerEl.textContent = comboLabels[comboIdx];
     comboBannerEl.style.color = comboColors[comboIdx];
@@ -207,6 +214,11 @@ function updateLineClear(delta) {
 
   // Combo reset: if 3s pass without a clear, reset count
   if (lastClearTime >= 0 && (clock.getElapsedTime() - lastClearTime) > 3.0) {
+    // Double or Nothing: breaking a combo (≥2 consecutive) costs 25% of score.
+    if (weeklyDoubleOrNothing && comboCount >= 2) {
+      score = Math.max(0, Math.round(score * 0.75));
+      updateScoreHUD();
+    }
     comboCount = 0;
     lastClearTime = -1;
   }

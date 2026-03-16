@@ -97,8 +97,8 @@ function onKeyDown(event) {
       break;
     }
     case "KeyC":
-      // Crafting is disabled in Sprint and Blitz modes
-      if (!isSprintMode && !isBlitzMode) toggleCraftingPanel();
+      // Crafting is disabled in Sprint, Blitz, and No Iron Week
+      if (!isSprintMode && !isBlitzMode && !weeklyNoIron) toggleCraftingPanel();
       break;
     case "KeyQ":
       applyNudge(-1, 0);

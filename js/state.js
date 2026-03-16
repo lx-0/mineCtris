@@ -146,6 +146,17 @@ let isDailyChallenge = false;
 // null → use Math.random(); function → seeded daily PRNG from daily.js
 let gameRng = null;
 
+// ── Weekly challenge state ────────────────────────────────────────────────────
+let isWeeklyChallenge = false;
+let weeklyModifier = null; // { id, name, description, applyFn }
+
+// Per-modifier effect flags (set by modifier.applyFn, cleared on resetGame)
+let weeklyNoIron = false;          // No Iron Week: crafting disabled
+let weeklyGoldRush = false;        // Gold Rush: gold 3× more likely, 2× line-clear score
+let weeklyIceAge = false;          // Ice Age: 60% ice pieces, Level 3 start
+let weeklyDoubleOrNothing = false; // Double or Nothing: 3× combo mult, −25% score on break
+let weeklyBlindDrop = false;       // Blind Drop: next-piece preview hidden
+
 // ── Sprint mode state ─────────────────────────────────────────────────────────
 // Target: clear exactly 40 lines as fast as possible.
 // Fixed fall speed = Classic Level 5 (tier 4 multiplier).

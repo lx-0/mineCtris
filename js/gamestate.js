@@ -45,7 +45,9 @@ function updateScoreHUD() {
     scoreEl.querySelector(".hud-stat:nth-child(4)").textContent =
       "Time: " + mm + ":" + ss;
     scoreEl.querySelector(".hud-stat:nth-child(5)").textContent =
-      "Level " + (lastDifficultyTier + 1);
+      isWeeklyChallenge
+        ? (weeklyModifier ? weeklyModifier.name : "Weekly")
+        : "Level " + (lastDifficultyTier + 1);
   }
 }
 
@@ -171,7 +173,26 @@ function triggerGameOver() {
   } else {
     const dailyEl = document.getElementById('daily-go-section');
     if (dailyEl) dailyEl.style.display = 'none';
-    if (typeof hideLeaderboardSubmitBtn === "function") hideLeaderboardSubmitBtn();
+  }
+
+  // Weekly challenge score tracking
+  if (isWeeklyChallenge) {
+    const isNewWeeklyBest = submitWeeklyScore(
+      state.score,
+      state.elapsedSeconds,
+      state.blocksMined,
+      state.linesCleared
+    );
+    renderWeeklyBestGameOver(isNewWeeklyBest);
+    if (typeof initWeeklyLeaderboardSubmitBtn === "function") {
+      initWeeklyLeaderboardSubmitBtn(state.score, state.linesCleared);
+    }
+  } else {
+    const weeklyEl = document.getElementById('weekly-go-section');
+    if (weeklyEl) weeklyEl.style.display = 'none';
+    if (!isDailyChallenge && typeof hideLeaderboardSubmitBtn === "function") {
+      hideLeaderboardSubmitBtn();
+    }
   }
 
   // Wire up Share Score button
@@ -179,7 +200,12 @@ function triggerGameOver() {
   const shareFeedback = document.getElementById("go-share-feedback");
   if (shareBtn) {
     shareBtn.onclick = function () {
-      const modeLine = isDailyChallenge ? "Daily Challenge" : isBlitzMode ? "Blitz" : "Classic";
+      const weeklyModeLabel = isWeeklyChallenge
+        ? "Weekly Challenge" + (weeklyModifier ? " \u2014 " + weeklyModifier.name : "")
+        : null;
+      const modeLine = isDailyChallenge ? "Daily Challenge"
+        : weeklyModeLabel ? weeklyModeLabel
+        : isBlitzMode ? "Blitz" : "Classic";
       const scoreFormatted = state.score.toLocaleString();
       const shareText =
         `MINETRIS\n` +
@@ -333,6 +359,17 @@ function resetGame() {
   gameRng = null;
   const dailyBadgeEl = document.getElementById('daily-challenge-badge');
   if (dailyBadgeEl) dailyBadgeEl.style.display = 'none';
+
+  // Reset weekly challenge state
+  isWeeklyChallenge = false;
+  weeklyModifier = null;
+  weeklyNoIron = false;
+  weeklyGoldRush = false;
+  weeklyIceAge = false;
+  weeklyDoubleOrNothing = false;
+  weeklyBlindDrop = false;
+  const weeklyBadgeEl = document.getElementById('weekly-challenge-badge');
+  if (weeklyBadgeEl) weeklyBadgeEl.style.display = 'none';
 
   // Reset next-piece queue
   initPieceQueue();

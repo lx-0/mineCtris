@@ -1191,6 +1191,22 @@ body {
   z-index: 150;
 }
 
+#weekly-challenge-badge {
+  position: absolute;
+  top: 28px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: "Press Start 2P", cursive;
+  font-size: 9px;
+  color: #00dc8c;
+  text-shadow: 0 0 8px #00dc8c;
+  background: rgba(0, 0, 0, 0.55);
+  padding: 4px 10px;
+  border-radius: 3px;
+  pointer-events: none;
+  z-index: 150;
+}
+
 /* ── Tutorial overlay ── */
 #tutorial-overlay {
   position: absolute;
@@ -1341,6 +1357,18 @@ body {
   animation: go-flicker 1.2s infinite;
 }
 
+#weekly-go-section {
+  margin: 14px 0;
+  text-align: center;
+  font-family: "Press Start 2P", cursive;
+}
+#weekly-go-label {
+  font-size: 8px;
+  color: #00dc8c;
+  margin-bottom: 6px;
+  letter-spacing: 0.05em;
+}
+
 /* ── Mode select screen ── */
 #mode-select {
   position: absolute;
@@ -1457,6 +1485,27 @@ body {
 .mode-card-daily.mode-card-highlighted {
   border-color: #ffb400;
   box-shadow: 0 0 28px rgba(255, 180, 0, 0.55);
+}
+
+/* Weekly Challenge card — emerald/teal accent */
+.mode-card-weekly {
+  border-color: rgba(0, 220, 140, 0.5);
+  box-shadow: 0 0 14px rgba(0, 220, 140, 0.1);
+}
+.mode-card-weekly .mode-card-name {
+  color: #00dc8c;
+  text-shadow: 0 0 6px #00dc8c;
+}
+.mode-card-weekly .mode-card-desc {
+  color: #80f0c8;
+}
+.mode-card-weekly:hover {
+  border-color: #00dc8c !important;
+  box-shadow: 0 0 22px rgba(0, 220, 140, 0.4) !important;
+}
+.mode-card-weekly.mode-card-highlighted {
+  border-color: #00dc8c;
+  box-shadow: 0 0 28px rgba(0, 220, 140, 0.55);
 }
 
 #mode-select-back {

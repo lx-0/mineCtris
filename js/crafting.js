@@ -14,6 +14,8 @@ function toggleCraftingPanel() {
 }
 
 function openCraftingPanel() {
+  // No Iron Week: crafting is disabled
+  if (typeof weeklyNoIron !== "undefined" && weeklyNoIron) return;
   craftingPanelOpen = true;
   // Notify tutorial that crafting panel was opened
   if (typeof tutorialNotify === "function") tutorialNotify("craftingOpen");

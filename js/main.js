@@ -273,8 +273,21 @@ function init() {
           dailyPbEl.textContent = getTodayLabel();
         }
       }
+      // Populate Weekly Challenge — show modifier name and personal best
+      const weeklyMod = getCurrentWeeklyModifier();
+      const weeklyDescEl = document.getElementById("mode-weekly-modifier-desc");
+      if (weeklyDescEl && weeklyMod) weeklyDescEl.textContent = weeklyMod.name + ": " + weeklyMod.description;
+      const weeklyPbEl = document.getElementById("mode-pb-weekly");
+      if (weeklyPbEl) {
+        const weeklyBest = loadWeeklyBest();
+        if (weeklyBest) {
+          weeklyPbEl.textContent = getCurrentWeekLabel() + " Best: " + weeklyBest.score;
+        } else {
+          weeklyPbEl.textContent = getCurrentWeekLabel();
+        }
+      }
       // Apply highlight to the specified mode card
-      ["classic", "sprint", "blitz", "daily"].forEach(function (mode) {
+      ["classic", "sprint", "blitz", "daily", "weekly"].forEach(function (mode) {
         const cardEl = document.getElementById("mode-card-" + mode);
         if (cardEl) {
           if (mode === highlightMode) {
@@ -372,6 +385,29 @@ function init() {
           badgeEl.style.display = "block";
         }
         try { localStorage.setItem("mineCtris_lastMode", "daily"); } catch (_) {}
+        hideModeSelect();
+        requestPointerLock();
+      });
+    }
+
+    const weeklyCardEl = document.getElementById("mode-card-weekly");
+    if (weeklyCardEl) {
+      weeklyCardEl.addEventListener("click", function () {
+        const mod = getCurrentWeeklyModifier();
+        isWeeklyChallenge = true;
+        weeklyModifier = mod;
+        // Apply the modifier (sets flags and adjusts difficulty if needed)
+        if (mod && typeof mod.applyFn === "function") mod.applyFn();
+        // Seed the piece queue with this week's PRNG
+        gameRng = getWeeklyPrng();
+        initPieceQueue();
+        // Show weekly badge in HUD
+        const badgeEl = document.getElementById("weekly-challenge-badge");
+        if (badgeEl) {
+          badgeEl.textContent = getCurrentWeekLabel() + (mod ? ": " + mod.name : "");
+          badgeEl.style.display = "block";
+        }
+        try { localStorage.setItem("mineCtris_lastMode", "weekly"); } catch (_) {}
         hideModeSelect();
         requestPointerLock();
       });

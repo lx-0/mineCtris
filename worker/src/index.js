@@ -1,14 +1,19 @@
 /**
- * MineCtris Daily Challenge Leaderboard — Cloudflare Worker
+ * MineCtris Daily & Weekly Challenge Leaderboard — Cloudflare Worker
  *
  * Routes:
- *   POST /api/scores          — validate and submit a score
- *   GET  /api/leaderboard/:date — return top 20 for a given date (YYYY-MM-DD)
+ *   POST /api/scores               — validate and submit a daily score
+ *   GET  /api/leaderboard/:date    — return top 20 for a given date (YYYY-MM-DD)
+ *   POST /api/scores/weekly        — validate and submit a weekly score
+ *   GET  /api/leaderboard/week/:w  — return top 20 for a given ISO week (YYYY-Www)
  *
  * KV Structure (binding: LEADERBOARD_KV):
- *   leaderboard:YYYY-MM-DD   → JSON array of top 100 entries, sorted desc by score
- *   player:{name}:{date}     → JSON { count, ipHash } for rate limiting
- *   flagged:YYYY-MM-DD       → JSON array of flagged entries (not shown publicly)
+ *   leaderboard:YYYY-MM-DD        → JSON array of top 100 daily entries, sorted desc by score
+ *   player:{name}:{date}          → JSON { submittedAt } for daily rate limiting
+ *   flagged:YYYY-MM-DD            → JSON array of flagged daily entries
+ *   leaderboard:week:YYYY-Www     → JSON array of top 100 weekly entries, sorted desc by score
+ *   player:week:{name}:{weekStr}  → JSON { submittedAt } for weekly rate limiting
+ *   ip:week:{hash}:{weekStr}      → JSON { count } for weekly IP rate limiting
  */
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -32,6 +37,20 @@ function todayUTC() {
 
 function isValidDate(dateStr) {
   return /^\d{4}-\d{2}-\d{2}$/.test(dateStr);
+}
+
+function isValidWeek(weekStr) {
+  return /^\d{4}-W\d{2}$/.test(weekStr);
+}
+
+function currentISOWeek() {
+  const now = new Date();
+  const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  const dayNum = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  const week = Math.ceil(((d - yearStart) / 86400000 + 1) / 7);
+  return d.getUTCFullYear() + '-W' + String(week).padStart(2, '0');
 }
 
 async function hashIP(ip) {
@@ -194,6 +213,114 @@ async function handleGetLeaderboard(date, env) {
   return jsonResponse({ date, entries: top20, total: leaderboard.length });
 }
 
+// ── Weekly Score Submission ───────────────────────────────────────────────────
+
+async function handlePostWeeklyScore(request, env) {
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return jsonResponse({ error: 'Invalid JSON' }, 400);
+  }
+
+  const { displayName, score, linesCleared, week, clientTimestamp } = body;
+
+  // 1. Validate display name
+  if (!displayName || !DISPLAY_NAME_REGEX.test(displayName)) {
+    return jsonResponse({ error: 'Invalid display name' }, 400);
+  }
+
+  // 2. Validate week — must be current ISO week
+  if (!week || !isValidWeek(week) || week !== currentISOWeek()) {
+    return jsonResponse({ error: 'Invalid or stale week' }, 400);
+  }
+
+  // 3. Validate numeric fields
+  const scoreNum = parseInt(score, 10);
+  const linesNum = parseInt(linesCleared, 10);
+  if (!Number.isInteger(scoreNum) || scoreNum < 0 ||
+      !Number.isInteger(linesNum) || linesNum < 0) {
+    return jsonResponse({ error: 'Invalid score or linesCleared' }, 400);
+  }
+
+  // 4. Plausibility check
+  if (scoreNum / (linesNum + 1) > MAX_SCORE_PER_LINE) {
+    return jsonResponse({ error: 'Score fails plausibility check' }, 400);
+  }
+
+  // 5. Rate limit: 1 submission per displayName per week
+  const playerKey = `player:week:${displayName.toLowerCase()}:${week}`;
+  const existingEntry = await env.LEADERBOARD_KV.get(playerKey, { type: 'json' });
+  if (existingEntry) {
+    return jsonResponse({ error: 'Already submitted this week' }, 429);
+  }
+
+  // 6. IP-based secondary rate limit (max 3 per IP per week)
+  const ip = request.headers.get('CF-Connecting-IP') ||
+             request.headers.get('X-Forwarded-For')?.split(',')[0]?.trim() ||
+             '0.0.0.0';
+  const ipHash = await hashIP(ip);
+  const ipKey = `ip:week:${ipHash}:${week}`;
+  const ipEntry = await env.LEADERBOARD_KV.get(ipKey, { type: 'json' });
+  if (ipEntry && ipEntry.count >= 3) {
+    return jsonResponse({ error: 'Too many submissions from this IP this week' }, 429);
+  }
+
+  // 7. Load current weekly leaderboard
+  const lbKey = `leaderboard:week:${week}`;
+  let leaderboard = (await env.LEADERBOARD_KV.get(lbKey, { type: 'json' })) || [];
+
+  const entry = {
+    displayName,
+    score: scoreNum,
+    linesCleared: linesNum,
+    week,
+    submittedAt: new Date().toISOString(),
+  };
+
+  // 8. Insert and sort
+  leaderboard.push(entry);
+  leaderboard.sort((a, b) => b.score - a.score);
+  if (leaderboard.length > LEADERBOARD_MAX) {
+    leaderboard = leaderboard.slice(0, LEADERBOARD_MAX);
+  }
+
+  const ttl = 60 * 60 * 24 * 10; // keep for 10 days
+  await Promise.all([
+    env.LEADERBOARD_KV.put(lbKey, JSON.stringify(leaderboard), { expirationTtl: ttl }),
+    env.LEADERBOARD_KV.put(playerKey, JSON.stringify({ submittedAt: entry.submittedAt }), {
+      expirationTtl: ttl,
+    }),
+    env.LEADERBOARD_KV.put(
+      ipKey,
+      JSON.stringify({ count: (ipEntry?.count || 0) + 1 }),
+      { expirationTtl: ttl }
+    ),
+  ]);
+
+  const rank = leaderboard.findIndex(e => e.displayName === displayName && e.score === scoreNum) + 1;
+  return jsonResponse({ ok: true, rank, total: leaderboard.length });
+}
+
+// ── Weekly Leaderboard Fetch ──────────────────────────────────────────────────
+
+async function handleGetWeeklyLeaderboard(weekStr, env) {
+  if (!weekStr || !isValidWeek(weekStr)) {
+    return jsonResponse({ error: 'Invalid week format. Use YYYY-Www.' }, 400);
+  }
+
+  const lbKey = `leaderboard:week:${weekStr}`;
+  const leaderboard = (await env.LEADERBOARD_KV.get(lbKey, { type: 'json' })) || [];
+  const top20 = leaderboard.slice(0, TOP_N).map((entry, i) => ({
+    rank: i + 1,
+    displayName: entry.displayName,
+    score: entry.score,
+    linesCleared: entry.linesCleared,
+  }));
+
+  return jsonResponse({ week: weekStr, entries: top20, total: leaderboard.length });
+}
+
 // ── Router ────────────────────────────────────────────────────────────────────
 
 export default {
@@ -211,6 +338,11 @@ export default {
 
     if (method === 'POST' && url.pathname === '/api/scores') {
       response = await handlePostScore(request, env);
+    } else if (method === 'POST' && url.pathname === '/api/scores/weekly') {
+      response = await handlePostWeeklyScore(request, env);
+    } else if (method === 'GET' && url.pathname.startsWith('/api/leaderboard/week/')) {
+      const weekStr = url.pathname.replace('/api/leaderboard/week/', '');
+      response = await handleGetWeeklyLeaderboard(weekStr, env);
     } else if (method === 'GET' && url.pathname.startsWith('/api/leaderboard/')) {
       const date = url.pathname.replace('/api/leaderboard/', '');
       response = await handleGetLeaderboard(date, env);

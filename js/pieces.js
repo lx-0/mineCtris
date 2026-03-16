@@ -95,6 +95,18 @@ function _randomShapeIndex() {
   // Diamond (index 8) only spawns in Classic mode at Level 7+ (lastDifficultyTier >= 6).
   // Never in Sprint or Blitz modes.
   const diamondEligible = !isSprintMode && !isBlitzMode && lastDifficultyTier >= 6;
+
+  // Ice Age: 60% of pieces are Ice-type (index 4).
+  if (weeklyIceAge && _rng() < 0.6) return 4;
+
+  // Gold Rush: gold (index 3) gets 3× the weight of other piece types.
+  if (weeklyGoldRush) {
+    // Pool: each non-gold type gets 1 slot, gold gets 3 slots.
+    const pool = [1, 2, 3, 3, 3, 4, 5, 6, 7];
+    if (diamondEligible) pool.push(8);
+    return pool[Math.floor(_rng() * pool.length)];
+  }
+
   // Standard pool is indices 1–7; diamond adds index 8.
   const poolSize = diamondEligible ? SHAPES.length - 1 : 7;
   return Math.floor(_rng() * poolSize) + 1;
@@ -114,6 +126,11 @@ function initPieceQueue() {
 function updateNextPiecesHUD() {
   if (!nextPiecesEl) nextPiecesEl = document.getElementById('next-pieces-panel');
   if (!nextPiecesEl) return;
+  // Blind Drop: hide next-piece preview.
+  if (weeklyBlindDrop) {
+    nextPiecesEl.innerHTML = '<div class="np-label">NEXT</div><div class="np-pieces-row"><div class="np-piece np-blind">?</div></div>';
+    return;
+  }
   let html = '<div class="np-label">NEXT</div><div class="np-pieces-row">';
   pieceQueue.forEach(({ index, shape }) => {
     let palette;
