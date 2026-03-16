@@ -428,6 +428,7 @@ function updateFallingPieces(delta) {
     fallingPieces.splice(index, 1);
     checkLineClear(newBlocks);
     checkGameOver();
+    if (typeof saveGameState === "function") saveGameState();
     if (typeof tutorialNotify === "function") tutorialNotify("pieceLand");
   }
 

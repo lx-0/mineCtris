@@ -102,6 +102,7 @@ function triggerGameOver() {
   if (isGameOver) return;
   isGameOver = true;
   gameTimerRunning = false;
+  if (typeof clearSaveState === "function") clearSaveState();
 
   // Hide danger overlay immediately
   const dangerEl = document.getElementById("danger-overlay");
@@ -236,6 +237,7 @@ function showShareFallback(text, anchorBtn) {
 /** Reset all game state and return to the start screen. */
 function resetGame() {
   if (typeof resetBgMusic === "function") resetBgMusic();
+  if (typeof clearSaveState === "function") clearSaveState();
   // Remove landed blocks (keep ground and trees)
   const toRemove = worldGroup.children.filter(
     (c) => c.name === "landed_block"

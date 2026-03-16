@@ -325,6 +325,7 @@ function updateLineClear(delta) {
       worldGroup.children.forEach((o) => { o.userData.boundingBox = null; });
       lineClearInProgress = false;
       _lcPhase = 0;
+      if (typeof saveGameState === "function") saveGameState();
     }
   }
 }

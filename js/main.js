@@ -214,11 +214,12 @@ function init() {
     scene.add(controls.getObject());
 
     blocker.addEventListener("click", function (e) {
-      // Daily challenge, settings, stats, and achievements buttons handle their own events — skip here
+      // Daily challenge, settings, stats, achievements, and resume buttons handle their own events — skip here
       if (e.target.id === "daily-challenge-btn") return;
       if (e.target.id === "start-settings-btn") return;
       if (e.target.id === "start-stats-btn") return;
       if (e.target.id === "start-achievements-btn") return;
+      if (e.target.id === "start-resume-btn") return;
       // Show mode select screen instead of jumping straight into the game
       showModeSelect();
     });
@@ -491,6 +492,22 @@ function init() {
     isPaused = false;
     resetGame();
   });
+
+  const startResumeBtn = document.getElementById("start-resume-btn");
+  if (startResumeBtn) {
+    // Show button only if a save exists
+    startResumeBtn.style.display = (typeof hasSaveState === "function" && hasSaveState()) ? "block" : "none";
+    startResumeBtn.addEventListener("click", function (e) {
+      e.stopPropagation();
+      if (typeof hasSaveState !== "function" || !hasSaveState()) return;
+      if (typeof restoreGameState === "function") restoreGameState();
+      if (Tone.context.state !== "running") {
+        Tone.start().then(() => controls.lock()).catch(() => controls.lock());
+      } else {
+        controls.lock();
+      }
+    });
+  }
 
   const startSettingsBtn = document.getElementById("start-settings-btn");
   if (startSettingsBtn) startSettingsBtn.addEventListener("click", function (e) {
