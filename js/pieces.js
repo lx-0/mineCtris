@@ -114,10 +114,10 @@ function updateNextPiecesHUD() {
     let palette;
     if (colorblindMode && COLORBLIND_COLORS[index] !== null) {
       palette = COLORBLIND_COLORS[index];
-    } else if (activeTheme === "nether" && NETHER_COLORS[index] !== null) {
-      palette = NETHER_COLORS[index];
     } else {
-      palette = COLORS[index];
+      const THEME_PALETTE = { nether: NETHER_COLORS, ocean: OCEAN_COLORS, candy: CANDY_COLORS };
+      const tp = THEME_PALETTE[activeTheme];
+      palette = (tp && tp[index] !== null) ? tp[index] : COLORS[index];
     }
     const hex = '#' + palette.toString(16).padStart(6, '0');
     html += '<div class="np-piece">';

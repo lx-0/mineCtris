@@ -143,6 +143,46 @@ const NETHER_TRAIL_EMISSIVE = {
   6: 0xff3300, // lava red (same)
 };
 
+// Ocean theme palette — blue/teal/coral tones, ice emphasis.
+// Index maps 1:1 with COLORS. canonicalColor (Classic hex) is always preserved.
+const OCEAN_COLORS = [
+  null,
+  0x1a4a7a, // 1 → deep ocean blue     (was dirt brown)
+  0x4a7a9b, // 2 → slate blue-grey     (was stone grey)
+  0xff6b4a, // 3 → coral reef          (was gold yellow)
+  0x88e8ff, // 4 → arctic ice blue     (was ice cyan — ice emphasis)
+  0x009977, // 5 → seaweed teal        (was moss green)
+  0xff4488, // 6 → bioluminescent pink (was lava red)
+  0x0a2060, // 7 → deep sea navy       (was crystal purple)
+];
+
+// Ocean trail emissive colors keyed by color index.
+const OCEAN_TRAIL_EMISSIVE = {
+  3: 0xff6b4a, // coral (was gold amber)
+  4: 0x44ccff, // ice blue (was ice cyan)
+  6: 0xff44aa, // bioluminescent (was lava red)
+};
+
+// Candy theme palette — pastel pink/purple/mint, no dark tones.
+// Index maps 1:1 with COLORS. canonicalColor (Classic hex) is always preserved.
+const CANDY_COLORS = [
+  null,
+  0xffb3d1, // 1 → pastel pink    (was dirt brown)
+  0xd4a8ff, // 2 → pastel lavender (was stone grey)
+  0xfff5a0, // 3 → pastel lemon   (was gold yellow)
+  0xa8ffe8, // 4 → pastel mint    (was ice cyan)
+  0xb8ffcc, // 5 → pastel green   (was moss green)
+  0xff99cc, // 6 → bubblegum pink (was lava red)
+  0xe0a8ff, // 7 → pastel lilac   (was crystal purple)
+];
+
+// Candy trail emissive colors keyed by color index.
+const CANDY_TRAIL_EMISSIVE = {
+  3: 0xffee44, // pastel lemon glow (was gold)
+  4: 0x55ffcc, // mint glow (was ice)
+  6: 0xff77bb, // bubblegum glow (was lava)
+};
+
 // Reverse lookup: COLORS hex integer → color index (used for live material swapping).
 const COLOR_TO_INDEX = {};
 (function () {

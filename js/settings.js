@@ -114,7 +114,7 @@ function applyColorblindMode(enabled) {
 function _loadTheme() {
   try {
     const raw = localStorage.getItem(THEME_STORAGE_KEY);
-    if (raw === "nether") activeTheme = "nether";
+    if (raw === "nether" || raw === "ocean" || raw === "candy") activeTheme = raw;
     else activeTheme = "classic";
   } catch (_) {}
 }
@@ -128,12 +128,12 @@ function _saveTheme() {
 /** Return true if the given theme key is currently unlocked. */
 function isThemeUnlocked(themeKey) {
   if (themeKey === "classic") return true;
-  if (themeKey === "nether") {
-    try {
-      const achs = loadAchievements ? loadAchievements() : {};
-      return !!achs["iron_will"];
-    } catch (_) { return false; }
-  }
+  try {
+    const achs = loadAchievements ? loadAchievements() : {};
+    if (themeKey === "nether") return !!achs["iron_will"];
+    if (themeKey === "ocean")  return !!achs["architect"];
+    if (themeKey === "candy")  return !!achs["sprinter"];
+  } catch (_) {}
   return false;
 }
 
@@ -146,8 +146,14 @@ function applyTheme(themeKey) {
   activeTheme = themeKey;
   _saveTheme();
 
-  // Update HUD accent class on body.
+  // Update HUD accent classes on body.
   document.body.classList.toggle("theme-nether", themeKey === "nether");
+  document.body.classList.toggle("theme-ocean",  themeKey === "ocean");
+  document.body.classList.toggle("theme-candy",  themeKey === "candy");
+
+  // Resolve theme palette for material swapping.
+  const THEME_PALETTE = { nether: NETHER_COLORS, ocean: OCEAN_COLORS, candy: CANDY_COLORS };
+  const themePalette = THEME_PALETTE[themeKey] || null;
 
   // Swap materials on all existing block meshes (unless colorblind mode overrides).
   if (!colorblindMode) {
@@ -159,10 +165,10 @@ function applyTheme(themeKey) {
         if (canonHex === undefined) return;
 
         let newMat;
-        if (themeKey === "nether") {
-          const nIdx = COLOR_TO_INDEX[canonHex];
-          if (nIdx !== undefined && NETHER_COLORS[nIdx] !== null) {
-            newMat = createBlockMaterial(NETHER_COLORS[nIdx]);
+        if (themePalette) {
+          const idx = COLOR_TO_INDEX[canonHex];
+          if (idx !== undefined && themePalette[idx] !== null) {
+            newMat = createBlockMaterial(themePalette[idx]);
           } else {
             newMat = createBlockMaterial(canonHex);
           }
@@ -197,6 +203,8 @@ function _syncThemeButtons() {
   const themes = [
     { key: "classic", btnId: "theme-btn-classic" },
     { key: "nether",  btnId: "theme-btn-nether"  },
+    { key: "ocean",   btnId: "theme-btn-ocean"   },
+    { key: "candy",   btnId: "theme-btn-candy"   },
   ];
   themes.forEach(function(t) {
     const btn = document.getElementById(t.btnId);
@@ -217,6 +225,8 @@ function initSettings() {
   // Apply persisted theme body class without triggering a material swap on init
   // (blocks don't exist yet — createBlockMesh will pick up activeTheme directly).
   document.body.classList.toggle("theme-nether", activeTheme === "nether");
+  document.body.classList.toggle("theme-ocean",  activeTheme === "ocean");
+  document.body.classList.toggle("theme-candy",  activeTheme === "candy");
 
   function makeHandler(key, valId) {
     return function () {
@@ -248,7 +258,7 @@ function initSettings() {
   }
 
   // Wire up theme buttons.
-  ["classic", "nether"].forEach(function(key) {
+  ["classic", "nether", "ocean", "candy"].forEach(function(key) {
     const btn = document.getElementById("theme-btn-" + key);
     if (!btn) return;
     btn.addEventListener("click", function() {

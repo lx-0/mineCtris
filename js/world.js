@@ -68,10 +68,12 @@ function createBlockMesh(color) {
     } else {
       material = createBlockMaterial(color);
     }
-  } else if (activeTheme === "nether") {
-    const nIdx = COLOR_TO_INDEX[canonicalHex];
-    if (nIdx !== undefined && NETHER_COLORS[nIdx] !== null) {
-      material = createBlockMaterial(NETHER_COLORS[nIdx]);
+  } else if (activeTheme !== "classic") {
+    const THEME_PALETTE = { nether: NETHER_COLORS, ocean: OCEAN_COLORS, candy: CANDY_COLORS };
+    const palette = THEME_PALETTE[activeTheme];
+    const tIdx = palette ? COLOR_TO_INDEX[canonicalHex] : undefined;
+    if (palette && tIdx !== undefined && palette[tIdx] !== null) {
+      material = createBlockMaterial(palette[tIdx]);
     } else {
       material = createBlockMaterial(color);
     }

@@ -35,10 +35,17 @@ function initTrails() {
  */
 function createPieceTrail(piece) {
   const colorIndex   = piece.userData.colorIndex;
-  const themeEmissive = (activeTheme === "nether") ? NETHER_TRAIL_EMISSIVE : TRAIL_EMISSIVE_COLORS;
+  const THEME_TRAIL_EMISSIVE = {
+    nether: NETHER_TRAIL_EMISSIVE,
+    ocean:  OCEAN_TRAIL_EMISSIVE,
+    candy:  CANDY_TRAIL_EMISSIVE,
+  };
+  const THEME_PALETTE = { nether: NETHER_COLORS, ocean: OCEAN_COLORS, candy: CANDY_COLORS };
+  const themeEmissive = THEME_TRAIL_EMISSIVE[activeTheme] || TRAIL_EMISSIVE_COLORS;
   const emissiveHex  = themeEmissive[colorIndex];
-  const baseColorHex = (activeTheme === "nether" && NETHER_COLORS[colorIndex] !== null)
-    ? NETHER_COLORS[colorIndex]
+  const themePalette = THEME_PALETTE[activeTheme];
+  const baseColorHex = (themePalette && themePalette[colorIndex] !== null)
+    ? themePalette[colorIndex]
     : COLORS[colorIndex];
   const trailColor   = new THREE.Color(emissiveHex !== undefined ? emissiveHex : baseColorHex);
   const emissiveColor = emissiveHex !== undefined ? trailColor.clone() : null;
