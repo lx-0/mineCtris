@@ -111,10 +111,12 @@ function applyColorblindMode(enabled) {
 
 // ── Theme system ───────────────────────────────────────────────────────────────
 
+const _ALL_THEMES = ["classic", "nether", "ocean", "candy", "fossil", "storm", "void", "legendary"];
+
 function _loadTheme() {
   try {
     const raw = localStorage.getItem(THEME_STORAGE_KEY);
-    if (raw === "nether" || raw === "ocean" || raw === "candy") activeTheme = raw;
+    if (_ALL_THEMES.includes(raw)) activeTheme = raw;
     else activeTheme = "classic";
   } catch (_) {}
 }
@@ -128,6 +130,11 @@ function _saveTheme() {
 /** Return true if the given theme key is currently unlocked. */
 function isThemeUnlocked(themeKey) {
   if (themeKey === "classic") return true;
+  // Level-gated skins (fossil, storm, void, legendary)
+  if (typeof isLevelThemeUnlocked === 'function') {
+    const levelThemes = ["fossil", "storm", "void", "legendary"];
+    if (levelThemes.includes(themeKey)) return isLevelThemeUnlocked(themeKey);
+  }
   try {
     const achs = loadAchievements ? loadAchievements() : {};
     if (themeKey === "nether") return !!achs["iron_will"];
@@ -147,12 +154,24 @@ function applyTheme(themeKey) {
   _saveTheme();
 
   // Update HUD accent classes on body.
-  document.body.classList.toggle("theme-nether", themeKey === "nether");
-  document.body.classList.toggle("theme-ocean",  themeKey === "ocean");
-  document.body.classList.toggle("theme-candy",  themeKey === "candy");
+  document.body.classList.toggle("theme-nether",    themeKey === "nether");
+  document.body.classList.toggle("theme-ocean",     themeKey === "ocean");
+  document.body.classList.toggle("theme-candy",     themeKey === "candy");
+  document.body.classList.toggle("theme-fossil",    themeKey === "fossil");
+  document.body.classList.toggle("theme-storm",     themeKey === "storm");
+  document.body.classList.toggle("theme-void",      themeKey === "void");
+  document.body.classList.toggle("theme-legendary", themeKey === "legendary");
 
   // Resolve theme palette for material swapping.
-  const THEME_PALETTE = { nether: NETHER_COLORS, ocean: OCEAN_COLORS, candy: CANDY_COLORS };
+  const THEME_PALETTE = {
+    nether:    NETHER_COLORS,
+    ocean:     OCEAN_COLORS,
+    candy:     CANDY_COLORS,
+    fossil:    FOSSIL_COLORS,
+    storm:     STORM_COLORS,
+    void:      VOID_COLORS,
+    legendary: LEGENDARY_COLORS,
+  };
   const themePalette = THEME_PALETTE[themeKey] || null;
 
   // Swap materials on all existing block meshes (unless colorblind mode overrides).
@@ -201,10 +220,14 @@ function applyTheme(themeKey) {
 /** Sync theme selector button states (locked/selected). */
 function _syncThemeButtons() {
   const themes = [
-    { key: "classic", btnId: "theme-btn-classic" },
-    { key: "nether",  btnId: "theme-btn-nether"  },
-    { key: "ocean",   btnId: "theme-btn-ocean"   },
-    { key: "candy",   btnId: "theme-btn-candy"   },
+    { key: "classic",   btnId: "theme-btn-classic"   },
+    { key: "nether",    btnId: "theme-btn-nether"    },
+    { key: "ocean",     btnId: "theme-btn-ocean"     },
+    { key: "candy",     btnId: "theme-btn-candy"     },
+    { key: "fossil",    btnId: "theme-btn-fossil"    },
+    { key: "storm",     btnId: "theme-btn-storm"     },
+    { key: "void",      btnId: "theme-btn-void"      },
+    { key: "legendary", btnId: "theme-btn-legendary" },
   ];
   themes.forEach(function(t) {
     const btn = document.getElementById(t.btnId);
@@ -224,9 +247,13 @@ function initSettings() {
   _loadTheme();
   // Apply persisted theme body class without triggering a material swap on init
   // (blocks don't exist yet — createBlockMesh will pick up activeTheme directly).
-  document.body.classList.toggle("theme-nether", activeTheme === "nether");
-  document.body.classList.toggle("theme-ocean",  activeTheme === "ocean");
-  document.body.classList.toggle("theme-candy",  activeTheme === "candy");
+  document.body.classList.toggle("theme-nether",    activeTheme === "nether");
+  document.body.classList.toggle("theme-ocean",     activeTheme === "ocean");
+  document.body.classList.toggle("theme-candy",     activeTheme === "candy");
+  document.body.classList.toggle("theme-fossil",    activeTheme === "fossil");
+  document.body.classList.toggle("theme-storm",     activeTheme === "storm");
+  document.body.classList.toggle("theme-void",      activeTheme === "void");
+  document.body.classList.toggle("theme-legendary", activeTheme === "legendary");
 
   function makeHandler(key, valId) {
     return function () {
@@ -279,7 +306,7 @@ function initSettings() {
   }
 
   // Wire up theme buttons.
-  ["classic", "nether", "ocean", "candy"].forEach(function(key) {
+  ["classic", "nether", "ocean", "candy", "fossil", "storm", "void", "legendary"].forEach(function(key) {
     const btn = document.getElementById("theme-btn-" + key);
     if (!btn) return;
     btn.addEventListener("click", function() {

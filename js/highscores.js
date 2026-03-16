@@ -86,13 +86,25 @@ function renderHighScoresGameOver(highlightRank) {
     el.innerHTML = '<div class="hs-none">No scores yet</div>';
     return;
   }
+  // Current player level badge (shown on the new entry row)
+  const _hsLevel = (typeof getLevelFromXP === 'function' && typeof loadLifetimeStats === 'function')
+    ? getLevelFromXP(loadLifetimeStats().playerXP || 0) : 1;
+  const _hsTitle = typeof getLevelTitle === 'function' ? getLevelTitle(_hsLevel) : '';
+  const _hsBadge = typeof getLevelBadgeLabel === 'function' ? getLevelBadgeLabel(_hsLevel) : 'L' + _hsLevel;
+
   el.innerHTML = scores
     .map((e, i) => {
       const rank = i + 1;
-      const cls = rank === highlightRank ? "hs-go-row hs-go-new" : "hs-go-row";
+      const isNew = rank === highlightRank;
+      const cls = isNew ? "hs-go-row hs-go-new" : "hs-go-row";
+      const levelSpan = isNew
+        ? `<span class="hs-level-badge">${_hsBadge}</span>` +
+          (_hsTitle ? `<span class="hs-level-title"> ${_hsTitle}</span>` : '')
+        : '';
       return (
         `<div class="${cls}">` +
         `<span class="hs-go-rank">#${rank}</span>` +
+        levelSpan +
         `<span class="hs-go-score">${e.score}</span>` +
         `<span class="hs-go-time">${fmtTime(e.timeSurvived)}</span>` +
         `<span class="hs-go-date">${e.date}</span>` +

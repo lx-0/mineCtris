@@ -6,6 +6,30 @@
 
 const SKY_CYCLE_DURATION = 600; // 10-minute full cycle in seconds
 
+// Season sky theme overrides — blended over the normal day/night sky.
+// zen/hor are [r,g,b] 0-255; tint is blend strength (0=none, 1=full override).
+const _SEASON_SKY_THEMES = {
+  nether: {
+    zen: [ 92,  0,   0], // #5C0000 deep crimson
+    hor: [204, 51,   0], // #CC3300 burnt orange
+    fog: new THREE.Color(0x7a1500),
+    tint: 0.85,
+  },
+  end: {
+    zen: [  0,  0,   0], // #000000 true black
+    hor: [ 13,  0,  32], // #0D0020 void purple
+    fog: new THREE.Color(0x0d0020),
+    tint: 0.90,
+  },
+  deep_dark: {
+    zen: [  5,  5,  16], // #050510 near-black
+    hor: [ 13, 13,  43], // #0D0D2B dark navy
+    fog: new THREE.Color(0x050510),
+    tint: 0.90,
+  },
+  // overworld: no override — normal sky is appropriate for Season 1
+};
+
 // Keyframes: t in [0,1] where 0/1=midnight, 0.25=dawn, 0.5=noon, 0.75=dusk
 // Colors as [r, g, b] 0-255
 const _SKY_KEYS = [
@@ -197,8 +221,17 @@ function updateSky(elapsedSeconds, delta = 0.016) {
 
   // ── Sky dome colors ───────────────────────────────────────────────────────
   const skyKf = _keyframeAt(_SKY_KEYS, phase);
-  const zenArr = _lerpArr(skyKf.k0.zen, skyKf.k1.zen, skyKf.local);
-  const horArr = _lerpArr(skyKf.k0.hor, skyKf.k1.hor, skyKf.local);
+  let zenArr = _lerpArr(skyKf.k0.zen, skyKf.k1.zen, skyKf.local);
+  let horArr = _lerpArr(skyKf.k0.hor, skyKf.k1.hor, skyKf.local);
+
+  // Season sky override — blend toward season theme colors if active
+  const _activeSeason = typeof getSeasonConfig === 'function' ? getSeasonConfig() : null;
+  const _seasonTheme  = _activeSeason && _SEASON_SKY_THEMES[_activeSeason.theme];
+  if (_seasonTheme) {
+    zenArr = _lerpArr(zenArr, _seasonTheme.zen, _seasonTheme.tint);
+    horArr = _lerpArr(horArr, _seasonTheme.hor, _seasonTheme.tint);
+  }
+
   _applySkyColors(zenArr, horArr);
 
   // Keep scene.background in sync with horizon (fills any uncovered pixels)
@@ -341,6 +374,11 @@ function updateSky(elapsedSeconds, delta = 0.016) {
       horArr[1] / 255,
       horArr[2] / 255
     );
+
+    // Season fog tint (applied before danger override)
+    if (_seasonTheme && _seasonTheme.fog) {
+      fogColor.lerp(_seasonTheme.fog, _seasonTheme.tint * 0.7);
+    }
 
     // Danger zone: reddish, thicker fog
     if (maxH >= DANGER_ZONE_HEIGHT) {

@@ -81,6 +81,15 @@
       <div id="mode-select" style="display:none;">
         <div id="mode-select-inner">
           <h2 id="mode-select-title">SELECT MODE</h2>
+          <!-- Season banner — hidden until season data loads -->
+          <div id="season-banner" style="display:none;">
+            <span id="season-banner-icon">&#127942;</span>
+            <div id="season-banner-text">
+              <span id="season-banner-label">SEASON</span>
+              <span id="season-banner-name"></span>
+            </div>
+            <span id="season-banner-days"></span>
+          </div>
           <div id="mode-cards">
             <!-- Classic -->
             <div class="mode-card" id="mode-card-classic" data-mode="classic">
@@ -498,6 +507,7 @@
             <button id="lb-tab-yesterday" class="lb-tab">Yesterday</button>
             <button id="lb-tab-thisweek" class="lb-tab">This Week</button>
             <button id="lb-tab-lastweek" class="lb-tab">Last Week</button>
+            <button id="lb-tab-season" class="lb-tab">&#127942; Season</button>
           </div>
           <div id="lb-panel-body"></div>
           <button id="lb-panel-close-btn">Close</button>
@@ -534,6 +544,7 @@
     <script src="js/aura.js"></script>
     <script src="js/tutorial.js"></script>
     <script src="js/settings.js"></script>
+    <script src="js/season.js"></script>
     <script src="js/leaderboard.js"></script>
     <script src="js/missions.js"></script>
     <script src="js/savestate.js"></script>

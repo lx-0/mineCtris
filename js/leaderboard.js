@@ -5,6 +5,13 @@ const LEADERBOARD_WORKER_URL = 'https://minectris-leaderboard.workers.dev';
 const DISPLAY_NAME_KEY = 'mineCtris_displayName';
 const LB_SUBMITTED_KEY = 'mineCtris_lbSubmitted'; // value: "YYYY-MM-DD"
 
+// Season badge labels by rank (top-3 finishers)
+const _SEASON_BADGES = {
+  1: { label: 'Champion', icon: '🏆' },
+  2: { label: 'Veteran',  icon: '🥈' },
+  3: { label: 'Contender', icon: '🥉' },
+};
+
 // ── Storage helpers ───────────────────────────────────────────────────────────
 
 function loadDisplayName() {
@@ -39,6 +46,11 @@ async function apiSubmitScore(displayName, score, linesCleared) {
 
 async function apiFetchLeaderboard(date) {
   const resp = await fetch(LEADERBOARD_WORKER_URL + '/api/leaderboard/' + date);
+  return resp.json();
+}
+
+async function apiFetchSeasonLeaderboard() {
+  const resp = await fetch(LEADERBOARD_WORKER_URL + '/api/leaderboard/season');
   return resp.json();
 }
 
@@ -106,7 +118,7 @@ function openDisplayNameModal(onConfirm) {
 
 // ── Leaderboard Panel ─────────────────────────────────────────────────────────
 
-let _lbActiveTab = 'today'; // 'today' | 'yesterday' | 'thisweek' | 'lastweek'
+let _lbActiveTab = 'today'; // 'today' | 'yesterday' | 'thisweek' | 'lastweek' | 'season'
 
 function openLeaderboardPanel(defaultTab) {
   const overlay = document.getElementById('lb-panel-overlay');
@@ -127,10 +139,12 @@ function _syncLbTabs() {
   const yestBtn     = document.getElementById('lb-tab-yesterday');
   const thisWeekBtn = document.getElementById('lb-tab-thisweek');
   const lastWeekBtn = document.getElementById('lb-tab-lastweek');
+  const seasonBtn   = document.getElementById('lb-tab-season');
   if (todayBtn)    todayBtn.classList.toggle('lb-tab-active',    _lbActiveTab === 'today');
   if (yestBtn)     yestBtn.classList.toggle('lb-tab-active',     _lbActiveTab === 'yesterday');
   if (thisWeekBtn) thisWeekBtn.classList.toggle('lb-tab-active', _lbActiveTab === 'thisweek');
   if (lastWeekBtn) lastWeekBtn.classList.toggle('lb-tab-active', _lbActiveTab === 'lastweek');
+  if (seasonBtn)   seasonBtn.classList.toggle('lb-tab-active',   _lbActiveTab === 'season');
 }
 
 function _getYesterdayString() {
@@ -145,7 +159,12 @@ async function _loadLbTab(tab) {
   body.innerHTML = '<div class="lb-loading">Loading...</div>';
 
   try {
-    if (tab === 'thisweek' || tab === 'lastweek') {
+    if (tab === 'season') {
+      const data = await apiFetchSeasonLeaderboard();
+      if (!data || !data.entries) throw new Error('bad response');
+      const label = data.seasonName || 'Current Season';
+      _renderLeaderboard(body, data.entries, null, label, true);
+    } else if (tab === 'thisweek' || tab === 'lastweek') {
       const weekStr = tab === 'thisweek' ? getWeeklyDateString() : _getLastWeekString();
       const data = await apiFetchWeeklyLeaderboard(weekStr);
       if (!data || !data.entries) throw new Error('bad response');
@@ -165,27 +184,56 @@ async function _loadLbTab(tab) {
   }
 }
 
-function _renderLeaderboard(container, entries, date, labelOverride) {
+function _renderLeaderboard(container, entries, date, labelOverride, isSeason) {
   const myName = loadDisplayName().toLowerCase();
   const dateLabel = labelOverride || formatDailyLabel(date);
 
   if (!entries.length) {
-    container.innerHTML = '<div class="lb-empty">No scores yet for ' + dateLabel + '.</div>';
+    container.innerHTML = '<div class="lb-empty">No scores yet for ' + _escHtml(dateLabel) + '.</div>';
     return;
   }
 
+  // Season tab: entries have totalScore + gamesPlayed instead of score + linesCleared
+  const scoreKey = isSeason ? 'totalScore' : 'score';
+  const col2Label = isSeason ? 'Games' : 'Lines';
+  const col2Key   = isSeason ? 'gamesPlayed' : 'linesCleared';
+
   let html = '<table class="lb-table"><thead><tr>' +
-    '<th>#</th><th>Name</th><th>Score</th><th>Lines</th>' +
+    '<th>#</th><th>Name</th><th>Score</th><th>' + col2Label + '</th>' +
     '</tr></thead><tbody>';
+
+  // Compute local player's level for their own row badge
+  const _myLevel = (function() {
+    if (typeof getLevelFromXP !== 'function' || typeof loadLifetimeStats !== 'function') return 1;
+    return getLevelFromXP(loadLifetimeStats().playerXP || 0);
+  })();
+  const _myTitle = typeof getLevelTitle === 'function' ? getLevelTitle(_myLevel) : '';
 
   entries.forEach(function(e) {
     const isMe = myName && e.displayName.toLowerCase() === myName;
     const cls  = isMe ? ' class="lb-row-me"' : '';
+    let nameCell = _escHtml(e.displayName);
+
+    // Season top-3 badges
+    if (isSeason && _SEASON_BADGES[e.rank]) {
+      const b = _SEASON_BADGES[e.rank];
+      nameCell = '<span class="lb-season-badge lb-season-badge-' + e.rank + '" title="' + b.label + '">' +
+        b.icon + '</span> ' + nameCell;
+    }
+
+    if (isMe) {
+      const badgeLabel = typeof getLevelBadgeLabel === 'function' ? getLevelBadgeLabel(_myLevel) : 'L' + _myLevel;
+      nameCell += ' <span class="lb-level-badge">' + badgeLabel + '</span>';
+      if (_myTitle) nameCell += ' <span class="lb-level-title">' + _myTitle + '</span>';
+      nameCell += ' ◀';
+    }
+    const scoreVal = (e[scoreKey] || 0).toLocaleString();
+    const col2Val  = e[col2Key] != null ? e[col2Key] : '-';
     html += '<tr' + cls + '>' +
       '<td>' + e.rank + '</td>' +
-      '<td>' + _escHtml(e.displayName) + (isMe ? ' ◀' : '') + '</td>' +
-      '<td>' + e.score.toLocaleString() + '</td>' +
-      '<td>' + e.linesCleared + '</td>' +
+      '<td>' + nameCell + '</td>' +
+      '<td>' + scoreVal + '</td>' +
+      '<td>' + col2Val + '</td>' +
       '</tr>';
   });
 
@@ -322,6 +370,15 @@ function initLeaderboard() {
       _lbActiveTab = 'lastweek';
       _syncLbTabs();
       _loadLbTab('lastweek');
+    });
+  }
+
+  const seasonBtn = document.getElementById('lb-tab-season');
+  if (seasonBtn) {
+    seasonBtn.addEventListener('click', function() {
+      _lbActiveTab = 'season';
+      _syncLbTabs();
+      _loadLbTab('season');
     });
   }
 

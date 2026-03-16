@@ -127,6 +127,7 @@ function init() {
   initAudio();
   initSettings();
   if (typeof initLeaderboard === "function") initLeaderboard();
+  if (typeof initSeasonBanner === "function") initSeasonBanner();
   if (typeof updateLevelBadgeHUD === "function") updateLevelBadgeHUD();
 
   scene = new THREE.Scene();

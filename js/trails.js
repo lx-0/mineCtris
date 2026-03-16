@@ -36,11 +36,23 @@ function initTrails() {
 function createPieceTrail(piece) {
   const colorIndex   = piece.userData.colorIndex;
   const THEME_TRAIL_EMISSIVE = {
-    nether: NETHER_TRAIL_EMISSIVE,
-    ocean:  OCEAN_TRAIL_EMISSIVE,
-    candy:  CANDY_TRAIL_EMISSIVE,
+    nether:    NETHER_TRAIL_EMISSIVE,
+    ocean:     OCEAN_TRAIL_EMISSIVE,
+    candy:     CANDY_TRAIL_EMISSIVE,
+    fossil:    FOSSIL_TRAIL_EMISSIVE,
+    storm:     STORM_TRAIL_EMISSIVE,
+    void:      VOID_TRAIL_EMISSIVE,
+    legendary: LEGENDARY_TRAIL_EMISSIVE,
   };
-  const THEME_PALETTE = { nether: NETHER_COLORS, ocean: OCEAN_COLORS, candy: CANDY_COLORS };
+  const THEME_PALETTE = {
+    nether:    NETHER_COLORS,
+    ocean:     OCEAN_COLORS,
+    candy:     CANDY_COLORS,
+    fossil:    FOSSIL_COLORS,
+    storm:     STORM_COLORS,
+    void:      VOID_COLORS,
+    legendary: LEGENDARY_COLORS,
+  };
   const themeEmissive = THEME_TRAIL_EMISSIVE[activeTheme] || TRAIL_EMISSIVE_COLORS;
   const emissiveHex  = themeEmissive[colorIndex];
   const themePalette = THEME_PALETTE[activeTheme];

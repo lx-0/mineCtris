@@ -139,6 +139,7 @@ function renderStatsPanel() {
     ['DAILY CHALLENGES',  stats.dailyChallengesCompleted],
     ['PUZZLES COMPLETED', stats.puzzlesCompleted || 0],
     ['TOTAL XP',          stats.playerXP || 0],
+    ['PLAYER LEVEL',      typeof getLevelFromXP === 'function' ? getLevelFromXP(stats.playerXP || 0) : 1],
   ];
   el.innerHTML = rows.map(([label, val]) =>
     `<div class="stats-row">` +

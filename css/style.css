@@ -3311,3 +3311,57 @@ body.theme-legendary #score-display {
   0%, 100% { opacity: 0.55; transform: scale(1);     }
   50%       { opacity: 1.0;  transform: scale(1.004); }
 }
+
+/* ── Season Banner (mode-select screen) ───────────────────────────────────── */
+#season-banner {
+  display: none; /* shown by JS when season is active */
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  background: rgba(0, 20, 10, 0.7);
+  border: 2px solid var(--season-accent, #00ff88);
+  border-radius: 8px;
+  padding: 12px 20px;
+  box-sizing: border-box;
+  box-shadow: 0 0 16px rgba(0, 255, 136, 0.15);
+}
+#season-banner-icon {
+  font-size: 1.6em;
+  flex-shrink: 0;
+}
+#season-banner-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+}
+#season-banner-label {
+  font-family: "Press Start 2P", cursive;
+  font-size: 7px;
+  color: rgba(255, 255, 255, 0.45);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+#season-banner-name {
+  font-family: "Press Start 2P", cursive;
+  font-size: 11px;
+  color: var(--season-accent, #00ff88);
+  text-shadow: 0 0 8px var(--season-accent, #00ff88);
+  letter-spacing: 0.06em;
+}
+#season-banner-days {
+  font-family: "Press Start 2P", cursive;
+  font-size: 8px;
+  color: rgba(255, 255, 255, 0.55);
+  flex-shrink: 0;
+  text-align: right;
+}
+
+/* ── Season leaderboard badges ────────────────────────────────────────────── */
+.lb-season-badge {
+  font-size: 1.1em;
+  line-height: 1;
+}
+.lb-season-badge-1 { filter: drop-shadow(0 0 4px gold); }
+.lb-season-badge-2 { filter: drop-shadow(0 0 4px silver); }
+.lb-season-badge-3 { filter: drop-shadow(0 0 4px #cd7f32); }

@@ -195,6 +195,77 @@ const CANDY_TRAIL_EMISSIVE = {
   6: 0xff77bb, // bubblegum glow (was lava)
 };
 
+// Fossil theme palette (L5 unlock) — earthy sandstone, amber, ancient stone.
+const FOSSIL_COLORS = [
+  null,
+  0x8b6914, // 1 → amber earth    (was dirt brown)
+  0x7a6a50, // 2 → fossil stone   (was stone grey)
+  0xd4952e, // 3 → burnished gold (was gold yellow)
+  0xc8e0d0, // 4 → pale bone      (was ice cyan)
+  0x5a7a3a, // 5 → fern green     (was moss green)
+  0xb03c10, // 6 → terra cotta    (was lava red)
+  0x4a3060, // 7 → dark amethyst  (was crystal purple)
+  0x1a3a6a, // 8 → slate navy     (was diamond deep blue)
+];
+const FOSSIL_TRAIL_EMISSIVE = {
+  3: 0xd4952e, // burnished gold glow
+  6: 0xb03c10, // terra cotta glow
+};
+
+// Storm theme palette (L15 unlock) — electric blue/grey/lightning.
+const STORM_COLORS = [
+  null,
+  0x2a3a4a, // 1 → storm slate     (was dirt brown)
+  0x4a5a6a, // 2 → cloud grey      (was stone grey)
+  0xf0d060, // 3 → lightning gold  (was gold yellow)
+  0x88bbff, // 4 → electric ice    (was ice cyan)
+  0x2a6040, // 5 → storm teal      (was moss green)
+  0xff4422, // 6 → crimson bolt    (was lava red)
+  0x3a2a80, // 7 → thunder violet  (was crystal purple)
+  0x0066cc, // 8 → storm sapphire  (was diamond deep blue)
+];
+const STORM_TRAIL_EMISSIVE = {
+  3: 0xf0d060, // lightning glow
+  4: 0x66aaff, // electric ice glow
+  6: 0xff4422, // bolt glow
+};
+
+// Void theme palette (L30 unlock) — deep space, obsidian, cosmic purple.
+const VOID_COLORS = [
+  null,
+  0x1a0a2e, // 1 → void indigo    (was dirt brown)
+  0x2a1a3e, // 2 → space grey     (was stone grey)
+  0xbb88ff, // 3 → nebula violet  (was gold yellow)
+  0x44ddff, // 4 → cosmic cyan    (was ice cyan)
+  0x0d4040, // 5 → abyss teal     (was moss green)
+  0x9900cc, // 6 → void purple    (was lava red)
+  0x220044, // 7 → deep void      (was crystal purple)
+  0x000820, // 8 → event horizon  (was diamond deep blue)
+];
+const VOID_TRAIL_EMISSIVE = {
+  3: 0xbb88ff, // nebula glow
+  4: 0x44ddff, // cosmic cyan glow
+  6: 0xaa00ff, // void glow
+};
+
+// Legendary theme palette (L50 unlock) — gold-trimmed, dark base, radiant golds.
+const LEGENDARY_COLORS = [
+  null,
+  0x3a2800, // 1 → dark mahogany   (was dirt brown)
+  0x282828, // 2 → charcoal black  (was stone grey)
+  0xffd700, // 3 → pure gold       (was gold yellow)
+  0xffe8a0, // 4 → pale champagne  (was ice cyan)
+  0x2a4a00, // 5 → dark jade       (was moss green)
+  0xff8c00, // 6 → gilded amber    (was lava red)
+  0x600090, // 7 → royal amethyst  (was crystal purple)
+  0x003060, // 8 → midnight sapph. (was diamond deep blue)
+];
+const LEGENDARY_TRAIL_EMISSIVE = {
+  3: 0xffd700, // pure gold glow
+  4: 0xffe040, // champagne glow
+  6: 0xff8c00, // gilded amber glow
+};
+
 // Reverse lookup: COLORS hex integer → color index (used for live material swapping).
 const COLOR_TO_INDEX = {};
 (function () {
@@ -321,6 +392,58 @@ const RECIPES = [
     ],
     outputType: "consumable",
     consumableType: "ice_bridge",
+    requiresBench: true,
+    outputCount: 1,
+  },
+  {
+    id: "row_bomb",
+    name: "Row Bomb",
+    description: "Power-up: instantly clears the lowest occupied row (requires Crafting Bench)",
+    inputs: [
+      { cssColor: DIAMOND_COLOR, label: "Diamond", count: 3 },
+      { cssColor: "#ff0000",     label: "Lava",    count: 2 },
+    ],
+    outputType: "powerup",
+    powerUpType: "row_bomb",
+    requiresBench: true,
+    outputCount: 1,
+  },
+  {
+    id: "slow_down",
+    name: "Slow Down",
+    description: "Power-up: reduces piece fall speed by 50% for 30s (requires Crafting Bench)",
+    inputs: [
+      { cssColor: "#808080", label: "Stone", count: 5 },
+      { cssColor: "#8b4513", label: "Wood",  count: 1 },
+    ],
+    outputType: "powerup",
+    powerUpType: "slow_down",
+    requiresBench: true,
+    outputCount: 1,
+  },
+  {
+    id: "shield",
+    name: "Shield",
+    description: "Power-up: survive one death without ending the run (requires Crafting Bench)",
+    inputs: [
+      { cssColor: "#808080", label: "Stone", count: 8 },
+      { cssColor: "#ffff00", label: "Gold",  count: 3 },
+    ],
+    outputType: "powerup",
+    powerUpType: "shield",
+    requiresBench: true,
+    outputCount: 1,
+  },
+  {
+    id: "magnet",
+    name: "Magnet",
+    description: "Power-up: pulls all minable blocks within 3 units to player for 20s (requires Crafting Bench)",
+    inputs: [
+      { cssColor: "#ffff00",   label: "Gold",    count: 4 },
+      { cssColor: DIAMOND_COLOR, label: "Diamond", count: 2 },
+    ],
+    outputType: "powerup",
+    powerUpType: "magnet",
     requiresBench: true,
     outputCount: 1,
   },
