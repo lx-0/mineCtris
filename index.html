@@ -58,6 +58,7 @@
             <button id="start-settings-btn">&#9881; Settings</button>
             <button id="start-stats-btn">&#128202; Stats</button>
             <button id="start-achievements-btn">&#127942; Achievements</button>
+            <button id="start-missions-btn">&#127919; Daily Missions</button>
           </div>
           <div id="hs-start-panel"></div>
         </div>
@@ -126,6 +127,9 @@
         <span id="material-tooltip-hits"></span>
       </div>
 
+      <!-- Player level badge (top-left HUD) -->
+      <div id="hud-player-level-badge" class="level-badge"></div>
+
       <!-- Daily challenge badge (shown during daily runs) -->
       <div id="daily-challenge-badge" style="display:none;"></div>
 
@@ -168,6 +172,7 @@
         <div id="game-over-stats"></div>
         <div id="go-lifetime-stats"></div>
         <div id="go-xp-earned" class="xp-earned-display"></div>
+        <div id="go-level-badge-row"></div>
         <button id="go-stats-btn">View All Stats</button>
         <div id="hs-go-label">HIGH SCORES</div>
         <div id="hs-go-table"></div>
@@ -260,6 +265,22 @@
         </div>
       </div>
 
+      <!-- Missions overlay -->
+      <div id="missions-overlay" style="display:none;">
+        <div id="missions-panel">
+          <div id="missions-title">DAILY MISSIONS</div>
+          <div id="missions-panel-body"></div>
+          <button id="missions-close-btn">Close</button>
+        </div>
+      </div>
+
+      <!-- Mission complete toast (top-center, above level-up toast) -->
+      <div id="mission-complete-toast">
+        <div class="mct-title"></div>
+        <div class="mct-text"></div>
+        <div class="mct-xp"></div>
+      </div>
+
       <!-- Stats overlay -->
       <div id="stats-overlay">
         <div id="stats-panel">
@@ -327,6 +348,26 @@
               <span class="theme-btn-name">Candy</span>
               <span class="theme-btn-sub theme-btn-hint">&#x1F512; Complete Sprint</span>
             </button>
+            <button id="theme-btn-fossil" class="theme-btn theme-btn-locked" title="Fossil" disabled>
+              <span class="theme-btn-icon">&#x1FAB4;</span>
+              <span class="theme-btn-name">Fossil</span>
+              <span class="theme-btn-sub theme-btn-hint" id="theme-hint-fossil">&#x1F512; Reach Level 5</span>
+            </button>
+            <button id="theme-btn-storm" class="theme-btn theme-btn-locked" title="Storm" disabled>
+              <span class="theme-btn-icon">&#x26A1;</span>
+              <span class="theme-btn-name">Storm</span>
+              <span class="theme-btn-sub theme-btn-hint" id="theme-hint-storm">&#x1F512; Reach Level 15</span>
+            </button>
+            <button id="theme-btn-void" class="theme-btn theme-btn-locked" title="Void" disabled>
+              <span class="theme-btn-icon">&#x1F300;</span>
+              <span class="theme-btn-name">Void</span>
+              <span class="theme-btn-sub theme-btn-hint" id="theme-hint-void">&#x1F512; Reach Level 30</span>
+            </button>
+            <button id="theme-btn-legendary" class="theme-btn theme-btn-locked" title="Legendary" disabled>
+              <span class="theme-btn-icon">&#x1F947;</span>
+              <span class="theme-btn-name">Legendary</span>
+              <span class="theme-btn-sub theme-btn-hint" id="theme-hint-legendary">&#x1F512; Reach Level 50</span>
+            </button>
           </div>
           <button id="settings-close-btn">Close</button>
         </div>
@@ -352,6 +393,15 @@
 
       <!-- Crafted banner -->
       <div id="crafted-banner"></div>
+
+      <!-- Level-up toast (bottom-center) -->
+      <div id="level-up-toast">
+        <div class="lu-toast-icon"></div>
+        <div class="lu-toast-text">
+          <div class="lu-toast-title"></div>
+          <div class="lu-toast-body"></div>
+        </div>
+      </div>
 
       <!-- Achievement unlock toast (bottom-right) -->
       <div id="achievement-toast">
@@ -441,6 +491,7 @@
     <script src="js/weekly.js"></script>
     <script src="js/highscores.js"></script>
     <script src="js/stats.js"></script>
+    <script src="js/leveling.js"></script>
     <script src="js/sprint.js"></script>
     <script src="js/blitz.js"></script>
     <script src="js/puzzle.js"></script>
@@ -449,6 +500,7 @@
     <script src="js/tutorial.js"></script>
     <script src="js/settings.js"></script>
     <script src="js/leaderboard.js"></script>
+    <script src="js/missions.js"></script>
     <script src="js/savestate.js"></script>
     <script src="js/shareland.js"></script>
     <script src="js/main.js"></script>

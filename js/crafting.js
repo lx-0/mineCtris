@@ -229,6 +229,7 @@ function craftRecipe(recipe) {
   showCraftedBanner(recipe.name);
   closeCraftingPanel();
   sessionCrafts++;
+  if (typeof onMissionItemCrafted === "function") onMissionItemCrafted(recipe.id);
   return true;
 }
 

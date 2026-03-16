@@ -356,11 +356,15 @@ function _triggerPuzzleWin() {
 
   // Award XP (puzzle win)
   if (typeof awardXP === "function") {
+    const _pzXpBefore = (typeof loadLifetimeStats === 'function' ? loadLifetimeStats().playerXP || 0 : 0);
     const { xpEarned: _pzXP, streakBonus: _pzStreak } = awardXP(score, 'puzzle');
     const pzXpEl = document.getElementById('puzzle-xp-earned');
     if (pzXpEl) {
       pzXpEl.textContent = '+ ' + _pzXP + ' XP' + (_pzStreak ? '  (Streak Bonus!)' : '');
       pzXpEl.className = 'xp-earned-display' + (_pzStreak ? ' xp-streak' : '');
+    }
+    if (typeof checkLevelUp === 'function' && typeof loadLifetimeStats === 'function') {
+      checkLevelUp(_pzXpBefore, loadLifetimeStats().playerXP || 0);
     }
   }
 
@@ -368,6 +372,9 @@ function _triggerPuzzleWin() {
   if (typeof achOnPuzzleComplete === "function") {
     achOnPuzzleComplete(puzzlePuzzleId, stars);
   }
+
+  // Daily missions: puzzle completed
+  if (typeof onMissionPuzzleComplete === "function") onMissionPuzzleComplete();
 
   _showPuzzleCompleteOverlay(true, stars, isNewBest, puzzle);
 

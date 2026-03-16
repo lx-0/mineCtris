@@ -127,6 +127,7 @@ function init() {
   initAudio();
   initSettings();
   if (typeof initLeaderboard === "function") initLeaderboard();
+  if (typeof updateLevelBadgeHUD === "function") updateLevelBadgeHUD();
 
   scene = new THREE.Scene();
   camera = new THREE.PerspectiveCamera(
@@ -220,6 +221,7 @@ function init() {
       if (e.target.id === "start-settings-btn") return;
       if (e.target.id === "start-stats-btn") return;
       if (e.target.id === "start-achievements-btn") return;
+      if (e.target.id === "start-missions-btn") return;
       if (e.target.id === "start-resume-btn") return;
       // Show mode select screen instead of jumping straight into the game
       showModeSelect();
@@ -702,6 +704,17 @@ function init() {
     if (typeof closeAchievementsPanel === "function") closeAchievementsPanel();
   });
 
+  const startMissionsBtn = document.getElementById("start-missions-btn");
+  if (startMissionsBtn) startMissionsBtn.addEventListener("click", function (e) {
+    e.stopPropagation();
+    if (typeof openMissionsPanel === "function") openMissionsPanel();
+  });
+
+  const missionsCloseBtn = document.getElementById("missions-close-btn");
+  if (missionsCloseBtn) missionsCloseBtn.addEventListener("click", function () {
+    if (typeof closeMissionsPanel === "function") closeMissionsPanel();
+  });
+
   initLineClearFragmentPool();
   initTrails();
   initAuras();
@@ -917,6 +930,7 @@ function onMouseDown(event) {
         (_objType ? OBJECT_TYPE_TO_MATERIAL[_objType] : null);
       addScore(_matName && BLOCK_TYPES[_matName] ? BLOCK_TYPES[_matName].points : 10);
       if (typeof achOnBlockMined === "function") achOnBlockMined(blocksMined, _objType);
+      if (typeof onMissionBlockMined === "function") onMissionBlockMined();
       // Save grid pos for diamond AOE (before block is removed from world)
       const _brokenBlock = pickaxeTier === "diamond" ? (targetedBlock.userData.gridPos
         ? { x: targetedBlock.userData.gridPos.x, y: targetedBlock.userData.gridPos.y, z: targetedBlock.userData.gridPos.z }
@@ -999,6 +1013,7 @@ function _applyDiamondAOE(origin) {
       (nobjType ? OBJECT_TYPE_TO_MATERIAL[nobjType] : null);
     addScore(nmatName && BLOCK_TYPES[nmatName] ? BLOCK_TYPES[nmatName].points : 10);
     if (typeof achOnBlockMined === "function") achOnBlockMined(blocksMined, nobjType);
+    if (typeof onMissionBlockMined === "function") onMissionBlockMined();
     const nColor = neighbor.userData.originalColor || neighbor.material.color;
     addToInventory(threeColorToCss(nColor));
     unregisterBlock(neighbor);
@@ -1038,6 +1053,11 @@ function activateLavaFlask() {
     worldGroup.remove(block);
   });
   if (typeof achOnBlockMined === "function") achOnBlockMined(blocksMined, undefined);
+  // Mission: count lava-flask-destroyed blocks
+  if (typeof onMissionBlockMined === "function") {
+    for (let _i = 0; _i < toRemove.length; _i++) onMissionBlockMined();
+  }
+  if (typeof onMissionPowerupActivated === "function") onMissionPowerupActivated();
 }
 
 /**
@@ -1051,6 +1071,7 @@ function activateIceBridge() {
   iceBridgeSlowActive = true;
   iceBridgeSlowTimer  = 10.0;
   showCraftedBanner("Ice Bridge! 20% slow for 10s.");
+  if (typeof onMissionPowerupActivated === "function") onMissionPowerupActivated();
 }
 
 function animate() {

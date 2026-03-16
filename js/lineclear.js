@@ -129,6 +129,9 @@ function checkLineClear(newBlocks) {
   // Achievement: first line clear, Tetramino
   if (typeof achOnLineClear === "function") achOnLineClear(completeLevels.length);
 
+  // Daily missions: track line clears
+  if (typeof onMissionLineClear === "function") onMissionLineClear(completeLevels.length);
+
   // Sprint: end the game when 40 lines are cleared
   if (isSprintMode && linesCleared >= SPRINT_LINE_TARGET &&
       typeof triggerSprintComplete === "function") {

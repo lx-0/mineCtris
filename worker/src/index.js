@@ -19,6 +19,74 @@
 // ── Constants ────────────────────────────────────────────────────────────────
 
 const LEADERBOARD_MAX = 100;
+
+// ── Daily Mission Pool ───────────────────────────────────────────────────────
+
+const MISSION_POOL = [
+  // EASY (10 missions, 50 XP each)
+  { id: 1, difficulty: 'easy', xp: 50, text: 'Clear 10 lines in Classic mode', metric: 'lines_cleared_classic', target: 10, condition: 'gte', accumulation: 'cumulative' },
+  { id: 2, difficulty: 'easy', xp: 50, text: 'Mine 30 blocks in any mode', metric: 'blocks_mined_total', target: 30, condition: 'gte', accumulation: 'cumulative' },
+  { id: 3, difficulty: 'easy', xp: 50, text: 'Play a Daily Challenge run', metric: 'daily_challenge_runs', target: 1, condition: 'gte', accumulation: 'cumulative' },
+  { id: 4, difficulty: 'easy', xp: 50, text: 'Complete any Puzzle Mode level', metric: 'puzzles_completed', target: 1, condition: 'gte', accumulation: 'cumulative' },
+  { id: 5, difficulty: 'easy', xp: 50, text: 'Score 3,000+ points in Blitz mode', metric: 'blitz_high_score_session', target: 3000, condition: 'gte', accumulation: 'best' },
+  { id: 6, difficulty: 'easy', xp: 50, text: 'Survive 2 minutes in Classic mode', metric: 'classic_survival_seconds', target: 120, condition: 'gte', accumulation: 'best' },
+  { id: 7, difficulty: 'easy', xp: 50, text: 'Complete a Sprint run', metric: 'sprint_runs_completed', target: 1, condition: 'gte', accumulation: 'cumulative' },
+  { id: 8, difficulty: 'easy', xp: 50, text: 'Activate a power-up in any run', metric: 'powerups_activated_total', target: 1, condition: 'gte', accumulation: 'cumulative' },
+  { id: 9, difficulty: 'easy', xp: 50, text: 'Craft any item', metric: 'items_crafted_total', target: 1, condition: 'gte', accumulation: 'cumulative' },
+  { id: 10, difficulty: 'easy', xp: 50, text: 'Share your score', metric: 'score_shared', target: 1, condition: 'gte', accumulation: 'flag' },
+  // MEDIUM (12 missions, 75 XP each)
+  { id: 11, difficulty: 'medium', xp: 75, text: 'Clear 25 lines in Classic mode', metric: 'lines_cleared_classic', target: 25, condition: 'gte', accumulation: 'cumulative' },
+  { id: 12, difficulty: 'medium', xp: 75, text: 'Finish a Sprint run in under 5 minutes', metric: 'sprint_best_time_seconds', target: 300, condition: 'lte', accumulation: 'best_lte' },
+  { id: 13, difficulty: 'medium', xp: 75, text: 'Score 6,000+ points in Blitz mode', metric: 'blitz_high_score_session', target: 6000, condition: 'gte', accumulation: 'best' },
+  { id: 14, difficulty: 'medium', xp: 75, text: 'Complete 2 Puzzle Mode levels', metric: 'puzzles_completed', target: 2, condition: 'gte', accumulation: 'cumulative' },
+  { id: 15, difficulty: 'medium', xp: 75, text: 'Mine 75 blocks in any mode', metric: 'blocks_mined_total', target: 75, condition: 'gte', accumulation: 'cumulative' },
+  { id: 16, difficulty: 'medium', xp: 75, text: 'Play a Weekly Challenge run', metric: 'weekly_challenge_runs', target: 1, condition: 'gte', accumulation: 'cumulative' },
+  { id: 17, difficulty: 'medium', xp: 75, text: 'Pull off a 4-line clear in Classic mode', metric: 'tetris_clears_classic', target: 1, condition: 'gte', accumulation: 'cumulative' },
+  { id: 18, difficulty: 'medium', xp: 75, text: 'Craft 3 items in any session', metric: 'items_crafted_total', target: 3, condition: 'gte', accumulation: 'cumulative' },
+  { id: 19, difficulty: 'medium', xp: 75, text: 'Clear 3 lines at once in Blitz mode', metric: 'triple_clears_blitz', target: 1, condition: 'gte', accumulation: 'cumulative' },
+  { id: 20, difficulty: 'medium', xp: 75, text: 'Score 4,000+ in a Daily Challenge', metric: 'daily_challenge_high_score', target: 4000, condition: 'gte', accumulation: 'best' },
+  { id: 21, difficulty: 'medium', xp: 75, text: 'Activate 3 power-ups in a single run', metric: 'powerups_activated_session', target: 3, condition: 'gte', accumulation: 'best' },
+  { id: 22, difficulty: 'medium', xp: 75, text: 'Survive 8 minutes in Classic mode', metric: 'classic_survival_seconds', target: 480, condition: 'gte', accumulation: 'best' },
+  // HARD (8 missions, 100 XP each)
+  { id: 23, difficulty: 'hard', xp: 100, text: 'Clear 50 lines in Classic mode', metric: 'lines_cleared_classic', target: 50, condition: 'gte', accumulation: 'cumulative' },
+  { id: 24, difficulty: 'hard', xp: 100, text: 'Finish a Sprint run in under 3 minutes', metric: 'sprint_best_time_seconds', target: 180, condition: 'lte', accumulation: 'best_lte' },
+  { id: 25, difficulty: 'hard', xp: 100, text: 'Score 10,000+ points in Blitz mode', metric: 'blitz_high_score_session', target: 10000, condition: 'gte', accumulation: 'best' },
+  { id: 26, difficulty: 'hard', xp: 100, text: 'Complete 5 Puzzle Mode levels', metric: 'puzzles_completed', target: 5, condition: 'gte', accumulation: 'cumulative' },
+  { id: 27, difficulty: 'hard', xp: 100, text: 'Score 5,000+ in a Weekly Challenge', metric: 'weekly_challenge_high_score', target: 5000, condition: 'gte', accumulation: 'best' },
+  { id: 28, difficulty: 'hard', xp: 100, text: 'Mine 150 blocks across any modes', metric: 'blocks_mined_total', target: 150, condition: 'gte', accumulation: 'cumulative' },
+  { id: 29, difficulty: 'hard', xp: 100, text: 'Score 8,000+ in a Daily Challenge', metric: 'daily_challenge_high_score', target: 8000, condition: 'gte', accumulation: 'best' },
+  { id: 30, difficulty: 'hard', xp: 100, text: 'Craft 5 different item types in a single run', metric: 'unique_items_crafted_session', target: 5, condition: 'gte', accumulation: 'best' },
+];
+
+// Deterministic LCG seeded selection — must match client-side algorithm in missions.js
+function _lcg(seed) {
+  return ((seed * 1664525 + 1013904223) & 0xffffffff) >>> 0;
+}
+
+function _missionsForDate(dateStr) {
+  let seed = 0;
+  for (let i = 0; i < dateStr.length; i++) {
+    seed = _lcg(seed ^ dateStr.charCodeAt(i));
+  }
+  const easy   = MISSION_POOL.filter(m => m.difficulty === 'easy');
+  const medium = MISSION_POOL.filter(m => m.difficulty === 'medium');
+  const hard   = MISSION_POOL.filter(m => m.difficulty === 'hard');
+  seed = _lcg(seed); const ei = seed % easy.length;
+  seed = _lcg(seed); const mi = seed % medium.length;
+  seed = _lcg(seed); const hi = seed % hard.length;
+  return [easy[ei], medium[mi], hard[hi]];
+}
+
+// ── Mission Handler ───────────────────────────────────────────────────────────
+
+function handleGetMissions(dateStr) {
+  if (!dateStr || !isValidDate(dateStr)) {
+    return jsonResponse({ error: 'Invalid or missing date. Use YYYY-MM-DD.' }, 400);
+  }
+  const missions = _missionsForDate(dateStr);
+  return jsonResponse({ date: dateStr, missions });
+}
+
 const TOP_N = 20;
 const DISPLAY_NAME_REGEX = /^[a-zA-Z0-9_]{1,16}$/;
 
@@ -336,7 +404,12 @@ export default {
 
     let response;
 
-    if (method === 'POST' && url.pathname === '/api/scores') {
+    if (method === 'GET' && url.pathname === '/api/missions') {
+      response = handleGetMissions(todayUTC());
+    } else if (method === 'GET' && url.pathname.startsWith('/api/missions/')) {
+      const dateStr = url.pathname.replace('/api/missions/', '');
+      response = handleGetMissions(dateStr);
+    } else if (method === 'POST' && url.pathname === '/api/scores') {
       response = await handlePostScore(request, env);
     } else if (method === 'POST' && url.pathname === '/api/scores/weekly') {
       response = await handlePostWeeklyScore(request, env);

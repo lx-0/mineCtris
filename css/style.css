@@ -2614,3 +2614,367 @@ body.theme-candy .inv-slot.selected {
   background: #0f0;
   transform: scale(1.04);
 }
+
+/* ── Player level badge (HUD top-left) ────────────────────────────────────── */
+#hud-player-level-badge {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  font-family: "Press Start 2P", cursive;
+  font-size: 10px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.55);
+  border: 1px solid #0f0;
+  color: #0f0;
+  pointer-events: none;
+  z-index: 20;
+  min-width: 28px;
+  text-align: center;
+}
+#hud-player-level-badge.level-badge-fossil    { border-color: #d4952e; color: #d4952e; }
+#hud-player-level-badge.level-badge-storm     { border-color: #88bbff; color: #88bbff; }
+#hud-player-level-badge.level-badge-void      { border-color: #bb88ff; color: #bb88ff; }
+#hud-player-level-badge.level-badge-legendary {
+  border-color: #ffd700;
+  color: #ffd700;
+  box-shadow: 0 0 8px #ffd700, 0 0 16px #aa8800;
+  animation: legendary-pulse 2s ease-in-out infinite;
+}
+@keyframes legendary-pulse {
+  0%, 100% { box-shadow: 0 0 6px #ffd700, 0 0 14px #aa8800; }
+  50%       { box-shadow: 0 0 14px #ffd700, 0 0 28px #cc9900; }
+}
+
+/* ── Level-up toast (bottom-center) ───────────────────────────────────────── */
+#level-up-toast {
+  position: absolute;
+  bottom: 90px;
+  left: 50%;
+  transform: translateX(-50%) translateY(30px);
+  background: rgba(0, 0, 0, 0.85);
+  border: 2px solid #ffd700;
+  border-radius: 6px;
+  padding: 10px 18px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s, transform 0.3s;
+  z-index: 900;
+  min-width: 220px;
+  max-width: 320px;
+}
+#level-up-toast.lu-toast-visible {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+.lu-toast-icon {
+  font-size: 22px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+.lu-toast-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.lu-toast-title {
+  font-family: "Press Start 2P", cursive;
+  font-size: 9px;
+  color: #ffd700;
+  letter-spacing: 1px;
+}
+.lu-toast-body {
+  font-family: "Press Start 2P", cursive;
+  font-size: 7px;
+  color: #cccccc;
+  line-height: 1.4;
+}
+
+/* ── Game-over level badge ────────────────────────────────────────────────── */
+#go-level-badge-row {
+  margin: 6px 0 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+.go-level-badge {
+  font-family: "Press Start 2P", cursive;
+  font-size: 11px;
+  padding: 4px 10px;
+  border-radius: 4px;
+  background: rgba(0, 255, 136, 0.12);
+  border: 1px solid #0f0;
+  color: #0f0;
+}
+.go-level-title {
+  font-family: "Press Start 2P", cursive;
+  font-size: 9px;
+  color: #ffd700;
+}
+
+/* ── Leaderboard level badge ──────────────────────────────────────────────── */
+.lb-level-badge {
+  font-size: 9px;
+  padding: 1px 5px;
+  border-radius: 3px;
+  background: rgba(0, 255, 136, 0.15);
+  border: 1px solid #0f0;
+  color: #0f0;
+  vertical-align: middle;
+  margin-left: 4px;
+}
+.lb-level-title {
+  font-size: 8px;
+  color: #ffd700;
+  vertical-align: middle;
+}
+
+/* High-score level badge (game-over table) */
+.hs-level-badge {
+  font-family: "Press Start 2P", cursive;
+  font-size: 8px;
+  padding: 1px 5px;
+  border-radius: 3px;
+  background: rgba(0, 255, 136, 0.15);
+  border: 1px solid #0f0;
+  color: #0f0;
+  margin-right: 4px;
+}
+.hs-level-title {
+  font-family: "Press Start 2P", cursive;
+  font-size: 7px;
+  color: #ffd700;
+  margin-right: 4px;
+}
+
+/* ── Level-gated theme buttons ────────────────────────────────────────────── */
+/* Fossil theme button accent */
+#theme-btn-fossil:not(.theme-btn-locked) { border-color: #d4952e; }
+#theme-btn-fossil:not(.theme-btn-locked) .theme-btn-icon { filter: none; }
+/* Storm theme button accent */
+#theme-btn-storm:not(.theme-btn-locked)  { border-color: #88bbff; }
+/* Void theme button accent */
+#theme-btn-void:not(.theme-btn-locked)   { border-color: #bb88ff; }
+/* Legendary theme button accent */
+#theme-btn-legendary:not(.theme-btn-locked) {
+  border-color: #ffd700;
+  box-shadow: 0 0 6px rgba(255, 215, 0, 0.4);
+}
+
+/* ── HUD accent overrides for new themes ─────────────────────────────────── */
+body.theme-fossil  #score-display { border-color: #d4952e; }
+body.theme-storm   #score-display { border-color: #88bbff; }
+body.theme-void    #score-display { border-color: #bb88ff; }
+body.theme-legendary #score-display {
+  border-color: #ffd700;
+  box-shadow: 0 0 6px rgba(255, 215, 0, 0.3);
+}
+
+/* ── Daily Missions overlay ─────────────────────────────────────────────── */
+#missions-overlay {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0, 0, 0, 0.88);
+  display: none;
+  justify-content: center;
+  align-items: center;
+  z-index: 300;
+  pointer-events: all;
+}
+#missions-panel {
+  background: #111;
+  border: 2px solid #0f0;
+  border-radius: 6px;
+  padding: 28px 32px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  min-width: 380px;
+  max-width: 520px;
+  width: 90vw;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: 0 0 30px rgba(0, 255, 0, 0.2);
+}
+#missions-title {
+  font-family: "Press Start 2P", cursive;
+  font-size: 1.3em;
+  color: #0f0;
+  text-shadow: 0 0 10px #0f0;
+  letter-spacing: 0.1em;
+  margin-bottom: 4px;
+}
+#missions-panel-body {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.missions-date {
+  font-family: "Press Start 2P", cursive;
+  font-size: 7px;
+  color: rgba(0,255,0,0.5);
+  text-align: center;
+}
+.missions-xp-summary {
+  font-family: "Press Start 2P", cursive;
+  font-size: 8px;
+  color: #ffd700;
+  text-align: center;
+}
+.missions-xp-summary strong { color: #fff; }
+.missions-loading {
+  font-family: "Press Start 2P", cursive;
+  font-size: 9px;
+  color: rgba(0,255,0,0.5);
+  text-align: center;
+  padding: 20px 0;
+}
+.mission-card {
+  background: rgba(0,255,0,0.05);
+  border: 1px solid rgba(0,255,0,0.25);
+  border-radius: 4px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.mission-card-done {
+  background: rgba(0,255,0,0.1);
+  border-color: rgba(0,255,0,0.5);
+  opacity: 0.75;
+}
+.mission-card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.mission-diff-badge {
+  font-family: "Press Start 2P", cursive;
+  font-size: 7px;
+  letter-spacing: 0.05em;
+  font-weight: bold;
+}
+.mission-xp-badge {
+  font-family: "Press Start 2P", cursive;
+  font-size: 7px;
+  color: #ffd700;
+  margin-left: auto;
+}
+.mission-done-check {
+  font-size: 14px;
+  color: #4ade80;
+  margin-left: 6px;
+}
+.mission-text {
+  font-family: "Press Start 2P", cursive;
+  font-size: 8px;
+  color: #ccc;
+  line-height: 1.6;
+}
+.mission-progress-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.mission-progress-bar {
+  flex: 1;
+  height: 8px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.mission-progress-fill {
+  height: 100%;
+  background: #0f0;
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+.mission-card-done .mission-progress-fill { background: #4ade80; }
+.mission-progress-val {
+  font-family: "Press Start 2P", cursive;
+  font-size: 6px;
+  color: rgba(255,255,255,0.5);
+  white-space: nowrap;
+  min-width: 70px;
+  text-align: right;
+}
+#missions-close-btn {
+  font-family: "Press Start 2P", cursive;
+  font-size: 11px;
+  color: #000;
+  background: #0f0;
+  border: none;
+  padding: 12px 32px;
+  cursor: pointer;
+  border-radius: 4px;
+  margin-top: 4px;
+  transition: background 0.15s;
+}
+#missions-close-btn:hover { background: #ff0; }
+
+/* ── Mission complete toast (top-center) ─────────────────────────────────── */
+#mission-complete-toast {
+  position: fixed;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%) translateY(-80px);
+  background: rgba(0, 20, 0, 0.95);
+  border: 2px solid #4ade80;
+  border-radius: 6px;
+  padding: 10px 18px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  z-index: 500;
+  pointer-events: none;
+  transition: transform 0.3s ease, opacity 0.3s ease;
+  opacity: 0;
+  box-shadow: 0 0 16px rgba(74, 222, 128, 0.4);
+  min-width: 220px;
+  text-align: center;
+}
+#mission-complete-toast.mct-visible {
+  transform: translateX(-50%) translateY(0);
+  opacity: 1;
+}
+.mct-title {
+  font-family: "Press Start 2P", cursive;
+  font-size: 7px;
+  color: #4ade80;
+  letter-spacing: 0.05em;
+}
+.mct-text {
+  font-family: "Press Start 2P", cursive;
+  font-size: 7px;
+  color: #ccc;
+  line-height: 1.5;
+}
+.mct-xp {
+  font-family: "Press Start 2P", cursive;
+  font-size: 9px;
+  color: #ffd700;
+}
+
+/* ── Start screen missions button ────────────────────────────────────────── */
+#start-missions-btn {
+  font-family: "Press Start 2P", cursive;
+  font-size: 12px;
+  color: #4ade80;
+  background: transparent;
+  border: 2px solid #4ade80;
+  border-radius: 4px;
+  padding: 10px 20px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+#start-missions-btn:hover {
+  background: #4ade80;
+  color: #000;
+}

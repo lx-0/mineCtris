@@ -65,12 +65,14 @@ function triggerBlitzComplete() {
   });
 
   // Award XP
+  const _blitzXpBefore = (loadLifetimeStats().playerXP || 0);
   const { xpEarned: _blitzXP, streakBonus: _blitzStreak } = awardXP(score, 'blitz');
   const blitzXpEl = document.getElementById('blitz-xp-earned');
   if (blitzXpEl) {
     blitzXpEl.textContent = '+ ' + _blitzXP + ' XP' + (_blitzStreak ? '  (Streak Bonus!)' : '');
     blitzXpEl.className = 'xp-earned-display' + (_blitzStreak ? ' xp-streak' : '');
   }
+  if (typeof checkLevelUp === 'function') checkLevelUp(_blitzXpBefore, loadLifetimeStats().playerXP || 0);
 
   const finalScore = score;
   const isNewBest  = saveBlitzBest(finalScore);
@@ -78,6 +80,9 @@ function triggerBlitzComplete() {
 
   // Achievement: Blitz Bomber
   if (typeof achOnBlitzComplete === "function") achOnBlitzComplete(finalScore);
+
+  // Daily missions: blitz session end
+  if (typeof onMissionBlitzEnd === "function") onMissionBlitzEnd(finalScore);
 
   // Populate blitz-complete overlay
   const overlayEl = document.getElementById("blitz-complete-screen");

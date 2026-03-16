@@ -140,16 +140,26 @@ function triggerGameOver() {
     isDailyChallenge,
   });
 
-  // Award XP
+  // Daily missions: classic survival time (only in pure classic mode)
+  if (!isDailyChallenge && !isWeeklyChallenge) {
+    if (typeof onMissionClassicEnd === "function") onMissionClassicEnd(state.elapsedSeconds);
+  }
+
+  // Award XP (capture old XP to detect level-up)
   const _xpModeKey = isDailyChallenge ? 'daily'
     : isWeeklyChallenge ? 'weekly'
     : 'classic';
+  const _xpBefore = (loadLifetimeStats().playerXP || 0);
   const { xpEarned: _xpEarned, streakBonus: _xpStreak } = awardXP(state.score, _xpModeKey);
   const goXpEl = document.getElementById('go-xp-earned');
   if (goXpEl) {
     goXpEl.textContent = '+ ' + _xpEarned + ' XP' + (_xpStreak ? '  (Streak Bonus!)' : '');
     goXpEl.className = 'xp-earned-display' + (_xpStreak ? ' xp-streak' : '');
   }
+
+  // Level-up detection after XP award
+  const _xpAfter = (loadLifetimeStats().playerXP || 0);
+  if (typeof checkLevelUp === 'function') checkLevelUp(_xpBefore, _xpAfter);
 
   // Key lifetime stats on game-over screen
   const lifetimeStats = loadLifetimeStats();
@@ -159,6 +169,18 @@ function triggerGameOver() {
       `<div><span class="go-label">BEST SCORE</span><br>${lifetimeStats.bestScore}</div>` +
       `<div><span class="go-label">GAMES PLAYED</span><br>${lifetimeStats.gamesPlayed}</div>` +
       `<div><span class="go-label">ALL-TIME LINES</span><br>${lifetimeStats.totalLinesCleared}</div>`;
+  }
+
+  // Level badge on game-over screen
+  const goLevelEl = document.getElementById('go-level-badge-row');
+  if (goLevelEl && typeof getLevelFromXP === 'function') {
+    const _goLevel = getLevelFromXP(_xpAfter);
+    const _goTitle = typeof getLevelTitle === 'function' ? getLevelTitle(_goLevel) : '';
+    goLevelEl.innerHTML =
+      `<span class="go-level-badge">` +
+      (typeof getLevelBadgeLabel === 'function' ? getLevelBadgeLabel(_goLevel) : 'L' + _goLevel) +
+      `</span>` +
+      (_goTitle ? `<span class="go-level-title"> ${_goTitle}</span>` : '');
   }
 
   // Submit and render high scores
@@ -180,6 +202,7 @@ function triggerGameOver() {
     );
     renderDailyBestGameOver(isNewDailyBest);
     if (typeof achOnDailyComplete === "function") achOnDailyComplete();
+    if (typeof onMissionDailyEnd === "function") onMissionDailyEnd(state.score);
     if (typeof initLeaderboardSubmitBtn === "function") {
       initLeaderboardSubmitBtn(state.score, state.linesCleared);
     }
@@ -198,6 +221,7 @@ function triggerGameOver() {
     );
     renderWeeklyBestGameOver(isNewWeeklyBest);
     if (typeof achOnWeeklyComplete === "function") achOnWeeklyComplete(state.score);
+    if (typeof onMissionWeeklyEnd === "function") onMissionWeeklyEnd(state.score);
     if (typeof initWeeklyLeaderboardSubmitBtn === "function") {
       initWeeklyLeaderboardSubmitBtn(state.score, state.linesCleared);
     }
@@ -245,6 +269,7 @@ function triggerGameOver() {
 
       if (navigator.clipboard && navigator.clipboard.writeText) {
         navigator.clipboard.writeText(copyContent).then(function () {
+          if (typeof onMissionScoreShared === "function") onMissionScoreShared();
           if (shareFeedback) {
             shareFeedback.textContent = "Copied!";
             shareFeedback.classList.add("visible");
@@ -329,6 +354,7 @@ function resetGame() {
   sessionConsumableCrafts = 0;
   sessionHighestComboCount = 0;
   if (typeof achResetSession === "function") achResetSession();
+  if (typeof resetMissionSession === "function") resetMissionSession();
 
   // Reset difficulty
   difficultyMultiplier = 1.0;

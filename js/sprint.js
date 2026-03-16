@@ -81,12 +81,14 @@ function triggerSprintComplete() {
   });
 
   // Award XP
+  const _sprintXpBefore = (loadLifetimeStats().playerXP || 0);
   const { xpEarned: _sprintXP, streakBonus: _sprintStreak } = awardXP(score, 'sprint');
   const sprintXpEl = document.getElementById('sprint-xp-earned');
   if (sprintXpEl) {
     sprintXpEl.textContent = '+ ' + _sprintXP + ' XP' + (_sprintStreak ? '  (Streak Bonus!)' : '');
     sprintXpEl.className = 'xp-earned-display' + (_sprintStreak ? ' xp-streak' : '');
   }
+  if (typeof checkLevelUp === 'function') checkLevelUp(_sprintXpBefore, loadLifetimeStats().playerXP || 0);
 
   const finalTimeMs = sprintElapsedMs;
   const isNewBest   = saveSprintBest(finalTimeMs);
@@ -94,6 +96,9 @@ function triggerSprintComplete() {
 
   // Achievements: Sprinter, Speed Sprinter
   if (typeof achOnSprintComplete === "function") achOnSprintComplete(finalTimeMs);
+
+  // Daily missions: sprint session end
+  if (typeof onMissionSprintEnd === "function") onMissionSprintEnd(finalTimeMs);
 
   // Populate sprint-complete overlay
   const overlayEl = document.getElementById("sprint-complete-screen");
