@@ -602,6 +602,7 @@ function updateFallingPieces(delta) {
         cols: _computeBattleColumnHeights(),
         score: score,
         level: lastDifficultyTier + 1,
+        linesCleared: linesCleared,
       });
     }
     if (isPuzzleMode || isCustomPuzzleMode) {

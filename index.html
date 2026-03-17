@@ -844,6 +844,15 @@
             <div id="battle-title">READY!</div>
             <div id="battle-ready-msg">&#9889; Opponent connected!</div>
             <div id="battle-ready-code"></div>
+            <!-- Match mode selector: host can toggle, guest sees read-only -->
+            <div id="battle-mode-selector">
+              <div class="battle-mode-selector-label">Match Mode</div>
+              <div id="battle-mode-toggle-host">
+                <button class="battle-mode-btn active" id="battle-mode-survival-btn">&#9876; Survival</button>
+                <button class="battle-mode-btn" id="battle-mode-score-race-btn">&#9201; Score Race</button>
+              </div>
+              <div id="battle-mode-display-guest" style="display:none;"></div>
+            </div>
             <div id="battle-ready-status">
               <div id="battle-host-ready-indicator">&#9633; You</div>
               <div id="battle-guest-ready-indicator">&#9633; Opponent</div>
@@ -861,13 +870,27 @@
 
       <!-- Battle result overlay — shown after a match ends -->
       <div id="battle-result-screen" style="display:none;">
+        <div id="battle-result-mode"></div>
         <div id="battle-result-title"></div>
         <div id="battle-result-stats"></div>
         <div id="battle-result-returning">Returning to lobby…</div>
+        <button id="battle-result-play-again-btn">Play Again</button>
       </div>
 
       <!-- Battle HUD badge (shown in-game when isBattleMode) -->
-      <div id="battle-mode-badge" style="display:none;">⚒ BATTLE</div>
+      <div id="battle-mode-badge" style="display:none;">&#9876; BATTLE</div>
+
+      <!-- Score Race timer HUD (shown during Score Race match) -->
+      <div id="battle-score-race-hud" style="display:none;">
+        <div id="battle-score-race-timer">3:00</div>
+        <div id="battle-score-race-scores">
+          <span class="sr-label">YOU</span>
+          <span id="battle-score-race-mine">0</span>
+          <span class="sr-sep">vs</span>
+          <span id="battle-score-race-opp">0</span>
+          <span class="sr-label">OPP</span>
+        </div>
+      </div>
 
       <!-- Editor draft prompt — shown before entering editor if a saved draft exists -->
       <div id="editor-draft-prompt" style="display:none;">

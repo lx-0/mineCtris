@@ -727,11 +727,17 @@ function resetGame() {
   // Reset battle mode state
   isBattleMode = false;
   battleResult = null;
+  battleMatchMode = 'survival';
+  battleScoreRaceRemainingMs = 180000;
+  battleOpponentScore = 0;
+  battleOpponentLines = 0;
   if (typeof resetGarbageQueue === 'function') resetGarbageQueue();
   const battleBadgeEl = document.getElementById('battle-mode-badge');
   if (battleBadgeEl) battleBadgeEl.style.display = 'none';
   const battleResultEl = document.getElementById('battle-result-screen');
   if (battleResultEl) battleResultEl.style.display = 'none';
+  const battleSrHudEl = document.getElementById('battle-score-race-hud');
+  if (battleSrHudEl) battleSrHudEl.style.display = 'none';
 
   // Reset survival mode state
   isSurvivalMode = false;
@@ -876,16 +882,33 @@ function triggerBattleResult(result) {
   const statsEl = document.getElementById('battle-result-stats');
   const resultEl = document.getElementById('battle-result-screen');
 
+  // Mode label
+  const modeEl = document.getElementById('battle-result-mode');
+  if (modeEl) {
+    modeEl.textContent = battleMatchMode === 'score_race' ? 'SCORE RACE' : 'SURVIVAL';
+  }
+
   if (titleEl) {
-    if (result === 'win') {
-      titleEl.textContent = 'VICTORY!';
-      titleEl.className = 'win';
-    } else if (result === 'loss') {
-      titleEl.textContent = 'DEFEAT';
-      titleEl.className = 'loss';
+    if (battleMatchMode === 'survival') {
+      if (result === 'win') {
+        titleEl.textContent = 'VICTORY!';
+        titleEl.className = 'win';
+      } else {
+        titleEl.textContent = 'KO';
+        titleEl.className = 'loss';
+      }
     } else {
-      titleEl.textContent = 'DRAW';
-      titleEl.className = 'draw';
+      // Score Race
+      if (result === 'win') {
+        titleEl.textContent = 'WIN';
+        titleEl.className = 'win';
+      } else if (result === 'loss') {
+        titleEl.textContent = 'LOSS';
+        titleEl.className = 'loss';
+      } else {
+        titleEl.textContent = 'DRAW';
+        titleEl.className = 'draw';
+      }
     }
   }
 
@@ -893,11 +916,15 @@ function triggerBattleResult(result) {
     const totalSecs = Math.floor(gameElapsedSeconds);
     const mm = Math.floor(totalSecs / 60).toString().padStart(2, '0');
     const ss = (totalSecs % 60).toString().padStart(2, '0');
-    statsEl.innerHTML =
+    let statsHtml =
       '<div>Score: ' + score + '</div>' +
       '<div>Lines Cleared: ' + linesCleared + '</div>' +
       '<div>Blocks Mined: ' + blocksMined + '</div>' +
       '<div>Match Time: ' + mm + ':' + ss + '</div>';
+    if (battleMatchMode === 'score_race') {
+      statsHtml += '<div>Opponent Score: ' + battleOpponentScore + '</div>';
+    }
+    statsEl.innerHTML = statsHtml;
   }
 
   if (resultEl) resultEl.style.display = 'flex';
@@ -909,11 +936,14 @@ function triggerBattleResult(result) {
     try { battle.disconnect(); } catch (_) {}
   }
 
-  // Return to battle lobby after 5 seconds
-  setTimeout(function () {
+  // "Play Again" button cancels auto-return and goes straight to lobby
+  const playAgainBtn = document.getElementById('battle-result-play-again-btn');
+  let _autoReturnTimer = null;
+
+  function _returnToBattleLobby() {
+    if (_autoReturnTimer) { clearTimeout(_autoReturnTimer); _autoReturnTimer = null; }
     if (resultEl) resultEl.style.display = 'none';
     resetGame();
-    // Re-open battle overlay at choice view
     var battleOverlay = document.getElementById('battle-overlay');
     var blockerEl = document.getElementById('blocker');
     if (battleOverlay) {
@@ -924,7 +954,14 @@ function triggerBattleResult(result) {
       if (blockerEl) blockerEl.style.display = 'none';
       battleOverlay.style.display = 'flex';
     }
-  }, 5000);
+  }
+
+  if (playAgainBtn) {
+    playAgainBtn.onclick = function () { _returnToBattleLobby(); };
+  }
+
+  // Return to battle lobby after 5 seconds
+  _autoReturnTimer = setTimeout(_returnToBattleLobby, 5000);
 }
 
 /**
@@ -976,4 +1013,59 @@ function updateDifficulty(delta) {
       levelEl.classList.add("level-up-flash");
     }
   }
+}
+
+// ── Score Race helpers ────────────────────────────────────────────────────────
+
+/**
+ * Called every frame during a Score Race match. Ticks down the timer and
+ * triggers match resolution when time runs out.
+ * @param {number} delta seconds since last frame
+ */
+function checkBattleScoreRace(delta) {
+  if (battleMatchMode !== 'score_race' || isGameOver) return;
+  battleScoreRaceRemainingMs -= delta * 1000;
+  _updateScoreRaceTimerHud();
+  if (battleScoreRaceRemainingMs <= 0) {
+    battleScoreRaceRemainingMs = 0;
+    _updateScoreRaceTimerHud();
+    // Notify opponent with our final score
+    if (typeof battle !== 'undefined' && battle.state === BattleState.IN_GAME) {
+      battle.send({ type: 'battle_score_race_end', score: score, linesCleared: linesCleared });
+    }
+    _resolveScoreRace(score, linesCleared, battleOpponentScore, battleOpponentLines);
+  }
+}
+
+/**
+ * Compare scores and trigger the battle result.
+ * @param {number} myScore
+ * @param {number} myLines
+ * @param {number} oppScore
+ * @param {number} oppLines
+ */
+function _resolveScoreRace(myScore, myLines, oppScore, oppLines) {
+  let result;
+  if (myScore > oppScore) result = 'win';
+  else if (myScore < oppScore) result = 'loss';
+  else if (myLines > oppLines) result = 'win';
+  else if (myLines < oppLines) result = 'loss';
+  else result = 'draw';
+  triggerBattleResult(result);
+}
+
+/** Refresh the Score Race countdown timer display. */
+function _updateScoreRaceTimerHud() {
+  const timerEl = document.getElementById('battle-score-race-timer');
+  if (!timerEl) return;
+  const totalSecs = Math.max(0, Math.ceil(battleScoreRaceRemainingMs / 1000));
+  const mm = Math.floor(totalSecs / 60).toString().padStart(2, '0');
+  const ss = (totalSecs % 60).toString().padStart(2, '0');
+  timerEl.textContent = mm + ':' + ss;
+  timerEl.classList.toggle('danger', battleScoreRaceRemainingMs <= 30000);
+  // Update our score in the race HUD
+  const mineEl = document.getElementById('battle-score-race-mine');
+  if (mineEl) mineEl.textContent = score;
+  const oppEl = document.getElementById('battle-score-race-opp');
+  if (oppEl) oppEl.textContent = battleOpponentScore;
 }

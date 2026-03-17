@@ -154,6 +154,13 @@ let pieceQueue = [];
 let isBattleMode = false;
 // Battle result: 'win' | 'loss' | 'draw' | null
 let battleResult = null;
+// Match mode: 'survival' (last standing) | 'score_race' (highest score in 3 min)
+let battleMatchMode = 'survival';
+// Score Race: countdown timer in ms (3 minutes)
+let battleScoreRaceRemainingMs = 180000;
+// Opponent's last known score and lines cleared (updated from battle_board messages)
+let battleOpponentScore = 0;
+let battleOpponentLines = 0;
 // Back-to-back Tetris detection: true after a 4-line clear; reset on any sub-Tetris clear.
 let lastClearWasTetris = false;
 

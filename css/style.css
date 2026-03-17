@@ -2272,6 +2272,105 @@ body {
   color: #888;
   animation: battle-blink 1.2s step-end infinite;
 }
+#battle-result-mode {
+  font-size: 0.38em;
+  color: #ff8844;
+  letter-spacing: 2px;
+  margin-bottom: 6px;
+}
+#battle-result-play-again-btn {
+  font-family: "Press Start 2P", cursive;
+  font-size: 0.45em;
+  padding: 10px 22px;
+  background: rgba(255, 80, 80, 0.15);
+  color: #ff9999;
+  border: 1px solid rgba(255, 60, 60, 0.5);
+  border-radius: 4px;
+  cursor: pointer;
+  margin-top: 6px;
+  transition: background 0.15s;
+}
+#battle-result-play-again-btn:hover { background: rgba(255, 60, 60, 0.35); }
+
+/* ── Battle mode selector (in ready view) ─────────────────────────────────── */
+#battle-mode-selector {
+  margin: 10px 0 6px;
+  text-align: center;
+}
+.battle-mode-selector-label {
+  font-size: 0.44em;
+  color: #aaa;
+  letter-spacing: 1px;
+  margin-bottom: 6px;
+}
+#battle-mode-toggle-host {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+}
+.battle-mode-btn {
+  font-family: "Press Start 2P", cursive;
+  font-size: 0.46em;
+  padding: 7px 14px;
+  background: rgba(255, 80, 80, 0.08);
+  color: #888;
+  border: 1px solid rgba(255, 60, 60, 0.3);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.battle-mode-btn.active {
+  background: rgba(255, 80, 80, 0.25);
+  color: #ff9999;
+  border-color: rgba(255, 60, 60, 0.7);
+}
+.battle-mode-btn:hover { background: rgba(255, 60, 60, 0.2); color: #ffbbbb; }
+#battle-mode-display-guest {
+  font-size: 0.46em;
+  color: #ff9999;
+  letter-spacing: 1px;
+}
+
+/* ── Score Race in-game HUD ──────────────────────────────────────────────── */
+#battle-score-race-hud {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: "Press Start 2P", cursive;
+  background: rgba(0, 0, 0, 0.7);
+  border: 1px solid rgba(255, 150, 50, 0.5);
+  border-radius: 4px;
+  padding: 6px 14px;
+  z-index: 100;
+  pointer-events: none;
+  text-align: center;
+  min-width: 140px;
+}
+#battle-score-race-timer {
+  font-size: 0.9em;
+  color: #ffcc44;
+  text-shadow: 0 0 8px rgba(255,200,50,0.6);
+  letter-spacing: 2px;
+}
+#battle-score-race-timer.danger {
+  color: #ff4444;
+  text-shadow: 0 0 8px rgba(255,50,50,0.8);
+  animation: battle-blink 0.5s step-end infinite;
+}
+#battle-score-race-scores {
+  font-size: 0.4em;
+  color: #ccc;
+  margin-top: 4px;
+  display: flex;
+  gap: 5px;
+  align-items: center;
+  justify-content: center;
+}
+.sr-label { color: #888; font-size: 0.85em; }
+.sr-sep   { color: #666; }
+#battle-score-race-mine { color: #44ff88; }
+#battle-score-race-opp  { color: #ff6666; }
 
 /* ── Battle HUD mode badge ───────────────────────────────────────────────── */
 #battle-mode-badge {

@@ -1485,6 +1485,8 @@ function init() {
       // ── Ready state tracking ──
       var _battleHostReady  = false;
       var _battleGuestReady = false;
+      // Match mode selected by host (default: survival)
+      var _battleSelectedMode = 'survival';
 
       function _updateBattleReadyIndicators() {
         var hostEl  = document.getElementById("battle-host-ready-indicator");
@@ -1508,7 +1510,9 @@ function init() {
           if (readyCodeEl) readyCodeEl.textContent = "Room: " + (data.roomCode || "");
           _battleHostReady  = false;
           _battleGuestReady = false;
+          _setBattleMode('survival');
           _updateBattleReadyIndicators();
+          _setupReadyViewModeUI();
           showBattleView("ready");
         } else if (data.state === "disconnected") {
           // If battle result screen is showing, let it handle the return-to-lobby flow
@@ -1691,14 +1695,16 @@ function init() {
         _updateBattleReadyIndicators();
         // If both ready, host starts the game
         if (_battleHostReady && _battleGuestReady && battle.isHost) {
-          battle.send({ type: "battle_start" });
+          battle.send({ type: "battle_start", matchMode: _battleSelectedMode });
+          battleMatchMode = _battleSelectedMode;
           _startBattleGame();
         }
       });
 
-      // Guest receives battle_start from host
-      battle.on("battle_start", function () {
+      // Guest receives battle_start from host (includes match mode)
+      battle.on("battle_start", function (msg) {
         if (!battle.isHost) {
+          battleMatchMode = msg.matchMode || 'survival';
           _startBattleGame();
         }
       });
@@ -1739,12 +1745,17 @@ function init() {
       }
 
       function _startBattleGame() {
+        var _mode = battleMatchMode; // capture before resetGame clears it
         battle.startGame();
         battleOverlay.style.display = "none";
 
         // Reset world and set battle mode flags before the countdown
         resetGame();
         isBattleMode = true;
+        battleMatchMode = _mode; // restore after resetGame reset it to 'survival'
+        battleScoreRaceRemainingMs = 180000;
+        battleOpponentScore = 0;
+        battleOpponentLines = 0;
         // Start at Level 3 equivalent speed; escalates via updateDifficulty offset
         difficultyMultiplier = BATTLE_START_MULTIPLIER;
         lastDifficultyTier   = BATTLE_START_TIER;
@@ -1755,6 +1766,13 @@ function init() {
         if (typeof battleHud !== 'undefined') {
           battleHud.show();
           battleHud.setConnectionStatus('green');
+        }
+
+        // Show Score Race timer HUD if needed
+        var srHudEl = document.getElementById("battle-score-race-hud");
+        if (srHudEl) srHudEl.style.display = (battleMatchMode === 'score_race') ? '' : 'none';
+        if (battleMatchMode === 'score_race' && typeof _updateScoreRaceTimerHud === 'function') {
+          _updateScoreRaceTimerHud();
         }
 
         // Run 3-2-1-GO! then hand control to the player
@@ -1768,6 +1786,9 @@ function init() {
         if (typeof battleHud !== 'undefined') {
           battleHud.update(msg.cols, msg.score, msg.level);
         }
+        // Cache opponent's latest score/lines for Score Race comparison
+        if (typeof msg.score === 'number') battleOpponentScore = msg.score;
+        if (typeof msg.linesCleared === 'number') battleOpponentLines = msg.linesCleared;
       });
 
       battle.on("battle_attack", function (msg) {
@@ -1785,6 +1806,73 @@ function init() {
       if (battleReadyCancelBtn) {
         battleReadyCancelBtn.addEventListener("click", function () { closeBattleOverlay(); });
       }
+
+      // ── Mode toggle (host only in ready view) ──
+      var _battleModeSurvivalBtn  = document.getElementById("battle-mode-survival-btn");
+      var _battleModeScoreRaceBtn = document.getElementById("battle-mode-score-race-btn");
+      var _battleModeToggleHost   = document.getElementById("battle-mode-toggle-host");
+      var _battleModeDisplayGuest = document.getElementById("battle-mode-display-guest");
+
+      function _setBattleMode(mode) {
+        _battleSelectedMode = mode;
+        if (_battleModeSurvivalBtn)  _battleModeSurvivalBtn.classList.toggle('active',  mode === 'survival');
+        if (_battleModeScoreRaceBtn) _battleModeScoreRaceBtn.classList.toggle('active', mode === 'score_race');
+        if (_battleModeDisplayGuest) {
+          _battleModeDisplayGuest.textContent = mode === 'score_race' ? '\u23f1 Score Race' : '\u2694 Survival';
+        }
+      }
+
+      if (_battleModeSurvivalBtn) {
+        _battleModeSurvivalBtn.addEventListener("click", function () {
+          _setBattleMode('survival');
+          battle.send({ type: 'battle_mode', mode: 'survival' });
+        });
+      }
+      if (_battleModeScoreRaceBtn) {
+        _battleModeScoreRaceBtn.addEventListener("click", function () {
+          _setBattleMode('score_race');
+          battle.send({ type: 'battle_mode', mode: 'score_race' });
+        });
+      }
+
+      // Guest receives live mode updates from host
+      battle.on("battle_mode", function (msg) {
+        if (battle.isHost) return;
+        _battleSelectedMode = msg.mode || 'survival';
+        if (_battleModeDisplayGuest) {
+          _battleModeDisplayGuest.textContent = _battleSelectedMode === 'score_race' ? '\u23f1 Score Race' : '\u2694 Survival';
+        }
+      });
+
+      // When entering ready view, show appropriate mode controls
+      function _setupReadyViewModeUI() {
+        if (battle.isHost) {
+          if (_battleModeToggleHost)   _battleModeToggleHost.style.display   = '';
+          if (_battleModeDisplayGuest) _battleModeDisplayGuest.style.display = 'none';
+        } else {
+          if (_battleModeToggleHost)   _battleModeToggleHost.style.display   = 'none';
+          if (_battleModeDisplayGuest) _battleModeDisplayGuest.style.display = '';
+          _battleSelectedMode = 'survival';
+          if (_battleModeDisplayGuest) _battleModeDisplayGuest.textContent = '\u2694 Survival';
+        }
+      }
+
+      // Opponent score race end: opponent's timer expired; resolve if ours hasn't
+      battle.on("battle_score_race_end", function (msg) {
+        if (isGameOver || battleMatchMode !== 'score_race') return;
+        battleOpponentScore = msg.score || 0;
+        battleOpponentLines = msg.linesCleared || 0;
+        if (battleScoreRaceRemainingMs > 0) {
+          // Freeze our timer and resolve now
+          battleScoreRaceRemainingMs = 0;
+          if (typeof _updateScoreRaceTimerHud === 'function') _updateScoreRaceTimerHud();
+          if (typeof _resolveScoreRace === 'function') {
+            _resolveScoreRace(score, linesCleared, battleOpponentScore, battleOpponentLines);
+          }
+        }
+        // If our timer already hit 0, triggerBattleResult was already called — no-op
+      });
+
     })();
     // ── End battle setup ───────────────────────────────────────────────────────
 
@@ -3288,6 +3376,7 @@ function animate() {
       updateLineClear(delta);
       updateFallingPieces(delta);
       if (isBattleMode && typeof battleHud !== 'undefined') battleHud.tick(delta);
+      if (isBattleMode && typeof checkBattleScoreRace === 'function') checkBattleScoreRace(delta);
       updateLandingRings(delta);
       updateTrails(delta, elapsedTime);
       updateAuras(delta, camera);
