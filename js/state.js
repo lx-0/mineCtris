@@ -169,6 +169,8 @@ let battleGarbageReceived = 0;
 let battleRubbleMined = 0;
 // Opponent's end-of-match summary stats (set from battle_game_over / battle_score_race_end msg)
 let battleOpponentStats = null;
+// Opponent's battle rating (received via battle_rating WebSocket message; defaults to 1000)
+let battleOpponentRating = 1000;
 // Back-to-back Tetris detection: true after a 4-line clear; reset on any sub-Tetris clear.
 let lastClearWasTetris = false;
 

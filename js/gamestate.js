@@ -905,6 +905,16 @@ function triggerBattleResult(result) {
   if (typeof saveLifetimeStats === 'function') saveLifetimeStats(_lsStats);
   const _newXP = _lsStats.playerXP;
 
+  // Update Elo battle rating
+  const _ratingChange = (typeof updateBattleRating === 'function')
+    ? updateBattleRating(result, typeof battleOpponentRating !== 'undefined' ? battleOpponentRating : 1000)
+    : null;
+
+  // Submit rating to online leaderboard (non-blocking, rate-limited to 1/day)
+  if (typeof trySubmitBattleRatingToLeaderboard === 'function') {
+    setTimeout(trySubmitBattleRatingToLeaderboard, 500);
+  }
+
   if (controls && controls.isLocked) controls.unlock();
 
   // Disconnect the battle WebSocket immediately — match is over
@@ -916,7 +926,7 @@ function triggerBattleResult(result) {
 
   // Build the summary DOM into resultEl
   if (resultEl) {
-    _buildBattleSummaryScreen(resultEl, result, _myStats, battleOpponentStats, _xpEarned, _oldXP, _newXP);
+    _buildBattleSummaryScreen(resultEl, result, _myStats, battleOpponentStats, _xpEarned, _oldXP, _newXP, _ratingChange);
   }
 
   // Show KO/Victory overlay first (~2.4s), then reveal post-match summary.
@@ -941,11 +951,12 @@ function triggerBattleResult(result) {
  * @param {string}      result    'win' | 'loss' | 'draw'
  * @param {object}      myStats   Our match stats snapshot.
  * @param {object|null} oppStats  Opponent stats (may be null if not received yet).
- * @param {number}      xpEarned  XP awarded this match.
- * @param {number}      oldXP     Player XP before award.
- * @param {number}      newXP     Player XP after award.
+ * @param {number}      xpEarned     XP awarded this match.
+ * @param {number}      oldXP        Player XP before award.
+ * @param {number}      newXP        Player XP after award.
+ * @param {object|null} ratingChange { ratingBefore, ratingAfter, delta } or null.
  */
-function _buildBattleSummaryScreen(el, result, myStats, oppStats, xpEarned, oldXP, newXP) {
+function _buildBattleSummaryScreen(el, result, myStats, oppStats, xpEarned, oldXP, newXP, ratingChange) {
   const modeLabel = battleMatchMode === 'score_race' ? 'SCORE RACE' : 'SURVIVAL';
   let bannerText, bannerClass;
   if (battleMatchMode === 'survival') {
@@ -1028,6 +1039,17 @@ function _buildBattleSummaryScreen(el, result, myStats, oppStats, xpEarned, oldX
       '</div>' +
     '</div>' +
     '<div class="brs-badges">' + badges.map(_badgeHtml).join('') + '</div>' +
+    (ratingChange ? (function () {
+      const tier = (typeof getBattleRankTier === 'function') ? getBattleRankTier(ratingChange.ratingAfter) : null;
+      const tierBadge = tier ? ('<span class="battle-rank-badge battle-rank-' + tier.cls + '">' + tier.icon + ' ' + tier.name + '</span>') : '';
+      const sign = ratingChange.delta >= 0 ? '+' : '';
+      const deltaCls = ratingChange.delta >= 0 ? 'brs-rating-gain' : 'brs-rating-loss';
+      return '<div class="brs-rating">' +
+        tierBadge +
+        '<span class="brs-rating-val">' + ratingChange.ratingAfter + '</span>' +
+        '<span class="' + deltaCls + '">' + sign + ratingChange.delta + '</span>' +
+        '</div>';
+    })() : '') +
     '<div class="brs-xp">' +
       '<span class="brs-xp-earned">+' + xpEarned + ' XP</span>' +
       (didLevelUp

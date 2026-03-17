@@ -1465,6 +1465,14 @@ function init() {
         blocker.style.display = "none";
         showBattleView(initialView || "choice");
         battleOverlay.style.display = "flex";
+        // Show player's current rank badge in battle lobby
+        var rankEl = document.getElementById('battle-player-rank');
+        if (rankEl && typeof getBattleRankBadgeHtml === 'function' && typeof loadBattleRating === 'function') {
+          var rd = loadBattleRating();
+          rankEl.innerHTML = getBattleRankBadgeHtml(rd.rating) +
+            ' <span class="battle-rank-pts">' + rd.rating + ' pts</span>' +
+            ' <span class="battle-rank-record">' + rd.wins + 'W&nbsp;' + rd.losses + 'L&nbsp;' + rd.draws + 'D</span>';
+        }
       }
 
       function closeBattleOverlay() {
@@ -1757,6 +1765,12 @@ function init() {
         battleScoreRaceRemainingMs = 180000;
         battleOpponentScore = 0;
         battleOpponentLines = 0;
+        battleOpponentRating = 1000; // reset; updated when opponent's battle_rating arrives
+
+        // Exchange ratings with opponent so Elo can be computed accurately
+        if (typeof loadBattleRating === 'function') {
+          battle.send({ type: 'battle_rating', rating: loadBattleRating().rating });
+        }
         // Start at Level 3 equivalent speed; escalates via updateDifficulty offset
         difficultyMultiplier = BATTLE_START_MULTIPLIER;
         lastDifficultyTier   = BATTLE_START_TIER;
@@ -1781,6 +1795,13 @@ function init() {
           requestPointerLock();
         });
       }
+
+      // Cache opponent's rating for accurate Elo computation
+      battle.on("battle_rating", function (msg) {
+        if (msg && typeof msg.rating === 'number') {
+          battleOpponentRating = msg.rating;
+        }
+      });
 
       // ── Opponent mini-map event handlers ──
       battle.on("battle_board", function (msg) {

@@ -68,6 +68,24 @@ async function apiFetchPlayerBadges(displayName) {
   } catch (_) { return []; }
 }
 
+async function apiFetchCoopLeaderboard(date, isDaily) {
+  const path = isDaily
+    ? '/api/leaderboard/coop/daily/' + date
+    : '/api/leaderboard/coop/' + date;
+  const resp = await fetch(LEADERBOARD_WORKER_URL + path);
+  return resp.json();
+}
+
+async function apiSubmitCoopScore(player1, player2, score, difficulty, isDaily) {
+  const date = getDailyDateString();
+  const resp = await fetch(LEADERBOARD_WORKER_URL + '/api/leaderboard/coop', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ player1, player2, score, date, difficulty, isDaily: !!isDaily }),
+  });
+  return resp.json();
+}
+
 // ── Display Name Modal ────────────────────────────────────────────────────────
 
 /**
@@ -132,7 +150,7 @@ function openDisplayNameModal(onConfirm) {
 
 // ── Leaderboard Panel ─────────────────────────────────────────────────────────
 
-let _lbActiveTab = 'today'; // 'today' | 'yesterday' | 'thisweek' | 'lastweek' | 'season'
+let _lbActiveTab = 'today'; // 'today' | 'yesterday' | 'thisweek' | 'lastweek' | 'season' | 'coop' | 'dailycoop' | 'battle'
 
 function openLeaderboardPanel(defaultTab) {
   const overlay = document.getElementById('lb-panel-overlay');
@@ -149,16 +167,22 @@ function closeLeaderboardPanel() {
 }
 
 function _syncLbTabs() {
-  const todayBtn    = document.getElementById('lb-tab-today');
-  const yestBtn     = document.getElementById('lb-tab-yesterday');
-  const thisWeekBtn = document.getElementById('lb-tab-thisweek');
-  const lastWeekBtn = document.getElementById('lb-tab-lastweek');
-  const seasonBtn   = document.getElementById('lb-tab-season');
-  if (todayBtn)    todayBtn.classList.toggle('lb-tab-active',    _lbActiveTab === 'today');
-  if (yestBtn)     yestBtn.classList.toggle('lb-tab-active',     _lbActiveTab === 'yesterday');
-  if (thisWeekBtn) thisWeekBtn.classList.toggle('lb-tab-active', _lbActiveTab === 'thisweek');
-  if (lastWeekBtn) lastWeekBtn.classList.toggle('lb-tab-active', _lbActiveTab === 'lastweek');
-  if (seasonBtn)   seasonBtn.classList.toggle('lb-tab-active',   _lbActiveTab === 'season');
+  const todayBtn     = document.getElementById('lb-tab-today');
+  const yestBtn      = document.getElementById('lb-tab-yesterday');
+  const thisWeekBtn  = document.getElementById('lb-tab-thisweek');
+  const lastWeekBtn  = document.getElementById('lb-tab-lastweek');
+  const seasonBtn    = document.getElementById('lb-tab-season');
+  const coopBtn      = document.getElementById('lb-tab-coop');
+  const dailyCoopBtn = document.getElementById('lb-tab-dailycoop');
+  const battleBtn    = document.getElementById('lb-tab-battle');
+  if (todayBtn)     todayBtn.classList.toggle('lb-tab-active',     _lbActiveTab === 'today');
+  if (yestBtn)      yestBtn.classList.toggle('lb-tab-active',      _lbActiveTab === 'yesterday');
+  if (thisWeekBtn)  thisWeekBtn.classList.toggle('lb-tab-active',  _lbActiveTab === 'thisweek');
+  if (lastWeekBtn)  lastWeekBtn.classList.toggle('lb-tab-active',  _lbActiveTab === 'lastweek');
+  if (seasonBtn)    seasonBtn.classList.toggle('lb-tab-active',    _lbActiveTab === 'season');
+  if (coopBtn)      coopBtn.classList.toggle('lb-tab-active',      _lbActiveTab === 'coop');
+  if (dailyCoopBtn) dailyCoopBtn.classList.toggle('lb-tab-active', _lbActiveTab === 'dailycoop');
+  if (battleBtn)    battleBtn.classList.toggle('lb-tab-active',    _lbActiveTab === 'battle');
 }
 
 function _getYesterdayString() {
@@ -224,6 +248,17 @@ async function _loadLbTab(tab) {
           ? ' \u00b7 ' + formatWeeklyDateRange(weekStr)
           : '');
       _renderLeaderboard(body, data.entries, null, label);
+    } else if (tab === 'coop' || tab === 'dailycoop') {
+      const isDaily = tab === 'dailycoop';
+      const date = getDailyDateString();
+      const data = await apiFetchCoopLeaderboard(date, isDaily);
+      if (!data || !data.entries) throw new Error('bad response');
+      const label = (isDaily ? 'Daily Co-op \u2014 ' : 'Co-op \u2014 ') + formatDailyLabel(date);
+      _renderCoopLeaderboard(body, data.entries, label);
+    } else if (tab === 'battle') {
+      const data = await apiFetchBattleLeaderboard();
+      if (!data || !data.entries) throw new Error('bad response');
+      _renderBattleLeaderboard(body, data.entries);
     } else {
       const date = tab === 'today' ? getDailyDateString() : _getYesterdayString();
       const data = await apiFetchLeaderboard(date);
@@ -292,11 +327,86 @@ function _renderLeaderboard(container, entries, date, labelOverride, isSeason) {
   container.innerHTML = html;
 }
 
+function _renderBattleLeaderboard(container, entries) {
+  const myName = loadDisplayName().toLowerCase();
+
+  if (!entries.length) {
+    container.innerHTML = '<div class="lb-empty">No battle rankings yet.</div>';
+    return;
+  }
+
+  let html = '<table class="lb-table"><thead><tr>' +
+    '<th>#</th><th>Name</th><th>Rating</th><th>W/L/D</th>' +
+    '</tr></thead><tbody>';
+
+  entries.forEach(function(e) {
+    const isMe = myName && e.displayName.toLowerCase() === myName;
+    const cls  = isMe ? ' class="lb-row-me"' : '';
+    const tier = (typeof getBattleRankTier === 'function') ? getBattleRankTier(e.rating || 0) : null;
+    const tierBadge = tier
+      ? '<span class="battle-rank-badge battle-rank-' + tier.cls + '" title="' + tier.name + '">' + tier.icon + '</span> '
+      : '';
+    let nameCell = tierBadge + _escHtml(e.displayName) + (isMe ? ' &#9668;' : '');
+    const wld = (e.wins || 0) + 'W/' + (e.losses || 0) + 'L/' + (e.draws || 0) + 'D';
+    html += '<tr' + cls + '>' +
+      '<td>' + e.rank + '</td>' +
+      '<td>' + nameCell + '</td>' +
+      '<td>' + (e.rating || 0) + '</td>' +
+      '<td class="lb-wld">' + wld + '</td>' +
+      '</tr>';
+  });
+
+  html += '</tbody></table>';
+  container.innerHTML = html;
+}
+
 function _escHtml(str) {
   return String(str)
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;');
+}
+
+const _COOP_DIFF_BADGE = {
+  casual:    { label: 'Casual',    cls: 'lb-diff-casual' },
+  normal:    { label: 'Normal',    cls: 'lb-diff-normal' },
+  challenge: { label: 'Challenge', cls: 'lb-diff-challenge' },
+};
+
+function _renderCoopLeaderboard(container, entries, label) {
+  const myName = loadDisplayName().toLowerCase();
+
+  if (!entries.length) {
+    container.innerHTML = '<div class="lb-empty">No co-op scores yet for ' + _escHtml(label) + '.</div>';
+    return;
+  }
+
+  let html = '<div class="lb-coop-label">' + _escHtml(label) + '</div>' +
+    '<table class="lb-table"><thead><tr>' +
+    '<th>#</th><th>Player 1</th><th>Player 2</th><th>Score</th><th>Mode</th>' +
+    '</tr></thead><tbody>';
+
+  entries.forEach(function(e) {
+    const isMe = myName && (
+      e.player1.toLowerCase() === myName || e.player2.toLowerCase() === myName
+    );
+    const cls = isMe ? ' class="lb-row-me"' : '';
+    const p1 = _escHtml(e.player1) + (e.player1.toLowerCase() === myName ? ' ◀' : '');
+    const p2 = _escHtml(e.player2) + (e.player2.toLowerCase() === myName ? ' ◀' : '');
+    const scoreVal = (e.score || 0).toLocaleString();
+    const diff = _COOP_DIFF_BADGE[e.difficulty] || { label: e.difficulty || '?', cls: 'lb-diff-normal' };
+    const badge = '<span class="lb-diff-badge ' + diff.cls + '">' + diff.label + '</span>';
+    html += '<tr' + cls + '>' +
+      '<td>' + e.rank + '</td>' +
+      '<td>' + p1 + '</td>' +
+      '<td>' + p2 + '</td>' +
+      '<td>' + scoreVal + '</td>' +
+      '<td>' + badge + '</td>' +
+      '</tr>';
+  });
+
+  html += '</tbody></table>';
+  container.innerHTML = html;
 }
 
 // ── Submit Button (game-over screen) ─────────────────────────────────────────
@@ -433,6 +543,33 @@ function initLeaderboard() {
     });
   }
 
+  const coopTabBtn = document.getElementById('lb-tab-coop');
+  if (coopTabBtn) {
+    coopTabBtn.addEventListener('click', function() {
+      _lbActiveTab = 'coop';
+      _syncLbTabs();
+      _loadLbTab('coop');
+    });
+  }
+
+  const dailyCoopTabBtn = document.getElementById('lb-tab-dailycoop');
+  if (dailyCoopTabBtn) {
+    dailyCoopTabBtn.addEventListener('click', function() {
+      _lbActiveTab = 'dailycoop';
+      _syncLbTabs();
+      _loadLbTab('dailycoop');
+    });
+  }
+
+  const battleTabBtn = document.getElementById('lb-tab-battle');
+  if (battleTabBtn) {
+    battleTabBtn.addEventListener('click', function() {
+      _lbActiveTab = 'battle';
+      _syncLbTabs();
+      _loadLbTab('battle');
+    });
+  }
+
   // Leaderboard panel refresh button
   const refreshBtn = document.getElementById('lb-panel-refresh-btn');
   if (refreshBtn) {
@@ -452,6 +589,14 @@ function initLeaderboard() {
   if (goLbBtn) {
     goLbBtn.addEventListener('click', function () {
       openLeaderboardPanel(isWeeklyChallenge ? 'thisweek' : 'today');
+    });
+  }
+
+  // Co-op leaderboard button on coop game-over screen
+  const coopGoLbBtn = document.getElementById('coop-go-lb-btn');
+  if (coopGoLbBtn) {
+    coopGoLbBtn.addEventListener('click', function () {
+      openLeaderboardPanel(isDailyCoopChallenge ? 'dailycoop' : 'coop');
     });
   }
 
