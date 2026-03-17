@@ -863,6 +863,18 @@
         </div>
       </div>
 
+      <!-- Battle FX: incoming attack red vignette flash -->
+      <div id="battle-incoming-flash"></div>
+      <!-- Battle FX: outgoing attack orange particle streak canvas -->
+      <canvas id="battle-streak-canvas"></canvas>
+      <!-- Battle FX: KO / Victory pre-result overlay -->
+      <div id="battle-ko-overlay" style="display:none;">
+        <canvas id="battle-ko-confetti"></canvas>
+        <div id="battle-ko-title"></div>
+      </div>
+      <!-- Battle FX: combo feed toast (battle mode only) -->
+      <div id="battle-combo-feed" style="display:none;"></div>
+
       <!-- Battle countdown overlay — shown during 3-2-1 GO! sequence -->
       <div id="battle-countdown-overlay" style="display:none;">
         <div id="battle-countdown-number"></div>
@@ -1058,6 +1070,7 @@
     <script src="js/battle.js"></script>
     <script src="js/battle-hud.js"></script>
     <script src="js/battle-garbage.js"></script>
+    <script src="js/battle-fx.js"></script>
     <script src="js/main.js"></script>
   </body>
 </html>

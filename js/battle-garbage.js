@@ -153,6 +153,7 @@ function _injectRubbleRows(count, gapSeed) {
 
   // 2. Inject Rubble rows at the bottom ─────────────────────────────────────────
   let seed = gapSeed >>> 0;
+  const _newRubbleBlocks = [];
   for (let row = 0; row < count; row++) {
     // Advance seed for each row to get a distinct gap column per row
     seed   = ((seed * 1664525) + 1013904223) >>> 0;
@@ -172,6 +173,7 @@ function _injectRubbleRows(count, gapSeed) {
         block.position.set(gx, gridY, gz);
         block.name = 'landed_block';
         worldGroup.add(block);
+        _newRubbleBlocks.push(block);
 
         // Register in grid occupancy
         if (!gridOccupancy.has(gridY)) gridOccupancy.set(gridY, new Set());
@@ -186,6 +188,12 @@ function _injectRubbleRows(count, gapSeed) {
   worldGroup.children.forEach(function (obj) {
     if (obj.name === 'landed_block') obj.userData.boundingBox = null;
   });
+
+  // 4. Battle FX: camera shake + rubble flash ────────────────────────────────────
+  if (typeof battleFx !== 'undefined') {
+    battleFx.showRubbleShake(count);
+    battleFx.flashNewRubbleBlocks(_newRubbleBlocks);
+  }
 }
 
 /**

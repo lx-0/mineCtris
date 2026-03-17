@@ -930,8 +930,6 @@ function triggerBattleResult(result) {
     statsEl.innerHTML = statsHtml;
   }
 
-  if (resultEl) resultEl.style.display = 'flex';
-
   if (controls && controls.isLocked) controls.unlock();
 
   // Disconnect the battle WebSocket immediately — match is over
@@ -963,8 +961,17 @@ function triggerBattleResult(result) {
     playAgainBtn.onclick = function () { _returnToBattleLobby(); };
   }
 
-  // Return to battle lobby after 5 seconds
-  _autoReturnTimer = setTimeout(_returnToBattleLobby, 5000);
+  // Show KO/Victory overlay first (~2.4s), then reveal post-match summary.
+  function _showResultScreen() {
+    if (resultEl) resultEl.style.display = 'flex';
+    _autoReturnTimer = setTimeout(_returnToBattleLobby, 5000);
+  }
+
+  if (typeof battleFx !== 'undefined') {
+    battleFx.showKOScreen(result, _showResultScreen);
+  } else {
+    _showResultScreen();
+  }
 }
 
 /**

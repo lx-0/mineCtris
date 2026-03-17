@@ -207,6 +207,10 @@ function checkLineClear(newBlocks) {
     battle.send({ type: 'battle_attack', lines: _garbageRows, gapSeed: _gapSeed });
     // Show outgoing attack preview on our opponent mini-map HUD
     if (typeof battleHud !== 'undefined') battleHud.showOutgoingAttack(_garbageRows);
+    // Outgoing particle streak + whoosh
+    if (typeof battleFx !== 'undefined') battleFx.showOutgoingAttack(_garbageRows);
+    // Combo feed toast (show when combo bonus is active, i.e. comboCount >= 2)
+    if (comboCount >= 2 && typeof battleFx !== 'undefined') battleFx.showComboFeed(comboCount);
   }
   // Update back-to-back Tetris flag (reset on any non-Tetris clear)
   lastClearWasTetris = completeLevels.length >= 4;

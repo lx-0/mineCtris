@@ -1813,6 +1813,8 @@ function init() {
         if (typeof queueGarbage === 'function') {
           queueGarbage(msg.lines || 1, msg.gapSeed || 1);
         }
+        // Incoming attack vignette flash + thud SFX
+        if (typeof battleFx !== 'undefined') battleFx.showIncomingAttack(msg.lines || 1);
       });
 
       var battleReadyCancelBtn = document.getElementById("battle-ready-cancel-btn");
