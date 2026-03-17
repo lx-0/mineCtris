@@ -47,6 +47,16 @@ function resetGarbageQueue() {
   _garbageQueue = [];
 }
 
+/**
+ * Cancel one pending garbage entry (called when a rubble row is fully mined).
+ * Removes the oldest queued attack so the player's defensive mining pays off.
+ */
+function cancelOnePendingGarbage() {
+  if (_garbageQueue.length > 0) {
+    _garbageQueue.shift();
+  }
+}
+
 // ── Internal helpers ──────────────────────────────────────────────────────────
 
 /**

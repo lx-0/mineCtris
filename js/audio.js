@@ -273,6 +273,18 @@ function playBreakSound(objType) {
   }
 }
 
+/** Play rubble hit sound — lower pitch stoneHit for a crunchier feel. */
+function playRubbleHitSound() {
+  if (!audioReady) return;
+  _playSfx("stoneHit", 0.55, 0.70);
+}
+
+/** Play rubble break sound — low-pitch stone break for a heavy crunch. */
+function playRubbleBreakSound() {
+  if (!audioReady) return;
+  _playSfx("stoneBreak", 0.50, 0.65);
+}
+
 /** Play block placement thud. */
 function playPlaceSound() {
   if (!audioReady) return;

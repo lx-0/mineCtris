@@ -151,6 +151,39 @@ function spawnDustParticles(block, opts) {
   const objType = block.userData.objectType; // "trunk", "leaf", "rock", or undefined
   let count, dustColor, velocityFn, lifetime;
 
+  // Rubble (garbage) blocks get distinct orange crack particles
+  if (block.userData.isRubble) {
+    count = opts.breakBurst
+      ? Math.floor(Math.random() * 4) + 8  // 8–11 on break
+      : Math.floor(Math.random() * 2) + 4; // 4–5 per hit
+    // Orange-amber crack colour, brighter on break burst
+    dustColor = opts.breakBurst
+      ? new THREE.Color(0xff6600)  // bright orange burst
+      : new THREE.Color(0xcc4400); // darker orange crack on hit
+    lifetime = 0.3;
+    velocityFn = () => {
+      const speed = 2.5 + Math.random() * 2;
+      return new THREE.Vector3(
+        (Math.random() - 0.5) * 2,
+        Math.random() * 1.2 + 0.3,
+        (Math.random() - 0.5) * 2
+      ).normalize().multiplyScalar(speed);
+    };
+    for (let i = 0; i < count; i++) {
+      const geo = new THREE.BoxGeometry(0.07, 0.07, 0.07);
+      const mat = new THREE.MeshLambertMaterial({
+        color: dustColor,
+        transparent: true,
+        opacity: 0.9,
+      });
+      const mesh = new THREE.Mesh(geo, mat);
+      mesh.position.copy(wp);
+      scene.add(mesh);
+      dustParticles.push({ mesh, velocity: velocityFn(), startTime: clock.getElapsedTime(), lifetime });
+    }
+    return;
+  }
+
   if (objType === "trunk") {
     count = opts.breakBurst
       ? Math.floor(Math.random() * 3) + 8   // 8–10 on break

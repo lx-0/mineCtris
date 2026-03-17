@@ -2732,10 +2732,14 @@ function onMouseDown(event) {
     const isBreak = miningProgress >= clicksNeeded;
 
     // Per-material hit sound (played even on the breaking hit)
-    playHitSound(objType);
+    if (targetedBlock.userData.isRubble) {
+      playRubbleHitSound();
+    } else {
+      playHitSound(objType);
+    }
 
     if (!isBreak) {
-      // Normal hit particles
+      // Normal hit particles (rubble gets orange crack particles)
       spawnDustParticles(targetedBlock);
       // Trunk: tilt toward player on hit 3 of 4
       if (objType === "trunk" && miningProgress === 3) {
@@ -2764,9 +2768,16 @@ function onMouseDown(event) {
     if (isBreak) {
       console.log("Block broken!");
       if (typeof tutorialNotify === "function") tutorialNotify("blockMine");
+
+      const _isRubble = targetedBlock.userData.isRubble;
+
       // Per-material break sound
-      playBreakSound(objType);
-      // Break burst particles
+      if (_isRubble) {
+        playRubbleBreakSound();
+      } else {
+        playBreakSound(objType);
+      }
+      // Break burst particles (rubble gets orange crack burst)
       spawnDustParticles(targetedBlock, { breakBurst: true });
       blocksMined++;
       if (isCoopMode) coopMyBlocksMined++;
@@ -2781,19 +2792,28 @@ function onMouseDown(event) {
         ? { x: targetedBlock.userData.gridPos.x, y: targetedBlock.userData.gridPos.y, z: targetedBlock.userData.gridPos.z }
         : null) : null;
 
-      const blockColor =
-        targetedBlock.userData.originalColor ||
-        targetedBlock.material.color;
-      const cssColor = threeColorToCss(blockColor);
-      // Use the dropMaterial color if defined (e.g. obsidian → obsidian_shard)
-      const _matType = targetedBlock.userData.materialType;
-      const _dropMat = _matType && BLOCK_TYPES[_matType] && BLOCK_TYPES[_matType].dropMaterial;
-      const _invColor = _dropMat === "obsidian_shard" ? OBSIDIAN_SHARD_COLOR : cssColor;
-      const crumbles = targetedBlock.name === "leaf_block" && Math.random() < 0.2;
-      if (!crumbles) {
-        const collected = addToInventory(_invColor);
+      // ── Rubble mining drop: 50/50 stone or dirt ─────────────────────────────
+      if (_isRubble) {
+        const _rubbleDropColor = Math.random() < 0.5 ? '#808080' : '#8b4513';
+        const collected = addToInventory(_rubbleDropColor);
         if (!collected) {
-          console.log("Inventory full — block discarded.");
+          console.log("Inventory full — rubble drop discarded.");
+        }
+      } else {
+        const blockColor =
+          targetedBlock.userData.originalColor ||
+          targetedBlock.material.color;
+        const cssColor = threeColorToCss(blockColor);
+        // Use the dropMaterial color if defined (e.g. obsidian → obsidian_shard)
+        const _matType = targetedBlock.userData.materialType;
+        const _dropMat = _matType && BLOCK_TYPES[_matType] && BLOCK_TYPES[_matType].dropMaterial;
+        const _invColor = _dropMat === "obsidian_shard" ? OBSIDIAN_SHARD_COLOR : cssColor;
+        const crumbles = targetedBlock.name === "leaf_block" && Math.random() < 0.2;
+        if (!crumbles) {
+          const collected = addToInventory(_invColor);
+          if (!collected) {
+            console.log("Inventory full — block discarded.");
+          }
         }
       }
 
@@ -2822,11 +2842,32 @@ function onMouseDown(event) {
         }
       }
 
+      // Save rubble row Y before unregistering (used for full-row check below)
+      const _rubbleRowY = _isRubble && targetedBlock.userData.gridPos
+        ? targetedBlock.userData.gridPos.y : null;
+
       unregisterBlock(targetedBlock);
       worldGroup.remove(targetedBlock);
       // Remove from obsidian shimmer tracking if applicable
       const _obIdx = obsidianBlocks.indexOf(targetedBlock);
       if (_obIdx !== -1) obsidianBlocks.splice(_obIdx, 1);
+
+      // ── Rubble row fully cleared → cancel one pending garbage attack ────────
+      if (isBattleMode && _isRubble && _rubbleRowY !== null
+          && typeof cancelOnePendingGarbage === 'function') {
+        // Check if any rubble blocks remain at this Y level
+        const _rubbleRemaining = worldGroup.children.some(function (obj) {
+          return obj.name === 'landed_block'
+            && obj.userData.isRubble
+            && obj.userData.gridPos
+            && obj.userData.gridPos.y === _rubbleRowY;
+        });
+        if (!_rubbleRemaining) {
+          cancelOnePendingGarbage();
+          console.log('Rubble row fully mined — cancelled one pending garbage attack.');
+        }
+      }
+
       // Diamond Pickaxe AOE — mine up to 4 adjacent blocks in a cross pattern
       if (pickaxeTier === "diamond" && _brokenBlock) {
         _applyDiamondAOE(_brokenBlock);
