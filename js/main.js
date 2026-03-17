@@ -381,7 +381,7 @@ function init() {
       // Render World Card stats panel
       if (typeof renderWorldCard === "function") renderWorldCard();
       // Apply highlight to the specified mode card
-      ["classic", "sprint", "blitz", "daily", "weekly", "puzzle", "survival"].forEach(function (mode) {
+      ["classic", "sprint", "blitz", "daily", "weekly", "puzzle", "survival", "coop"].forEach(function (mode) {
         const cardEl = document.getElementById("mode-card-" + mode);
         if (cardEl) {
           if (mode === highlightMode) {
@@ -695,6 +695,247 @@ function init() {
         requestPointerLock();
       });
     }
+
+    // ── Co-op mode card + lobby overlay ──────────────────────────────────────
+    (function () {
+      var coopOverlay     = document.getElementById("coop-overlay");
+      var coopChoiceView  = document.getElementById("coop-choice-view");
+      var coopCreateView  = document.getElementById("coop-create-view");
+      var coopJoinView    = document.getElementById("coop-join-view");
+      var coopReadyView   = document.getElementById("coop-ready-view");
+
+      if (!coopOverlay || typeof coop === "undefined") return;
+
+      function showCoopView(name) {
+        [coopChoiceView, coopCreateView, coopJoinView, coopReadyView].forEach(function (v) {
+          if (v) v.style.display = "none";
+        });
+        var target = {
+          choice: coopChoiceView,
+          create: coopCreateView,
+          join:   coopJoinView,
+          ready:  coopReadyView,
+        }[name];
+        if (target) target.style.display = "";
+      }
+
+      function openCoopOverlay(initialView) {
+        hideModeSelect();
+        blocker.style.display = "none";
+        showCoopView(initialView || "choice");
+        coopOverlay.style.display = "flex";
+      }
+
+      function closeCoopOverlay() {
+        coopOverlay.style.display = "none";
+        coop.disconnect();
+        // Return to menu
+        blocker.style.display = "flex";
+        instructions.style.display = "";
+      }
+
+      // Co-op mode card click
+      var coopCardEl = document.getElementById("mode-card-coop");
+      if (coopCardEl) {
+        coopCardEl.addEventListener("click", function () {
+          openCoopOverlay("choice");
+        });
+      }
+
+      // ── Register coop state-change handler once ──
+      coop.on("state_change", function (data) {
+        if (data.state === "ready") {
+          var readyCodeEl = document.getElementById("coop-ready-code");
+          if (readyCodeEl) readyCodeEl.textContent = "Room: " + (data.roomCode || "");
+          showCoopView("ready");
+        } else if (data.state === "disconnected") {
+          var statusEl = document.getElementById("coop-status-msg");
+          if (statusEl) statusEl.textContent = "Disconnected.";
+          closeCoopOverlay();
+        }
+      });
+
+      coop.on("timeout", function () {
+        var statusEl = document.getElementById("coop-status-msg");
+        if (statusEl) statusEl.textContent = "No one joined. Room closed.";
+        setTimeout(function () { closeCoopOverlay(); }, 2000);
+      });
+
+      coop.on("partner_left", function () {
+        // Partner left after game started — handled by game layer; ignore here
+      });
+
+      // ── Choice view buttons ──
+      var createBtn = document.getElementById("coop-create-btn");
+      if (createBtn) {
+        createBtn.addEventListener("click", function () {
+          showCoopView("create");
+          var roomCodeEl   = document.getElementById("coop-room-code");
+          var statusMsg    = document.getElementById("coop-status-msg");
+          var copyFeedback = document.getElementById("coop-copy-feedback");
+          if (roomCodeEl) roomCodeEl.textContent = "…";
+          if (statusMsg)  statusMsg.textContent   = "";
+          if (copyFeedback) copyFeedback.textContent = "";
+
+          coop.createRoom().then(function (code) {
+            if (roomCodeEl) roomCodeEl.textContent = code;
+          }).catch(function () {
+            if (statusMsg) statusMsg.textContent = "Failed to create room.";
+          });
+        });
+      }
+
+      var joinBtnChoice = document.getElementById("coop-join-btn-choice");
+      if (joinBtnChoice) {
+        joinBtnChoice.addEventListener("click", function () {
+          showCoopView("join");
+          var joinStatusEl = document.getElementById("coop-join-status-msg");
+          if (joinStatusEl) joinStatusEl.textContent = "";
+          var codeInput = document.getElementById("coop-code-input");
+          if (codeInput) { codeInput.value = ""; codeInput.focus(); }
+        });
+      }
+
+      var choiceCancelBtn = document.getElementById("coop-choice-cancel-btn");
+      if (choiceCancelBtn) {
+        choiceCancelBtn.addEventListener("click", function () {
+          closeCoopOverlay();
+        });
+      }
+
+      // ── Create view buttons ──
+      var copyLinkBtn = document.getElementById("coop-copy-link-btn");
+      if (copyLinkBtn) {
+        copyLinkBtn.addEventListener("click", function () {
+          var code = coop.roomCode;
+          if (!code) return;
+          var url = window.location.origin + window.location.pathname + "?room=" + code;
+          var feedbackEl = document.getElementById("coop-copy-feedback");
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(url).then(function () {
+              if (feedbackEl) {
+                feedbackEl.textContent = "\u2713 Copied!";
+                setTimeout(function () { feedbackEl.textContent = ""; }, 2000);
+              }
+            }).catch(function () { window.prompt("Copy invite link:", url); });
+          } else {
+            window.prompt("Copy invite link:", url);
+          }
+        });
+      }
+
+      var createCancelBtn = document.getElementById("coop-create-cancel-btn");
+      if (createCancelBtn) {
+        createCancelBtn.addEventListener("click", function () { closeCoopOverlay(); });
+      }
+
+      // ── Join view buttons & code input ──
+      var codeInput = document.getElementById("coop-code-input");
+      if (codeInput) {
+        codeInput.addEventListener("input", function () {
+          this.value = this.value.toUpperCase().replace(/[^A-Z0-9]/g, "");
+        });
+        codeInput.addEventListener("keydown", function (e) {
+          if (e.key === "Enter") {
+            var confirmBtn = document.getElementById("coop-join-confirm-btn");
+            if (confirmBtn) confirmBtn.click();
+          }
+        });
+      }
+
+      var joinConfirmBtn = document.getElementById("coop-join-confirm-btn");
+      if (joinConfirmBtn) {
+        joinConfirmBtn.addEventListener("click", function () {
+          var code = codeInput ? codeInput.value.trim().toUpperCase() : "";
+          var joinStatusEl = document.getElementById("coop-join-status-msg");
+          if (!code || code.length !== 4) {
+            if (joinStatusEl) joinStatusEl.textContent = "Enter a 4-character code.";
+            return;
+          }
+          if (joinStatusEl) joinStatusEl.textContent = "Joining\u2026";
+          coop.joinRoom(code).then(function () {
+            if (joinStatusEl) joinStatusEl.textContent = "";
+            showCoopView("create");
+            var roomCodeEl = document.getElementById("coop-room-code");
+            if (roomCodeEl) roomCodeEl.textContent = code;
+            var waitingEl = document.getElementById("coop-waiting-spinner");
+            if (waitingEl) waitingEl.textContent = "\u9696 Connected \u2014 waiting for host\u2026";
+          }).catch(function (err) {
+            if (joinStatusEl) joinStatusEl.textContent = (err && err.message) ? err.message : "Failed to join.";
+          });
+        });
+      }
+
+      var joinCancelBtn = document.getElementById("coop-join-cancel-btn");
+      if (joinCancelBtn) {
+        joinCancelBtn.addEventListener("click", function () {
+          coop.disconnect();
+          showCoopView("choice");
+        });
+      }
+
+      // ── Ready view buttons ──
+      var startBtn = document.getElementById("coop-start-btn");
+      if (startBtn) {
+        startBtn.addEventListener("click", function () {
+          // Activate co-op mode flags
+          isCoopMode = true;
+          isDailyChallenge = false;
+          gameRng = null;
+          coopPieceQueue.length = 0;
+          applyWorldModifierHUD();
+          coop.startGame();
+          coopOverlay.style.display = "none";
+          // Send game_start to DO: it will relay to guest and pre-broadcast 3 pieces
+          coop.send({ type: 'game_start' });
+          // 500ms countdown so initial pieces arrive before the first spawn fires
+          setTimeout(function () { requestPointerLock(); }, 500);
+        });
+      }
+
+      // ── Handle pieces from DO ──
+      coop.on('piece', function (data) {
+        if (isCoopMode) {
+          coopPieceQueue.push(data);
+        }
+      });
+
+      // ── Guest: start game when DO relays host's game_start ──
+      coop.on('game_start', function () {
+        if (coop.state !== CoopState.IN_GAME) {
+          isCoopMode = true;
+          isDailyChallenge = false;
+          gameRng = null;
+          coopPieceQueue.length = 0;
+          coop.startGame();
+          if (coopOverlay) coopOverlay.style.display = "none";
+          applyWorldModifierHUD();
+          setTimeout(function () { requestPointerLock(); }, 500);
+        }
+      });
+
+      var readyCancelBtn = document.getElementById("coop-ready-cancel-btn");
+      if (readyCancelBtn) {
+        readyCancelBtn.addEventListener("click", function () { closeCoopOverlay(); });
+      }
+
+      // ── Auto-show join dialog if ?room=CODE in URL ──
+      (function () {
+        var params = new URLSearchParams(window.location.search);
+        var roomParam = params.get("room");
+        if (roomParam && /^[A-Z0-9]{4}$/i.test(roomParam)) {
+          // Wait for DOM to settle then open join dialog pre-filled
+          setTimeout(function () {
+            openCoopOverlay("join");
+            var ci = document.getElementById("coop-code-input");
+            if (ci) ci.value = roomParam.toUpperCase();
+            var joinStatusEl = document.getElementById("coop-join-status-msg");
+            if (joinStatusEl) joinStatusEl.textContent = "Code from invite link — press Join!";
+          }, 200);
+        }
+      })();
+    })();
+    // ── End co-op setup ────────────────────────────────────────────────────────
 
     // Survival: Reset World button + confirmation dialog
     const survivalResetBtn = document.getElementById("survival-reset-btn");

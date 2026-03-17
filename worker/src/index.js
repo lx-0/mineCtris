@@ -10,6 +10,9 @@
  *   GET  /api/leaderboard/season   — return top 20 for the current season
  *   GET  /api/season/archive/:id   — return permanently archived end-of-season results
  *   GET  /api/badges/:displayName  — return all season badges earned by a player
+ *   POST /api/puzzles/:id/play     — increment play count for a community puzzle
+ *   POST /api/puzzles/:id/vote     — submit thumbs-up or thumbs-down vote for a puzzle
+ *   GET  /api/puzzles/featured     — return curated official featured puzzles (admin-seeded)
  *
  * KV Structure (binding: LEADERBOARD_KV):
  *   leaderboard:YYYY-MM-DD        → JSON array of top 100 daily entries, sorted desc by score
@@ -562,6 +565,502 @@ async function handleGetBadges(displayName, env) {
   return jsonResponse({ displayName, badges });
 }
 
+// ── Inline LZ-string decoder (URL-safe variant, from puzzle-codec.js) ─────────
+// Only the decompress path is needed for server-side share code validation.
+
+const _WorkerPuzzleLZ = (function () {
+  const K = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
+  let R = null;
+
+  function decompress(compressed) {
+    if (!compressed) return '';
+    if (!R) { R = {}; for (let x = 0; x < K.length; x++) R[K[x]] = x; }
+    const BPC = 6, resetVal = 1 << (BPC - 1);
+    const data = { v: R[compressed[0]], p: resetVal, i: 1 };
+    function nextBit() {
+      const b = data.v & data.p;
+      data.p >>= 1;
+      if (data.p === 0) { data.p = resetVal; data.v = R[compressed[data.i++]] || 0; }
+      return b > 0 ? 1 : 0;
+    }
+    function readBits(n) {
+      let val = 0, pw = 1;
+      for (let b = 0; b < n; b++) { val += nextBit() * pw; pw <<= 1; }
+      return val;
+    }
+    const dic = [0, 1, 2];
+    let dictSize = 3, numBits = 3, enlargeIn = 4;
+    function checkEnlarge() { if (--enlargeIn === 0) { enlargeIn = Math.pow(2, numBits); numBits++; } }
+    let bits = readBits(2), c;
+    if      (bits === 0) c = String.fromCharCode(readBits(8));
+    else if (bits === 1) c = String.fromCharCode(readBits(16));
+    else                 return '';
+    dic[3] = c; dictSize = 4;
+    let w = c; const result = [c];
+    while (true) {
+      if (data.i > compressed.length) return '';
+      bits = readBits(numBits);
+      if (bits === 2) break;
+      let entry;
+      if (bits === 0) { dic[dictSize++] = String.fromCharCode(readBits(8)); bits = dictSize - 1; checkEnlarge(); }
+      else if (bits === 1) { dic[dictSize++] = String.fromCharCode(readBits(16)); bits = dictSize - 1; checkEnlarge(); }
+      if (dic[bits])          { entry = dic[bits]; }
+      else if (bits === dictSize) { entry = w + w[0]; }
+      else                    { return null; }
+      result.push(entry);
+      dic[dictSize++] = w + entry[0];
+      checkEnlarge();
+      w = entry;
+    }
+    return result.join('');
+  }
+
+  return { decompress };
+})();
+
+const PUZZLE_CODEC_VERSION = 2;
+const VALID_CODE_RE = /^[A-Za-z0-9\-_]+$/;
+const DIFFICULTY_LABELS = ['easy', 'medium', 'hard', 'expert'];
+const PUZZLE_INDEX_MAX = 500;
+const PUZZLE_RATE_LIMIT_PER_DAY = 5;
+
+/**
+ * Validate and decode a puzzle share code.
+ * Returns { ok: true, decoded } or { ok: false, error }.
+ */
+function validateShareCode(code) {
+  if (!code || typeof code !== 'string') {
+    return { ok: false, error: 'Share code must be a non-empty string' };
+  }
+  if (code.length < 10 || code.length > 65536) {
+    return { ok: false, error: 'Share code length out of range' };
+  }
+  if (!VALID_CODE_RE.test(code)) {
+    return { ok: false, error: 'Share code contains invalid characters' };
+  }
+  let raw;
+  try { raw = _WorkerPuzzleLZ.decompress(code); } catch (_) { raw = null; }
+  if (!raw) return { ok: false, error: 'Could not decompress share code' };
+  let obj;
+  try { obj = JSON.parse(raw); } catch (_) { return { ok: false, error: 'Share code is corrupted' }; }
+  if (!obj || typeof obj !== 'object') return { ok: false, error: 'Share code is corrupted' };
+  if (typeof obj.v === 'number' && obj.v > PUZZLE_CODEC_VERSION) {
+    return { ok: false, error: 'Puzzle was created with a newer editor version' };
+  }
+  if (!obj.wc || typeof obj.wc.m !== 'string') {
+    return { ok: false, error: 'Share code is missing win condition' };
+  }
+  if (!Array.isArray(obj.b)) {
+    return { ok: false, error: 'Share code is missing block data' };
+  }
+  const meta = obj.meta || {};
+  return {
+    ok: true,
+    decoded: {
+      name:        String(meta.n || '').slice(0, 40),
+      author:      String(meta.a || '').slice(0, 20),
+      difficulty:  typeof meta.df === 'number' ? meta.df : 0,
+    },
+  };
+}
+
+// ── Community Puzzle Handlers ─────────────────────────────────────────────────
+
+async function handlePostPuzzle(request, env) {
+  let body;
+  try { body = await request.json(); } catch { return jsonResponse({ error: 'Invalid JSON' }, 400); }
+
+  const { code } = body;
+
+  // 1. Validate share code
+  const validation = validateShareCode(code);
+  if (!validation.ok) return jsonResponse({ error: validation.error }, 400);
+
+  const { decoded } = validation;
+  const difficulty = DIFFICULTY_LABELS[decoded.difficulty] || 'easy';
+  const title  = decoded.name  || 'Untitled';
+  const author = decoded.author || 'Anonymous';
+
+  // 2. IP rate limit: 5 publishes per IP per day
+  const ip = request.headers.get('CF-Connecting-IP') ||
+             request.headers.get('X-Forwarded-For')?.split(',')[0]?.trim() ||
+             '0.0.0.0';
+  const ipHash = await hashIP(ip);
+  const date = todayUTC();
+  const ipKey = `ip:publish:${ipHash}:${date}`;
+  const ipEntry = await env.PUZZLES_KV.get(ipKey, { type: 'json' });
+  if (ipEntry && ipEntry.count >= PUZZLE_RATE_LIMIT_PER_DAY) {
+    return jsonResponse({ error: 'Rate limit exceeded: 5 puzzles per day per IP' }, 429);
+  }
+
+  // 3. Generate unique puzzle ID and store
+  const id = crypto.randomUUID().replace(/-/g, '').slice(0, 16);
+  const createdAt = new Date().toISOString();
+  const puzzle = { id, title, author, difficulty, plays: 0, rating: 0, thumbsUp: 0, thumbsDown: 0, createdAt, code };
+  const meta   = { id, title, author, difficulty, plays: 0, rating: 0, thumbsUp: 0, thumbsDown: 0, createdAt };
+
+  // 4. Update global index (newest first, capped)
+  let index = (await env.PUZZLES_KV.get('puzzles:index', { type: 'json' })) || [];
+  index.unshift(meta);
+  if (index.length > PUZZLE_INDEX_MAX) index = index.slice(0, PUZZLE_INDEX_MAX);
+
+  await Promise.all([
+    env.PUZZLES_KV.put(`puzzle:${id}`, JSON.stringify(puzzle), { expirationTtl: 60 * 60 * 24 * 365 }),
+    env.PUZZLES_KV.put('puzzles:index', JSON.stringify(index)),
+    env.PUZZLES_KV.put(ipKey, JSON.stringify({ count: (ipEntry?.count || 0) + 1 }), { expirationTtl: 60 * 60 * 24 }),
+  ]);
+
+  const origin = (env.ALLOWED_ORIGIN && env.ALLOWED_ORIGIN !== '*') ? env.ALLOWED_ORIGIN : '';
+  const puzzleUrl = `${origin}/?puzzle=${encodeURIComponent(code)}`;
+  return jsonResponse({ id, url: puzzleUrl }, 201);
+}
+
+async function handleGetPuzzles(request, env) {
+  const params = new URL(request.url).searchParams;
+  const cursor     = params.get('cursor') || null;
+  const difficulty = params.get('difficulty') || null;
+
+  let index = (await env.PUZZLES_KV.get('puzzles:index', { type: 'json' })) || [];
+
+  if (difficulty) {
+    const valid = ['easy', 'medium', 'hard', 'expert'];
+    if (!valid.includes(difficulty)) return jsonResponse({ error: 'Invalid difficulty filter' }, 400);
+    index = index.filter(p => p.difficulty === difficulty);
+  }
+
+  let startIdx = 0;
+  if (cursor) {
+    const pos = index.findIndex(p => p.id === cursor);
+    if (pos >= 0) startIdx = pos + 1;
+  }
+
+  const page = index.slice(startIdx, startIdx + 20);
+  const nextCursor = page.length === 20 && startIdx + 20 < index.length
+    ? page[page.length - 1].id
+    : null;
+
+  return jsonResponse({ puzzles: page, nextCursor, total: index.length });
+}
+
+async function handlePostPuzzlePlay(id, env) {
+  if (!id) return jsonResponse({ error: 'Missing puzzle ID' }, 400);
+
+  const puzzleKey = `puzzle:${id}`;
+  const puzzle = await env.PUZZLES_KV.get(puzzleKey, { type: 'json' });
+  if (!puzzle) return jsonResponse({ error: 'Puzzle not found' }, 404);
+
+  puzzle.plays = (puzzle.plays || 0) + 1;
+  const plays = puzzle.plays;
+
+  await env.PUZZLES_KV.put(puzzleKey, JSON.stringify(puzzle), { expirationTtl: 60 * 60 * 24 * 365 });
+
+  // Best-effort index update
+  try {
+    let index = (await env.PUZZLES_KV.get('puzzles:index', { type: 'json' })) || [];
+    const idx = index.findIndex(p => p.id === id);
+    if (idx >= 0) {
+      index[idx].plays = plays;
+      await env.PUZZLES_KV.put('puzzles:index', JSON.stringify(index));
+    }
+  } catch (_) {}
+
+  return jsonResponse({ ok: true, plays });
+}
+
+async function handlePostPuzzleVote(request, id, env) {
+  if (!id) return jsonResponse({ error: 'Missing puzzle ID' }, 400);
+
+  let body;
+  try { body = await request.json(); } catch { return jsonResponse({ error: 'Invalid JSON' }, 400); }
+
+  const { vote } = body;
+  if (vote !== 'up' && vote !== 'down') {
+    return jsonResponse({ error: 'vote must be "up" or "down"' }, 400);
+  }
+
+  const puzzleKey = `puzzle:${id}`;
+  const puzzle = await env.PUZZLES_KV.get(puzzleKey, { type: 'json' });
+  if (!puzzle) return jsonResponse({ error: 'Puzzle not found' }, 404);
+
+  puzzle.thumbsUp   = (puzzle.thumbsUp   || 0) + (vote === 'up'   ? 1 : 0);
+  puzzle.thumbsDown = (puzzle.thumbsDown || 0) + (vote === 'down' ? 1 : 0);
+  puzzle.rating = puzzle.thumbsUp - puzzle.thumbsDown;
+
+  const { thumbsUp, thumbsDown } = puzzle;
+
+  await env.PUZZLES_KV.put(puzzleKey, JSON.stringify(puzzle), { expirationTtl: 60 * 60 * 24 * 365 });
+
+  // Best-effort index update
+  try {
+    let index = (await env.PUZZLES_KV.get('puzzles:index', { type: 'json' })) || [];
+    const idx = index.findIndex(p => p.id === id);
+    if (idx >= 0) {
+      index[idx].thumbsUp   = thumbsUp;
+      index[idx].thumbsDown = thumbsDown;
+      index[idx].rating = thumbsUp - thumbsDown;
+      await env.PUZZLES_KV.put('puzzles:index', JSON.stringify(index));
+    }
+  } catch (_) {}
+
+  return jsonResponse({ ok: true, thumbsUp, thumbsDown });
+}
+
+async function handleGetPuzzleById(id, env) {
+  if (!id) return jsonResponse({ error: 'Missing puzzle ID' }, 400);
+  const puzzle = await env.PUZZLES_KV.get(`puzzle:${id}`, { type: 'json' });
+  if (!puzzle) return jsonResponse({ error: 'Puzzle not found' }, 404);
+  return jsonResponse(puzzle);
+}
+
+async function handleGetFeaturedPuzzles(env) {
+  const index = (await env.PUZZLES_KV.get('puzzles:featured', { type: 'json' })) || [];
+
+  // Fetch live play/rating stats from each puzzle's full record
+  const puzzles = await Promise.all(
+    index.map(async (meta) => {
+      const full = await env.PUZZLES_KV.get(`puzzle:${meta.id}`, { type: 'json' });
+      if (!full) return null;
+      return {
+        id: full.id,
+        title: full.title,
+        author: full.author,
+        difficulty: full.difficulty,
+        plays: full.plays || 0,
+        thumbsUp: full.thumbsUp || 0,
+        thumbsDown: full.thumbsDown || 0,
+        rating: full.rating || 0,
+        featured: true,
+        createdAt: full.createdAt,
+      };
+    })
+  );
+
+  return jsonResponse({ puzzles: puzzles.filter(Boolean) });
+}
+
+// ── Co-op Room Relay (Durable Object) ────────────────────────────────────────
+
+export class CoopRoom {
+  constructor(state, env) {
+    this.state = state;
+    // Map<playerId ('host'|'guest'), WebSocket>
+    this.clients = new Map();
+    // Piece sequence PRNG (initialised when host sends game_start)
+    this.prng = null;
+    this.pieceIndex = 0;
+    this.lastPiece = null;
+    this.roomCode = null;
+  }
+
+  // ── PRNG helpers (mulberry32 — identical to client daily.js) ────────────────
+
+  _mulberry32(seed) {
+    return function () {
+      seed |= 0;
+      seed = (seed + 0x6D2B79F5) | 0;
+      let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  _hashSeed(str) {
+    let h = 0x12345678;
+    for (let i = 0; i < str.length; i++) {
+      h = Math.imul(h ^ str.charCodeAt(i), 0x9e3779b9);
+      h = ((h << 13) | (h >>> 19)) ^ h;
+    }
+    return h >>> 0;
+  }
+
+  _initPrng(roomCode) {
+    const seedStr = roomCode + new Date().toISOString().slice(0, 10);
+    this.prng = this._mulberry32(this._hashSeed(seedStr));
+    this.pieceIndex = 0;
+  }
+
+  _generateNextPiece() {
+    const rng = this.prng;
+    // Standard piece types: indices 1–7 (matching client SHAPES pool)
+    const index = Math.floor(rng() * 7) + 1;
+    // Spawn position: same formula as client spawnFallingPiece (WORLD_SIZE=50, 0.8 factor)
+    const spawnX = (rng() - 0.5) * 40;
+    const spawnZ = (rng() - 0.5) * 40;
+    // Initial rotation axis and angle (0/90/180/270°)
+    const axis = ['x', 'y', 'z'][Math.floor(rng() * 3)];
+    const angle = Math.floor(rng() * 4) * (Math.PI / 2);
+    // First rotation interval (MIN_ROTATION_INTERVAL=1.5, MAX=4.0)
+    const rotationInterval = rng() * 2.5 + 1.5;
+
+    this.pieceIndex++;
+    this.lastPiece = { index, spawnX, spawnZ, startRotation: { axis, angle }, rotationInterval, pieceIndex: this.pieceIndex };
+    return this.lastPiece;
+  }
+
+  _broadcast(msgStr) {
+    for (const ws of this.clients.values()) {
+      if (ws.readyState === 1 /* OPEN */) ws.send(msgStr);
+    }
+  }
+
+  // ── WebSocket upgrade ───────────────────────────────────────────────────────
+
+  async fetch(request) {
+    const upgradeHeader = request.headers.get('Upgrade');
+    if (!upgradeHeader || upgradeHeader.toLowerCase() !== 'websocket') {
+      return new Response('Expected WebSocket upgrade', { status: 426 });
+    }
+
+    // Capture room code from URL path (/room/CODE/ws) on first connection
+    if (!this.roomCode) {
+      const parts = new URL(request.url).pathname.split('/');
+      this.roomCode = parts[2] || null;
+    }
+
+    // Assign slot
+    let playerId;
+    if (!this.clients.has('host')) {
+      playerId = 'host';
+    } else if (!this.clients.has('guest')) {
+      playerId = 'guest';
+    } else {
+      return new Response('Room full', { status: 409 });
+    }
+
+    const pair = new WebSocketPair();
+    const [client, server] = Object.values(pair);
+    server.accept();
+
+    this.clients.set(playerId, server);
+
+    // Set 2-hour expiry alarm when the first client joins
+    if (this.clients.size === 1) {
+      await this.state.storage.setAlarm(Date.now() + 2 * 60 * 60 * 1000);
+    }
+
+    // Notify both sides when the second player connects
+    if (playerId === 'guest') {
+      const joinMsg = JSON.stringify({ type: 'player_joined', playerId: 'guest' });
+      const hostWs = this.clients.get('host');
+      if (hostWs && hostWs.readyState === 1 /* OPEN */) {
+        hostWs.send(joinMsg);
+      }
+      server.send(JSON.stringify({ type: 'player_joined', playerId: 'host' }));
+    }
+
+    server.addEventListener('message', (event) => {
+      let msg = null;
+      try { msg = JSON.parse(event.data); } catch (_) { /* non-JSON: fall through to relay */ }
+
+      // ── Piece-sequence control messages (host only) ──────────────────────────
+
+      if (msg && msg.type === 'game_start' && playerId === 'host') {
+        // Initialise PRNG for this session
+        if (!this.prng && this.roomCode) this._initPrng(this.roomCode);
+        // Relay game_start to guest only (host already knows it started)
+        const guestWs = this.clients.get('guest');
+        if (guestWs && guestWs.readyState === 1) {
+          guestWs.send(JSON.stringify({ type: 'game_start' }));
+        }
+        // Pre-broadcast 3 pieces so both clients have a full queue ready
+        for (let i = 0; i < 3; i++) {
+          this._broadcast(JSON.stringify({ type: 'piece', ...this._generateNextPiece() }));
+        }
+        return;
+      }
+
+      if (msg && msg.type === 'piece_request' && playerId === 'host') {
+        if (!this.prng) return; // game not started yet
+        this._broadcast(JSON.stringify({ type: 'piece', ...this._generateNextPiece() }));
+        return;
+      }
+
+      // ── Reconnect resync (any client) ────────────────────────────────────────
+
+      if (msg && msg.type === 'piece_resync') {
+        if (this.lastPiece) {
+          server.send(JSON.stringify({ type: 'piece', ...this.lastPiece }));
+        }
+        return;
+      }
+
+      // ── Default: relay to partner ─────────────────────────────────────────────
+
+      const otherId = playerId === 'host' ? 'guest' : 'host';
+      const otherWs = this.clients.get(otherId);
+      if (otherWs && otherWs.readyState === 1 /* OPEN */) {
+        otherWs.send(event.data);
+      }
+    });
+
+    server.addEventListener('close', () => {
+      this.clients.delete(playerId);
+      const otherId = playerId === 'host' ? 'guest' : 'host';
+      const otherWs = this.clients.get(otherId);
+      if (otherWs && otherWs.readyState === 1 /* OPEN */) {
+        otherWs.send(JSON.stringify({ type: 'player_left', playerId }));
+      }
+      if (this.clients.size === 0) {
+        this.state.storage.deleteAll().catch(() => {});
+      }
+    });
+
+    server.addEventListener('error', () => {
+      this.clients.delete(playerId);
+    });
+
+    return new Response(null, { status: 101, webSocket: client });
+  }
+
+  async alarm() {
+    for (const ws of this.clients.values()) {
+      try { ws.close(1001, 'Room expired'); } catch (_) {}
+    }
+    this.clients.clear();
+    await this.state.storage.deleteAll();
+  }
+}
+
+// ── Co-op Room HTTP Handlers ──────────────────────────────────────────────────
+
+const ROOM_CODE_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+
+function generateRoomCode() {
+  const bytes = crypto.getRandomValues(new Uint8Array(4));
+  let code = '';
+  for (const byte of bytes) {
+    code += ROOM_CODE_CHARS[byte % ROOM_CODE_CHARS.length];
+  }
+  return code;
+}
+
+function roomWsUrl(requestUrl, code) {
+  const u = new URL(requestUrl);
+  const proto = u.protocol === 'https:' ? 'wss:' : 'ws:';
+  return `${proto}//${u.host}/room/${code}/ws`;
+}
+
+async function handleRoomCreate(request, env) {
+  const code = generateRoomCode();
+  return jsonResponse({ roomCode: code, wsUrl: roomWsUrl(request.url, code) }, 201);
+}
+
+async function handleRoomJoin(request, code, env) {
+  if (!code || !/^[A-Z0-9]{4}$/.test(code)) {
+    return jsonResponse({ error: 'Invalid room code' }, 400);
+  }
+  return jsonResponse({ wsUrl: roomWsUrl(request.url, code) });
+}
+
+async function handleRoomWs(request, code, env) {
+  if (!code || !/^[A-Z0-9]{4}$/.test(code)) {
+    return jsonResponse({ error: 'Invalid room code' }, 400);
+  }
+  const id = env.COOP_ROOMS.idFromName(code);
+  const stub = env.COOP_ROOMS.get(id);
+  return stub.fetch(request);
+}
+
 // ── Router ────────────────────────────────────────────────────────────────────
 
 export default {
@@ -577,7 +1076,31 @@ export default {
 
     let response;
 
-    if (method === 'GET' && url.pathname === '/api/missions') {
+    if (method === 'POST' && url.pathname === '/room/create') {
+      response = await handleRoomCreate(request, env);
+    } else if (method === 'GET' && /^\/room\/[A-Z0-9]{4}\/join$/.test(url.pathname)) {
+      const code = url.pathname.split('/')[2];
+      response = await handleRoomJoin(request, code, env);
+    } else if (/^\/room\/[A-Z0-9]{4}\/ws$/.test(url.pathname)) {
+      const code = url.pathname.split('/')[2];
+      // WebSocket upgrade — bypass CORS header merging below and return directly
+      return handleRoomWs(request, code, env);
+    } else if (method === 'POST' && url.pathname === '/api/puzzles') {
+      response = await handlePostPuzzle(request, env);
+    } else if (method === 'GET' && url.pathname === '/api/puzzles') {
+      response = await handleGetPuzzles(request, env);
+    } else if (method === 'POST' && url.pathname.startsWith('/api/puzzles/') && url.pathname.endsWith('/play')) {
+      const puzzleId = url.pathname.slice('/api/puzzles/'.length, -'/play'.length);
+      response = await handlePostPuzzlePlay(puzzleId, env);
+    } else if (method === 'POST' && url.pathname.startsWith('/api/puzzles/') && url.pathname.endsWith('/vote')) {
+      const puzzleId = url.pathname.slice('/api/puzzles/'.length, -'/vote'.length);
+      response = await handlePostPuzzleVote(request, puzzleId, env);
+    } else if (method === 'GET' && url.pathname === '/api/puzzles/featured') {
+      response = await handleGetFeaturedPuzzles(env);
+    } else if (method === 'GET' && url.pathname.startsWith('/api/puzzles/')) {
+      const puzzleId = url.pathname.replace('/api/puzzles/', '');
+      response = await handleGetPuzzleById(puzzleId, env);
+    } else if (method === 'GET' && url.pathname === '/api/missions') {
       response = handleGetMissions(todayUTC());
     } else if (method === 'GET' && url.pathname.startsWith('/api/missions/')) {
       const dateStr = url.pathname.replace('/api/missions/', '');

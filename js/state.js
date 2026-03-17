@@ -149,6 +149,13 @@ let nudgeCooldown = 0;  // seconds remaining before next nudge is allowed
 // Each entry: { index: colorIndex, shape: SHAPES[index] }
 let pieceQueue = [];
 
+// ── Co-op mode state ──────────────────────────────────────────────────────────
+// true while a co-op session is active; suppresses local random piece generation.
+let isCoopMode = false;
+// Pieces received from the Durable Object for co-op play.
+// Each entry: { index, spawnX, spawnZ, startRotation: {axis, angle}, rotationInterval, pieceIndex }
+let coopPieceQueue = [];
+
 // ── Daily challenge state ─────────────────────────────────────────────────────
 let isDailyChallenge = false;
 // null → use Math.random(); function → seeded daily PRNG from daily.js
@@ -292,3 +299,18 @@ let sessionHighestComboCount = 0;
 let isEditorMode = false;
 let moveUp   = false;  // fly upward  (Space in editor mode)
 let moveDown = false;  // fly downward (Shift in editor mode)
+
+// ── Custom puzzle mode state (editor-created puzzles) ─────────────────────────
+// isCustomPuzzleMode: true when playing a puzzle built with the editor.
+// customPuzzleWinCondition: { mode, n } — set before entering game from editor.
+// customPuzzleLayout: [{x, y, z, color}] — editor blocks captured at "Test" time.
+// customPuzzleMetadata: { name, description, author, difficulty } — set from editor or share code.
+// customPieceSequence: { mode: "random"|"fixed", pieces: [1-7, ...] } — piece spawn order.
+let isCustomPuzzleMode      = false;
+let customPuzzleWinCondition = null;
+let customPuzzleLayout       = [];
+let customPuzzleMetadata     = { name: "", description: "", author: "", difficulty: 0 };
+let customPieceSequence      = { mode: "random", pieces: [] };
+// true when the current custom puzzle session was launched from the editor Play button.
+// Used to show "Edit Puzzle" on the completion overlay.
+let customPlayFromEditor     = false;

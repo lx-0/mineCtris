@@ -499,6 +499,10 @@ function resetGame() {
     if (timerEl) timerEl.style.color = "";
   }
 
+  // Reset co-op mode state
+  isCoopMode = false;
+  coopPieceQueue.length = 0;
+
   // Reset daily challenge state
   isDailyChallenge = false;
   gameRng = null;
@@ -545,6 +549,11 @@ function resetGame() {
   if (typeof resetPuzzleState === "function") resetPuzzleState();
   if (typeof puzzleFixedQueue !== "undefined") puzzleFixedQueue.length = 0;
   if (typeof hidePuzzleSelect === "function") hidePuzzleSelect();
+
+  // Reset custom puzzle mode state
+  isCustomPuzzleMode = false;
+  customPuzzleWinCondition = null;
+  customPlayFromEditor = false;
   const puzzleCompleteEl = document.getElementById("puzzle-complete-screen");
   if (puzzleCompleteEl) puzzleCompleteEl.style.display = "none";
   const puzzleBadgeEl2 = document.getElementById("puzzle-badge");
