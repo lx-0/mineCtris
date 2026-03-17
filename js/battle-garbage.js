@@ -8,8 +8,36 @@
 //           THREE.js  (global)
 
 // ── Garbage queue ─────────────────────────────────────────────────────────────
-// Each entry: { lines: number, gapSeed: uint32 }
+// Each entry: { lines: number, gapSeed: uint32, readyAt: number }
+// readyAt is clock.getElapsedTime() + GARBAGE_DELAY_SECS — garbage is not delivered
+// until this time has passed (gives player a brief warning window).
 let _garbageQueue = [];
+
+const GARBAGE_DELAY_SECS = 0.5;
+
+// ── Garbage scaling table ─────────────────────────────────────────────────────
+// Maps linesCleared (1–4) to base garbage rows sent (Guideline Tetris rules).
+const _BASE_GARBAGE = [0, 1, 2, 4, 6]; // index 0 unused
+
+/**
+ * Calculate how many garbage rows to send for a line-clear attack.
+ * @param {number}  linesCleared  Number of lines cleared this piece (1–4).
+ * @param {number}  comboCount    Consecutive-clear counter (1 = first, no bonus).
+ * @param {boolean} isBackToBack  True if previous clear was also a Tetris (4-line).
+ * @returns {number} Total garbage rows to send (≥ 1).
+ */
+function calcGarbageSent(linesCleared, comboCount, isBackToBack) {
+  const base = _BASE_GARBAGE[Math.min(linesCleared, 4)] || 1;
+
+  // Back-to-Back Tetris: override to 8 rows (base 6 + 2 bonus)
+  let garbage = (isBackToBack && linesCleared >= 4) ? 8 : base;
+
+  // Combo multiplier: +1 per tier above first clear, capped at +3
+  const comboBonus = Math.min(Math.max((comboCount | 0) - 1, 0), 3);
+  garbage += comboBonus;
+
+  return garbage;
+}
 
 // ── Garbage grid dimensions ───────────────────────────────────────────────────
 // The active play area forms a 10 × 10 block grid (100 cells = LINE_CLEAR_CELLS_NEEDED).
@@ -24,21 +52,38 @@ const _GG_COLS   = 10;   // number of X-columns available for the gap
 
 /**
  * Queue an incoming garbage attack from the opponent.
- * @param {number} lines    Number of rows to inject (1–4).
+ * The attack is held for GARBAGE_DELAY_SECS before it becomes eligible for delivery.
+ * @param {number} lines    Number of rows to inject (≥ 1).
  * @param {number} gapSeed  Uint32 seed used to derive the gap column position.
  */
 function queueGarbage(lines, gapSeed) {
-  _garbageQueue.push({ lines: Math.max(1, lines | 0), gapSeed: (gapSeed >>> 0) || 1 });
+  const now = (typeof clock !== 'undefined' && clock) ? clock.getElapsedTime() : (Date.now() / 1000);
+  _garbageQueue.push({
+    lines:   Math.max(1, lines | 0),
+    gapSeed: (gapSeed >>> 0) || 1,
+    readyAt: now + GARBAGE_DELAY_SECS,
+  });
+}
+
+/**
+ * Return the total number of queued incoming garbage rows (all entries, including
+ * those not yet ready). Used by the HUD for the incoming-garbage counter.
+ */
+function pendingGarbageRows() {
+  return _garbageQueue.reduce(function (sum, e) { return sum + e.lines; }, 0);
 }
 
 /**
  * Deliver one queued garbage entry (called each time a piece spawns in battle mode).
- * Skips silently while a line-clear animation is running to avoid conflicts.
+ * Skips silently while a line-clear animation is running or the delay hasn't elapsed.
  */
 function deliverPendingGarbage() {
   if (!_garbageQueue.length) return;
   if (lineClearInProgress) return;
-  const entry = _garbageQueue.shift();
+  const now = (typeof clock !== 'undefined' && clock) ? clock.getElapsedTime() : (Date.now() / 1000);
+  const entry = _garbageQueue[0];
+  if (now < entry.readyAt) return;  // still in the 0.5 s warning window
+  _garbageQueue.shift();
   _injectRubbleRows(entry.lines, entry.gapSeed);
 }
 

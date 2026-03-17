@@ -196,12 +196,20 @@ function checkLineClear(newBlocks) {
   if (isCoopMode && typeof coop !== 'undefined' && coop.state === CoopState.IN_GAME) {
     coop.send({ type: 'line_clear', rows: completeLevels, score: _lcComputedScore });
   }
-  // Battle: notify opponent that an attack is queued (triggers their garbage indicator).
+  // Battle: calculate scaled garbage, update back-to-back flag, and notify opponent.
   // gapSeed is derived from the local PRNG so it is consistent but not predictable.
   if (isBattleMode && typeof battle !== 'undefined' && battle.state === BattleState.IN_GAME) {
+    const _isB2B = lastClearWasTetris && completeLevels.length >= 4;
+    const _garbageRows = (typeof calcGarbageSent === 'function')
+      ? calcGarbageSent(completeLevels.length, comboCount, _isB2B)
+      : completeLevels.length;
     const _gapSeed = Math.floor((typeof _rng === 'function' ? _rng() : Math.random()) * 0xffffffff) >>> 0;
-    battle.send({ type: 'battle_attack', lines: completeLevels.length, gapSeed: _gapSeed });
+    battle.send({ type: 'battle_attack', lines: _garbageRows, gapSeed: _gapSeed });
+    // Show outgoing attack preview on our opponent mini-map HUD
+    if (typeof battleHud !== 'undefined') battleHud.showOutgoingAttack(_garbageRows);
   }
+  // Update back-to-back Tetris flag (reset on any non-Tetris clear)
+  lastClearWasTetris = completeLevels.length >= 4;
 
   // Golden Hour: trigger shimmer flash and show 3× label
   if (typeof goldenHourActive !== "undefined" && goldenHourActive) {

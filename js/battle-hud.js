@@ -8,17 +8,19 @@ const battleHud = (function () {
   const CANVAS_H     = 80;   // bar chart area
   const MAX_HEIGHT   = 20;   // GAME_OVER_HEIGHT grid units
 
-  let _el          = null;
-  let _canvas      = null;
-  let _ctx         = null;
-  let _dotEl       = null;
-  let _scoreEl     = null;
-  let _levelEl     = null;
-  let _garbageEl   = null;
+  let _el           = null;
+  let _canvas       = null;
+  let _ctx          = null;
+  let _dotEl        = null;
+  let _scoreEl      = null;
+  let _levelEl      = null;
+  let _garbageEl    = null;
+  let _outgoingEl   = null;  // outgoing attack preview badge
 
-  let _flashTimer   = 0;     // seconds remaining for white-flash animation
-  let _garbageTimer = 0;     // seconds remaining for garbage warning
-  let _lastCols     = new Array(NUM_COLS).fill(0);
+  let _flashTimer    = 0;    // seconds remaining for white-flash animation
+  let _garbageTimer  = 0;    // seconds remaining for garbage warning
+  let _outgoingTimer = 0;    // seconds remaining for outgoing attack badge
+  let _lastCols      = new Array(NUM_COLS).fill(0);
 
   // ── DOM build ─────────────────────────────────────────────────────────────
 
@@ -68,6 +70,12 @@ const battleHud = (function () {
     _garbageEl.textContent = '⚠ INCOMING!';
     _garbageEl.style.display = 'none';
     _el.appendChild(_garbageEl);
+
+    // Outgoing attack preview badge (shown briefly after we send an attack)
+    _outgoingEl = document.createElement('div');
+    _outgoingEl.className = 'boh-outgoing';
+    _outgoingEl.style.display = 'none';
+    _el.appendChild(_outgoingEl);
 
     const topRight = document.getElementById('top-right-hud');
     if (topRight) topRight.appendChild(_el);
@@ -150,9 +158,11 @@ const battleHud = (function () {
       _setDot('yellow');
       _lastCols = new Array(NUM_COLS).fill(0);
       _drawBars(_lastCols, false);
-      _flashTimer   = 0;
-      _garbageTimer = 0;
-      if (_garbageEl) _garbageEl.style.display = 'none';
+      _flashTimer    = 0;
+      _garbageTimer  = 0;
+      _outgoingTimer = 0;
+      if (_garbageEl)  _garbageEl.style.display  = 'none';
+      if (_outgoingEl) _outgoingEl.style.display = 'none';
     },
 
     /** Call when battle ends. */
@@ -179,6 +189,13 @@ const battleHud = (function () {
         if (_garbageTimer <= 0) {
           _garbageTimer = 0;
           if (_garbageEl) _garbageEl.style.display = 'none';
+        }
+      }
+      if (_outgoingTimer > 0) {
+        _outgoingTimer -= delta;
+        if (_outgoingTimer <= 0) {
+          _outgoingTimer = 0;
+          if (_outgoingEl) _outgoingEl.style.display = 'none';
         }
       }
     },
@@ -217,6 +234,23 @@ const battleHud = (function () {
     flashLineClear() {
       _build();
       _flashTimer = 0.20;
+    },
+
+    /**
+     * Show the outgoing attack preview badge for 2 seconds.
+     * Called when we send a battle_attack to the opponent.
+     * @param {number} rows  Number of garbage rows we are sending.
+     */
+    showOutgoingAttack(rows) {
+      _build();
+      if (_outgoingEl) {
+        _outgoingEl.textContent = '▶ ' + rows + ' ROW' + (rows === 1 ? '' : 'S');
+        // Force animation restart by toggling display (triggers reflow)
+        _outgoingEl.style.display = 'none';
+        void _outgoingEl.offsetWidth;
+        _outgoingEl.style.display = 'block';
+      }
+      _outgoingTimer = 2.0;
     },
   };
 })();

@@ -2371,6 +2371,26 @@ body {
   to   { opacity: 1.0; }
 }
 
+/* Outgoing attack preview badge — shown briefly after we send an attack */
+.boh-outgoing {
+  margin-top: 3px;
+  font-size: 5px;
+  color: #44ddff;
+  text-align: center;
+  background: rgba(0, 120, 180, 0.30);
+  border: 1px solid rgba(60, 180, 255, 0.55);
+  border-radius: 2px;
+  padding: 3px 4px;
+  animation: boh-outgoing-fade 2s ease-out forwards;
+  text-shadow: 0 0 4px rgba(80, 200, 255, 0.7);
+}
+
+@keyframes boh-outgoing-fade {
+  0%   { opacity: 1.0; }
+  60%  { opacity: 0.9; }
+  100% { opacity: 0.0; }
+}
+
 /* Reset World button inside the survival card */
 .survival-reset-btn {
   font-family: "Press Start 2P", cursive;

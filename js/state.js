@@ -154,6 +154,8 @@ let pieceQueue = [];
 let isBattleMode = false;
 // Battle result: 'win' | 'loss' | 'draw' | null
 let battleResult = null;
+// Back-to-back Tetris detection: true after a 4-line clear; reset on any sub-Tetris clear.
+let lastClearWasTetris = false;
 
 // ── Co-op mode state ──────────────────────────────────────────────────────────
 // true while a co-op session is active; suppresses local random piece generation.

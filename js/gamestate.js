@@ -794,6 +794,7 @@ function resetGame() {
   lastClearTime = -1;
   comboBannerTimer = 0;
   if (comboBannerEl) comboBannerEl.style.display = "none";
+  lastClearWasTetris = false;
 
   // Reset player
   if (controls) {
