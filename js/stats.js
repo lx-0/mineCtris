@@ -166,11 +166,54 @@ function renderStatsPanel() {
     `<span class="stats-value">${val}</span>` +
     `</div>`
   ).join('');
+
+  // Tournament history section
+  if (typeof tournamentLobby !== 'undefined' &&
+      typeof tournamentLobby.getTournamentStats === 'function') {
+    var ts = tournamentLobby.getTournamentStats();
+    if (ts.entered > 0) {
+      var winsLabel = ts.wins > 0
+        ? ts.wins + ' <span class="tourn-win-badge">&#127942; Champion</span>'.repeat(ts.wins)
+        : '0';
+      var bestFinishVal = ts.bestFinish || '—';
+      el.innerHTML +=
+        '<div class="stats-section-title">TOURNAMENTS</div>' +
+        '<div class="stats-row"><span class="stats-label">ENTERED</span>' +
+          '<span class="stats-value">' + ts.entered + '</span></div>' +
+        '<div class="stats-row"><span class="stats-label">WINS</span>' +
+          '<span class="stats-value">' + winsLabel + '</span></div>' +
+        '<div class="stats-row"><span class="stats-label">BEST FINISH</span>' +
+          '<span class="stats-value">' + bestFinishVal + '</span></div>';
+    }
+  }
+}
+
+/** Render the season rank section into #stats-season-rank (if it exists). */
+function renderSeasonRankSection() {
+  const el = document.getElementById('stats-season-rank');
+  if (!el) return;
+  const season = (typeof getSeasonConfig === 'function') ? getSeasonConfig() : null;
+  if (!season) { el.style.display = 'none'; return; }
+  const rating = (typeof loadBattleRating === 'function') ? loadBattleRating().rating : 0;
+  const badgeHtml = (typeof getSeasonRankBadgeHtml === 'function')
+    ? getSeasonRankBadgeHtml(rating) : rating + ' pts';
+  el.innerHTML =
+    '<div class="stats-season-rank-label">' + _escStatsHtml(season.name || 'Season') + '</div>' +
+    '<div class="stats-season-rank-badge">' + badgeHtml + '</div>';
+  el.style.display = '';
+}
+
+function _escStatsHtml(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
 }
 
 /** Open the stats overlay and populate it. */
 function openStatsPanel() {
   renderStatsPanel();
+  renderSeasonRankSection();
   const el = document.getElementById('stats-overlay');
   if (el) el.style.display = 'flex';
 }

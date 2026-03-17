@@ -2724,13 +2724,15 @@ function init() {
       var tournMatchEntry    = document.getElementById('tourn-match-entry');
       var tournMatchCountdown= document.getElementById('tourn-match-countdown');
       var tournJoinMatchBtn  = document.getElementById('tourn-join-match-btn');
-      var tournTabAll        = document.getElementById('tourn-tab-all');
-      var tournTabMine       = document.getElementById('tourn-tab-mine');
+      var tournTabAll         = document.getElementById('tourn-tab-all');
+      var tournTabMine        = document.getElementById('tourn-tab-mine');
+      var tournTabPast        = document.getElementById('tourn-tab-past');
+      var tournChampionBanner = document.getElementById('tourn-champion-banner');
 
       if (!tournOverlay || typeof tournamentLobby === 'undefined') return;
 
       var _activeTournId = null;
-      var _activeTab     = 'all'; // 'all' | 'mine'
+      var _activeTab     = 'all'; // 'all' | 'mine' | 'past'
 
       // ── View switching ──
 
@@ -2763,11 +2765,13 @@ function init() {
         _activeTab = tab;
         if (tournTabAll)  tournTabAll.classList.toggle('tourn-tab-active',  tab === 'all');
         if (tournTabMine) tournTabMine.classList.toggle('tourn-tab-active', tab === 'mine');
+        if (tournTabPast) tournTabPast.classList.toggle('tourn-tab-active', tab === 'past');
         _renderList();
       }
 
       if (tournTabAll)  tournTabAll.addEventListener('click',  function () { _setTab('all'); });
       if (tournTabMine) tournTabMine.addEventListener('click', function () { _setTab('mine'); });
+      if (tournTabPast) tournTabPast.addEventListener('click', function () { _setTab('past'); });
 
       // ── List rendering ──
 
@@ -2787,27 +2791,62 @@ function init() {
         return html;
       }
 
+      function _fmtDate(ts) {
+        var d = new Date(ts);
+        return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+      }
+
       function _renderList() {
         if (!tournListBody) return;
         var all  = tournamentLobby.getAll();
         var regs = tournamentLobby.getRegistrations();
 
-        var items = _activeTab === 'mine'
-          ? all.filter(function (t) { return !!regs[t.id]; })
-          : all;
+        var items;
+        if (_activeTab === 'mine') {
+          items = all.filter(function (t) { return !!regs[t.id]; });
+        } else if (_activeTab === 'past') {
+          items = typeof tournamentLobby.getPast === 'function'
+            ? tournamentLobby.getPast()
+            : all.filter(function (t) { return t.status === 'completed'; });
+        } else {
+          // 'all' — only show active (open / in_progress) tournaments
+          items = all.filter(function (t) { return t.status !== 'completed'; });
+        }
+
+        var emptyMsg = _activeTab === 'mine' ? 'You have not joined any tournaments yet.'
+          : _activeTab === 'past' ? 'No past tournaments.'
+          : 'No tournaments available.';
 
         if (items.length === 0) {
-          tournListBody.innerHTML = '<div class="tourn-empty-msg">' +
-            (_activeTab === 'mine' ? 'You have not joined any tournaments yet.' : 'No tournaments available.') +
-            '</div>';
+          tournListBody.innerHTML = '<div class="tourn-empty-msg">' + emptyMsg + '</div>';
           return;
         }
 
         tournListBody.innerHTML = items.map(function (t) {
-          var isReg  = !!regs[t.id];
-          var isMine = isReg;
-          var regBadge = isReg ? '<span class="tourn-registered-badge">&#10003; Registered</span>' : '';
+          var isReg      = !!regs[t.id];
+          var isMine     = isReg;
           var prizeStyle = 'color:' + (t.prize ? t.prize.color : '#ffd700') + ';';
+
+          if (t.status === 'completed') {
+            // Past tournament card: show date, champion, participants
+            var champHtml = t.winner
+              ? '<div class="tourn-past-champion">&#127942; ' + t.winner + '</div>'
+              : '';
+            var myBadge = isReg ? '<span class="tourn-registered-badge">&#10003; Entered</span>' : '';
+            return '<div class="tourn-item tourn-item-past" data-id="' + t.id + '">' +
+              '<div class="tourn-item-left">' +
+                '<div class="tourn-item-name">' + t.name + '</div>' +
+                '<div class="tourn-item-meta">' +
+                  _fmtDate(t.completedAt || t.createdAt) + ' &nbsp;&bull;&nbsp; ' +
+                  t.players.length + ' players' +
+                '</div>' +
+                champHtml + myBadge +
+              '</div>' +
+              '<span class="tourn-item-prize" style="' + prizeStyle + '">' + (t.prize ? t.prize.label : '') + '</span>' +
+            '</div>';
+          }
+
+          var regBadge = isReg ? '<span class="tourn-registered-badge">&#10003; Registered</span>' : '';
           return '<div class="tourn-item" data-id="' + t.id + '">' +
             '<div class="tourn-item-left">' +
               '<div class="tourn-item-name">' + t.name + '</div>' +
@@ -2847,7 +2886,7 @@ function init() {
         '</div>';
       }
 
-      function _matchSlotHtml(match, myName, roundIdx, matchIdx) {
+      function _matchSlotHtml(match, myName, roundIdx, matchIdx, champName) {
         if (!match) return '';
         var isMine = (match.p1 && match.p1.name === myName) || (match.p2 && match.p2.name === myName);
         var isLive = !!match.live;
@@ -2864,13 +2903,20 @@ function init() {
           '</button>';
         }
 
+        // Game mode badge (shown for archived matches)
+        var modeBadge = match.gameMode
+          ? '<div class="tourn-match-mode">' + match.gameMode + '</div>'
+          : '';
+
         function _row(p, didWin) {
           if (!p) return '<div class="tourn-slot-tbd">TBD</div>';
-          var isMe  = p.name === myName;
-          var cls   = 'tourn-player-row' + (didWin === true ? ' winner' : didWin === false ? ' loser' : '') + (isMe ? ' is-me' : '');
-          var res   = didWin === true ? ' <span class="tourn-player-result">W</span>' : didWin === false ? ' <span class="tourn-player-result">L</span>' : '';
+          var isMe     = p.name === myName;
+          var isChamp  = champName && p.name === champName;
+          var cls      = 'tourn-player-row' + (didWin === true ? ' winner' : didWin === false ? ' loser' : '') + (isMe ? ' is-me' : '');
+          var trophy   = isChamp ? ' <span class="tourn-champ-trophy">&#127942;</span>' : '';
+          var res      = didWin === true ? ' <span class="tourn-player-result">W</span>' : didWin === false ? ' <span class="tourn-player-result">L</span>' : '';
           return '<div class="' + cls + '">' +
-            '<span class="tourn-player-name">' + p.name + '</span>' +
+            '<span class="tourn-player-name">' + p.name + trophy + '</span>' +
             '<span class="tourn-player-rating">' + p.rating + '</span>' +
             res +
           '</div>';
@@ -2879,7 +2925,7 @@ function init() {
         var p1Win = match.result === 'p1' ? true  : (match.result === 'p2' ? false : null);
         var p2Win = match.result === 'p2' ? true  : (match.result === 'p1' ? false : null);
 
-        return '<div class="' + slotCls + '">' + liveDot + _row(match.p1, p1Win) + _row(match.p2, p2Win) + watchBtn + '</div>';
+        return '<div class="' + slotCls + '">' + liveDot + _row(match.p1, p1Win) + _row(match.p2, p2Win) + modeBadge + watchBtn + '</div>';
       }
 
       function _openBracketView(tournId) {
@@ -2896,21 +2942,34 @@ function init() {
           tournBracketStatus.textContent = statusText[t.status] || t.status;
         }
 
+        // Champion banner for completed tournaments
+        if (tournChampionBanner) {
+          if (t.status === 'completed' && t.winner) {
+            tournChampionBanner.innerHTML =
+              '<span class="tourn-champ-trophy">&#127942;</span> <b>' + t.winner + '</b> &mdash; Champion';
+            tournChampionBanner.style.display = '';
+          } else {
+            tournChampionBanner.style.display = 'none';
+          }
+        }
+
+        var champName = (t.status === 'completed') ? (t.winner || null) : null;
+
         // Render bracket tree if in_progress or completed and has bracket
         if (tournBracketTree) {
           if (t.bracket) {
             var html = '';
             // QF
             html += '<div class="tourn-round-label">QUARTER-FINALS</div><div class="tourn-round">';
-            t.bracket.qf.forEach(function (m, i) { html += _matchSlotHtml(m, myName, 0, i); });
+            t.bracket.qf.forEach(function (m, i) { html += _matchSlotHtml(m, myName, 0, i, champName); });
             html += '</div>';
             // SF
             html += '<div class="tourn-round-label">SEMI-FINALS</div><div class="tourn-round">';
-            t.bracket.sf.forEach(function (m, i) { html += _matchSlotHtml(m, myName, 1, i); });
+            t.bracket.sf.forEach(function (m, i) { html += _matchSlotHtml(m, myName, 1, i, champName); });
             html += '</div>';
             // Final
             html += '<div class="tourn-round-label">FINAL</div><div class="tourn-round">';
-            html += _matchSlotHtml(t.bracket.final, myName, 2, 0);
+            html += _matchSlotHtml(t.bracket.final, myName, 2, 0, champName);
             html += '</div>';
             tournBracketTree.innerHTML = html;
             // Bind Watch buttons in bracket
