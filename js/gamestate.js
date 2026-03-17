@@ -4,15 +4,51 @@
 
 function addScore(pts) {
   const _wmod = typeof getWorldModifier === 'function' ? getWorldModifier() : null;
-  const _mult = _wmod ? _wmod.scoreMultiplier : 1.0;
-  score += (_mult !== 1.0) ? Math.round(pts * _mult) : pts;
+  let _mult = _wmod ? _wmod.scoreMultiplier : 1.0;
+  if (isCoopMode) _mult *= coopScoreMultiplier;
+  const _actual = (_mult !== 1.0) ? Math.round(pts * _mult) : pts;
+  score += _actual;
+  if (isCoopMode) {
+    coopScore += _actual;
+    coopMyScore += _actual;
+    if (typeof coop !== 'undefined' && coop.state === CoopState.IN_GAME) {
+      coop.send({ type: 'score', delta: _actual });
+    }
+    if (typeof achOnCoopScoreUpdate === 'function') achOnCoopScoreUpdate(coopScore);
+  }
   updateScoreHUD();
   if (typeof achOnClassicScore === "function") achOnClassicScore(score);
+}
+
+/** Re-render the co-op combined score HUD. */
+function updateCoopScoreHUD() {
+  const el = document.getElementById('coop-score-display');
+  if (!el) return;
+  el.querySelector('.coop-combined-score').textContent = coopScore;
+  el.querySelector('.coop-score-sub').textContent =
+    'You: ' + coopMyScore + '  |  Partner: ' + coopPartnerScore;
+}
+
+/** Update the partner status dot color. */
+function updateCoopPartnerStatus() {
+  const dotEl = document.getElementById('coop-partner-dot');
+  if (!dotEl) return;
+  if (coopPartnerStatus === 'connected') {
+    dotEl.style.background = '#00ff88';
+  } else if (coopPartnerStatus === 'lagging') {
+    dotEl.style.background = '#ffcc00';
+  } else {
+    dotEl.style.background = '#ff4444';
+  }
 }
 
 /** Re-render the score HUD from current state. */
 function updateScoreHUD() {
   if (!scoreEl) return;
+  if (isCoopMode) {
+    updateCoopScoreHUD();
+    return;
+  }
   scoreEl.querySelector(".hud-score").textContent = score;
   scoreEl.querySelector(".hud-stat:nth-child(2)").textContent =
     "Blocks: " + blocksMined;
@@ -51,7 +87,9 @@ function updateScoreHUD() {
         ? "Puzzle " + puzzlePuzzleId
         : isWeeklyChallenge
           ? (weeklyModifier ? weeklyModifier.name : "Weekly")
-          : "Level " + (lastDifficultyTier + 1);
+          : isBattleMode
+            ? "Battle L" + (lastDifficultyTier + 1)
+            : "Level " + (lastDifficultyTier + 1);
   }
 }
 
@@ -76,16 +114,18 @@ function getMaxBlockHeight() {
 
 /** Show/hide the danger overlay based on current max block height. */
 function updateDangerWarning() {
-  // Sprint, Blitz, and Puzzle have no lose-by-height condition
-  if (isSprintMode || isBlitzMode || isPuzzleMode) return;
+  // Sprint, Blitz, Puzzle, and Battle have no lose-by-height condition displayed here
+  if (isSprintMode || isBlitzMode || isPuzzleMode || isBattleMode) return;
   const dangerEl = document.getElementById("danger-overlay");
   const dangerTextEl = document.getElementById("danger-text");
   if (!dangerEl || !dangerTextEl) return;
+  const localMaxY = getMaxBlockHeight();
+  const authHeight = isCoopMode ? Math.max(localMaxY, coopPartnerMaxY) : localMaxY;
   const inDanger =
     !isGameOver &&
     controls &&
     controls.isLocked &&
-    getMaxBlockHeight() >= DANGER_ZONE_HEIGHT;
+    authHeight >= DANGER_ZONE_HEIGHT;
   dangerEl.style.display = inDanger ? "block" : "none";
   dangerTextEl.style.display = inDanger ? "block" : "none";
 }
@@ -95,30 +135,38 @@ function checkGameOver() {
   // Sprint and Blitz have no lose condition — blocks can pile indefinitely
   if (isSprintMode || isBlitzMode) return;
   if (isGameOver) return;
-  for (const gy of gridOccupancy.keys()) {
-    if (gy >= GAME_OVER_HEIGHT) {
-      // Shield power-up: absorb the first game-over trigger
-      if (shieldActive) {
-        shieldActive = false;
-        showCraftedBanner("Shield absorbed the blow! Keep going.");
-        if (typeof updatePowerupHUD === "function") updatePowerupHUD();
-        // Visual: absorption burst flash + chromatic hit
-        const shEl = document.getElementById("shield-overlay");
-        if (shEl) {
-          shEl.style.display = "block";
-          shEl.classList.add("absorb");
-          shEl.addEventListener("animationend", function onEnd() {
-            shEl.style.display = "none";
-            shEl.classList.remove("absorb");
-            shEl.removeEventListener("animationend", onEnd);
-          }, { once: true });
-        }
-        if (typeof triggerChromaticAberration === "function") triggerChromaticAberration(0.007, 0.5);
-        return;
-      }
-      triggerGameOver();
+  const localMaxY = getMaxBlockHeight();
+  const authHeight = isCoopMode ? Math.max(localMaxY, coopPartnerMaxY) : localMaxY;
+  if (authHeight >= GAME_OVER_HEIGHT) {
+    // Battle mode: trigger battle loss, not regular game-over
+    if (isBattleMode) {
+      triggerBattleResult('loss');
       return;
     }
+    // Shield power-up: absorb the first game-over trigger (solo only)
+    if (shieldActive && !isCoopMode) {
+      shieldActive = false;
+      showCraftedBanner("Shield absorbed the blow! Keep going.");
+      if (typeof updatePowerupHUD === "function") updatePowerupHUD();
+      // Visual: absorption burst flash + chromatic hit
+      const shEl = document.getElementById("shield-overlay");
+      if (shEl) {
+        shEl.style.display = "block";
+        shEl.classList.add("absorb");
+        shEl.addEventListener("animationend", function onEnd() {
+          shEl.style.display = "none";
+          shEl.classList.remove("absorb");
+          shEl.removeEventListener("animationend", onEnd);
+        }, { once: true });
+      }
+      if (typeof triggerChromaticAberration === "function") triggerChromaticAberration(0.007, 0.5);
+      return;
+    }
+    // In co-op: broadcast game-over to partner before triggering locally
+    if (isCoopMode && typeof coop !== 'undefined' && coop.state === CoopState.IN_GAME) {
+      coop.send({ type: 'game_over', reason: 'height' });
+    }
+    triggerGameOver();
   }
 }
 
@@ -128,6 +176,32 @@ function triggerGameOver() {
   isGameOver = true;
   gameTimerRunning = false;
   if (typeof clearSaveState === "function") clearSaveState();
+
+  // Co-op game over: show co-op summary and bail out
+  if (isCoopMode) {
+    const dangerEl = document.getElementById("danger-overlay");
+    const dangerTextEl = document.getElementById("danger-text");
+    if (dangerEl) dangerEl.style.display = "none";
+    if (dangerTextEl) dangerTextEl.style.display = "none";
+    if (typeof stopBgMusic === "function") stopBgMusic();
+    if (typeof playGameOverJingle === "function") playGameOverJingle();
+    if (typeof achOnCoopGameOver === "function") achOnCoopGameOver(gameElapsedSeconds);
+    _showCoopGameOver();
+    // Host sends stats first; guest will reply when it receives host's stats
+    if (typeof coop !== 'undefined' && typeof coop.isHost !== 'undefined' && coop.isHost) {
+      coopStatsReceived = false;
+      coop.send({
+        type: 'game_end_stats',
+        blocksMined:     coopMyBlocksMined,
+        linesTriggered:  coopMyLinesTriggered,
+        craftsMade:      coopMyCraftsMade,
+        tradesCompleted: coopMyTradesCompleted,
+        name: typeof loadDisplayName === 'function' ? (loadDisplayName() || 'You') : 'You',
+      });
+    }
+    if (controls && controls.isLocked) controls.unlock();
+    return;
+  }
 
   // Survival mode: record run, clear the world, then show special summary
   if (isSurvivalMode) {
@@ -366,6 +440,95 @@ function triggerGameOver() {
   if (controls && controls.isLocked) controls.unlock();
 }
 
+/** Populate the co-op summary DOM elements with current data. */
+function _populateCoopSummary() {
+  const el = document.getElementById('coop-game-over-screen');
+  if (!el) return;
+
+  const myName = (typeof loadDisplayName === 'function' ? loadDisplayName() : '') || 'You';
+  const partnerName = coopPartnerName || 'Partner';
+
+  // Header
+  const combinedEl = el.querySelector('#coop-go-combined-score');
+  if (combinedEl) combinedEl.textContent = 'COMBINED SCORE: ' + coopScore.toLocaleString();
+
+  const totalSecs = Math.floor(gameElapsedSeconds);
+  const mm = Math.floor(totalSecs / 60).toString().padStart(2, '0');
+  const ss = (totalSecs % 60).toString().padStart(2, '0');
+  const timeEl = el.querySelector('#coop-go-time');
+  if (timeEl) timeEl.textContent = 'SURVIVAL TIME: ' + mm + ':' + ss;
+
+  // Column headers with MVP crown
+  const mvpCol = _getCoopMVP(myName, partnerName);
+  const myHeaderEl  = el.querySelector('#coop-go-col-my-name');
+  const prtHeaderEl = el.querySelector('#coop-go-col-partner-name');
+  if (myHeaderEl)  myHeaderEl.innerHTML  = (mvpCol === 'me'      ? '&#x1F451; ' : '') + _escHtml(myName);
+  if (prtHeaderEl) prtHeaderEl.innerHTML = (mvpCol === 'partner' ? '&#x1F451; ' : '') + _escHtml(partnerName);
+
+  // MVP / Perfect Partnership badge
+  const mvpBadgeEl = el.querySelector('#coop-go-mvp-badge');
+  if (mvpBadgeEl) {
+    if (mvpCol === 'tie') {
+      mvpBadgeEl.textContent = '🤝 Perfect Partnership!';
+      mvpBadgeEl.style.display = 'block';
+    } else {
+      const mvpName = mvpCol === 'me' ? myName : partnerName;
+      mvpBadgeEl.textContent = '👑 MVP: ' + mvpName;
+      mvpBadgeEl.style.display = 'block';
+    }
+  }
+
+  // Contribution rows
+  const rows = [
+    ['SCORE',       coopMyScore,           coopPartnerScore],
+    ['BLOCKS MINED',coopMyBlocksMined,     coopPartnerBlocksMined],
+    ['LINES TRIG.', coopMyLinesTriggered,  coopPartnerLinesTriggered],
+    ['CRAFTS MADE', coopMyCraftsMade,      coopPartnerCraftsMade],
+    ['TRADES',      coopMyTradesCompleted, coopPartnerTradesCompleted],
+  ];
+  const tableEl = el.querySelector('#coop-go-contribution-table');
+  if (tableEl) {
+    tableEl.innerHTML = rows.map(function (r) {
+      return '<tr>' +
+        '<td class="coop-go-stat-label">' + r[0] + '</td>' +
+        '<td class="coop-go-stat-val">' + (typeof r[1] === 'number' ? r[1].toLocaleString() : r[1]) + '</td>' +
+        '<td class="coop-go-stat-val">' + (typeof r[2] === 'number' ? r[2].toLocaleString() : r[2]) + '</td>' +
+        '</tr>';
+    }).join('');
+  }
+}
+
+/**
+ * Determine MVP column: 'me', 'partner', or 'tie'.
+ * MVP = most lines triggered; tie-break = higher score; full tie = 'tie'.
+ */
+function _getCoopMVP(myName, partnerName) {
+  if (coopMyLinesTriggered > coopPartnerLinesTriggered) return 'me';
+  if (coopPartnerLinesTriggered > coopMyLinesTriggered) return 'partner';
+  // Lines tied — break on score
+  if (coopMyScore > coopPartnerScore) return 'me';
+  if (coopPartnerScore > coopMyScore) return 'partner';
+  return 'tie';
+}
+
+/** Escape HTML for safe insertion. */
+function _escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+/** Refresh summary with partner stats once they arrive. */
+function _refreshCoopGameOver() {
+  _populateCoopSummary();
+}
+
+/** Show the co-op game-over summary screen. */
+function _showCoopGameOver() {
+  const el = document.getElementById('coop-game-over-screen');
+  if (!el) return;
+  _populateCoopSummary();
+  el.style.display = 'flex';
+}
+
 /** Show a selectable text input as fallback when clipboard API is unavailable. */
 function showShareFallback(text, anchorBtn) {
   const wrap = document.createElement("div");
@@ -502,9 +665,50 @@ function resetGame() {
   // Reset co-op mode state
   isCoopMode = false;
   coopPieceQueue.length = 0;
+  _coopPosBroadcastLastTime = 0;
+  _coopPosLastSent = null;
+  coopScore = 0;
+  coopMyScore = 0;
+  coopPartnerScore = 0;
+  coopPartnerMaxY = 0;
+  coopHeightBroadcastLastTime = 0;
+  coopPartnerStatus = 'disconnected';
+  coopPartnerLastSeenTime = 0;
+  coopMyBlocksMined = 0;
+  coopMyLinesTriggered = 0;
+  coopMyCraftsMade = 0;
+  coopMyTradesCompleted = 0;
+  coopPartnerBlocksMined = 0;
+  coopPartnerLinesTriggered = 0;
+  coopPartnerCraftsMade = 0;
+  coopPartnerTradesCompleted = 0;
+  coopPartnerName = '';
+  coopStatsReceived = false;
+  if (typeof coopAvatar !== 'undefined') coopAvatar.destroy();
+  if (typeof coopTrade !== 'undefined') coopTrade.reset();
+  coopPartnerLastPos = null;
+  // Reset co-op difficulty state
+  coopDifficulty = 'normal';
+  coopFallMultiplier = 1.5;
+  coopScoreMultiplier = 1.8;
+  coopBonusBannerTimer = 0;
+  const coopBonusEl = document.getElementById('coop-bonus-overlay');
+  if (coopBonusEl) coopBonusEl.style.display = 'none';
+  // Hide co-op HUD elements
+  const coopBadgeEl2 = document.getElementById('coop-mode-badge');
+  if (coopBadgeEl2) coopBadgeEl2.style.display = 'none';
+  const coopHudEl2 = document.getElementById('coop-score-display');
+  if (coopHudEl2) coopHudEl2.style.display = 'none';
+  const coopPartnerStatusEl2 = document.getElementById('coop-partner-status');
+  if (coopPartnerStatusEl2) coopPartnerStatusEl2.style.display = 'none';
+  const coopGoEl = document.getElementById('coop-game-over-screen');
+  if (coopGoEl) coopGoEl.style.display = 'none';
+  const coopPartnerLeftEl = document.getElementById('coop-partner-left-dialog');
+  if (coopPartnerLeftEl) coopPartnerLeftEl.style.display = 'none';
 
   // Reset daily challenge state
   isDailyChallenge = false;
+  isDailyCoopChallenge = false;
   gameRng = null;
   const dailyBadgeEl = document.getElementById('daily-challenge-badge');
   if (dailyBadgeEl) dailyBadgeEl.style.display = 'none';
@@ -519,6 +723,14 @@ function resetGame() {
   weeklyBlindDrop = false;
   const weeklyBadgeEl = document.getElementById('weekly-challenge-badge');
   if (weeklyBadgeEl) weeklyBadgeEl.style.display = 'none';
+
+  // Reset battle mode state
+  isBattleMode = false;
+  battleResult = null;
+  const battleBadgeEl = document.getElementById('battle-mode-badge');
+  if (battleBadgeEl) battleBadgeEl.style.display = 'none';
+  const battleResultEl = document.getElementById('battle-result-screen');
+  if (battleResultEl) battleResultEl.style.display = 'none';
 
   // Reset survival mode state
   isSurvivalMode = false;
@@ -625,6 +837,93 @@ function resetGame() {
   renderHighScoresStart();
 }
 
+// Battle mode Level 3 starting multiplier (tier 2 = Math.pow(1.1, 2))
+const BATTLE_START_MULTIPLIER = Math.pow(1.1, 2); // ≈ 1.21
+const BATTLE_START_TIER = 2; // Display "Level 3" at game start
+
+/**
+ * Show battle result overlay (win/loss/draw) then return to battle lobby after 5s.
+ * Called from checkGameOver (loss), battle opponent-left handler (win), or
+ * opponent_game_over message (win). Sets battleResult and isBattleMode = false.
+ */
+function triggerBattleResult(result) {
+  if (isGameOver) return; // already resolved
+  isGameOver = true;
+  gameTimerRunning = false;
+  battleResult = result;
+
+  // Hide danger overlay
+  const dangerEl = document.getElementById('danger-overlay');
+  const dangerTextEl = document.getElementById('danger-text');
+  if (dangerEl) dangerEl.style.display = 'none';
+  if (dangerTextEl) dangerTextEl.style.display = 'none';
+
+  // Hide battle HUD badge
+  const badgeEl = document.getElementById('battle-mode-badge');
+  if (badgeEl) badgeEl.style.display = 'none';
+
+  // Notify opponent so they can show their win screen
+  if (result === 'loss' && typeof battle !== 'undefined' && battle.state === BattleState.IN_GAME) {
+    battle.send({ type: 'battle_game_over' });
+  }
+
+  if (typeof stopBgMusic === 'function') stopBgMusic();
+
+  const titleEl = document.getElementById('battle-result-title');
+  const statsEl = document.getElementById('battle-result-stats');
+  const resultEl = document.getElementById('battle-result-screen');
+
+  if (titleEl) {
+    if (result === 'win') {
+      titleEl.textContent = 'VICTORY!';
+      titleEl.className = 'win';
+    } else if (result === 'loss') {
+      titleEl.textContent = 'DEFEAT';
+      titleEl.className = 'loss';
+    } else {
+      titleEl.textContent = 'DRAW';
+      titleEl.className = 'draw';
+    }
+  }
+
+  if (statsEl) {
+    const totalSecs = Math.floor(gameElapsedSeconds);
+    const mm = Math.floor(totalSecs / 60).toString().padStart(2, '0');
+    const ss = (totalSecs % 60).toString().padStart(2, '0');
+    statsEl.innerHTML =
+      '<div>Score: ' + score + '</div>' +
+      '<div>Lines Cleared: ' + linesCleared + '</div>' +
+      '<div>Blocks Mined: ' + blocksMined + '</div>' +
+      '<div>Match Time: ' + mm + ':' + ss + '</div>';
+  }
+
+  if (resultEl) resultEl.style.display = 'flex';
+
+  if (controls && controls.isLocked) controls.unlock();
+
+  // Disconnect the battle WebSocket immediately — match is over
+  if (typeof battle !== 'undefined') {
+    try { battle.disconnect(); } catch (_) {}
+  }
+
+  // Return to battle lobby after 5 seconds
+  setTimeout(function () {
+    if (resultEl) resultEl.style.display = 'none';
+    resetGame();
+    // Re-open battle overlay at choice view
+    var battleOverlay = document.getElementById('battle-overlay');
+    var blockerEl = document.getElementById('blocker');
+    if (battleOverlay) {
+      ['battle-choice-view', 'battle-create-view', 'battle-join-view', 'battle-ready-view'].forEach(function (id) {
+        var el = document.getElementById(id);
+        if (el) el.style.display = (id === 'battle-choice-view') ? '' : 'none';
+      });
+      if (blockerEl) blockerEl.style.display = 'none';
+      battleOverlay.style.display = 'flex';
+    }
+  }, 5000);
+}
+
 /**
  * Called every frame (while game is running). Derives the current difficulty
  * tier from gameElapsedSeconds, updates difficultyMultiplier, and shows the
@@ -647,7 +946,10 @@ function updateDifficulty(delta) {
     }
   }
 
-  const tier = Math.floor(gameElapsedSeconds / DIFFICULTY_INTERVAL);
+  // Battle mode: difficulty starts at Level 3 and escalates from there.
+  // Both players use the same time-based escalation so they stay synchronized.
+  const battleOffset = isBattleMode ? BATTLE_START_TIER : 0;
+  const tier = Math.floor(gameElapsedSeconds / DIFFICULTY_INTERVAL) + battleOffset;
   difficultyMultiplier = Math.min(
     DIFFICULTY_MAX_MULTIPLIER,
     Math.pow(DIFFICULTY_MULTIPLIER_PER_TIER, tier)

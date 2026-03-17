@@ -2212,6 +2212,85 @@ body {
   border-color: rgba(200, 150, 150, 0.5);
 }
 
+/* ── Battle countdown overlay ────────────────────────────────────────────── */
+#battle-countdown-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.55);
+  z-index: 250;
+  pointer-events: none;
+}
+#battle-countdown-number {
+  font-family: "Press Start 2P", cursive;
+  font-size: 8em;
+  color: #ff4444;
+  text-shadow: 0 0 30px rgba(255, 60, 60, 0.9), 4px 4px #600;
+  animation: battle-countdown-pop 0.7s ease-out forwards;
+}
+@keyframes battle-countdown-pop {
+  0%   { transform: scale(1.8); opacity: 0; }
+  30%  { transform: scale(1.0); opacity: 1; }
+  80%  { transform: scale(1.0); opacity: 1; }
+  100% { transform: scale(0.8); opacity: 0; }
+}
+#battle-countdown-number.go {
+  color: #44ff88;
+  text-shadow: 0 0 30px rgba(60, 255, 120, 0.9), 4px 4px #060;
+}
+
+/* ── Battle result screen ────────────────────────────────────────────────── */
+#battle-result-screen {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  background: rgba(0, 0, 0, 0.88);
+  z-index: 220;
+  font-family: "Press Start 2P", cursive;
+}
+#battle-result-title {
+  font-size: 3em;
+  text-shadow: 4px 4px #000;
+}
+#battle-result-title.win  { color: #44ff88; text-shadow: 0 0 18px rgba(60,255,120,0.7), 4px 4px #060; }
+#battle-result-title.loss { color: #ff4444; text-shadow: 0 0 18px rgba(255,60,60,0.7),  4px 4px #600; }
+#battle-result-title.draw { color: #ffcc44; text-shadow: 0 0 18px rgba(255,200,60,0.7),  4px 4px #640; }
+#battle-result-stats {
+  font-size: 0.45em;
+  color: #aaa;
+  line-height: 2.2;
+  text-align: center;
+}
+#battle-result-returning {
+  font-size: 0.38em;
+  color: #888;
+  animation: battle-blink 1.2s step-end infinite;
+}
+
+/* ── Battle HUD mode badge ───────────────────────────────────────────────── */
+#battle-mode-badge {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: "Press Start 2P", cursive;
+  font-size: 0.55em;
+  color: #ff4444;
+  background: rgba(20, 0, 0, 0.75);
+  border: 1px solid rgba(255, 60, 60, 0.5);
+  border-radius: 4px;
+  padding: 4px 10px;
+  z-index: 100;
+  pointer-events: none;
+  text-shadow: 0 0 6px rgba(255,60,60,0.6);
+}
+
 /* Reset World button inside the survival card */
 .survival-reset-btn {
   font-family: "Press Start 2P", cursive;

@@ -149,15 +149,56 @@ let nudgeCooldown = 0;  // seconds remaining before next nudge is allowed
 // Each entry: { index: colorIndex, shape: SHAPES[index] }
 let pieceQueue = [];
 
+// ── Battle mode state ─────────────────────────────────────────────────────────
+// true while a battle session is active.
+let isBattleMode = false;
+// Battle result: 'win' | 'loss' | 'draw' | null
+let battleResult = null;
+
 // ── Co-op mode state ──────────────────────────────────────────────────────────
 // true while a co-op session is active; suppresses local random piece generation.
 let isCoopMode = false;
+// true while the co-op trade offer panel is open (suppresses pause on pointer unlock).
+let coopTradePanelOpen = false;
+// Last received partner world position (updated from 'pos' messages; used for proximity checks).
+let coopPartnerLastPos = null; // { x, y, z } or null
 // Pieces received from the Durable Object for co-op play.
 // Each entry: { index, spawnX, spawnZ, startRotation: {axis, angle}, rotationInterval, pieceIndex }
 let coopPieceQueue = [];
+// Position broadcast: last broadcast time (ms) and last sent position snapshot.
+let _coopPosBroadcastLastTime = 0;
+let _coopPosLastSent = null; // { x, y, z, rotY, rotX }
+
+// ── Co-op shared game state ───────────────────────────────────────────────────
+let coopScore = 0;                  // combined team score (local + partner deltas)
+let coopMyScore = 0;                // local player's individual contribution
+let coopPartnerScore = 0;           // partner's individual contribution
+let coopPartnerMaxY = 0;            // last received partner max-block height
+let coopHeightBroadcastLastTime = 0; // ms, for 2 s height broadcast interval
+let coopPartnerStatus = 'disconnected'; // 'connected' | 'lagging' | 'disconnected'
+let coopPartnerLastSeenTime = 0;    // ms, for partner status dot decay
+
+// ── Co-op per-player session stats ───────────────────────────────────────────
+let coopMyBlocksMined = 0;
+let coopMyLinesTriggered = 0;
+let coopMyCraftsMade = 0;
+let coopMyTradesCompleted = 0;
+let coopPartnerBlocksMined = 0;
+let coopPartnerLinesTriggered = 0;
+let coopPartnerCraftsMade = 0;
+let coopPartnerTradesCompleted = 0;
+let coopPartnerName = '';           // partner's display name (from game_end_stats)
+let coopStatsReceived = false;      // true once partner's end-of-game stats arrived
+
+// ── Co-op difficulty state ────────────────────────────────────────────────────
+let coopDifficulty = 'normal';      // 'casual' | 'normal' | 'challenge'
+let coopFallMultiplier = 1.5;       // baseline fall speed multiplier from difficulty
+let coopScoreMultiplier = 1.8;      // score multiplier from difficulty
+let coopBonusBannerTimer = 0;       // seconds remaining for "CO-OP BONUS" banner
 
 // ── Daily challenge state ─────────────────────────────────────────────────────
 let isDailyChallenge = false;
+let isDailyCoopChallenge = false; // true when co-op daily challenge sub-mode is active
 // null → use Math.random(); function → seeded daily PRNG from daily.js
 let gameRng = null;
 

@@ -1511,6 +1511,9 @@ function init() {
           _updateBattleReadyIndicators();
           showBattleView("ready");
         } else if (data.state === "disconnected") {
+          // If battle result screen is showing, let it handle the return-to-lobby flow
+          var resultEl = document.getElementById("battle-result-screen");
+          if (resultEl && resultEl.style.display !== "none") return;
           closeBattleOverlay();
         }
       });
@@ -1522,7 +1525,10 @@ function init() {
       });
 
       battle.on("opponent_left", function () {
-        // Handled by game layer when in_game; ignore here
+        // If mid-game, surviving player wins automatically
+        if (battle.state === BattleState.IN_GAME && !isGameOver) {
+          if (typeof triggerBattleResult === 'function') triggerBattleResult('win');
+        }
       });
 
       // ── Choice view buttons ──
@@ -1696,13 +1702,60 @@ function init() {
         }
       });
 
+      // Handle opponent's game-over broadcast → this player wins
+      battle.on("battle_game_over", function () {
+        if (!isGameOver && isBattleMode) {
+          if (typeof triggerBattleResult === 'function') triggerBattleResult('win');
+        }
+      });
+
+      function _runBattleCountdown(onComplete) {
+        var countdownEl = document.getElementById("battle-countdown-overlay");
+        var numberEl    = document.getElementById("battle-countdown-number");
+        if (!countdownEl || !numberEl) { onComplete(); return; }
+
+        var steps = ["3", "2", "1", "GO!"];
+        var idx   = 0;
+
+        countdownEl.style.display = "flex";
+
+        function _showStep() {
+          if (idx >= steps.length) {
+            countdownEl.style.display = "none";
+            onComplete();
+            return;
+          }
+          var txt = steps[idx++];
+          numberEl.textContent = txt;
+          numberEl.className   = (txt === "GO!") ? "go" : "";
+          // Re-trigger CSS animation each step
+          numberEl.style.animation = "none";
+          void numberEl.offsetWidth;
+          numberEl.style.animation = "";
+          setTimeout(_showStep, 900);
+        }
+        _showStep();
+      }
+
       function _startBattleGame() {
         battle.startGame();
         battleOverlay.style.display = "none";
-        // TODO (Phase 2): wire into actual battle game loop
-        // For Phase 1, transition into classic game mode as a placeholder
+
+        // Reset world and set battle mode flags before the countdown
         resetGame();
-        setTimeout(function () { requestPointerLock(); }, 300);
+        isBattleMode = true;
+        // Start at Level 3 equivalent speed; escalates via updateDifficulty offset
+        difficultyMultiplier = BATTLE_START_MULTIPLIER;
+        lastDifficultyTier   = BATTLE_START_TIER;
+
+        // Show battle HUD badge
+        var battleBadgeEl = document.getElementById("battle-mode-badge");
+        if (battleBadgeEl) battleBadgeEl.style.display = "block";
+
+        // Run 3-2-1-GO! then hand control to the player
+        _runBattleCountdown(function () {
+          requestPointerLock();
+        });
       }
 
       var battleReadyCancelBtn = document.getElementById("battle-ready-cancel-btn");
