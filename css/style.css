@@ -2291,6 +2291,86 @@ body {
   text-shadow: 0 0 6px rgba(255,60,60,0.6);
 }
 
+/* ── Battle opponent mini-map HUD ─────────────────────────────────────────── */
+#battle-opponent-hud {
+  font-family: "Press Start 2P", cursive;
+  background: rgba(0, 0, 0, 0.55);
+  border: 1px solid rgba(255, 60, 60, 0.4);
+  border-radius: 4px;
+  padding: 6px 8px;
+  pointer-events: none;
+  display: none;
+}
+
+.boh-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 5px;
+}
+
+.boh-label {
+  font-size: 6px;
+  color: rgba(255, 100, 100, 0.9);
+  letter-spacing: 1px;
+  text-shadow: 1px 1px 2px #000;
+}
+
+.boh-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+}
+.boh-dot-green  { background: #44ff44; box-shadow: 0 0 4px #44ff44; }
+.boh-dot-yellow { background: #ffcc00; box-shadow: 0 0 4px #ffcc00; }
+.boh-dot-red    { background: #ff4444; box-shadow: 0 0 4px #ff4444; }
+
+.boh-canvas {
+  display: block;
+  width: 80px;
+  height: 80px;
+  border-radius: 2px;
+  image-rendering: pixelated;
+}
+
+.boh-stats {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 5px;
+}
+
+.boh-score {
+  font-size: 6px;
+  color: #ffee55;
+  text-shadow: 1px 1px 2px #000;
+}
+
+.boh-level {
+  font-size: 6px;
+  color: rgba(150, 200, 255, 0.9);
+  text-shadow: 1px 1px 2px #000;
+}
+
+.boh-garbage {
+  margin-top: 5px;
+  font-size: 5px;
+  color: #ff3333;
+  text-align: center;
+  background: rgba(180, 0, 0, 0.35);
+  border: 1px solid rgba(255, 60, 60, 0.6);
+  border-radius: 2px;
+  padding: 3px 4px;
+  animation: boh-garbage-flash 0.5s ease-in-out infinite alternate;
+  text-shadow: 0 0 4px rgba(255,80,80,0.8);
+}
+
+@keyframes boh-garbage-flash {
+  from { opacity: 0.65; }
+  to   { opacity: 1.0; }
+}
+
 /* Reset World button inside the survival card */
 .survival-reset-btn {
   font-family: "Press Start 2P", cursive;

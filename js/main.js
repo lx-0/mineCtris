@@ -1529,6 +1529,7 @@ function init() {
         if (battle.state === BattleState.IN_GAME && !isGameOver) {
           if (typeof triggerBattleResult === 'function') triggerBattleResult('win');
         }
+        if (typeof battleHud !== 'undefined') battleHud.setConnectionStatus('red');
       });
 
       // ── Choice view buttons ──
@@ -1748,15 +1749,33 @@ function init() {
         difficultyMultiplier = BATTLE_START_MULTIPLIER;
         lastDifficultyTier   = BATTLE_START_TIER;
 
-        // Show battle HUD badge
+        // Show battle HUD badge and opponent mini-map
         var battleBadgeEl = document.getElementById("battle-mode-badge");
         if (battleBadgeEl) battleBadgeEl.style.display = "block";
+        if (typeof battleHud !== 'undefined') {
+          battleHud.show();
+          battleHud.setConnectionStatus('green');
+        }
 
         // Run 3-2-1-GO! then hand control to the player
         _runBattleCountdown(function () {
           requestPointerLock();
         });
       }
+
+      // ── Opponent mini-map event handlers ──
+      battle.on("battle_board", function (msg) {
+        if (typeof battleHud !== 'undefined') {
+          battleHud.update(msg.cols, msg.score, msg.level);
+        }
+      });
+
+      battle.on("battle_attack", function (msg) {
+        if (typeof battleHud !== 'undefined') {
+          battleHud.flashLineClear();
+          battleHud.showGarbage();
+        }
+      });
 
       var battleReadyCancelBtn = document.getElementById("battle-ready-cancel-btn");
       if (battleReadyCancelBtn) {
@@ -3223,6 +3242,7 @@ function animate() {
       }
       updateLineClear(delta);
       updateFallingPieces(delta);
+      if (isBattleMode && typeof battleHud !== 'undefined') battleHud.tick(delta);
       updateLandingRings(delta);
       updateTrails(delta, elapsedTime);
       updateAuras(delta, camera);

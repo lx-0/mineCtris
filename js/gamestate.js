@@ -858,9 +858,10 @@ function triggerBattleResult(result) {
   if (dangerEl) dangerEl.style.display = 'none';
   if (dangerTextEl) dangerTextEl.style.display = 'none';
 
-  // Hide battle HUD badge
+  // Hide battle HUD badge and opponent mini-map
   const badgeEl = document.getElementById('battle-mode-badge');
   if (badgeEl) badgeEl.style.display = 'none';
+  if (typeof battleHud !== 'undefined') battleHud.hide();
 
   // Notify opponent so they can show their win screen
   if (result === 'loss' && typeof battle !== 'undefined' && battle.state === BattleState.IN_GAME) {

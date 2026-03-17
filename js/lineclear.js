@@ -39,6 +39,25 @@ let _lcPhase    = 0;  // 0=idle, 1=anticipation, 2=aftermath
 let _lcPhaseAge = 0;
 let _lcNumLines = 0;
 
+// ─── Co-op line-clear guard ───────────────────────────────────────────────────
+// Prevents double-processing when both clients detect the same rows independently
+// and a partner broadcast also arrives. Key: sorted row numbers joined by ','.
+const _coopLcGuard = new Map(); // key -> timestamp (ms)
+const _COOP_LC_TTL = 3000; // ms — guard entries expire after 3 s
+
+function _coopLineClearGuardHas(rows) {
+  const key = rows.slice().sort(function (a, b) { return a - b; }).join(',');
+  const ts = _coopLcGuard.get(key);
+  if (ts === undefined) return false;
+  if (Date.now() - ts > _COOP_LC_TTL) { _coopLcGuard.delete(key); return false; }
+  return true;
+}
+
+function _coopLineClearGuardAdd(rows) {
+  const key = rows.slice().sort(function (a, b) { return a - b; }).join(',');
+  _coopLcGuard.set(key, Date.now());
+}
+
 // ─── Fragment pool API ────────────────────────────────────────────────────────
 
 /**
@@ -93,6 +112,10 @@ function checkLineClear(newBlocks) {
 
   completeLevels.sort((a, b) => a - b);
 
+  // Co-op guard: skip if partner broadcast already triggered this line clear
+  if (_coopLineClearGuardHas(completeLevels)) return;
+  _coopLineClearGuardAdd(completeLevels);
+
   // Collect all blocks on complete levels and save their state.
   lineClearFlashBlocks = [];
   worldGroup.children.forEach((obj) => {
@@ -122,12 +145,17 @@ function checkLineClear(newBlocks) {
   // Score with combo multiplier
   const LINE_SCORES = [0, 100, 300, 500, 800];
   linesCleared += completeLevels.length;
+  if (typeof isCoopMode !== 'undefined' && isCoopMode) coopMyLinesTriggered += completeLevels.length;
 
   // Tutorial: notify first line clear
   if (typeof tutorialNotify === "function") tutorialNotify("lineClear");
 
   // Achievement: first line clear, Tetramino
   if (typeof achOnLineClear === "function") achOnLineClear(completeLevels.length);
+  // Co-op: sync line-clear achievement
+  if (typeof isCoopMode !== 'undefined' && isCoopMode && typeof achOnCoopLineClear === 'function') {
+    achOnCoopLineClear(Date.now());
+  }
 
   // Daily missions: track line clears
   if (typeof onMissionLineClear === "function") onMissionLineClear(completeLevels.length);
@@ -162,7 +190,16 @@ function checkLineClear(newBlocks) {
   // Golden Hour event: 3× score multiplier on all line clears.
   const goldenHourMult = (typeof goldenHourActive !== "undefined" && goldenHourActive) ? 3.0 : 1.0;
   const baseScore = LINE_SCORES[Math.min(completeLevels.length, 4)];
-  addScore(Math.round(baseScore * comboMult * blitzMult * goldMult * goldenHourMult));
+  const _lcComputedScore = Math.round(baseScore * comboMult * blitzMult * goldMult * goldenHourMult);
+  addScore(_lcComputedScore);
+  // Co-op: broadcast line-clear event so partner can score if local detection didn't fire
+  if (isCoopMode && typeof coop !== 'undefined' && coop.state === CoopState.IN_GAME) {
+    coop.send({ type: 'line_clear', rows: completeLevels, score: _lcComputedScore });
+  }
+  // Battle: notify opponent that an attack is queued (triggers their garbage indicator)
+  if (isBattleMode && typeof battle !== 'undefined' && battle.state === BattleState.IN_GAME) {
+    battle.send({ type: 'battle_attack', lines: completeLevels.length });
+  }
 
   // Golden Hour: trigger shimmer flash and show 3× label
   if (typeof goldenHourActive !== "undefined" && goldenHourActive) {
@@ -443,8 +480,8 @@ function _lcDetonate() {
     worldGroup.remove(b);
   });
   lineClearFlashBlocks = [];
-  // Puzzle mode: check win/lose after line clear removes blocks
-  if (isPuzzleMode && typeof checkPuzzleConditions === "function") {
+  // Puzzle / custom puzzle mode: check win/lose after line clear
+  if ((isPuzzleMode || isCustomPuzzleMode) && typeof checkPuzzleConditions === "function") {
     checkPuzzleConditions();
   }
 

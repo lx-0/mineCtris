@@ -179,7 +179,10 @@ function spawnFallingPiece() {
 
   // World modifier fall speed multiplier (1.0 for Normal/Ice World/Ocean; 1.35 for Nether).
   const _wmodSpawn = typeof getWorldModifier === 'function' ? getWorldModifier() : null;
-  const _fallMult = _wmodSpawn ? _wmodSpawn.fallSpeedMult : 1.0;
+  const _wmodFallMult = _wmodSpawn ? _wmodSpawn.fallSpeedMult : 1.0;
+  // Co-op difficulty baseline multiplier (1.0 casual / 1.5 normal / 2.0 challenge).
+  const _coopMult = isCoopMode ? coopFallMultiplier : 1.0;
+  const _fallMult = _wmodFallMult * _coopMult;
 
   // Co-op mode: use server-authoritative piece from the shared queue.
   if (isCoopMode) {
@@ -579,6 +582,23 @@ function updateFallingPieces(delta) {
     fallingPiecesGroup.remove(pieceToLand);
     fallingPieces.splice(index, 1);
     checkLineClear(newBlocks);
+    // Co-op: broadcast landed blocks for reconciliation on partner's client
+    if (isCoopMode && typeof coop !== 'undefined' && coop.state === CoopState.IN_GAME) {
+      var _landData = newBlocks.map(function (b) {
+        var gp = b.userData.gridPos;
+        return { pos: [gp.x, gp.y, gp.z], color: b.userData.canonicalColor };
+      });
+      coop.send({ type: 'world', action: 'land', blocks: _landData });
+    }
+    // Battle: broadcast column heights so opponent can update their mini-map
+    if (isBattleMode && typeof battle !== 'undefined' && battle.state === BattleState.IN_GAME) {
+      battle.send({
+        type: 'battle_board',
+        cols: _computeBattleColumnHeights(),
+        score: score,
+        level: lastDifficultyTier + 1,
+      });
+    }
     if (isPuzzleMode || isCustomPuzzleMode) {
       if (typeof checkPuzzleConditions === "function") checkPuzzleConditions();
       if (!isPuzzleMode) checkGameOver(); // custom puzzle: still check game-over (blocks too high)
@@ -599,4 +619,23 @@ function updateFallingPieces(delta) {
     const showHint = controls && controls.isLocked && !isGameOver && getNudgeTargetPiece() !== null;
     nudgeHintEl.style.display = showHint ? "block" : "none";
   }
+}
+
+// ── Battle: compute column heights ───────────────────────────────────────────
+// Buckets all occupied grid cells into NUM_COLS X-columns and returns the max
+// Y for each. Used to broadcast board state to the opponent in battle mode.
+function _computeBattleColumnHeights() {
+  const NUM_COLS   = 10;
+  const HALF_WORLD = WORLD_SIZE / 2;           // 25
+  const colWidth   = WORLD_SIZE / NUM_COLS;    // 5
+  const heights    = new Array(NUM_COLS).fill(0);
+
+  for (const [y, cells] of gridOccupancy) {
+    for (const key of cells) {
+      const x   = parseInt(key.split(',')[0], 10);
+      const col = Math.min(Math.floor((x + HALF_WORLD) / colWidth), NUM_COLS - 1);
+      if (col >= 0 && heights[col] < y) heights[col] = y;
+    }
+  }
+  return heights;
 }
