@@ -1,4 +1,4 @@
-// Achievement system — 19 unlockable achievements with toast notifications.
+// Achievement system — 39 unlockable achievements with toast notifications.
 // Requires: state.js (isSprintMode, isBlitzMode, linesCleared),
 //           stats.js (loadLifetimeStats)
 
@@ -36,16 +36,33 @@ const ACHIEVEMENTS = [
   { id: "survival_30",      name: "Ancient World",    icon: "\u{1F30D}", desc: "Reach Day 30 in one world" },
   { id: "storm_rider",      name: "Storm Rider",      icon: "\u26C8\uFE0F", desc: "Survive a Piece Storm in Survival mode" },
   { id: "earthquake_proof", name: "Unshakeable",      icon: "\u{1FAA8}", desc: "Survive an Earthquake without dying" },
+  // Co-op achievements
+  { id: "coop_first",      name: "First Contact",    icon: "\u{1F91D}", desc: "Complete your first co-op session",                    category: "coop" },
+  { id: "coop_survive3",   name: "Dynamic Duo",      icon: "\u23F1\uFE0F", desc: "Survive 3 minutes in a co-op session",              category: "coop" },
+  { id: "coop_trade5",     name: "Trading Partners", icon: "\u{1F4E6}", desc: "Complete 5 resource trades in one co-op session",      category: "coop" },
+  { id: "coop_sync_clear", name: "Synchronicity",    icon: "\u26A1",    desc: "Both players clear lines within 2 seconds of each other", category: "coop" },
+  { id: "coop_10k",        name: "Legendary Pair",   icon: "\u{1F3C6}", desc: "Reach a combined score of 10,000 in co-op",            category: "coop" },
+  // Battle achievements
+  { id: "battle_first_win",   name: "First Blood",    icon: "\u{1F5E1}\uFE0F", desc: "Win your first battle match",                              category: "battle" },
+  { id: "battle_comeback",    name: "Comeback Kid",   icon: "\u{1F525}",       desc: "Win a match after receiving 8 or more garbage rows",       category: "battle" },
+  { id: "battle_dominator",   name: "Dominator",      icon: "\u{1F480}",       desc: "Win 3 battle matches in a row",                            category: "battle" },
+  { id: "battle_speed_kill",  name: "Speed Killer",   icon: "\u26A1",          desc: "Win a match in under 90 seconds",                          category: "battle" },
+  { id: "battle_untouchable", name: "Untouchable",    icon: "\u{1F6E1}\uFE0F", desc: "Win a match without receiving any garbage rows",           category: "battle" },
 ];
 
 // Session counters — reset at the start of each game
 let _achSessionTrunks = 0;
 let _achSessionRocks  = 0;
+// Co-op sync line-clear tracking (ms timestamps; -1 = none this session)
+let _achCoopLineClearTs    = -1;
+let _achPartnerLineClearTs = -1;
 
 /** Reset session-specific achievement counters. Call from resetGame(). */
 function achResetSession() {
   _achSessionTrunks = 0;
   _achSessionRocks  = 0;
+  _achCoopLineClearTs    = -1;
+  _achPartnerLineClearTs = -1;
 }
 
 /** Load achievement state from localStorage. Returns { [id]: { date } }. */
@@ -124,7 +141,10 @@ function closeAchievementsPanel() {
   if (overlay) overlay.style.display = "none";
 }
 
-/** Render all 18 achievement cards with current locked/unlocked state. */
+// Active filter for the achievements panel ("all" or "coop")
+let _achPanelFilter = "all";
+
+/** Render achievement cards with current locked/unlocked state, respecting active filter. */
 function renderAchievementsPanel() {
   const unlocked = loadAchievements();
   const count = Object.keys(unlocked).length;
@@ -132,11 +152,39 @@ function renderAchievementsPanel() {
   const progressEl = document.getElementById("achievements-progress");
   if (progressEl) progressEl.textContent = count + " / " + ACHIEVEMENTS.length + " Unlocked";
 
+  // Ensure filter row exists
+  const panel = document.getElementById("achievements-panel");
+  if (panel) {
+    let filterRow = document.getElementById("ach-filter-row");
+    if (!filterRow) {
+      filterRow = document.createElement("div");
+      filterRow.id = "ach-filter-row";
+      filterRow.className = "ach-filter-row";
+      const gridEl = document.getElementById("achievements-grid");
+      if (gridEl) panel.insertBefore(filterRow, gridEl);
+    }
+    filterRow.innerHTML = "";
+    [["all", "All"], ["coop", "Co-op"], ["battle", "Battle"]].forEach(function (pair) {
+      const btn = document.createElement("button");
+      btn.className = "ach-filter-btn" + (_achPanelFilter === pair[0] ? " active" : "");
+      btn.textContent = pair[1];
+      btn.addEventListener("click", function () {
+        _achPanelFilter = pair[0];
+        renderAchievementsPanel();
+      });
+      filterRow.appendChild(btn);
+    });
+  }
+
   const gridEl = document.getElementById("achievements-grid");
   if (!gridEl) return;
 
+  const visible = (_achPanelFilter === "coop" || _achPanelFilter === "battle")
+    ? ACHIEVEMENTS.filter(function (a) { return a.category === _achPanelFilter; })
+    : ACHIEVEMENTS;
+
   gridEl.innerHTML = "";
-  ACHIEVEMENTS.forEach(ach => {
+  visible.forEach(ach => {
     const isUnlocked = !!unlocked[ach.id];
     const card = document.createElement("div");
     card.className = "ach-card " + (isUnlocked ? "ach-unlocked" : "ach-locked");
@@ -165,9 +213,29 @@ function renderAchievementsPanel() {
 
     card.appendChild(iconEl);
     card.appendChild(infoEl);
+    if (ach.category === "coop" || ach.category === "battle") {
+      const badgeEl = document.createElement("div");
+      badgeEl.className = "ach-coop-badge";
+      badgeEl.textContent = ach.category === "battle" ? "BATTLE" : "CO-OP";
+      card.appendChild(badgeEl);
+    }
     card.appendChild(statusEl);
     gridEl.appendChild(card);
   });
+}
+
+/** Count how many co-op achievements are unlocked. */
+function countCoopAchievementsUnlocked() {
+  const unlocked = loadAchievements();
+  return ACHIEVEMENTS.filter(function (a) { return a.category === "coop" && unlocked[a.id]; }).length;
+}
+
+/** Update the co-op mode-select card with the co-op achievement count. */
+function updateCoopModeCardAch() {
+  const el = document.getElementById("mode-coop-ach-count");
+  if (!el) return;
+  const coopTotal = ACHIEVEMENTS.filter(function (a) { return a.category === "coop"; }).length;
+  el.textContent = countCoopAchievementsUnlocked() + "/" + coopTotal + " achievements";
 }
 
 // ── Trigger functions ─────────────────────────────────────────────────────────
@@ -314,4 +382,78 @@ function achOnCreatorPlayCounts(authoredPuzzles) {
   });
   if (maxPlays >= 10) unlockAchievement("crowd_pleaser");
   if (maxPlays >= 50) unlockAchievement("viral");
+}
+
+// ── Co-op achievement triggers ────────────────────────────────────────────────
+
+/**
+ * Call at co-op game over.
+ * @param {number} surviveSeconds  total elapsed seconds in the co-op session
+ */
+function achOnCoopGameOver(surviveSeconds) {
+  unlockAchievement("coop_first");
+  if (surviveSeconds >= 180) unlockAchievement("coop_survive3");
+  updateCoopModeCardAch();
+}
+
+/**
+ * Call after each successful co-op trade (either player sending or receiving).
+ * @param {number} totalTrades  cumulative trades completed by this player this session
+ */
+function achOnCoopTradeComplete(totalTrades) {
+  if (totalTrades >= 5) unlockAchievement("coop_trade5");
+}
+
+/**
+ * Call when the local player triggers a line-clear in co-op mode.
+ * @param {number} ts  Date.now() timestamp in ms
+ */
+function achOnCoopLineClear(ts) {
+  _achCoopLineClearTs = ts;
+  if (_achPartnerLineClearTs >= 0 && Math.abs(ts - _achPartnerLineClearTs) <= 2000) {
+    unlockAchievement("coop_sync_clear");
+  }
+}
+
+/**
+ * Call when a line-clear message arrives from the partner in co-op mode.
+ * @param {number} ts  Date.now() timestamp in ms
+ */
+function achOnCoopPartnerLineClear(ts) {
+  _achPartnerLineClearTs = ts;
+  if (_achCoopLineClearTs >= 0 && Math.abs(ts - _achCoopLineClearTs) <= 2000) {
+    unlockAchievement("coop_sync_clear");
+  }
+}
+
+/**
+ * Call whenever coopScore is updated.
+ * @param {number} totalScore  current combined co-op score
+ */
+function achOnCoopScoreUpdate(totalScore) {
+  if (totalScore >= 10000) unlockAchievement("coop_10k");
+}
+
+// ── Battle achievement triggers ───────────────────────────────────────────────
+
+/**
+ * Call at the end of a battle match.
+ * @param {string} result            'win' | 'loss' | 'draw'
+ * @param {number} garbageReceived   total garbage rows received during the match
+ * @param {number} durationSeconds   match duration in seconds
+ */
+function achOnBattleResult(result, garbageReceived, durationSeconds) {
+  if (result !== 'win') return;
+
+  unlockAchievement("battle_first_win");
+
+  if (garbageReceived >= 8) unlockAchievement("battle_comeback");
+
+  // Win streak is already updated by updateBattleRating before this call
+  const rd = (typeof loadBattleRating === 'function') ? loadBattleRating() : null;
+  if (rd && rd.winStreak >= 3) unlockAchievement("battle_dominator");
+
+  if (durationSeconds < 90) unlockAchievement("battle_speed_kill");
+
+  if (garbageReceived === 0) unlockAchievement("battle_untouchable");
 }

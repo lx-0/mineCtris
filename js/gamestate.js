@@ -910,6 +910,11 @@ function triggerBattleResult(result) {
     ? updateBattleRating(result, typeof battleOpponentRating !== 'undefined' ? battleOpponentRating : 1000)
     : null;
 
+  // Fire battle achievements (win streak already updated by updateBattleRating above)
+  if (typeof achOnBattleResult === 'function') {
+    achOnBattleResult(result, _myStats.garbageReceived, _myStats.duration);
+  }
+
   // Submit rating to online leaderboard (non-blocking, rate-limited to 1/day)
   if (typeof trySubmitBattleRatingToLeaderboard === 'function') {
     setTimeout(trySubmitBattleRatingToLeaderboard, 500);
