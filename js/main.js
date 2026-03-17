@@ -301,6 +301,8 @@ function init() {
     function showModeSelect(highlightMode) {
       const modeSelectEl = document.getElementById("mode-select");
       if (!modeSelectEl) return;
+      // Update co-op achievement count on mode card
+      if (typeof updateCoopModeCardAch === 'function') updateCoopModeCardAch();
       // Populate Classic personal best
       const pbEl = document.getElementById("mode-pb-classic");
       if (pbEl) {
@@ -381,7 +383,7 @@ function init() {
       // Render World Card stats panel
       if (typeof renderWorldCard === "function") renderWorldCard();
       // Apply highlight to the specified mode card
-      ["classic", "sprint", "blitz", "daily", "weekly", "puzzle", "survival", "coop"].forEach(function (mode) {
+      ["classic", "sprint", "blitz", "daily", "weekly", "puzzle", "survival", "coop", "battle"].forEach(function (mode) {
         const cardEl = document.getElementById("mode-card-" + mode);
         if (cardEl) {
           if (mode === highlightMode) {
@@ -729,6 +731,7 @@ function init() {
       function closeCoopOverlay() {
         coopOverlay.style.display = "none";
         coop.disconnect();
+        isDailyCoopChallenge = false;
         // Return to menu
         blocker.style.display = "flex";
         instructions.style.display = "";
@@ -747,6 +750,12 @@ function init() {
         if (data.state === "ready") {
           var readyCodeEl = document.getElementById("coop-ready-code");
           if (readyCodeEl) readyCodeEl.textContent = "Room: " + (data.roomCode || "");
+          // Reset ready state for both players
+          _coopHostReady = false;
+          _coopGuestReady = false;
+          _updateReadyIndicators();
+          // Show correct difficulty UI based on role
+          _initReadyViewForRole();
           showCoopView("ready");
         } else if (data.state === "disconnected") {
           var statusEl = document.getElementById("coop-status-msg");
@@ -793,6 +802,40 @@ function init() {
           if (joinStatusEl) joinStatusEl.textContent = "";
           var codeInput = document.getElementById("coop-code-input");
           if (codeInput) { codeInput.value = ""; codeInput.focus(); }
+        });
+      }
+
+      // ── Daily Co-op Challenge button ──
+      var coopDailyBtn = document.getElementById("coop-daily-btn");
+      if (coopDailyBtn) {
+        // Show previous daily coop best if available
+        var coopDailyBestDisplay = document.getElementById("coop-daily-best-display");
+        if (coopDailyBestDisplay) {
+          var _coopDailyBestRaw = null;
+          try { _coopDailyBestRaw = JSON.parse(localStorage.getItem('mineCtris_coopDailyBest') || 'null'); } catch (_e) {}
+          var _today = typeof getDailyDateString === 'function' ? getDailyDateString() : '';
+          if (_coopDailyBestRaw && _coopDailyBestRaw.date === _today) {
+            coopDailyBestDisplay.textContent = 'Your best today: ' + _coopDailyBestRaw.score.toLocaleString() +
+              ' (with ' + _coopDailyBestRaw.partner + ')';
+            coopDailyBestDisplay.style.display = 'block';
+          }
+        }
+
+        coopDailyBtn.addEventListener("click", function () {
+          isDailyCoopChallenge = true;
+          // Open lobby as normal — same room flow, just with daily seed
+          showCoopView("create");
+          var roomCodeEl   = document.getElementById("coop-room-code");
+          var statusMsg    = document.getElementById("coop-status-msg");
+          var copyFeedback = document.getElementById("coop-copy-feedback");
+          if (roomCodeEl) roomCodeEl.textContent = "…";
+          if (statusMsg)  statusMsg.textContent   = "";
+          if (copyFeedback) copyFeedback.textContent = "";
+          coop.createRoom().then(function (code) {
+            if (roomCodeEl) roomCodeEl.textContent = code;
+          }).catch(function () {
+            if (statusMsg) statusMsg.textContent = "Failed to create room.";
+          });
         });
       }
 
@@ -874,23 +917,186 @@ function init() {
         });
       }
 
+      // ── Ready view state ──
+      var _coopHostReady = false;
+      var _coopGuestReady = false;
+
+      function _updateReadyIndicators() {
+        var hostEl = document.getElementById('coop-host-ready-indicator');
+        var guestEl = document.getElementById('coop-guest-ready-indicator');
+        if (hostEl) {
+          hostEl.textContent = (_coopHostReady ? '\u2611' : '\u2633') + ' Host';
+          hostEl.className = _coopHostReady ? 'ready' : '';
+        }
+        if (guestEl) {
+          guestEl.textContent = (_coopGuestReady ? '\u2611' : '\u2633') + ' Guest';
+          guestEl.className = _coopGuestReady ? 'ready' : '';
+        }
+      }
+
+      function _applyCoopDifficulty(level) {
+        var settings = typeof COOP_DIFFICULTY_SETTINGS !== 'undefined' ? COOP_DIFFICULTY_SETTINGS : null;
+        if (!settings || !settings[level]) return;
+        coopDifficulty = level;
+        coopFallMultiplier = settings[level].fallMult;
+        coopScoreMultiplier = settings[level].scoreMult;
+      }
+
+      function _initReadyViewForRole() {
+        var diffBtns   = document.getElementById('coop-diff-btns');
+        var guestDisp  = document.getElementById('coop-diff-guest-display');
+        var guestLabel = document.getElementById('coop-diff-guest-label');
+        if (coop.isHost) {
+          // Host: show interactive buttons, hide guest read-only label
+          if (diffBtns)  diffBtns.style.display = 'flex';
+          if (guestDisp) guestDisp.style.display = 'none';
+          // Set default selection highlight
+          _setDiffButtonSelected('normal');
+          _applyCoopDifficulty('normal');
+        } else {
+          // Guest: hide buttons, show read-only label
+          if (diffBtns)  diffBtns.style.display = 'none';
+          if (guestDisp) guestDisp.style.display = '';
+          if (guestLabel) guestLabel.textContent = 'NORMAL';
+          _applyCoopDifficulty('normal');
+        }
+      }
+
+      function _setDiffButtonSelected(level) {
+        var btns = document.querySelectorAll('.coop-diff-btn');
+        btns.forEach(function (btn) {
+          if (btn.dataset.level === level) {
+            btn.classList.add('coop-diff-selected');
+          } else {
+            btn.classList.remove('coop-diff-selected');
+          }
+        });
+      }
+
+      // Difficulty button clicks (host only — buttons are hidden for guest)
+      document.querySelectorAll('.coop-diff-btn').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          if (!coop.isHost) return;
+          var level = btn.dataset.level;
+          _setDiffButtonSelected(level);
+          _applyCoopDifficulty(level);
+          coop.send({ type: 'difficulty', level: level });
+        });
+      });
+
+      function _startCoopGame() {
+        isCoopMode = true;
+        isDailyChallenge = false;
+        // isDailyCoopChallenge is set BEFORE calling _startCoopGame; preserve it here
+        gameRng = isDailyCoopChallenge ? getDailyPrng() : null;
+        coopPieceQueue.length = 0;
+        applyWorldModifierHUD();
+        _initCoopHUD();
+        camera.position.set(0, PLAYER_HEIGHT, 0);
+        if (typeof coopAvatar !== 'undefined') coopAvatar.init('Partner');
+        if (typeof coopTrade !== 'undefined') coopTrade.showFirstRunHint();
+        if (typeof coopEmote !== 'undefined') coopEmote.showHud(true);
+        coop.startGame();
+        coopOverlay.style.display = "none";
+        setTimeout(function () { requestPointerLock(); }, 500);
+      }
+
       // ── Ready view buttons ──
       var startBtn = document.getElementById("coop-start-btn");
       if (startBtn) {
         startBtn.addEventListener("click", function () {
-          // Activate co-op mode flags
-          isCoopMode = true;
-          isDailyChallenge = false;
-          gameRng = null;
-          coopPieceQueue.length = 0;
-          applyWorldModifierHUD();
-          coop.startGame();
-          coopOverlay.style.display = "none";
-          // Send game_start to DO: it will relay to guest and pre-broadcast 3 pieces
-          coop.send({ type: 'game_start' });
-          // 500ms countdown so initial pieces arrive before the first spawn fires
-          setTimeout(function () { requestPointerLock(); }, 500);
+          if (coop.isHost) {
+            _coopHostReady = true;
+            _updateReadyIndicators();
+            coop.send({ type: 'player_ready' });
+            startBtn.disabled = true;
+            startBtn.textContent = '\u2611 Ready!';
+            // If guest already marked ready, start immediately
+            if (_coopGuestReady) {
+              coop.send({ type: 'game_start', difficulty: coopDifficulty, isDaily: isDailyCoopChallenge });
+              _startCoopGame();
+            }
+          } else {
+            // Guest
+            _coopGuestReady = true;
+            _updateReadyIndicators();
+            coop.send({ type: 'player_ready' });
+            startBtn.disabled = true;
+            startBtn.textContent = '\u2611 Ready!';
+            // Guest waits for host to send game_start
+          }
         });
+      }
+
+      // ── Co-op in-game HUD helpers ──
+      function _initCoopHUD() {
+        // Reset co-op score state
+        coopScore = 0; coopMyScore = 0; coopPartnerScore = 0;
+        coopPartnerMaxY = 0; coopHeightBroadcastLastTime = 0;
+        coopPartnerStatus = 'connected'; coopPartnerLastSeenTime = performance.now();
+        // Show CO-OP badge with difficulty label (and DAILY marker if applicable)
+        var coopBadgeEl = document.getElementById('coop-mode-badge');
+        if (coopBadgeEl) {
+          coopBadgeEl.style.display = 'flex';
+          var diffLabelEl = document.getElementById('coop-difficulty-label');
+          if (diffLabelEl) {
+            var diffKey = coopDifficulty.toUpperCase();
+            diffLabelEl.textContent = isDailyCoopChallenge ? ' DAILY \u00b7 ' + diffKey : ' ' + diffKey;
+          }
+        }
+        // Show co-op score HUD; hide solo score
+        var coopHudEl = document.getElementById('coop-score-display');
+        if (coopHudEl) coopHudEl.style.display = 'block';
+        // Show partner status indicator
+        var partnerStatusEl = document.getElementById('coop-partner-status');
+        if (partnerStatusEl) partnerStatusEl.style.display = 'flex';
+        if (typeof updateCoopScoreHUD === 'function') updateCoopScoreHUD();
+        if (typeof updateCoopPartnerStatus === 'function') updateCoopPartnerStatus();
+        // Show co-op bonus banner (fades out after 3s)
+        var bonusEl = document.getElementById('coop-bonus-overlay');
+        if (bonusEl) {
+          var settings = typeof COOP_DIFFICULTY_SETTINGS !== 'undefined' ? COOP_DIFFICULTY_SETTINGS : null;
+          var mult = settings && settings[coopDifficulty] ? settings[coopDifficulty].scoreMult : coopScoreMultiplier;
+          bonusEl.textContent = mult + 'x CO-OP BONUS';
+          bonusEl.style.display = 'block';
+          bonusEl.style.opacity = '1';
+          coopBonusBannerTimer = 3.0;
+        }
+      }
+
+      function _showCoopPartnerLeftDialog() {
+        var dialogEl = document.getElementById('coop-partner-left-dialog');
+        if (!dialogEl) return;
+        dialogEl.style.display = 'flex';
+        var countdownEl = dialogEl.querySelector('#coop-partner-left-countdown');
+        var remaining = 10;
+        if (countdownEl) countdownEl.textContent = remaining;
+        var timerHandle = setInterval(function () {
+          remaining--;
+          if (countdownEl) countdownEl.textContent = remaining;
+          if (remaining <= 0) {
+            clearInterval(timerHandle);
+            dialogEl.style.display = 'none';
+            // Default: continue solo
+          }
+        }, 1000);
+        var continueBtn = dialogEl.querySelector('#coop-partner-left-continue');
+        var quitBtn = dialogEl.querySelector('#coop-partner-left-quit');
+        if (continueBtn) {
+          continueBtn.onclick = function () {
+            clearInterval(timerHandle);
+            dialogEl.style.display = 'none';
+            isCoopMode = false;
+          };
+        }
+        if (quitBtn) {
+          quitBtn.onclick = function () {
+            clearInterval(timerHandle);
+            dialogEl.style.display = 'none';
+            if (typeof resetGame === 'function') resetGame();
+            else location.reload();
+          };
+        }
       }
 
       // ── Handle pieces from DO ──
@@ -900,18 +1106,244 @@ function init() {
         }
       });
 
+      // ── Incoming difficulty change from host ──
+      coop.on('difficulty', function (msg) {
+        if (!msg || !msg.level) return;
+        _applyCoopDifficulty(msg.level);
+        // Update guest read-only display
+        var guestLabel = document.getElementById('coop-diff-guest-label');
+        if (guestLabel) guestLabel.textContent = msg.level.toUpperCase();
+        // Also update host's selected button (in case message was echoed back)
+        if (coop.isHost) _setDiffButtonSelected(msg.level);
+      });
+
+      // ── Incoming ready signal from partner ──
+      coop.on('player_ready', function () {
+        if (coop.isHost) {
+          _coopGuestReady = true;
+          _updateReadyIndicators();
+          // If host already clicked Ready, start the game now
+          if (_coopHostReady) {
+            coop.send({ type: 'game_start', difficulty: coopDifficulty, isDaily: isDailyCoopChallenge });
+            _startCoopGame();
+          }
+        } else {
+          _coopHostReady = true;
+          _updateReadyIndicators();
+          // Guest waits — host will send game_start
+        }
+      });
+
       // ── Guest: start game when DO relays host's game_start ──
-      coop.on('game_start', function () {
+      coop.on('game_start', function (msg) {
         if (coop.state !== CoopState.IN_GAME) {
+          // Apply difficulty sent by host
+          if (msg && msg.difficulty) _applyCoopDifficulty(msg.difficulty);
           isCoopMode = true;
           isDailyChallenge = false;
-          gameRng = null;
+          isDailyCoopChallenge = !!(msg && msg.isDaily);
+          gameRng = isDailyCoopChallenge ? getDailyPrng() : null;
           coopPieceQueue.length = 0;
+          _initCoopHUD();
+          // Guest spawns 3 blocks away from host, both facing +Z
+          camera.position.set(3, PLAYER_HEIGHT, 0);
+          if (typeof coopAvatar !== 'undefined') coopAvatar.init('Partner');
+          if (typeof coopTrade !== 'undefined') coopTrade.showFirstRunHint();
+          if (typeof coopEmote !== 'undefined') coopEmote.showHud(true);
           coop.startGame();
           if (coopOverlay) coopOverlay.style.display = "none";
           applyWorldModifierHUD();
           setTimeout(function () { requestPointerLock(); }, 500);
         }
+      });
+
+      // ── Incoming partner position broadcasts ──
+      coop.on('pos', function (data) {
+        // Track raw partner position for proximity checks (e.g. trade)
+        coopPartnerLastPos = { x: data.x, y: data.y, z: data.z };
+        if (isCoopMode && typeof coopAvatar !== 'undefined') {
+          coopAvatar.receivePosition(
+            data.x, data.y, data.z, data.rotY, data.rotX
+          );
+        }
+      });
+
+      // ── Incoming emotes from partner ──
+      coop.on('emote', function (data) {
+        if (!isCoopMode) return;
+        if (typeof coopEmote !== 'undefined') coopEmote.receiveEmote(data);
+      });
+
+      // ── Destroy avatar when partner disconnects ──
+      coop.on('partner_left', function () {
+        if (typeof coopAvatar !== 'undefined') coopAvatar.destroy();
+        if (typeof coopEmote !== 'undefined') { coopEmote.reset(); coopEmote.showHud(false); }
+      });
+      coop.on('disconnected', function () {
+        if (typeof coopAvatar !== 'undefined') coopAvatar.destroy();
+        if (typeof coopEmote !== 'undefined') { coopEmote.reset(); coopEmote.showHud(false); }
+      });
+
+      // ── Incoming world-state mutations from partner ──
+      coop.on('world', function (msg) {
+        if (!isCoopMode) return;
+        if (msg.action === 'break') {
+          var _wb = _findBlockAtGrid(msg.pos[0], msg.pos[1], msg.pos[2]);
+          if (!_wb) return;
+          spawnDustParticles(_wb, { breakBurst: true });
+          unregisterBlock(_wb);
+          worldGroup.remove(_wb);
+          var _obIdx = obsidianBlocks.indexOf(_wb);
+          if (_obIdx !== -1) obsidianBlocks.splice(_obIdx, 1);
+        } else if (msg.action === 'place') {
+          var _px = msg.pos[0], _py = msg.pos[1], _pz = msg.pos[2];
+          var _layer = gridOccupancy.get(_py);
+          if (_layer && _layer.has(_px + ',' + _pz)) return; // already occupied
+          var _pb = createBlockMesh(new THREE.Color(msg.color));
+          _pb.name = 'landed_block';
+          _pb.position.set(_px, _py, _pz);
+          worldGroup.add(_pb);
+          registerBlock(_pb);
+          checkLineClear([_pb]);
+        } else if (msg.action === 'land') {
+          // Reconciliation: add any blocks the partner landed that we're missing
+          if (!Array.isArray(msg.blocks)) return;
+          msg.blocks.forEach(function (b) {
+            var _lx = b.pos[0], _ly = b.pos[1], _lz = b.pos[2];
+            var _ll = gridOccupancy.get(_ly);
+            if (_ll && _ll.has(_lx + ',' + _lz)) return; // already exists locally
+            var _lb = createBlockMesh(new THREE.Color(b.color));
+            _lb.name = 'landed_block';
+            _lb.position.set(_lx, _ly, _lz);
+            worldGroup.add(_lb);
+            registerBlock(_lb);
+          });
+        }
+      });
+
+      // ── Incoming line-clear events from partner ──
+      coop.on('line_clear', function (msg) {
+        if (!isCoopMode) return;
+        // Achievement: sync line-clear (track partner timestamp regardless of guard)
+        if (typeof achOnCoopPartnerLineClear === 'function') achOnCoopPartnerLineClear(Date.now());
+        // Guard: if local detection already processed these rows, skip
+        if (typeof _coopLineClearGuardHas === 'function' && _coopLineClearGuardHas(msg.rows)) return;
+        // Fallback: local detection didn't fire, so score the partner's line clear
+        if (typeof addScore === 'function' && typeof msg.score === 'number') {
+          addScore(msg.score);
+        }
+      });
+
+      // ── Incoming score delta from partner ──
+      coop.on('score', function (msg) {
+        if (!isCoopMode) return;
+        if (typeof msg.delta !== 'number') return;
+        coopScore += msg.delta;
+        coopPartnerScore += msg.delta;
+        if (typeof updateCoopScoreHUD === 'function') updateCoopScoreHUD();
+      });
+
+      // ── Incoming height broadcast from partner ──
+      coop.on('height', function (msg) {
+        if (!isCoopMode) return;
+        if (typeof msg.maxY === 'number') {
+          coopPartnerMaxY = msg.maxY;
+          coopPartnerLastSeenTime = performance.now();
+          coopPartnerStatus = 'connected';
+          if (typeof updateCoopPartnerStatus === 'function') updateCoopPartnerStatus();
+        }
+      });
+
+      // ── Incoming game_over broadcast from partner ──
+      coop.on('game_over', function () {
+        if (!isCoopMode) return;
+        if (typeof coopEmote !== 'undefined') coopEmote.showHud(false);
+        if (!isGameOver && typeof triggerGameOver === 'function') {
+          triggerGameOver();
+        }
+      });
+
+      // ── Incoming game_end_stats from partner ──
+      coop.on('game_end_stats', function (msg) {
+        if (!isCoopMode) return;
+        coopPartnerBlocksMined    = (typeof msg.blocksMined    === 'number') ? msg.blocksMined    : 0;
+        coopPartnerLinesTriggered = (typeof msg.linesTriggered === 'number') ? msg.linesTriggered : 0;
+        coopPartnerCraftsMade     = (typeof msg.craftsMade     === 'number') ? msg.craftsMade     : 0;
+        coopPartnerTradesCompleted= (typeof msg.tradesCompleted=== 'number') ? msg.tradesCompleted: 0;
+        coopPartnerName           = msg.name || 'Partner';
+        coopStatsReceived = true;
+        // If guest, reply with our own stats now
+        if (!coop.isHost) {
+          coop.send({
+            type: 'game_end_stats',
+            blocksMined:     coopMyBlocksMined,
+            linesTriggered:  coopMyLinesTriggered,
+            craftsMade:      coopMyCraftsMade,
+            tradesCompleted: coopMyTradesCompleted,
+            name: typeof loadDisplayName === 'function' ? (loadDisplayName() || 'You') : 'You',
+          });
+        }
+        // Refresh the summary screen now that we have full data
+        if (typeof _refreshCoopGameOver === 'function') _refreshCoopGameOver();
+
+        // Auto-submit co-op score if both players have display names set
+        var _myDisplayName = typeof loadDisplayName === 'function' ? loadDisplayName() : '';
+        var _partnerDisplayName = coopPartnerName && coopPartnerName !== 'Partner' ? coopPartnerName : '';
+        if (_myDisplayName && _partnerDisplayName && typeof apiSubmitCoopScore === 'function') {
+          var _lbFeedbackEl = document.getElementById('coop-go-lb-feedback');
+          var _rankEl = document.getElementById('coop-go-rank');
+          if (_lbFeedbackEl) { _lbFeedbackEl.textContent = 'Submitting score…'; _lbFeedbackEl.style.display = 'block'; }
+          apiSubmitCoopScore(_myDisplayName, _partnerDisplayName, coopScore, coopDifficulty, isDailyCoopChallenge)
+            .then(function (result) {
+              if (result && result.ok) {
+                if (_rankEl) {
+                  _rankEl.textContent = 'You are #' + result.rank + ' today!';
+                  _rankEl.style.display = 'block';
+                }
+                if (_lbFeedbackEl) _lbFeedbackEl.style.display = 'none';
+                // Save daily coop best locally
+                if (isDailyCoopChallenge) {
+                  try {
+                    var _today = typeof getDailyDateString === 'function' ? getDailyDateString() : '';
+                    var _existing = JSON.parse(localStorage.getItem('mineCtris_coopDailyBest') || 'null');
+                    if (!_existing || _existing.date !== _today || coopScore > _existing.score) {
+                      localStorage.setItem('mineCtris_coopDailyBest', JSON.stringify({
+                        date: _today,
+                        score: coopScore,
+                        partner: _partnerDisplayName,
+                      }));
+                    }
+                  } catch (_e) {}
+                }
+              } else {
+                var _msg = (result && result.error) || 'Could not submit score';
+                if (_lbFeedbackEl) { _lbFeedbackEl.textContent = _msg; _lbFeedbackEl.style.display = 'block'; }
+              }
+            })
+            .catch(function () {
+              if (_lbFeedbackEl) { _lbFeedbackEl.textContent = 'Network error'; _lbFeedbackEl.style.display = 'block'; }
+            });
+        }
+      });
+
+      // ── Incoming trade messages ──
+      coop.on('trade_offer', function (msg) {
+        if (!isCoopMode) return;
+        if (typeof coopTrade !== 'undefined') coopTrade.onTradeOffer(msg);
+      });
+      coop.on('trade_accept', function (msg) {
+        if (!isCoopMode) return;
+        if (typeof coopTrade !== 'undefined') coopTrade.onTradeAccept(msg);
+      });
+      coop.on('trade_cancel', function () {
+        if (!isCoopMode) return;
+        if (typeof coopTrade !== 'undefined') coopTrade.onTradeCancel();
+      });
+
+      // ── Partner left mid-game: show continue/quit choice ──
+      coop.on('partner_left', function () {
+        if (!isCoopMode || isGameOver) return;
+        _showCoopPartnerLeftDialog();
       });
 
       var readyCancelBtn = document.getElementById("coop-ready-cancel-btn");
@@ -934,8 +1366,351 @@ function init() {
           }, 200);
         }
       })();
+
+      // ── Co-op game-over screen buttons ──
+      (function () {
+        function _resetForCoopReplay() {
+          // Reset game world and state but keep the WebSocket alive
+          _coopHostReady = false;
+          _coopGuestReady = false;
+          resetGame();
+          // resetGame() shows the start blocker — override to show coop ready view
+          var startScreen = document.getElementById('blocker');
+          if (startScreen) startScreen.style.display = 'none';
+          var startBtnEl = document.getElementById('coop-start-btn');
+          if (startBtnEl) { startBtnEl.disabled = false; startBtnEl.textContent = 'Ready!'; }
+          _updateReadyIndicators();
+          coopOverlay.style.display = 'flex';
+          showCoopView('ready');
+        }
+
+        var playAgainBtn = document.getElementById('coop-go-play-again-btn');
+        if (playAgainBtn) {
+          playAgainBtn.addEventListener('click', function () {
+            _resetForCoopReplay();
+          });
+        }
+
+        var changeDiffBtn = document.getElementById('coop-go-change-diff-btn');
+        if (changeDiffBtn) {
+          changeDiffBtn.addEventListener('click', function () {
+            _resetForCoopReplay();
+          });
+        }
+
+        var mainMenuBtn = document.getElementById('coop-go-main-menu-btn');
+        if (mainMenuBtn) {
+          mainMenuBtn.addEventListener('click', function () {
+            coop.disconnect();
+            resetGame();
+          });
+        }
+
+        var shareBtn = document.getElementById('coop-go-share-btn');
+        if (shareBtn) {
+          shareBtn.addEventListener('click', function () {
+            var myName = (typeof loadDisplayName === 'function' ? loadDisplayName() : '') || 'You';
+            var partnerName = coopPartnerName || 'Partner';
+            var totalSecs = Math.floor(gameElapsedSeconds);
+            var mm = Math.floor(totalSecs / 60).toString().padStart(2, '0');
+            var ss = (totalSecs % 60).toString().padStart(2, '0');
+            var mvpCol = typeof _getCoopMVP === 'function' ? _getCoopMVP(myName, partnerName) : 'tie';
+            var mvpName = mvpCol === 'me' ? myName : mvpCol === 'partner' ? partnerName : null;
+            var shareText = 'MineCtris Co-op\n' +
+              myName + ' + ' + partnerName + '\n' +
+              'Combined Score: ' + coopScore.toLocaleString() + '\n' +
+              (mvpName ? 'MVP: ' + mvpName + '\n' : 'Perfect Partnership!\n') +
+              'Survived: ' + mm + ':' + ss;
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+              navigator.clipboard.writeText(shareText).then(function () {
+                shareBtn.textContent = 'Copied!';
+                setTimeout(function () { shareBtn.textContent = 'Share Run'; }, 1500);
+              }).catch(function () {
+                prompt('Copy your share card:', shareText);
+              });
+            } else {
+              prompt('Copy your share card:', shareText);
+            }
+          });
+        }
+      })();
     })();
     // ── End co-op setup ────────────────────────────────────────────────────────
+
+    // ── Battle mode card + lobby overlay ──────────────────────────────────────
+    (function () {
+      var battleOverlay    = document.getElementById("battle-overlay");
+      var battleChoiceView = document.getElementById("battle-choice-view");
+      var battleCreateView = document.getElementById("battle-create-view");
+      var battleJoinView   = document.getElementById("battle-join-view");
+      var battleReadyView  = document.getElementById("battle-ready-view");
+
+      if (!battleOverlay || typeof battle === "undefined") return;
+
+      function showBattleView(name) {
+        [battleChoiceView, battleCreateView, battleJoinView, battleReadyView].forEach(function (v) {
+          if (v) v.style.display = "none";
+        });
+        var target = {
+          choice: battleChoiceView,
+          create: battleCreateView,
+          join:   battleJoinView,
+          ready:  battleReadyView,
+        }[name];
+        if (target) target.style.display = "";
+      }
+
+      function openBattleOverlay(initialView) {
+        hideModeSelect();
+        blocker.style.display = "none";
+        showBattleView(initialView || "choice");
+        battleOverlay.style.display = "flex";
+      }
+
+      function closeBattleOverlay() {
+        battleOverlay.style.display = "none";
+        battle.disconnect();
+        blocker.style.display = "flex";
+        instructions.style.display = "";
+      }
+
+      // Battle mode card click
+      var battleCardEl = document.getElementById("mode-card-battle");
+      if (battleCardEl) {
+        battleCardEl.addEventListener("click", function () {
+          openBattleOverlay("choice");
+        });
+      }
+
+      // ── Ready state tracking ──
+      var _battleHostReady  = false;
+      var _battleGuestReady = false;
+
+      function _updateBattleReadyIndicators() {
+        var hostEl  = document.getElementById("battle-host-ready-indicator");
+        var guestEl = document.getElementById("battle-guest-ready-indicator");
+        var label   = battle.isHost ? "You" : "Opponent";
+        var otherLabel = battle.isHost ? "Opponent" : "You";
+        if (hostEl) {
+          hostEl.textContent  = (_battleHostReady  ? "\u2611" : "\u2633") + " " + label;
+          hostEl.className    = _battleHostReady  ? "ready" : "";
+        }
+        if (guestEl) {
+          guestEl.textContent = (_battleGuestReady ? "\u2611" : "\u2633") + " " + otherLabel;
+          guestEl.className   = _battleGuestReady ? "ready" : "";
+        }
+      }
+
+      // ── Register battle state-change handler ──
+      battle.on("state_change", function (data) {
+        if (data.state === "ready") {
+          var readyCodeEl = document.getElementById("battle-ready-code");
+          if (readyCodeEl) readyCodeEl.textContent = "Room: " + (data.roomCode || "");
+          _battleHostReady  = false;
+          _battleGuestReady = false;
+          _updateBattleReadyIndicators();
+          showBattleView("ready");
+        } else if (data.state === "disconnected") {
+          closeBattleOverlay();
+        }
+      });
+
+      battle.on("timeout", function () {
+        var statusEl = document.getElementById("battle-status-msg");
+        if (statusEl) statusEl.textContent = "No one joined. Room closed.";
+        setTimeout(function () { closeBattleOverlay(); }, 2000);
+      });
+
+      battle.on("opponent_left", function () {
+        // Handled by game layer when in_game; ignore here
+      });
+
+      // ── Choice view buttons ──
+      var battleCreateBtn = document.getElementById("battle-create-btn");
+      if (battleCreateBtn) {
+        battleCreateBtn.addEventListener("click", function () {
+          showBattleView("create");
+          var roomCodeEl   = document.getElementById("battle-room-code");
+          var statusMsg    = document.getElementById("battle-status-msg");
+          var copyFeedback = document.getElementById("battle-copy-feedback");
+          if (roomCodeEl)   roomCodeEl.textContent   = "\u2026";
+          if (statusMsg)    statusMsg.textContent    = "";
+          if (copyFeedback) copyFeedback.textContent = "";
+          battle.createRoom().then(function (code) {
+            if (roomCodeEl) roomCodeEl.textContent = code;
+          }).catch(function () {
+            if (statusMsg) statusMsg.textContent = "Failed to create room.";
+          });
+        });
+      }
+
+      var battleJoinBtnChoice = document.getElementById("battle-join-btn-choice");
+      if (battleJoinBtnChoice) {
+        battleJoinBtnChoice.addEventListener("click", function () {
+          showBattleView("join");
+          var joinStatusEl = document.getElementById("battle-join-status-msg");
+          if (joinStatusEl) joinStatusEl.textContent = "";
+          var codeInput = document.getElementById("battle-code-input");
+          if (codeInput) { codeInput.value = ""; codeInput.focus(); }
+        });
+      }
+
+      var battleQmBtn = document.getElementById("battle-quickmatch-btn");
+      if (battleQmBtn) {
+        battleQmBtn.addEventListener("click", function () {
+          showBattleView("create");
+          var roomCodeEl   = document.getElementById("battle-room-code");
+          var statusMsg    = document.getElementById("battle-status-msg");
+          var waitingEl    = document.getElementById("battle-waiting-spinner");
+          if (roomCodeEl) roomCodeEl.textContent = "\u2026";
+          if (statusMsg)  statusMsg.textContent  = "";
+          battle.quickMatch().then(function (data) {
+            if (data.waiting) {
+              // We are host waiting for an opponent
+              if (roomCodeEl) roomCodeEl.textContent = data.roomCode;
+              if (waitingEl) waitingEl.textContent = "\u9696 Quick match \u2014 waiting for opponent\u2026";
+            } else {
+              // Joining opponent's room as guest
+              if (roomCodeEl) roomCodeEl.textContent = data.roomCode;
+              if (waitingEl) waitingEl.textContent = "\u9696 Found opponent \u2014 connecting\u2026";
+            }
+          }).catch(function () {
+            if (statusMsg) statusMsg.textContent = "Quick match failed. Try again.";
+          });
+        });
+      }
+
+      var battleChoiceCancelBtn = document.getElementById("battle-choice-cancel-btn");
+      if (battleChoiceCancelBtn) {
+        battleChoiceCancelBtn.addEventListener("click", function () {
+          closeBattleOverlay();
+        });
+      }
+
+      // ── Create view buttons ──
+      var battleCopyLinkBtn = document.getElementById("battle-copy-link-btn");
+      if (battleCopyLinkBtn) {
+        battleCopyLinkBtn.addEventListener("click", function () {
+          var code = battle.roomCode;
+          if (!code) return;
+          var url = window.location.origin + window.location.pathname + "?battle=" + code;
+          var feedbackEl = document.getElementById("battle-copy-feedback");
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(url).then(function () {
+              if (feedbackEl) {
+                feedbackEl.textContent = "\u2713 Copied!";
+                setTimeout(function () { feedbackEl.textContent = ""; }, 2000);
+              }
+            }).catch(function () { window.prompt("Copy invite link:", url); });
+          } else {
+            window.prompt("Copy invite link:", url);
+          }
+        });
+      }
+
+      var battleCreateCancelBtn = document.getElementById("battle-create-cancel-btn");
+      if (battleCreateCancelBtn) {
+        battleCreateCancelBtn.addEventListener("click", function () { closeBattleOverlay(); });
+      }
+
+      // ── Join view ──
+      var battleCodeInput = document.getElementById("battle-code-input");
+      if (battleCodeInput) {
+        battleCodeInput.addEventListener("input", function () {
+          this.value = this.value.toUpperCase().replace(/[^A-Z0-9]/g, "");
+        });
+        battleCodeInput.addEventListener("keydown", function (e) {
+          if (e.key === "Enter") {
+            var confirmBtn = document.getElementById("battle-join-confirm-btn");
+            if (confirmBtn) confirmBtn.click();
+          }
+        });
+      }
+
+      var battleJoinConfirmBtn = document.getElementById("battle-join-confirm-btn");
+      if (battleJoinConfirmBtn) {
+        battleJoinConfirmBtn.addEventListener("click", function () {
+          var code = battleCodeInput ? battleCodeInput.value.trim().toUpperCase() : "";
+          var joinStatusEl = document.getElementById("battle-join-status-msg");
+          if (!code || code.length !== 4) {
+            if (joinStatusEl) joinStatusEl.textContent = "Enter a 4-character code.";
+            return;
+          }
+          if (joinStatusEl) joinStatusEl.textContent = "Joining\u2026";
+          battle.joinRoom(code).then(function () {
+            if (joinStatusEl) joinStatusEl.textContent = "";
+            showBattleView("create");
+            var roomCodeEl = document.getElementById("battle-room-code");
+            if (roomCodeEl) roomCodeEl.textContent = code;
+            var waitingEl = document.getElementById("battle-waiting-spinner");
+            if (waitingEl) waitingEl.textContent = "\u9696 Connected \u2014 waiting for opponent\u2026";
+          }).catch(function (err) {
+            if (joinStatusEl) joinStatusEl.textContent = (err && err.message) ? err.message : "Failed to join.";
+          });
+        });
+      }
+
+      var battleJoinCancelBtn = document.getElementById("battle-join-cancel-btn");
+      if (battleJoinCancelBtn) {
+        battleJoinCancelBtn.addEventListener("click", function () {
+          battle.disconnect();
+          showBattleView("choice");
+        });
+      }
+
+      // ── Ready view ──
+      var battleStartBtn = document.getElementById("battle-start-btn");
+      if (battleStartBtn) {
+        battleStartBtn.addEventListener("click", function () {
+          battleStartBtn.disabled = true;
+          battleStartBtn.textContent = "Waiting\u2026";
+          if (battle.isHost) {
+            _battleHostReady = true;
+          } else {
+            _battleGuestReady = true;
+          }
+          _updateBattleReadyIndicators();
+          battle.send({ type: "battle_ready" });
+        });
+      }
+
+      // Opponent signals ready
+      battle.on("battle_ready", function () {
+        if (battle.isHost) {
+          _battleGuestReady = true;
+        } else {
+          _battleHostReady = true;
+        }
+        _updateBattleReadyIndicators();
+        // If both ready, host starts the game
+        if (_battleHostReady && _battleGuestReady && battle.isHost) {
+          battle.send({ type: "battle_start" });
+          _startBattleGame();
+        }
+      });
+
+      // Guest receives battle_start from host
+      battle.on("battle_start", function () {
+        if (!battle.isHost) {
+          _startBattleGame();
+        }
+      });
+
+      function _startBattleGame() {
+        battle.startGame();
+        battleOverlay.style.display = "none";
+        // TODO (Phase 2): wire into actual battle game loop
+        // For Phase 1, transition into classic game mode as a placeholder
+        resetGame();
+        setTimeout(function () { requestPointerLock(); }, 300);
+      }
+
+      var battleReadyCancelBtn = document.getElementById("battle-ready-cancel-btn");
+      if (battleReadyCancelBtn) {
+        battleReadyCancelBtn.addEventListener("click", function () { closeBattleOverlay(); });
+      }
+    })();
+    // ── End battle setup ───────────────────────────────────────────────────────
 
     // Survival: Reset World button + confirmation dialog
     const survivalResetBtn = document.getElementById("survival-reset-btn");
@@ -1217,8 +1992,8 @@ function init() {
       }
       // ─────────────────────────────────────────────────────────────────────
 
-      // If the crafting panel intentionally released the lock, don't show the pause/blocker screen
-      if (!craftingPanelOpen) {
+      // If the crafting panel or co-op trade panel intentionally released the lock, don't pause
+      if (!craftingPanelOpen && !coopTradePanelOpen) {
         closeCraftingPanel();
         // Don't show start screen if game over — game over overlay handles it
         if (!isGameOver) {
@@ -1740,6 +2515,7 @@ function onWindowResize() {
     renderer.setSize(w, h);
     if (composer) composer.setSize(w, h);
     resizePostProcessing(w, h);
+    if (typeof coopAvatar !== 'undefined') coopAvatar.onResize();
     applyResponsiveHUD(w);
   }, 100);
 }
@@ -1825,6 +2601,13 @@ function placeBlock() {
   registerBlock(block);
   blocksPlaced++;
   if (typeof achOnBlockPlaced === "function") achOnBlockPlaced(blocksPlaced);
+  // Co-op: broadcast block placement to partner
+  if (isCoopMode && typeof coop !== 'undefined' && coop.state === CoopState.IN_GAME) {
+    const _coopGp = block.userData.gridPos;
+    if (_coopGp) {
+      coop.send({ type: 'world', action: 'place', pos: [_coopGp.x, _coopGp.y, _coopGp.z], color: block.userData.canonicalColor });
+    }
+  }
 
   // Update HUD and check line-clear
   updateInventoryHUD();
@@ -1910,6 +2693,7 @@ function onMouseDown(event) {
       // Break burst particles
       spawnDustParticles(targetedBlock, { breakBurst: true });
       blocksMined++;
+      if (isCoopMode) coopMyBlocksMined++;
       const _objType = targetedBlock.userData.objectType;
       const _matName = targetedBlock.userData.materialType ||
         (_objType ? OBJECT_TYPE_TO_MATERIAL[_objType] : null);
@@ -1952,6 +2736,14 @@ function onMouseDown(event) {
           growStart: 0,
           meshes: null,
         });
+      }
+
+      // Co-op: broadcast block break to partner (capture gridPos before unregister clears it)
+      if (isCoopMode && typeof coop !== 'undefined' && coop.state === CoopState.IN_GAME) {
+        const _coopGp = targetedBlock.userData.gridPos;
+        if (_coopGp) {
+          coop.send({ type: 'world', action: 'break', pos: [_coopGp.x, _coopGp.y, _coopGp.z] });
+        }
       }
 
       unregisterBlock(targetedBlock);
@@ -2000,6 +2792,7 @@ function _applyDiamondAOE(origin) {
     if (!neighbor) return;
     spawnDustParticles(neighbor, { breakBurst: true });
     blocksMined++;
+    if (isCoopMode) coopMyBlocksMined++;
     const nobjType = neighbor.userData.objectType;
     const nmatName = neighbor.userData.materialType ||
       (nobjType ? OBJECT_TYPE_TO_MATERIAL[nobjType] : null);
@@ -2038,6 +2831,7 @@ function activateLavaFlask() {
   toRemove.forEach(block => {
     spawnDustParticles(block, { breakBurst: true });
     blocksMined++;
+    if (isCoopMode) coopMyBlocksMined++;
     const oType = block.userData.objectType;
     const mName = block.userData.materialType || (oType ? OBJECT_TYPE_TO_MATERIAL[oType] : null);
     addScore(mName && BLOCK_TYPES[mName] ? BLOCK_TYPES[mName].points : 10);
@@ -2198,6 +2992,7 @@ function activateEquippedPowerup() {
       toRemove.forEach(function (block) {
         spawnDustParticles(block, { breakBurst: true });
         blocksMined++;
+        if (isCoopMode) coopMyBlocksMined++;
         const oType = block.userData.objectType;
         const mName = block.userData.materialType || (oType ? OBJECT_TYPE_TO_MATERIAL[oType] : null);
         addScore(mName && BLOCK_TYPES[mName] ? BLOCK_TYPES[mName].points : 10);
@@ -2335,6 +3130,7 @@ function animate() {
           if (nearestBlock) {
             spawnDustParticles(nearestBlock, { breakBurst: true });
             blocksMined++;
+            if (isCoopMode) coopMyBlocksMined++;
             const oType = nearestBlock.userData.objectType;
             const mName = nearestBlock.userData.materialType || (oType ? OBJECT_TYPE_TO_MATERIAL[oType] : null);
             if (mName) addToInventory(nearestBlock.material.color.getStyle());
@@ -2500,6 +3296,23 @@ function animate() {
 
     updateDustParticles(delta);
     updateCraftingBanner(delta);
+    // Tick co-op bonus banner fade-out
+    if (coopBonusBannerTimer > 0) {
+      coopBonusBannerTimer -= delta;
+      if (coopBonusBannerTimer <= 0) {
+        coopBonusBannerTimer = 0;
+        var _bonusEl = document.getElementById('coop-bonus-overlay');
+        if (_bonusEl) { _bonusEl.style.opacity = '0'; }
+        setTimeout(function () {
+          var _bEl = document.getElementById('coop-bonus-overlay');
+          if (_bEl) _bEl.style.display = 'none';
+        }, 1100);
+      } else if (coopBonusBannerTimer < 1.0) {
+        // Start fading in the last second
+        var _bonusEl2 = document.getElementById('coop-bonus-overlay');
+        if (_bonusEl2) _bonusEl2.style.opacity = String(coopBonusBannerTimer);
+      }
+    }
   } else {
     playerVelocity.x = 0;
     playerVelocity.z = 0;
@@ -2553,11 +3366,54 @@ function animate() {
   updatePowerupOverlays();
   updatePostProcessing(delta);
 
+  // Co-op: broadcast local max block height every 2 s
+  if (isCoopMode && !isGameOver && typeof coop !== 'undefined' && coop.state === CoopState.IN_GAME) {
+    if (time - coopHeightBroadcastLastTime >= 2000) {
+      coopHeightBroadcastLastTime = time;
+      const _localMaxY = typeof getMaxBlockHeight === 'function' ? getMaxBlockHeight() : 0;
+      coop.send({ type: 'height', maxY: _localMaxY });
+    }
+    // Decay partner status dot: lagging after 3 s, disconnected after 6 s
+    const _partnerAge = time - coopPartnerLastSeenTime;
+    const _newStatus = _partnerAge > 6000 ? 'disconnected' : _partnerAge > 3000 ? 'lagging' : 'connected';
+    if (_newStatus !== coopPartnerStatus) {
+      coopPartnerStatus = _newStatus;
+      if (typeof updateCoopPartnerStatus === 'function') updateCoopPartnerStatus();
+    }
+  }
+
+  // Co-op: broadcast local position every ~100 ms (rAF-aligned, skip if unchanged)
+  if (isCoopMode && typeof coop !== 'undefined' && coop.state === CoopState.IN_GAME) {
+    if (time - _coopPosBroadcastLastTime >= 100) {
+      const _camObj = controls ? controls.getObject() : null;
+      if (_camObj) {
+        const _bx = _camObj.position.x;
+        const _by = _camObj.position.y;
+        const _bz = _camObj.position.z;
+        const _bRotY = _camObj.rotation.y;
+        const _bRotX = camera.rotation.x;
+        const _prev  = _coopPosLastSent;
+        if (!_prev || _prev.x !== _bx || _prev.y !== _by || _prev.z !== _bz ||
+            _prev.rotY !== _bRotY || _prev.rotX !== _bRotX) {
+          coop.send({ type: 'pos', x: _bx, y: _by, z: _bz, rotY: _bRotY, rotX: _bRotX });
+          _coopPosLastSent = { x: _bx, y: _by, z: _bz, rotY: _bRotY, rotX: _bRotX };
+        }
+        _coopPosBroadcastLastTime = time;
+      }
+    }
+  }
+
+  // Co-op: interpolate remote avatar
+  if (typeof coopAvatar !== 'undefined') coopAvatar.tick();
+
   if (composer) {
     composer.render(delta);
   } else {
     renderer.render(scene, camera);
   }
+
+  // Co-op: render CSS2D nameplate layer on top
+  if (typeof coopAvatar !== 'undefined') coopAvatar.renderLabels();
 
   // Earthquake camera shake: sinusoidal position offset applied post-render
   // to avoid post-processing (SSAO) conflicts. Max ±0.15 units on X/Y.

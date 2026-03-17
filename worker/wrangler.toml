@@ -2,10 +2,34 @@ name = "minectris-leaderboard"
 main = "src/index.js"
 compatibility_date = "2024-01-01"
 
+[durable_objects]
+bindings = [
+  { name = "COOP_ROOMS", class_name = "CoopRoom" },
+  { name = "BATTLE_ROOMS", class_name = "BattleRoom" }
+]
+
+[[migrations]]
+tag = "v1"
+new_classes = ["CoopRoom"]
+
+[[migrations]]
+tag = "v2"
+new_classes = ["BattleRoom"]
+
 [[kv_namespaces]]
 binding = "LEADERBOARD_KV"
 id = "REPLACE_WITH_KV_NAMESPACE_ID"
 preview_id = "REPLACE_WITH_KV_PREVIEW_NAMESPACE_ID"
+
+[[kv_namespaces]]
+binding = "PUZZLES_KV"
+id = "REPLACE_WITH_PUZZLES_KV_NAMESPACE_ID"
+preview_id = "REPLACE_WITH_PUZZLES_KV_PREVIEW_NAMESPACE_ID"
+
+[[kv_namespaces]]
+binding = "COOP_LEADERBOARD"
+id = "REPLACE_WITH_COOP_LEADERBOARD_KV_NAMESPACE_ID"
+preview_id = "REPLACE_WITH_COOP_LEADERBOARD_KV_PREVIEW_NAMESPACE_ID"
 
 [vars]
 ALLOWED_ORIGIN = "https://minectris.com"

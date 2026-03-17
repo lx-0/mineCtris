@@ -664,6 +664,129 @@ function validateShareCode(code) {
   };
 }
 
+// ── Co-op Leaderboard ─────────────────────────────────────────────────────────
+//
+// KV Structure (binding: COOP_LEADERBOARD):
+//   coop:freeplay:{date}       → JSON array, top 100, sorted desc by score
+//   coop:daily:{date}          → JSON array, top 100, sorted desc by score
+//   coop:pair:{p1}:{p2}:{date} → JSON { submittedAt } for rate limiting
+//
+// POST /api/leaderboard/coop
+//   Body: { score, player1, player2, date, difficulty, isDaily? }
+//   Rate limit: one submission per ordered pair per day
+//
+// GET /api/leaderboard/coop/:date           → freeplay top 10 for that date
+// GET /api/leaderboard/coop/daily/:date     → daily-challenge top 10 for that date
+
+const COOP_DISPLAY_NAME_REGEX = /^[a-zA-Z0-9_]{1,16}$/;
+const VALID_DIFFICULTIES = new Set(['casual', 'normal', 'challenge']);
+const COOP_TOP_N = 10;
+const COOP_LB_MAX = 100;
+// Generous per-line cap for co-op (two players + difficulty multiplier)
+const COOP_MAX_SCORE_PER_LINE = 5000;
+
+/** Canonical pair key (alphabetically ordered so A+B == B+A). */
+function _coopPairKey(p1, p2, date) {
+  const a = p1.toLowerCase();
+  const b = p2.toLowerCase();
+  const [lo, hi] = a < b ? [a, b] : [b, a];
+  return `coop:pair:${lo}:${hi}:${date}`;
+}
+
+async function handlePostCoopScore(request, env) {
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return jsonResponse({ error: 'Invalid JSON' }, 400);
+  }
+
+  const { score, player1, player2, date, difficulty, isDaily } = body;
+
+  // Validate player names
+  if (!player1 || !COOP_DISPLAY_NAME_REGEX.test(player1)) {
+    return jsonResponse({ error: 'Invalid player1 display name' }, 400);
+  }
+  if (!player2 || !COOP_DISPLAY_NAME_REGEX.test(player2)) {
+    return jsonResponse({ error: 'Invalid player2 display name' }, 400);
+  }
+  if (player1.toLowerCase() === player2.toLowerCase()) {
+    return jsonResponse({ error: 'player1 and player2 must be different' }, 400);
+  }
+
+  // Validate date
+  if (!date || !isValidDate(date) || date !== todayUTC()) {
+    return jsonResponse({ error: 'Invalid or stale date' }, 400);
+  }
+
+  // Validate difficulty
+  if (!difficulty || !VALID_DIFFICULTIES.has(difficulty)) {
+    return jsonResponse({ error: 'Invalid difficulty' }, 400);
+  }
+
+  // Validate score
+  const scoreNum = parseInt(score, 10);
+  if (!Number.isInteger(scoreNum) || scoreNum < 0) {
+    return jsonResponse({ error: 'Invalid score' }, 400);
+  }
+
+  // Rate limit: one submission per pair per day
+  const pairKey = _coopPairKey(player1, player2, date);
+  const existingEntry = await env.COOP_LEADERBOARD.get(pairKey, { type: 'json' });
+  if (existingEntry) {
+    return jsonResponse({ error: 'Already submitted today' }, 429);
+  }
+
+  const lbType = isDaily ? 'daily' : 'freeplay';
+  const lbKey = `coop:${lbType}:${date}`;
+
+  // Load current leaderboard
+  let leaderboard = (await env.COOP_LEADERBOARD.get(lbKey, { type: 'json' })) || [];
+
+  const entry = {
+    player1,
+    player2,
+    score: scoreNum,
+    difficulty,
+    submittedAt: new Date().toISOString(),
+  };
+
+  leaderboard.push(entry);
+  leaderboard.sort((a, b) => b.score - a.score);
+  if (leaderboard.length > COOP_LB_MAX) {
+    leaderboard = leaderboard.slice(0, COOP_LB_MAX);
+  }
+
+  const ttl = 60 * 60 * 24 * 7; // 7 days
+  await Promise.all([
+    env.COOP_LEADERBOARD.put(lbKey, JSON.stringify(leaderboard), { expirationTtl: ttl }),
+    env.COOP_LEADERBOARD.put(pairKey, JSON.stringify({ submittedAt: entry.submittedAt }), { expirationTtl: ttl }),
+  ]);
+
+  const rank = leaderboard.findIndex(
+    e => e.player1 === player1 && e.player2 === player2 && e.score === scoreNum
+  ) + 1;
+
+  return jsonResponse({ ok: true, rank, total: leaderboard.length });
+}
+
+async function handleGetCoopLeaderboard(date, isDaily, env) {
+  if (!date || !isValidDate(date)) {
+    return jsonResponse({ error: 'Invalid date format. Use YYYY-MM-DD.' }, 400);
+  }
+  const lbType = isDaily ? 'daily' : 'freeplay';
+  const lbKey = `coop:${lbType}:${date}`;
+  const leaderboard = (await env.COOP_LEADERBOARD.get(lbKey, { type: 'json' })) || [];
+  const topN = leaderboard.slice(0, COOP_TOP_N).map((e, i) => ({
+    rank: i + 1,
+    player1: e.player1,
+    player2: e.player2,
+    score: e.score,
+    difficulty: e.difficulty,
+  }));
+  return jsonResponse({ date, isDaily: !!isDaily, entries: topN, total: leaderboard.length });
+}
+
 // ── Community Puzzle Handlers ─────────────────────────────────────────────────
 
 async function handlePostPuzzle(request, env) {
@@ -1061,6 +1184,168 @@ async function handleRoomWs(request, code, env) {
   return stub.fetch(request);
 }
 
+// ── Battle Room Relay (Durable Object) ───────────────────────────────────────
+// Identical relay logic to CoopRoom but under mode:"battle".
+// No shared PRNG — each player gets independent pieces from the client.
+
+export class BattleRoom {
+  constructor(state, env) {
+    this.state = state;
+    // Map<playerId ('host'|'guest'), WebSocket>
+    this.clients = new Map();
+    this.roomCode = null;
+  }
+
+  _broadcast(msgStr) {
+    for (const ws of this.clients.values()) {
+      if (ws.readyState === 1 /* OPEN */) ws.send(msgStr);
+    }
+  }
+
+  async fetch(request) {
+    const upgradeHeader = request.headers.get('Upgrade');
+    if (!upgradeHeader || upgradeHeader.toLowerCase() !== 'websocket') {
+      return new Response('Expected WebSocket upgrade', { status: 426 });
+    }
+
+    if (!this.roomCode) {
+      const parts = new URL(request.url).pathname.split('/');
+      // path: /battle/room/CODE/ws → parts[3]
+      this.roomCode = parts[3] || null;
+    }
+
+    let playerId;
+    if (!this.clients.has('host')) {
+      playerId = 'host';
+    } else if (!this.clients.has('guest')) {
+      playerId = 'guest';
+    } else {
+      return new Response('Room full', { status: 409 });
+    }
+
+    const pair = new WebSocketPair();
+    const [client, server] = Object.values(pair);
+    server.accept();
+
+    this.clients.set(playerId, server);
+
+    if (this.clients.size === 1) {
+      await this.state.storage.setAlarm(Date.now() + 2 * 60 * 60 * 1000);
+    }
+
+    if (playerId === 'guest') {
+      const joinMsg = JSON.stringify({ type: 'player_joined', playerId: 'guest' });
+      const hostWs = this.clients.get('host');
+      if (hostWs && hostWs.readyState === 1) hostWs.send(joinMsg);
+      server.send(JSON.stringify({ type: 'player_joined', playerId: 'host' }));
+    }
+
+    server.addEventListener('message', (event) => {
+      let msg = null;
+      try { msg = JSON.parse(event.data); } catch (_) {}
+
+      if (msg && msg.type === 'ping') {
+        server.send(JSON.stringify({ type: 'pong' }));
+        return;
+      }
+
+      // Relay all other messages to the partner
+      const otherId = playerId === 'host' ? 'guest' : 'host';
+      const otherWs = this.clients.get(otherId);
+      if (otherWs && otherWs.readyState === 1) {
+        otherWs.send(event.data);
+      }
+    });
+
+    server.addEventListener('close', () => {
+      this.clients.delete(playerId);
+      const otherId = playerId === 'host' ? 'guest' : 'host';
+      const otherWs = this.clients.get(otherId);
+      if (otherWs && otherWs.readyState === 1) {
+        otherWs.send(JSON.stringify({ type: 'player_left', playerId }));
+      }
+      if (this.clients.size === 0) {
+        this.state.storage.deleteAll().catch(() => {});
+      }
+    });
+
+    server.addEventListener('error', () => {
+      this.clients.delete(playerId);
+    });
+
+    return new Response(null, { status: 101, webSocket: client });
+  }
+
+  async alarm() {
+    for (const ws of this.clients.values()) {
+      try { ws.close(1001, 'Room expired'); } catch (_) {}
+    }
+    this.clients.clear();
+    await this.state.storage.deleteAll();
+  }
+}
+
+// ── Battle Room HTTP Handlers ─────────────────────────────────────────────────
+
+function battleRoomWsUrl(requestUrl, code) {
+  const u = new URL(requestUrl);
+  const proto = u.protocol === 'https:' ? 'wss:' : 'ws:';
+  return `${proto}//${u.host}/battle/room/${code}/ws`;
+}
+
+async function handleBattleRoomCreate(request, env) {
+  const code = generateRoomCode();
+  return jsonResponse({ roomCode: code, wsUrl: battleRoomWsUrl(request.url, code) }, 201);
+}
+
+async function handleBattleRoomJoin(request, code, env) {
+  if (!code || !/^[A-Z0-9]{4}$/.test(code)) {
+    return jsonResponse({ error: 'Invalid room code' }, 400);
+  }
+  return jsonResponse({ wsUrl: battleRoomWsUrl(request.url, code) });
+}
+
+async function handleBattleRoomWs(request, code, env) {
+  if (!code || !/^[A-Z0-9]{4}$/.test(code)) {
+    return jsonResponse({ error: 'Invalid room code' }, 400);
+  }
+  const id = env.BATTLE_ROOMS.idFromName(code);
+  const stub = env.BATTLE_ROOMS.get(id);
+  return stub.fetch(request);
+}
+
+// ── Battle Quick Match ────────────────────────────────────────────────────────
+// KV key: battle:quickmatch:waiting → { roomCode, wsUrl, createdAt }
+// A waiting slot expires after 90 seconds (TTL enforced in-code).
+
+async function handleBattleQuickMatch(request, env) {
+  const WAITING_KEY = 'battle:quickmatch:waiting';
+  const TTL_MS = 90_000;
+
+  const raw = await env.LEADERBOARD_KV.get(WAITING_KEY, { type: 'json' });
+
+  if (raw && raw.createdAt && (Date.now() - raw.createdAt) < TTL_MS) {
+    // Found a waiting player — join their room as guest
+    await env.LEADERBOARD_KV.delete(WAITING_KEY);
+    return jsonResponse({
+      waiting: false,
+      roomCode: raw.roomCode,
+      wsUrl: raw.wsUrl,
+    });
+  }
+
+  // No valid waiting slot — create a room and wait as host
+  const code = generateRoomCode();
+  const wsUrl = battleRoomWsUrl(request.url, code);
+  await env.LEADERBOARD_KV.put(WAITING_KEY, JSON.stringify({
+    roomCode: code,
+    wsUrl,
+    createdAt: Date.now(),
+  }), { expirationTtl: 120 }); // 2-minute KV TTL as safety net
+
+  return jsonResponse({ waiting: true, roomCode: code, wsUrl }, 201);
+}
+
 // ── Router ────────────────────────────────────────────────────────────────────
 
 export default {
@@ -1085,6 +1370,16 @@ export default {
       const code = url.pathname.split('/')[2];
       // WebSocket upgrade — bypass CORS header merging below and return directly
       return handleRoomWs(request, code, env);
+    } else if (method === 'POST' && url.pathname === '/battle/room/create') {
+      response = await handleBattleRoomCreate(request, env);
+    } else if (method === 'GET' && /^\/battle\/room\/[A-Z0-9]{4}\/join$/.test(url.pathname)) {
+      const code = url.pathname.split('/')[3];
+      response = await handleBattleRoomJoin(request, code, env);
+    } else if (/^\/battle\/room\/[A-Z0-9]{4}\/ws$/.test(url.pathname)) {
+      const code = url.pathname.split('/')[3];
+      return handleBattleRoomWs(request, code, env);
+    } else if (method === 'POST' && url.pathname === '/battle/quickmatch') {
+      response = await handleBattleQuickMatch(request, env);
     } else if (method === 'POST' && url.pathname === '/api/puzzles') {
       response = await handlePostPuzzle(request, env);
     } else if (method === 'GET' && url.pathname === '/api/puzzles') {
@@ -1122,6 +1417,14 @@ export default {
     } else if (method === 'GET' && url.pathname.startsWith('/api/leaderboard/week/')) {
       const weekStr = url.pathname.replace('/api/leaderboard/week/', '');
       response = await handleGetWeeklyLeaderboard(weekStr, env);
+    } else if (method === 'POST' && url.pathname === '/api/leaderboard/coop') {
+      response = await handlePostCoopScore(request, env);
+    } else if (method === 'GET' && url.pathname.startsWith('/api/leaderboard/coop/daily/')) {
+      const date = url.pathname.replace('/api/leaderboard/coop/daily/', '');
+      response = await handleGetCoopLeaderboard(date, true, env);
+    } else if (method === 'GET' && url.pathname.startsWith('/api/leaderboard/coop/')) {
+      const date = url.pathname.replace('/api/leaderboard/coop/', '');
+      response = await handleGetCoopLeaderboard(date, false, env);
     } else if (method === 'GET' && url.pathname.startsWith('/api/leaderboard/')) {
       const date = url.pathname.replace('/api/leaderboard/', '');
       response = await handleGetLeaderboard(date, env);

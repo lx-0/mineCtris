@@ -1626,6 +1626,592 @@ body {
   box-shadow: 0 0 28px rgba(255, 100, 0, 0.55);
 }
 
+/* ── Co-op mode card ── */
+.mode-card-coop {
+  border-color: rgba(0, 180, 255, 0.5);
+  box-shadow: 0 0 14px rgba(0, 180, 255, 0.1);
+}
+.mode-card-coop .mode-card-name {
+  color: #00ccff;
+  text-shadow: 0 0 6px #00ccff;
+}
+.mode-card-coop .mode-card-desc {
+  color: #99eeff;
+}
+.mode-card-coop:hover {
+  border-color: #00ccff !important;
+  box-shadow: 0 0 22px rgba(0, 180, 255, 0.4) !important;
+}
+.mode-card-coop.mode-card-highlighted {
+  border-color: #00ccff;
+  box-shadow: 0 0 28px rgba(0, 180, 255, 0.55);
+}
+
+/* ── Co-op lobby overlay ── */
+#coop-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.9);
+  z-index: 300;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+#coop-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  background: rgba(0, 15, 25, 0.95);
+  border: 2px solid rgba(0, 180, 255, 0.5);
+  border-radius: 10px;
+  padding: 40px 48px;
+  min-width: 320px;
+  max-width: 460px;
+  box-shadow: 0 0 40px rgba(0, 180, 255, 0.2);
+  text-align: center;
+}
+#coop-title {
+  font-family: "Press Start 2P", cursive;
+  font-size: 1.1em;
+  color: #00ccff;
+  text-shadow: 0 0 10px #00ccff, 0 0 24px #0088cc;
+  letter-spacing: 3px;
+  margin-bottom: 4px;
+}
+#coop-subtitle {
+  font-family: "Press Start 2P", cursive;
+  font-size: 0.45em;
+  color: #99eeff;
+  line-height: 1.7;
+}
+#coop-choice-btns {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  width: 100%;
+  margin-top: 8px;
+}
+#coop-create-btn,
+#coop-join-btn-choice {
+  font-family: "Press Start 2P", cursive;
+  font-size: 0.65em;
+  padding: 14px 24px;
+  border-radius: 5px;
+  cursor: pointer;
+  letter-spacing: 1px;
+  transition: background 0.15s, box-shadow 0.15s;
+}
+#coop-create-btn {
+  background: rgba(0, 180, 255, 0.15);
+  border: 2px solid rgba(0, 180, 255, 0.6);
+  color: #00ccff;
+}
+#coop-create-btn:hover {
+  background: rgba(0, 180, 255, 0.3);
+  box-shadow: 0 0 14px rgba(0, 180, 255, 0.4);
+}
+#coop-join-btn-choice {
+  background: rgba(0, 255, 136, 0.1);
+  border: 2px solid rgba(0, 255, 136, 0.4);
+  color: #00ff88;
+}
+#coop-join-btn-choice:hover {
+  background: rgba(0, 255, 136, 0.22);
+  box-shadow: 0 0 14px rgba(0, 255, 136, 0.35);
+}
+#coop-room-code-label {
+  font-family: "Press Start 2P", cursive;
+  font-size: 0.45em;
+  color: #99eeff;
+  letter-spacing: 2px;
+  margin-bottom: -8px;
+}
+#coop-room-code {
+  font-family: "Press Start 2P", cursive;
+  font-size: 2.4em;
+  color: #00ccff;
+  text-shadow: 0 0 14px #00ccff, 0 0 28px #0066aa;
+  letter-spacing: 10px;
+  padding: 8px 16px;
+  border: 2px solid rgba(0, 180, 255, 0.3);
+  border-radius: 6px;
+  background: rgba(0, 180, 255, 0.05);
+  min-width: 160px;
+}
+#coop-copy-link-btn {
+  font-family: "Press Start 2P", cursive;
+  font-size: 0.5em;
+  color: #00ff88;
+  background: rgba(0, 255, 136, 0.1);
+  border: 1px solid rgba(0, 255, 136, 0.4);
+  border-radius: 4px;
+  padding: 8px 16px;
+  cursor: pointer;
+  letter-spacing: 0.5px;
+  transition: background 0.15s;
+}
+#coop-copy-link-btn:hover {
+  background: rgba(0, 255, 136, 0.22);
+}
+#coop-copy-feedback {
+  font-family: "Press Start 2P", cursive;
+  font-size: 0.4em;
+  color: #00ff88;
+  min-height: 1.4em;
+}
+#coop-waiting-spinner {
+  font-family: "Press Start 2P", cursive;
+  font-size: 0.45em;
+  color: #99eeff;
+  letter-spacing: 1px;
+  animation: coop-blink 1.2s step-end infinite;
+}
+@keyframes coop-blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.35; }
+}
+#coop-status-msg,
+#coop-join-status-msg {
+  font-family: "Press Start 2P", cursive;
+  font-size: 0.4em;
+  color: #ff8888;
+  min-height: 1.4em;
+  letter-spacing: 0.5px;
+}
+#coop-join-hint {
+  font-family: "Press Start 2P", cursive;
+  font-size: 0.42em;
+  color: #99eeff;
+  line-height: 1.7;
+}
+#coop-code-input {
+  font-family: "Press Start 2P", cursive;
+  font-size: 1.8em;
+  color: #00ccff;
+  background: rgba(0, 20, 40, 0.8);
+  border: 2px solid rgba(0, 180, 255, 0.5);
+  border-radius: 6px;
+  text-align: center;
+  width: 160px;
+  padding: 10px;
+  letter-spacing: 8px;
+  text-transform: uppercase;
+  caret-color: #00ccff;
+}
+#coop-code-input:focus {
+  outline: none;
+  border-color: #00ccff;
+  box-shadow: 0 0 12px rgba(0, 180, 255, 0.35);
+}
+#coop-join-btns {
+  display: flex;
+  gap: 14px;
+  justify-content: center;
+}
+#coop-join-confirm-btn {
+  font-family: "Press Start 2P", cursive;
+  font-size: 0.62em;
+  padding: 12px 28px;
+  background: rgba(0, 180, 255, 0.2);
+  border: 2px solid rgba(0, 180, 255, 0.6);
+  border-radius: 5px;
+  color: #00ccff;
+  cursor: pointer;
+  letter-spacing: 1px;
+  transition: background 0.15s, box-shadow 0.15s;
+}
+#coop-join-confirm-btn:hover {
+  background: rgba(0, 180, 255, 0.35);
+  box-shadow: 0 0 14px rgba(0, 180, 255, 0.4);
+}
+#coop-ready-msg {
+  font-family: "Press Start 2P", cursive;
+  font-size: 0.62em;
+  color: #00ff88;
+  text-shadow: 0 0 8px #00ff88;
+  letter-spacing: 1px;
+}
+#coop-ready-code {
+  font-family: "Press Start 2P", cursive;
+  font-size: 0.42em;
+  color: #99eeff;
+  letter-spacing: 2px;
+}
+#coop-diff-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  margin: 8px 0;
+  width: 100%;
+}
+.coop-diff-heading {
+  font-family: "Press Start 2P", cursive;
+  font-size: 0.4em;
+  color: rgba(0, 255, 221, 0.6);
+  letter-spacing: 2px;
+  margin-bottom: 2px;
+}
+#coop-diff-btns {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.coop-diff-btn {
+  font-family: "Press Start 2P", cursive;
+  font-size: 0.38em;
+  padding: 8px 12px;
+  background: rgba(0, 40, 40, 0.5);
+  border: 1px solid rgba(0, 255, 221, 0.3);
+  border-radius: 5px;
+  color: rgba(0, 255, 221, 0.55);
+  cursor: pointer;
+  text-align: center;
+  line-height: 1.7;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+  min-width: 90px;
+}
+.coop-diff-btn:hover {
+  background: rgba(0, 255, 221, 0.12);
+  border-color: rgba(0, 255, 221, 0.6);
+  color: #00ffdd;
+}
+.coop-diff-btn.coop-diff-selected {
+  background: rgba(0, 255, 221, 0.18);
+  border-color: #00ffdd;
+  color: #00ffdd;
+  text-shadow: 0 0 6px #00ffdd88;
+}
+.coop-diff-btn:disabled {
+  cursor: default;
+}
+.coop-diff-stats {
+  font-size: 0.75em;
+  color: rgba(0, 255, 221, 0.45);
+}
+#coop-diff-guest-display {
+  font-family: "Press Start 2P", cursive;
+  font-size: 0.45em;
+  color: #00ffdd;
+  letter-spacing: 2px;
+  padding: 6px 14px;
+  border: 1px solid rgba(0, 255, 221, 0.35);
+  border-radius: 4px;
+  background: rgba(0, 40, 40, 0.5);
+}
+#coop-ready-status {
+  display: flex;
+  gap: 18px;
+  margin: 6px 0 4px;
+  font-family: "Press Start 2P", cursive;
+  font-size: 0.38em;
+  color: rgba(180, 180, 180, 0.6);
+}
+#coop-host-ready-indicator.ready,
+#coop-guest-ready-indicator.ready {
+  color: #00ff88;
+  text-shadow: 0 0 6px #00ff88;
+}
+#coop-start-btn {
+  font-family: "Press Start 2P", cursive;
+  font-size: 0.75em;
+  padding: 16px 36px;
+  background: rgba(0, 255, 136, 0.15);
+  border: 2px solid rgba(0, 255, 136, 0.6);
+  border-radius: 6px;
+  color: #00ff88;
+  cursor: pointer;
+  letter-spacing: 2px;
+  text-shadow: 0 0 6px #00ff88;
+  transition: background 0.15s, box-shadow 0.15s;
+  margin-top: 8px;
+}
+#coop-start-btn:hover {
+  background: rgba(0, 255, 136, 0.3);
+  box-shadow: 0 0 20px rgba(0, 255, 136, 0.45);
+}
+/* Shared cancel/back buttons in coop overlay */
+#coop-choice-cancel-btn,
+#coop-create-cancel-btn,
+#coop-join-cancel-btn,
+#coop-ready-cancel-btn {
+  font-family: "Press Start 2P", cursive;
+  font-size: 0.48em;
+  color: #888;
+  background: transparent;
+  border: 1px solid rgba(136, 136, 136, 0.35);
+  border-radius: 4px;
+  padding: 8px 18px;
+  cursor: pointer;
+  letter-spacing: 0.5px;
+  transition: color 0.15s, border-color 0.15s;
+  margin-top: 4px;
+}
+#coop-choice-cancel-btn:hover,
+#coop-create-cancel-btn:hover,
+#coop-join-cancel-btn:hover,
+#coop-ready-cancel-btn:hover {
+  color: #ccc;
+  border-color: rgba(200, 200, 200, 0.5);
+}
+
+/* ── Battle mode card ── */
+.mode-card-battle {
+  border-color: rgba(255, 60, 60, 0.5);
+  box-shadow: 0 0 14px rgba(255, 60, 60, 0.1);
+}
+.mode-card-battle .mode-card-name {
+  color: #ff4444;
+  text-shadow: 0 0 6px #ff4444;
+}
+.mode-card-battle .mode-card-desc {
+  color: #ffaaaa;
+}
+.mode-card-battle:hover {
+  border-color: #ff4444 !important;
+  box-shadow: 0 0 22px rgba(255, 60, 60, 0.4) !important;
+}
+.mode-card-battle.mode-card-highlighted {
+  border-color: #ff4444;
+  box-shadow: 0 0 28px rgba(255, 60, 60, 0.55);
+}
+
+/* ── Battle lobby overlay ── */
+#battle-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.9);
+  z-index: 300;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+#battle-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  background: rgba(25, 5, 5, 0.97);
+  border: 2px solid rgba(255, 60, 60, 0.5);
+  border-radius: 10px;
+  padding: 40px 48px;
+  min-width: 320px;
+  max-width: 460px;
+  font-family: "Press Start 2P", cursive;
+  text-align: center;
+}
+#battle-title {
+  font-size: 1.3em;
+  color: #ff4444;
+  text-shadow: 0 0 12px rgba(255, 60, 60, 0.7);
+  letter-spacing: 2px;
+}
+#battle-subtitle {
+  font-size: 0.55em;
+  color: #ff9999;
+  letter-spacing: 1px;
+}
+#battle-choice-btns {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+}
+#battle-create-btn,
+#battle-join-btn-choice {
+  font-family: "Press Start 2P", cursive;
+  font-size: 0.65em;
+  padding: 14px 20px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+#battle-create-btn {
+  background: rgba(255, 60, 60, 0.18);
+  border: 2px solid rgba(255, 60, 60, 0.7);
+  color: #ff6666;
+}
+#battle-create-btn:hover {
+  background: rgba(255, 60, 60, 0.32);
+  border-color: #ff4444;
+}
+#battle-join-btn-choice {
+  background: rgba(255, 140, 60, 0.12);
+  border: 2px solid rgba(255, 140, 60, 0.5);
+  color: #ff9966;
+}
+#battle-join-btn-choice:hover {
+  background: rgba(255, 140, 60, 0.25);
+  border-color: #ff8844;
+}
+#battle-qm-divider {
+  font-size: 0.5em;
+  color: #886666;
+  letter-spacing: 1px;
+}
+#battle-quickmatch-btn {
+  font-family: "Press Start 2P", cursive;
+  font-size: 0.65em;
+  padding: 14px 20px;
+  border-radius: 6px;
+  cursor: pointer;
+  background: rgba(255, 200, 60, 0.12);
+  border: 2px solid rgba(255, 200, 60, 0.5);
+  color: #ffcc44;
+  width: 100%;
+  transition: background 0.15s, border-color 0.15s;
+}
+#battle-quickmatch-btn:hover {
+  background: rgba(255, 200, 60, 0.25);
+  border-color: #ffcc44;
+}
+#battle-room-code-label {
+  font-size: 0.5em;
+  color: #ff9999;
+  letter-spacing: 1px;
+}
+#battle-room-code {
+  font-size: 2.4em;
+  color: #ff4444;
+  letter-spacing: 12px;
+  text-shadow: 0 0 20px rgba(255, 60, 60, 0.8);
+  padding: 10px 0;
+  min-width: 120px;
+  text-align: center;
+}
+#battle-copy-link-btn {
+  font-family: "Press Start 2P", cursive;
+  font-size: 0.52em;
+  padding: 10px 16px;
+  border-radius: 5px;
+  cursor: pointer;
+  background: rgba(255, 60, 60, 0.1);
+  border: 1px solid rgba(255, 60, 60, 0.4);
+  color: #ff9999;
+  transition: background 0.15s;
+}
+#battle-copy-link-btn:hover { background: rgba(255, 60, 60, 0.22); }
+#battle-copy-feedback {
+  font-size: 0.45em;
+  color: #ff9999;
+  min-height: 1em;
+}
+#battle-waiting-spinner {
+  font-size: 0.5em;
+  color: #ffaaaa;
+  animation: battle-blink 1.2s step-end infinite;
+}
+@keyframes battle-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+#battle-status-msg,
+#battle-join-status-msg {
+  font-size: 0.45em;
+  color: #ff8888;
+  min-height: 1em;
+  text-align: center;
+}
+#battle-join-hint {
+  font-size: 0.5em;
+  color: #ffaaaa;
+  margin-bottom: 4px;
+}
+#battle-code-input {
+  font-family: "Press Start 2P", cursive;
+  font-size: 1.6em;
+  width: 140px;
+  text-align: center;
+  background: rgba(30, 5, 5, 0.9);
+  border: 2px solid rgba(255, 60, 60, 0.5);
+  border-radius: 6px;
+  color: #ff4444;
+  padding: 10px 8px;
+  letter-spacing: 8px;
+  text-transform: uppercase;
+  outline: none;
+}
+#battle-code-input:focus {
+  border-color: #ff4444;
+  box-shadow: 0 0 10px rgba(255, 60, 60, 0.4);
+}
+#battle-join-btns {
+  display: flex;
+  gap: 14px;
+}
+#battle-join-confirm-btn {
+  font-family: "Press Start 2P", cursive;
+  font-size: 0.65em;
+  padding: 12px 24px;
+  border-radius: 6px;
+  cursor: pointer;
+  background: rgba(255, 60, 60, 0.2);
+  border: 2px solid rgba(255, 60, 60, 0.7);
+  color: #ff6666;
+  transition: background 0.15s;
+}
+#battle-join-confirm-btn:hover { background: rgba(255, 60, 60, 0.35); }
+#battle-ready-msg {
+  font-size: 0.55em;
+  color: #ff9999;
+  letter-spacing: 1px;
+}
+#battle-ready-code {
+  font-size: 0.5em;
+  color: #ff8888;
+}
+#battle-ready-status {
+  display: flex;
+  gap: 32px;
+  font-size: 0.52em;
+  color: #886666;
+}
+#battle-host-ready-indicator.ready,
+#battle-guest-ready-indicator.ready {
+  color: #ff4444;
+}
+#battle-start-btn {
+  font-family: "Press Start 2P", cursive;
+  font-size: 0.75em;
+  padding: 16px 32px;
+  border-radius: 6px;
+  cursor: pointer;
+  background: rgba(255, 60, 60, 0.22);
+  border: 2px solid rgba(255, 60, 60, 0.8);
+  color: #ff4444;
+  text-shadow: 0 0 6px rgba(255, 60, 60, 0.5);
+  transition: background 0.15s, box-shadow 0.15s;
+  width: 100%;
+}
+#battle-start-btn:hover {
+  background: rgba(255, 60, 60, 0.38);
+  box-shadow: 0 0 16px rgba(255, 60, 60, 0.4);
+}
+/* Shared cancel/back buttons in battle overlay */
+#battle-choice-cancel-btn,
+#battle-create-cancel-btn,
+#battle-join-cancel-btn,
+#battle-ready-cancel-btn {
+  font-family: "Press Start 2P", cursive;
+  font-size: 0.52em;
+  padding: 8px 16px;
+  border-radius: 5px;
+  cursor: pointer;
+  background: transparent;
+  border: 1px solid rgba(150, 100, 100, 0.4);
+  color: #886666;
+  transition: color 0.15s, border-color 0.15s;
+}
+#battle-choice-cancel-btn:hover,
+#battle-create-cancel-btn:hover,
+#battle-join-cancel-btn:hover,
+#battle-ready-cancel-btn:hover {
+  color: #ccc;
+  border-color: rgba(200, 150, 150, 0.5);
+}
+
 /* Reset World button inside the survival card */
 .survival-reset-btn {
   font-family: "Press Start 2P", cursive;
@@ -1979,9 +2565,22 @@ body {
   font-family: "Press Start 2P", cursive;
   font-size: 9px;
   color: rgba(200, 160, 255, 0.7);
-  margin-bottom: 32px;
+  margin-bottom: 12px;
 }
-#puzzle-next-btn, #puzzle-retry-btn, #puzzle-select-btn, #puzzle-main-menu-btn {
+#puzzle-complete-time {
+  font-family: "Press Start 2P", cursive;
+  font-size: 9px;
+  color: rgba(180, 220, 255, 0.8);
+  margin-bottom: 6px;
+}
+#puzzle-complete-score {
+  font-family: "Press Start 2P", cursive;
+  font-size: 9px;
+  color: rgba(180, 220, 255, 0.8);
+  margin-bottom: 28px;
+}
+#puzzle-next-btn, #puzzle-retry-btn, #puzzle-select-btn, #puzzle-main-menu-btn,
+#puzzle-complete-share-btn, #puzzle-complete-edit-btn {
   font-family: "Press Start 2P", cursive;
   font-size: 12px;
   color: #000;
@@ -1996,10 +2595,53 @@ body {
 #puzzle-next-btn:hover { background: #ffd700; }
 #puzzle-retry-btn { background: #7060a0; color: #fff; }
 #puzzle-retry-btn:hover { background: #c060ff; color: #000; }
+#puzzle-complete-share-btn { background: rgba(0, 160, 220, 0.85); color: #fff; }
+#puzzle-complete-share-btn:hover { background: #00c8ff; color: #000; }
+#puzzle-complete-edit-btn { background: rgba(50, 140, 80, 0.85); color: #fff; }
+#puzzle-complete-edit-btn:hover { background: #40e080; color: #000; }
 #puzzle-select-btn { background: rgba(80, 40, 100, 0.8); color: #d8a0ff; border: 1px solid rgba(180,100,255,0.4); }
 #puzzle-select-btn:hover { background: #c060ff; color: #000; }
 #puzzle-main-menu-btn { background: transparent; color: rgba(200, 160, 255, 0.5); border: 1px solid rgba(180,100,255,0.25); font-size: 10px; }
 #puzzle-main-menu-btn:hover { color: #fff; border-color: #c060ff; }
+
+/* ── Puzzle vote area ── */
+#puzzle-vote-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+#puzzle-vote-label {
+  font-family: "Press Start 2P", cursive;
+  font-size: 8px;
+  color: rgba(200, 160, 255, 0.8);
+}
+#puzzle-vote-buttons {
+  display: flex;
+  gap: 12px;
+}
+#puzzle-vote-up, #puzzle-vote-down {
+  font-size: 22px;
+  background: rgba(40, 20, 60, 0.7);
+  border: 1px solid rgba(180, 100, 255, 0.35);
+  border-radius: 6px;
+  padding: 8px 16px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, transform 0.1s;
+  line-height: 1;
+}
+#puzzle-vote-up:hover  { background: rgba(0, 200, 80, 0.25);  border-color: #00c860; }
+#puzzle-vote-down:hover { background: rgba(200, 50, 50, 0.25); border-color: #c84040; }
+#puzzle-vote-up.voted-active  { background: rgba(0, 200, 80, 0.4);  border-color: #00ff88; transform: scale(1.1); }
+#puzzle-vote-down.voted-active { background: rgba(200, 50, 50, 0.4); border-color: #ff4444; transform: scale(1.1); }
+#puzzle-vote-up:disabled, #puzzle-vote-down:disabled { cursor: default; opacity: 0.7; }
+#puzzle-vote-msg {
+  font-family: "Press Start 2P", cursive;
+  font-size: 7px;
+  color: rgba(180, 255, 180, 0.7);
+  min-height: 12px;
+}
 
 #mode-select-back {
   font-family: "Press Start 2P", cursive;
@@ -2150,6 +2792,48 @@ body {
   transition: background 0.15s;
 }
 #achievements-close-btn:hover { background: #fff; }
+/* Achievement filter buttons */
+.ach-filter-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+.ach-filter-btn {
+  font-family: "Press Start 2P", cursive;
+  font-size: 7px;
+  padding: 5px 10px;
+  border: 1px solid rgba(255, 215, 0, 0.35);
+  background: transparent;
+  color: rgba(255, 215, 0, 0.6);
+  border-radius: 3px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.ach-filter-btn.active {
+  background: rgba(255, 215, 0, 0.18);
+  color: #ffd700;
+  border-color: #ffd700;
+}
+.ach-filter-btn:hover { background: rgba(255, 215, 0, 0.1); }
+/* CO-OP badge on achievement cards */
+.ach-coop-badge {
+  font-family: "Press Start 2P", cursive;
+  font-size: 5px;
+  color: #00e0c8;
+  background: rgba(0, 180, 180, 0.12);
+  border: 1px solid rgba(0, 200, 200, 0.4);
+  border-radius: 2px;
+  padding: 2px 4px;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+/* Co-op achievement count on mode-select card */
+.mode-coop-ach-count {
+  font-family: "Press Start 2P", cursive;
+  font-size: 6px;
+  color: rgba(0, 210, 200, 0.8);
+  margin-top: 4px;
+}
 
 /* ── Stats overlay ── */
 #stats-overlay {
@@ -3998,6 +4682,62 @@ body.theme-legendary #score-display {
 .lb-season-badge-2 { filter: drop-shadow(0 0 4px silver); }
 .lb-season-badge-3 { filter: drop-shadow(0 0 4px #cd7f32); }
 
+/* ── Co-op leaderboard ───────────────────────────────────────────────────── */
+.lb-coop-label {
+  text-align: center;
+  font-size: 0.8em;
+  color: #88ddaa;
+  margin-bottom: 6px;
+  letter-spacing: 0.05em;
+}
+.lb-diff-badge {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 0.75em;
+  font-weight: bold;
+  letter-spacing: 0.04em;
+}
+.lb-diff-casual    { background: #1a4a2a; color: #7dffb3; border: 1px solid #2a7a4a; }
+.lb-diff-normal    { background: #1a2a4a; color: #7db3ff; border: 1px solid #2a4a7a; }
+.lb-diff-challenge { background: #4a1a1a; color: #ffaa7d; border: 1px solid #7a2a2a; }
+
+/* ── Co-op lobby daily divider & best ───────────────────────────────────── */
+#coop-daily-divider {
+  color: #557755;
+  font-size: 0.85em;
+  margin: 10px 0 6px;
+}
+#coop-daily-btn {
+  background: #1a3a2a;
+  border: 1px solid #2a6a4a;
+  color: #7dffb3;
+  padding: 8px 18px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.95em;
+  margin-bottom: 6px;
+}
+#coop-daily-btn:hover { background: #224433; border-color: #00ff88; }
+#coop-daily-best-display {
+  font-size: 0.78em;
+  color: #88ccaa;
+  margin-bottom: 4px;
+}
+
+/* ── Co-op game-over rank ────────────────────────────────────────────────── */
+#coop-go-rank {
+  font-size: 1.2em;
+  color: #00ff88;
+  margin: 8px 0 4px;
+  font-weight: bold;
+}
+#coop-go-lb-feedback {
+  font-size: 0.8em;
+  color: #99ccaa;
+  margin-bottom: 4px;
+}
+
 /* ── End-of-season summary overlay ───────────────────────────────────────── */
 #season-end-overlay {
   position: fixed;
@@ -4207,4 +4947,1605 @@ body.theme-legendary #score-display {
   color: #ccc;
   line-height: 1;
   white-space: nowrap;
+}
+
+/* ── Editor HUD action row (exit + clear draft) ───────────────────────────── */
+#editor-hud-actions {
+  display: flex;
+  gap: 8px;
+  pointer-events: all;
+  margin-top: 4px;
+}
+
+#editor-clear-draft-btn {
+  font-family: "Press Start 2P", cursive;
+  font-size: 0.55em;
+  color: #fff;
+  background: rgba(140, 40, 40, 0.75);
+  border: 1px solid #c06060;
+  border-radius: 4px;
+  padding: 6px 14px;
+  cursor: pointer;
+  letter-spacing: 1px;
+}
+#editor-clear-draft-btn:hover {
+  background: rgba(180, 60, 60, 0.85);
+  border-color: #e08080;
+}
+
+/* Override pointer-events on exit btn now that it sits inside #editor-hud-actions */
+#editor-hud-actions #editor-exit-btn {
+  margin-top: 0;
+  pointer-events: all;
+}
+
+/* ── Editor draft prompt overlay ─────────────────────────────────────────── */
+#editor-draft-prompt {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.72);
+  z-index: 500;
+}
+#editor-draft-prompt-inner {
+  background: rgba(20, 20, 20, 0.95);
+  border: 2px solid #ffd700;
+  border-radius: 10px;
+  padding: 32px 40px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  max-width: 420px;
+  text-align: center;
+}
+#editor-draft-prompt-title {
+  font-family: "Press Start 2P", cursive;
+  font-size: 1em;
+  color: #ffd700;
+  text-shadow: 0 0 10px #b8860b;
+}
+#editor-draft-prompt-sub {
+  font-family: "Press Start 2P", cursive;
+  font-size: 0.5em;
+  color: #ccc;
+  line-height: 1.6;
+}
+#editor-draft-prompt-btns {
+  display: flex;
+  gap: 14px;
+  margin-top: 6px;
+}
+#editor-draft-load-btn,
+#editor-draft-fresh-btn {
+  font-family: "Press Start 2P", cursive;
+  font-size: 0.55em;
+  padding: 10px 18px;
+  border-radius: 6px;
+  cursor: pointer;
+  letter-spacing: 1px;
+  border: 1px solid;
+}
+#editor-draft-load-btn {
+  color: #111;
+  background: #ffd700;
+  border-color: #b8860b;
+}
+#editor-draft-load-btn:hover {
+  background: #ffe44d;
+}
+#editor-draft-fresh-btn {
+  color: #fff;
+  background: rgba(80, 80, 80, 0.8);
+  border-color: #888;
+}
+#editor-draft-fresh-btn:hover {
+  background: rgba(120, 120, 120, 0.9);
+  border-color: #ccc;
+}
+
+/* ── Editor Test + Share buttons ─────────────────────────────────────────── */
+#editor-test-btn {
+  font-family: "Press Start 2P", cursive;
+  font-size: 0.55em;
+  color: #111;
+  background: #ffd700;
+  border: 1px solid #b8860b;
+  border-radius: 4px;
+  padding: 6px 14px;
+  cursor: pointer;
+  letter-spacing: 1px;
+  pointer-events: all;
+}
+#editor-test-btn:hover {
+  background: #ffe44d;
+}
+#editor-share-btn {
+  font-family: "Press Start 2P", cursive;
+  font-size: 0.55em;
+  color: #fff;
+  background: rgba(30, 90, 160, 0.8);
+  border: 1px solid #4488cc;
+  border-radius: 4px;
+  padding: 6px 14px;
+  cursor: pointer;
+  letter-spacing: 1px;
+  pointer-events: all;
+}
+#editor-share-btn:hover {
+  background: rgba(50, 120, 200, 0.9);
+  border-color: #66aaee;
+}
+
+/* ── Win condition builder panel ─────────────────────────────────────────── */
+#editor-win-condition {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  background: rgba(0, 0, 0, 0.6);
+  border: 1px solid rgba(255, 215, 0, 0.35);
+  border-radius: 8px;
+  padding: 8px 16px;
+  pointer-events: all;
+  margin-top: 4px;
+}
+.editor-wc-label {
+  font-family: "Press Start 2P", cursive;
+  font-size: 0.45em;
+  color: #ffd700;
+  letter-spacing: 2px;
+}
+.editor-wc-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.editor-wc-select {
+  font-family: "Press Start 2P", cursive;
+  font-size: 0.45em;
+  color: #fff;
+  background: rgba(40, 40, 40, 0.9);
+  border: 1px solid #666;
+  border-radius: 4px;
+  padding: 4px 8px;
+  cursor: pointer;
+}
+.editor-wc-select:focus {
+  outline: none;
+  border-color: #ffd700;
+}
+.editor-wc-n {
+  font-family: "Press Start 2P", cursive;
+  font-size: 0.45em;
+  color: #fff;
+  background: rgba(40, 40, 40, 0.9);
+  border: 1px solid #666;
+  border-radius: 4px;
+  padding: 4px 8px;
+  width: 70px;
+  text-align: center;
+}
+.editor-wc-n:focus {
+  outline: none;
+  border-color: #ffd700;
+}
+.editor-wc-preview {
+  font-family: "Press Start 2P", cursive;
+  font-size: 0.4em;
+  color: #88ff88;
+  letter-spacing: 1px;
+  text-align: center;
+}
+
+/* ── Editor metadata panel ────────────────────────────────────────────────── */
+#editor-metadata {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  background: rgba(0, 0, 0, 0.6);
+  border: 1px solid rgba(255, 215, 0, 0.35);
+  border-radius: 8px;
+  padding: 8px 16px;
+  pointer-events: all;
+  margin-top: 4px;
+  min-width: 340px;
+}
+.editor-meta-label {
+  font-family: "Press Start 2P", cursive;
+  font-size: 0.45em;
+  color: #ffd700;
+  letter-spacing: 2px;
+}
+.editor-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+.editor-meta-field-label {
+  font-family: "Press Start 2P", cursive;
+  font-size: 0.4em;
+  color: #ccc;
+  min-width: 44px;
+  text-align: right;
+  white-space: nowrap;
+}
+.editor-meta-required {
+  color: #ff6666;
+}
+.editor-meta-field-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+}
+.editor-meta-input {
+  font-family: "Press Start 2P", cursive;
+  font-size: 0.4em;
+  color: #fff;
+  background: rgba(40, 40, 40, 0.9);
+  border: 1px solid #666;
+  border-radius: 4px;
+  padding: 4px 8px;
+  flex: 1;
+  min-width: 0;
+}
+.editor-meta-input-wide {
+  flex: 2;
+}
+.editor-meta-input:focus {
+  outline: none;
+  border-color: #ffd700;
+}
+.editor-meta-counter {
+  font-family: "Press Start 2P", cursive;
+  font-size: 0.35em;
+  color: #888;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.editor-meta-stars {
+  display: flex;
+  gap: 4px;
+}
+.editor-meta-star {
+  font-family: "Press Start 2P", cursive;
+  font-size: 1em;
+  background: none;
+  border: none;
+  color: #666;
+  cursor: pointer;
+  padding: 2px 4px;
+  transition: color 0.1s, transform 0.1s;
+  line-height: 1;
+}
+.editor-meta-star:hover {
+  color: #ffd700;
+  transform: scale(1.2);
+}
+.editor-meta-star-on {
+  color: #ffd700;
+}
+
+/* ── Editor piece sequence panel ──────────────────────────────────────────── */
+#editor-piece-sequence {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  background: rgba(0, 0, 0, 0.6);
+  border: 1px solid rgba(255, 215, 0, 0.35);
+  border-radius: 8px;
+  padding: 8px 16px;
+  pointer-events: all;
+  margin-top: 4px;
+  min-width: 340px;
+}
+.editor-seq-label {
+  font-family: "Press Start 2P", cursive;
+  font-size: 0.45em;
+  color: #ffd700;
+  letter-spacing: 2px;
+}
+.editor-seq-toggle {
+  display: flex;
+  gap: 6px;
+}
+.editor-seq-mode-btn {
+  font-family: "Press Start 2P", cursive;
+  font-size: 0.4em;
+  background: rgba(40, 40, 40, 0.9);
+  border: 1px solid #666;
+  border-radius: 4px;
+  color: #aaa;
+  padding: 4px 10px;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+.editor-seq-mode-btn:hover {
+  border-color: #ffd700;
+  color: #fff;
+}
+.editor-seq-mode-active {
+  border-color: #ffd700 !important;
+  color: #ffd700 !important;
+}
+.editor-seq-picker {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.editor-seq-piece-btn {
+  font-family: "Press Start 2P", cursive;
+  font-size: 0.45em;
+  width: 28px;
+  height: 28px;
+  border: 2px solid rgba(255,255,255,0.3);
+  border-radius: 4px;
+  color: #fff;
+  cursor: pointer;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+  transition: transform 0.1s, border-color 0.1s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.editor-seq-piece-btn:hover {
+  transform: scale(1.18);
+  border-color: #fff;
+}
+.editor-seq-list {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  justify-content: center;
+  max-width: 320px;
+  max-height: 72px;
+  overflow-y: auto;
+  padding: 2px;
+}
+.editor-seq-empty {
+  font-family: "Press Start 2P", cursive;
+  font-size: 0.35em;
+  color: #666;
+}
+.editor-seq-item {
+  font-family: "Press Start 2P", cursive;
+  font-size: 0.4em;
+  width: 24px;
+  height: 24px;
+  border: 1px solid rgba(255,255,255,0.25);
+  border-radius: 3px;
+  color: #fff;
+  cursor: pointer;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+  opacity: 0.85;
+  transition: opacity 0.1s, transform 0.1s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.editor-seq-item:hover {
+  opacity: 1;
+  transform: scale(1.15);
+  border-color: #ff6666;
+}
+.editor-seq-footer {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.editor-seq-count {
+  font-family: "Press Start 2P", cursive;
+  font-size: 0.35em;
+  color: #888;
+}
+.editor-seq-clear-btn {
+  font-family: "Press Start 2P", cursive;
+  font-size: 0.35em;
+  background: rgba(180, 0, 0, 0.5);
+  border: 1px solid #aa0000;
+  border-radius: 4px;
+  color: #ffaaaa;
+  padding: 3px 8px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.editor-seq-clear-btn:hover {
+  background: rgba(220, 0, 0, 0.7);
+}
+.editor-seq-preview {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+}
+.editor-seq-preview-item {
+  font-family: "Press Start 2P", cursive;
+  font-size: 0.4em;
+  width: 26px;
+  height: 26px;
+  border: 2px solid;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+}
+.editor-seq-preview-more {
+  font-family: "Press Start 2P", cursive;
+  font-size: 0.35em;
+  color: #aaa;
+}
+.editor-seq-random-note {
+  font-family: "Press Start 2P", cursive;
+  font-size: 0.38em;
+  color: #88ff88;
+  text-align: center;
+}
+
+/* ── Custom puzzle load screen ────────────────────────────────────────────── */
+#custom-puzzle-load-screen {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.78);
+  z-index: 350;
+}
+#cpls-inner {
+  background: rgba(15, 15, 25, 0.97);
+  border: 2px solid #ffd700;
+  border-radius: 12px;
+  padding: 36px 48px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  max-width: 480px;
+  text-align: center;
+}
+#cpls-label {
+  font-family: "Press Start 2P", cursive;
+  font-size: 0.55em;
+  color: #ffd700;
+  letter-spacing: 3px;
+  text-shadow: 0 0 8px #ffd70088;
+}
+#cpls-name {
+  font-family: "Press Start 2P", cursive;
+  font-size: 1em;
+  color: #fff;
+  letter-spacing: 1px;
+  word-break: break-word;
+}
+#cpls-difficulty {
+  font-family: "Press Start 2P", cursive;
+  font-size: 0.9em;
+  color: #ffd700;
+  letter-spacing: 2px;
+}
+#cpls-author {
+  font-family: "Press Start 2P", cursive;
+  font-size: 0.45em;
+  color: #aaa;
+  letter-spacing: 1px;
+}
+#cpls-desc {
+  font-family: "Press Start 2P", cursive;
+  font-size: 0.45em;
+  color: #ccc;
+  line-height: 1.6;
+  letter-spacing: 0.5px;
+  word-break: break-word;
+}
+#cpls-play-btn {
+  margin-top: 8px;
+  font-family: "Press Start 2P", cursive;
+  font-size: 0.7em;
+  color: #000;
+  background: #ffd700;
+  border: none;
+  border-radius: 6px;
+  padding: 12px 32px;
+  cursor: pointer;
+  letter-spacing: 2px;
+  transition: background 0.15s, transform 0.1s;
+}
+#cpls-play-btn:hover {
+  background: #ffe84d;
+  transform: scale(1.04);
+}
+
+/* ── Puzzle Share Modal ────────────────────────────────────────────────────── */
+#puzzle-share-modal {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,0.72);
+  z-index: 9000;
+}
+#psm-inner {
+  position: relative;
+  background: #1a1a2e;
+  border: 2px solid #ffd700;
+  border-radius: 10px;
+  padding: 28px 32px 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  min-width: 300px;
+  max-width: 95vw;
+  box-shadow: 0 0 32px #ffd70044;
+}
+#psm-close-btn {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  background: none;
+  border: none;
+  color: #aaa;
+  font-size: 1.1em;
+  cursor: pointer;
+  padding: 4px 8px;
+  line-height: 1;
+}
+#psm-close-btn:hover { color: #fff; }
+#psm-title {
+  font-family: "Press Start 2P", cursive;
+  font-size: 0.85em;
+  color: #ffd700;
+  letter-spacing: 3px;
+}
+#psm-qr-canvas {
+  border: 3px solid #fff;
+  border-radius: 4px;
+  background: #fff;
+  image-rendering: pixelated;
+}
+#psm-url-row {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+  max-width: 400px;
+}
+#psm-url-input {
+  flex: 1;
+  font-family: monospace;
+  font-size: 0.65em;
+  background: #0d0d1a;
+  border: 1px solid #555;
+  border-radius: 4px;
+  color: #ccc;
+  padding: 6px 8px;
+  min-width: 0;
+}
+#psm-copy-btn {
+  font-family: "Press Start 2P", cursive;
+  font-size: 0.5em;
+  color: #000;
+  background: #ffd700;
+  border: none;
+  border-radius: 4px;
+  padding: 8px 14px;
+  cursor: pointer;
+  white-space: nowrap;
+  letter-spacing: 1px;
+  transition: background 0.15s, transform 0.1s;
+}
+#psm-copy-btn:hover { background: #ffe84d; transform: scale(1.04); }
+#psm-copy-feedback {
+  font-family: "Press Start 2P", cursive;
+  font-size: 0.5em;
+  color: #4caf50;
+  letter-spacing: 1px;
+  height: 1em;
+}
+
+/* ── CPLS loading spinner ──────────────────────────────────────────────────── */
+#cpls-spinner {
+  font-family: "Press Start 2P", cursive;
+  font-size: 0.55em;
+  color: #ffd700;
+  letter-spacing: 2px;
+  animation: cpls-pulse 1s ease-in-out infinite;
+}
+@keyframes cpls-pulse {
+  0%,100% { opacity:1; } 50% { opacity:0.3; }
+}
+
+/* ── Community button (main menu) ─────────────────────────────────────────── */
+#start-community-btn {
+  font-family: "Press Start 2P", cursive;
+  font-size: 10px;
+  color: #000;
+  background: #00c8a0;
+  border: none;
+  padding: 10px 20px;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background 0.15s;
+}
+#start-community-btn:hover { background: #00ffcc; }
+
+/* ── Community browser screen ─────────────────────────────────────────────── */
+#community-browser-screen {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0, 0, 0, 0.94);
+  display: none;
+  justify-content: center;
+  align-items: flex-start;
+  z-index: 300;
+  overflow-y: auto;
+}
+#cb-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 90%;
+  max-width: 680px;
+  padding: 28px 0 40px;
+  gap: 18px;
+}
+#cb-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+}
+#cb-title {
+  font-family: "Press Start 2P", cursive;
+  font-size: 1.3em;
+  color: #00ffcc;
+  text-shadow: 0 0 10px #00ffcc, 0 0 24px #00c8a0;
+  letter-spacing: 3px;
+}
+#cb-total {
+  font-family: "Press Start 2P", cursive;
+  font-size: 7px;
+  color: rgba(0, 200, 160, 0.6);
+}
+#cb-controls {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+}
+#cb-search {
+  font-family: "Press Start 2P", cursive;
+  font-size: 9px;
+  color: #0f0;
+  background: rgba(0, 30, 20, 0.9);
+  border: 1px solid rgba(0, 200, 160, 0.4);
+  border-radius: 4px;
+  padding: 10px 14px;
+  width: 100%;
+  box-sizing: border-box;
+  outline: none;
+  caret-color: #00ffcc;
+}
+#cb-search::placeholder { color: rgba(0, 200, 160, 0.35); }
+#cb-search:focus { border-color: #00ffcc; box-shadow: 0 0 8px rgba(0, 200, 160, 0.3); }
+#cb-filters {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.cb-filter-btn {
+  font-family: "Press Start 2P", cursive;
+  font-size: 7px;
+  color: rgba(0, 200, 160, 0.7);
+  background: transparent;
+  border: 1px solid rgba(0, 200, 160, 0.3);
+  border-radius: 4px;
+  padding: 7px 12px;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+.cb-filter-btn:hover {
+  color: #00ffcc;
+  border-color: #00ffcc;
+}
+.cb-filter-active {
+  color: #000 !important;
+  background: #00c8a0 !important;
+  border-color: #00ffcc !important;
+}
+
+/* ── Puzzle list ── */
+#cb-list {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.cb-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: rgba(0, 30, 22, 0.85);
+  border: 1px solid rgba(0, 200, 160, 0.22);
+  border-radius: 6px;
+  padding: 12px 16px;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.cb-card:hover {
+  border-color: rgba(0, 200, 160, 0.5);
+  box-shadow: 0 0 14px rgba(0, 200, 160, 0.12);
+}
+.cb-card-left {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+}
+.cb-card-title {
+  font-family: "Press Start 2P", cursive;
+  font-size: 9px;
+  color: #ccffee;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cb-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.cb-card-author {
+  font-family: "Press Start 2P", cursive;
+  font-size: 6px;
+  color: rgba(0, 200, 160, 0.6);
+}
+.cb-card-stars {
+  font-family: "Press Start 2P", cursive;
+  font-size: 7px;
+  color: #ffd700;
+  text-shadow: 0 0 4px rgba(255, 215, 0, 0.5);
+  letter-spacing: 1px;
+}
+.cb-card-plays {
+  font-family: "Press Start 2P", cursive;
+  font-size: 6px;
+  color: rgba(160, 200, 180, 0.5);
+}
+.cb-card-rating {
+  font-family: "Press Start 2P", cursive;
+  font-size: 6px;
+  color: rgba(200, 180, 160, 0.6);
+}
+.cb-card-play {
+  font-family: "Press Start 2P", cursive;
+  font-size: 8px;
+  color: #000;
+  background: #00c8a0;
+  border: none;
+  border-radius: 4px;
+  padding: 8px 14px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s;
+}
+.cb-card-play:hover { background: #00ffcc; }
+.cb-card-play:disabled { background: #555; color: #888; cursor: default; }
+
+/* ── Featured section ── */
+#cb-featured-section {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+#cb-featured-title {
+  font-family: "Press Start 2P", cursive;
+  font-size: 8px;
+  color: #ffd700;
+  text-shadow: 0 0 8px rgba(255, 215, 0, 0.6), 0 0 16px rgba(255, 215, 0, 0.3);
+  letter-spacing: 2px;
+}
+#cb-featured-list {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.cb-section-divider {
+  width: 100%;
+  height: 1px;
+  background: linear-gradient(to right, transparent, rgba(0, 200, 160, 0.25), transparent);
+  margin-top: 4px;
+}
+.cb-card-featured {
+  border-color: rgba(255, 215, 0, 0.35) !important;
+  background: rgba(20, 18, 0, 0.88) !important;
+}
+.cb-card-featured:hover {
+  border-color: rgba(255, 215, 0, 0.65) !important;
+  box-shadow: 0 0 14px rgba(255, 215, 0, 0.1) !important;
+}
+.cb-card-badge {
+  font-family: "Press Start 2P", cursive;
+  font-size: 6px;
+  color: #ffd700;
+  background: rgba(255, 215, 0, 0.12);
+  border: 1px solid rgba(255, 215, 0, 0.3);
+  border-radius: 3px;
+  padding: 2px 6px;
+  letter-spacing: 1px;
+  flex-shrink: 0;
+}
+
+/* ── Load more button ── */
+#cb-load-more {
+  font-family: "Press Start 2P", cursive;
+  font-size: 8px;
+  color: rgba(0, 200, 160, 0.7);
+  background: transparent;
+  border: 1px solid rgba(0, 200, 160, 0.3);
+  border-radius: 4px;
+  padding: 10px 22px;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+#cb-load-more:hover { color: #00ffcc; border-color: #00ffcc; }
+
+/* ── Spinner, empty, error states ── */
+#cb-spinner {
+  font-family: "Press Start 2P", cursive;
+  font-size: 0.55em;
+  color: #00ffcc;
+  letter-spacing: 2px;
+  animation: cb-pulse 1s ease-in-out infinite;
+}
+@keyframes cb-pulse {
+  0%,100% { opacity: 1; } 50% { opacity: 0.3; }
+}
+#cb-error, #cb-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 24px 0;
+}
+#cb-error-msg, #cb-empty-msg {
+  font-family: "Press Start 2P", cursive;
+  font-size: 9px;
+  color: rgba(200, 160, 160, 0.7);
+}
+#cb-empty-sub {
+  font-family: "Press Start 2P", cursive;
+  font-size: 7px;
+  color: rgba(0, 200, 160, 0.45);
+  text-align: center;
+  line-height: 1.7;
+}
+#cb-retry-btn {
+  font-family: "Press Start 2P", cursive;
+  font-size: 8px;
+  color: #000;
+  background: rgba(200, 80, 80, 0.8);
+  border: none;
+  border-radius: 4px;
+  padding: 8px 16px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+#cb-retry-btn:hover { background: #f44; }
+
+/* ── Back button ── */
+#cb-back-btn {
+  font-family: "Press Start 2P", cursive;
+  font-size: 0.6em;
+  background: transparent;
+  border: 1px solid rgba(0, 200, 160, 0.3);
+  color: rgba(0, 200, 160, 0.7);
+  padding: 10px 22px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+  margin-top: 4px;
+}
+
+/* ── Editor first-time onboarding tutorial ───────────────────────────────────── */
+
+/* Spotlight element: transparent box positioned over the target UI element.
+   The enormous box-shadow darkens everything outside its bounds, creating the
+   spotlight effect. pointer-events:none lets clicks pass through to the target. */
+#editor-tutorial-spotlight {
+  position: fixed;
+  background: transparent;
+  z-index: 251;
+  border: 2px solid #ff0;
+  border-radius: 6px;
+  pointer-events: none;
+  animation: etut-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes etut-pulse {
+  0%, 100% { box-shadow: 0 0 0 9999px rgba(0,0,0,0.62), 0 0 12px #ff0, 0 0 24px rgba(255,255,0,0.3); }
+  50%       { box-shadow: 0 0 0 9999px rgba(0,0,0,0.68), 0 0 26px #ff0, 0 0 48px rgba(255,255,0,0.2); }
+}
+
+/* Info panel: bottom-center floating card with step text and skip link. */
+#editor-tutorial-panel {
+  position: fixed;
+  bottom: 40px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.92);
+  border: 2px solid #ff0;
+  border-radius: 6px;
+  padding: 16px 22px 14px;
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  z-index: 252;
+  min-width: 260px;
+  max-width: 420px;
+  pointer-events: none;
+  text-align: center;
+}
+
+#editor-tut-header {
+  display: flex;
+  justify-content: flex-end;
+  width: 100%;
+}
+
+#editor-tut-count {
+  font-family: "Press Start 2P", cursive;
+  font-size: 6px;
+  color: #555;
+}
+
+#editor-tut-title {
+  font-family: "Press Start 2P", cursive;
+  font-size: 9px;
+  color: #ff0;
+  text-shadow: 1px 1px 0 #000, 0 0 10px #ff0;
+  line-height: 1.6;
+  white-space: pre-line;
+}
+
+#editor-tut-text {
+  font-family: "Press Start 2P", cursive;
+  font-size: 7px;
+  color: #ddd;
+  line-height: 1.8;
+  white-space: pre-line;
+}
+
+#editor-tut-subtext {
+  font-family: "Press Start 2P", cursive;
+  font-size: 7px;
+  color: #0f0;
+  line-height: 1.6;
+  display: none;
+}
+
+#editor-tut-footer {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  margin-top: 4px;
+}
+
+#editor-tut-skip-btn {
+  font-family: "Press Start 2P", cursive;
+  font-size: 6px;
+  color: #777;
+  background: transparent;
+  border: 1px solid #444;
+  padding: 4px 10px;
+  cursor: pointer;
+  border-radius: 3px;
+  pointer-events: all;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+#editor-tut-skip-btn:hover { color: #f44; border-color: #f44; }
+#cb-back-btn:hover { color: #00ffcc; border-color: #00ffcc; }
+
+/* ── Co-op HUD ────────────────────────────────────────────────────────────── */
+
+#coop-mode-badge {
+  position: absolute;
+  top: 10px;
+  left: 12px;
+  font-family: "Press Start 2P", cursive;
+  font-size: 9px;
+  color: #00ffdd;
+  text-shadow: 0 0 8px #00ffdd;
+  background: rgba(0, 40, 40, 0.75);
+  padding: 4px 10px;
+  border-radius: 12px;
+  border: 1px solid #00ffdd44;
+  pointer-events: none;
+  z-index: 150;
+  display: none;
+  align-items: center;
+  gap: 6px;
+}
+#coop-difficulty-label {
+  font-size: 7px;
+  color: rgba(0, 255, 221, 0.7);
+  letter-spacing: 0.5px;
+}
+#coop-bonus-overlay {
+  position: absolute;
+  top: 38%;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: "Press Start 2P", cursive;
+  font-size: 1.1em;
+  color: #00ffdd;
+  text-shadow: 0 0 18px #00ffdd, 0 0 30px #00ffdd88;
+  pointer-events: none;
+  z-index: 200;
+  opacity: 1;
+  transition: opacity 1s ease-out;
+  white-space: nowrap;
+}
+
+#coop-score-display {
+  position: absolute;
+  top: 32px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  pointer-events: none;
+  z-index: 150;
+}
+
+.coop-combined-score {
+  font-family: "Press Start 2P", cursive;
+  font-size: 2.2em;
+  color: #00ffdd;
+  text-shadow: 0 0 12px #00ffdd88;
+  line-height: 1.2;
+}
+
+.coop-score-label {
+  font-family: "Press Start 2P", cursive;
+  font-size: 7px;
+  color: rgba(0, 255, 221, 0.55);
+  letter-spacing: 1px;
+  margin-top: 2px;
+}
+
+.coop-score-sub {
+  font-family: "Press Start 2P", cursive;
+  font-size: 7px;
+  color: rgba(0, 255, 221, 0.75);
+  margin-top: 4px;
+}
+
+#coop-partner-status {
+  position: absolute;
+  bottom: 120px;
+  left: 14px;
+  display: none;
+  align-items: center;
+  gap: 6px;
+  font-family: "Press Start 2P", cursive;
+  font-size: 7px;
+  color: #aaa;
+  background: rgba(0, 0, 0, 0.55);
+  padding: 4px 10px;
+  border-radius: 4px;
+  pointer-events: none;
+  z-index: 150;
+}
+
+#coop-partner-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #00ff88;
+  flex-shrink: 0;
+}
+
+/* Co-op partner-left choice dialog */
+#coop-partner-left-dialog {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  display: none;
+  justify-content: center;
+  align-items: center;
+  z-index: 300;
+  background: rgba(0,0,0,0.55);
+}
+
+.coop-dialog-box {
+  background: rgba(0, 20, 20, 0.95);
+  border: 1px solid #00ffdd55;
+  border-radius: 8px;
+  padding: 28px 36px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  max-width: 340px;
+  text-align: center;
+}
+
+.coop-dialog-title {
+  font-family: "Press Start 2P", cursive;
+  font-size: 1.1em;
+  color: #00ffdd;
+  text-shadow: 0 0 8px #00ffdd66;
+}
+
+.coop-dialog-msg {
+  font-family: "Press Start 2P", cursive;
+  font-size: 8px;
+  color: #aaa;
+  line-height: 1.7;
+}
+
+.coop-dialog-timer {
+  font-family: "Press Start 2P", cursive;
+  font-size: 7px;
+  color: #666;
+}
+
+.coop-dialog-btns {
+  display: flex;
+  gap: 14px;
+  margin-top: 4px;
+}
+
+.coop-dialog-btns button {
+  font-family: "Press Start 2P", cursive;
+  font-size: 8px;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+#coop-partner-left-continue {
+  background: #00443a;
+  color: #00ffdd;
+  border: 1px solid #00ffdd66;
+}
+#coop-partner-left-continue:hover { background: #005a4e; }
+
+#coop-partner-left-quit {
+  background: #440000;
+  color: #ff6666;
+  border: 1px solid #ff666644;
+}
+#coop-partner-left-quit:hover { background: #660000; }
+
+/* Co-op Game Over screen */
+#coop-game-over-screen {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0, 0, 0, 0.92);
+  display: none;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+  z-index: 200;
+  gap: 14px;
+  overflow-y: auto;
+  padding: 20px 0;
+}
+
+#coop-game-over-title {
+  font-family: "Press Start 2P", cursive;
+  font-size: 2em;
+  color: #00ffdd;
+  text-shadow: 3px 3px #006655;
+  animation: go-flicker 1.5s infinite;
+}
+
+#coop-go-combined-score {
+  font-family: "Press Start 2P", cursive;
+  font-size: 13px;
+  color: #fff;
+  letter-spacing: 1px;
+}
+
+#coop-go-time {
+  font-family: "Press Start 2P", cursive;
+  font-size: 9px;
+  color: rgba(0,255,221,0.6);
+}
+
+#coop-go-mvp-badge {
+  font-family: "Press Start 2P", cursive;
+  font-size: 9px;
+  color: #ffd700;
+  background: rgba(255, 215, 0, 0.1);
+  border: 1px solid rgba(255, 215, 0, 0.4);
+  border-radius: 4px;
+  padding: 6px 14px;
+}
+
+/* Contribution table */
+#coop-go-contribution-panel {
+  border: 1px solid rgba(0, 255, 221, 0.25);
+  border-radius: 4px;
+  background: rgba(0, 20, 20, 0.6);
+  padding: 10px 16px;
+}
+
+#coop-go-table {
+  font-family: "Press Start 2P", cursive;
+  font-size: 9px;
+  border-collapse: collapse;
+  color: #00ffdd;
+}
+
+#coop-go-table th {
+  font-size: 9px;
+  color: rgba(0,255,221,0.75);
+  padding: 4px 14px 8px;
+  text-align: center;
+  border-bottom: 1px solid rgba(0,255,221,0.2);
+}
+
+#coop-go-table th:first-child { text-align: left; }
+
+.coop-go-stat-label {
+  color: rgba(0,255,221,0.55);
+  font-size: 8px;
+  padding: 5px 0 5px 0;
+  padding-right: 20px;
+  white-space: nowrap;
+}
+
+.coop-go-stat-val {
+  text-align: center;
+  padding: 5px 14px;
+  font-size: 9px;
+  color: #fff;
+}
+
+/* Action buttons */
+#coop-go-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-top: 6px;
+}
+
+#coop-go-actions button {
+  font-family: "Press Start 2P", cursive;
+  font-size: 9px;
+  padding: 9px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+#coop-go-play-again-btn {
+  background: #00443a;
+  color: #00ffdd;
+  border: 1px solid #00ffdd66;
+}
+#coop-go-play-again-btn:hover { background: #005a4e; }
+
+#coop-go-change-diff-btn {
+  background: #1a3a1a;
+  color: #7fff7f;
+  border: 1px solid #7fff7f55;
+}
+#coop-go-change-diff-btn:hover { background: #234a23; }
+
+#coop-go-share-btn {
+  background: #1a1a40;
+  color: #aaaaff;
+  border: 1px solid #aaaaff55;
+}
+#coop-go-share-btn:hover { background: #252550; }
+
+#coop-go-main-menu-btn {
+  background: #222;
+  color: #aaa;
+  border: 1px solid #444;
+}
+#coop-go-main-menu-btn:hover { background: #333; }
+
+/* ── Co-op trade offer panel ─────────────────────────────────────────────── */
+#coop-trade-panel {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: none;
+  flex-direction: column;
+  gap: 12px;
+  background: rgba(0, 15, 20, 0.93);
+  border: 1px solid rgba(0, 255, 221, 0.3);
+  border-radius: 6px;
+  padding: 18px 22px;
+  min-width: 300px;
+  max-width: 380px;
+  pointer-events: all;
+  z-index: 160;
+}
+
+#coop-trade-title {
+  font-family: "Press Start 2P", cursive;
+  font-size: 12px;
+  color: #00ffdd;
+  text-shadow: 0 0 8px rgba(0, 255, 221, 0.4);
+  text-align: center;
+  border-bottom: 1px solid rgba(0, 255, 221, 0.2);
+  padding-bottom: 8px;
+}
+
+#coop-trade-subtitle {
+  font-family: "Press Start 2P", cursive;
+  font-size: 7px;
+  color: #666;
+  text-align: center;
+}
+
+#coop-trade-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  min-height: 44px;
+}
+
+.trade-inv-slot {
+  width: 46px;
+  height: 46px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 4px;
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.04);
+  transition: border-color 0.12s, background 0.12s;
+}
+
+.trade-inv-slot:hover {
+  border-color: rgba(0, 255, 221, 0.5);
+  background: rgba(0, 255, 221, 0.07);
+}
+
+.trade-inv-slot.selected {
+  border-color: #00ffdd;
+  background: rgba(0, 255, 221, 0.13);
+}
+
+.trade-inv-swatch {
+  width: 22px;
+  height: 22px;
+  border-radius: 3px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.trade-inv-count {
+  font-family: "Press Start 2P", cursive;
+  font-size: 7px;
+  color: #ccc;
+}
+
+#coop-trade-qty-row {
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+#coop-trade-selected-swatch {
+  width: 16px;
+  height: 16px;
+  border-radius: 2px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  flex-shrink: 0;
+}
+
+#coop-trade-selected-label {
+  font-family: "Press Start 2P", cursive;
+  font-size: 7px;
+  color: #aaa;
+  flex: 1;
+}
+
+#coop-trade-qty-input {
+  width: 52px;
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(0, 255, 221, 0.4);
+  border-radius: 3px;
+  color: #00ffdd;
+  font-family: "Press Start 2P", cursive;
+  font-size: 10px;
+  padding: 3px 5px;
+  text-align: center;
+}
+
+#coop-trade-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+
+#coop-trade-offer-btn,
+#coop-trade-cancel-btn {
+  font-family: "Press Start 2P", cursive;
+  font-size: 8px;
+  padding: 8px 14px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+#coop-trade-offer-btn {
+  background: #00443a;
+  color: #00ffdd;
+  border: 1px solid rgba(0, 255, 221, 0.4);
+}
+
+#coop-trade-offer-btn:hover:not(:disabled) { background: #005a4e; }
+#coop-trade-offer-btn:disabled { opacity: 0.4; cursor: default; }
+
+#coop-trade-cancel-btn {
+  background: #330000;
+  color: #ff9999;
+  border: 1px solid rgba(255, 102, 102, 0.3);
+}
+
+#coop-trade-cancel-btn:hover { background: #440000; }
+
+/* ── Co-op incoming trade toast ─────────────────────────────────────────── */
+#coop-incoming-trade-toast {
+  position: fixed;
+  bottom: 130px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  background: rgba(0, 20, 15, 0.91);
+  border: 1px solid rgba(0, 255, 170, 0.35);
+  color: #00ffaa;
+  font-family: "Press Start 2P", monospace;
+  font-size: 9px;
+  padding: 10px 18px;
+  border-radius: 5px;
+  z-index: 9999;
+  pointer-events: none;
+  text-align: center;
+}
+
+#coop-incoming-trade-hint {
+  font-size: 7px;
+  color: #00cc88;
+  margin-top: 2px;
+}
+
+#coop-incoming-trade-timer {
+  font-size: 7px;
+  color: #555;
+}
+
+/* ── Co-op trade first-run hint ─────────────────────────────────────────── */
+#coop-trade-hint {
+  position: fixed;
+  top: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: none;
+  background: rgba(0, 0, 0, 0.76);
+  color: #00ffdd;
+  font-family: "Press Start 2P", monospace;
+  font-size: 8px;
+  padding: 8px 16px;
+  border-radius: 4px;
+  z-index: 9999;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+/* ── Co-op emote local feedback (bounce above crosshair) ── */
+#coop-emote-feedback {
+  position: fixed;
+  left: 50%;
+  top: calc(50% - 60px);
+  transform: translateX(-50%);
+  display: none;
+  font-size: 28px;
+  line-height: 1;
+  z-index: 9999;
+  pointer-events: none;
+}
+
+@keyframes coop-emote-bounce {
+  0%   { transform: translateX(-50%) translateY(0)    scale(1);    opacity: 1; }
+  30%  { transform: translateX(-50%) translateY(-14px) scale(1.2); opacity: 1; }
+  60%  { transform: translateX(-50%) translateY(-4px)  scale(1);   opacity: 1; }
+  80%  { transform: translateX(-50%) translateY(-9px)  scale(1.08); opacity: 1; }
+  100% { transform: translateX(-50%) translateY(0)    scale(1);    opacity: 1; }
+}
+
+.coop-emote-bounce {
+  animation: coop-emote-bounce 0.5s ease-out forwards;
+}
+
+/* ── Co-op emote toast (bottom-right) ── */
+#coop-emote-toast {
+  position: fixed;
+  bottom: 80px;
+  right: 20px;
+  display: none;
+  background: rgba(0, 0, 0, 0.78);
+  color: #00ffdd;
+  font-family: "Press Start 2P", monospace;
+  font-size: 8px;
+  padding: 7px 14px;
+  border-radius: 4px;
+  z-index: 9999;
+  pointer-events: none;
+}
+
+/* ── Co-op emote keybinding HUD row ── */
+#coop-emote-hud {
+  position: fixed;
+  bottom: 48px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: none;
+  flex-direction: row;
+  gap: 8px;
+  z-index: 9990;
+  pointer-events: none;
+  align-items: center;
+}
+
+.coop-emote-key {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  background: rgba(0, 0, 0, 0.60);
+  border: 1px solid rgba(0, 255, 220, 0.25);
+  border-radius: 4px;
+  padding: 4px 8px;
+}
+
+.coop-emote-key-label {
+  color: rgba(0, 255, 220, 0.65);
+  font-family: "Press Start 2P", monospace;
+  font-size: 6px;
+  white-space: nowrap;
+}
+
+.coop-emote-key-icon {
+  font-size: 14px;
+  line-height: 1;
 }

@@ -123,6 +123,19 @@
               <div id="survival-world-card" class="survival-world-card"></div>
               <button id="survival-reset-btn" class="survival-reset-btn" style="display:none;">&#128465; Reset World</button>
             </div>
+            <!-- Co-op -->
+            <div class="mode-card mode-card-coop" id="mode-card-coop" data-mode="coop">
+              <div class="mode-card-icon">&#128101;</div>
+              <div class="mode-card-name">Co-op</div>
+              <div class="mode-card-desc">Play together. One world, two miners.</div>
+              <div class="mode-coop-ach-count" id="mode-coop-ach-count"></div>
+            </div>
+            <!-- Battle -->
+            <div class="mode-card mode-card-battle" id="mode-card-battle" data-mode="battle">
+              <div class="mode-card-icon">&#9876;</div>
+              <div class="mode-card-name">Battle</div>
+              <div class="mode-card-desc">Fight your opponent. Last miner standing wins.</div>
+            </div>
             <!-- Daily Challenge -->
             <div class="mode-card mode-card-daily" id="mode-card-daily" data-mode="daily">
               <div class="mode-card-icon">&#128197;</div>
@@ -191,6 +204,11 @@
 
       <!-- Survival mode badge (shown during survival runs) -->
       <div id="survival-badge" style="display:none;">&#128165; Survival</div>
+
+      <!-- Co-op mode badge (shown during co-op runs) + difficulty label -->
+      <div id="coop-mode-badge" style="display:none;">&#9760; CO-OP<span id="coop-difficulty-label"></span></div>
+      <!-- Co-op bonus overlay: "1.8x CO-OP BONUS" fades out after 3s -->
+      <div id="coop-bonus-overlay" style="display:none;"></div>
 
       <!-- Equipped power-up HUD (bottom-right, shown during gameplay) -->
       <div id="powerup-hud" style="display:none;">
@@ -273,6 +291,105 @@
       <!-- Danger warning -->
       <div id="danger-overlay"></div>
       <div id="danger-text">&#9888; BLOCKS TOO HIGH! &#9888;</div>
+
+      <!-- Co-op combined score HUD (top-center, shown during co-op games) -->
+      <div id="coop-score-display" style="display:none;">
+        <span class="coop-combined-score">0</span>
+        <span class="coop-score-label">TEAM SCORE</span>
+        <span class="coop-score-sub">You: 0  |  Partner: 0</span>
+      </div>
+
+      <!-- Co-op partner status indicator (top-left area, shown during co-op) -->
+      <div id="coop-partner-status" style="display:none;">
+        <span id="coop-partner-dot"></span>
+        <span id="coop-partner-name">Partner</span>
+      </div>
+
+      <!-- Co-op trade offer panel (opened with F when near partner) -->
+      <div id="coop-trade-panel" style="display:none;">
+        <div id="coop-trade-title">OFFER RESOURCES</div>
+        <div id="coop-trade-subtitle">Select an item to offer your partner</div>
+        <div id="coop-trade-grid"></div>
+        <div id="coop-trade-qty-row" style="display:none;">
+          <div id="coop-trade-selected-swatch"></div>
+          <span id="coop-trade-selected-label"></span>
+          <input type="number" id="coop-trade-qty-input" min="1" max="64" value="5">
+        </div>
+        <div id="coop-trade-actions">
+          <button id="coop-trade-offer-btn" disabled>Send Offer</button>
+          <button id="coop-trade-cancel-btn">Cancel</button>
+        </div>
+      </div>
+
+      <!-- Co-op incoming trade toast (shown to the receiver) -->
+      <div id="coop-incoming-trade-toast" style="display:none;">
+        <div id="coop-incoming-trade-msg"></div>
+        <div id="coop-incoming-trade-hint">Press E to accept</div>
+        <div id="coop-incoming-trade-timer"></div>
+      </div>
+
+      <!-- Co-op trade first-run hint tooltip -->
+      <div id="coop-trade-hint" style="display:none;">Hold F near your partner to trade resources</div>
+
+      <!-- Co-op emote feedback: bouncing emoji above crosshair -->
+      <div id="coop-emote-feedback" style="display:none;"></div>
+      <!-- Co-op emote toast: "[Name] waved" bottom-right -->
+      <div id="coop-emote-toast" style="display:none;"></div>
+      <!-- Co-op emote keybinding HUD row -->
+      <div id="coop-emote-hud" style="display:none;">
+        <div class="coop-emote-key"><span class="coop-emote-key-label">Z</span><span class="coop-emote-key-icon">👋</span></div>
+        <div class="coop-emote-key"><span class="coop-emote-key-label">X</span><span class="coop-emote-key-icon">👉</span></div>
+        <div class="coop-emote-key"><span class="coop-emote-key-label">HOLD C</span><span class="coop-emote-key-icon">👍</span></div>
+        <div class="coop-emote-key"><span class="coop-emote-key-label">V</span><span class="coop-emote-key-icon">⚠️</span></div>
+      </div>
+
+      <!-- Co-op partner-left dialog (choice: continue solo or quit) -->
+      <div id="coop-partner-left-dialog" style="display:none;">
+        <div class="coop-dialog-box">
+          <div class="coop-dialog-title">Partner Left</div>
+          <div class="coop-dialog-msg">Your partner disconnected. Continue solo or quit?</div>
+          <div class="coop-dialog-timer">Auto-continuing in <span id="coop-partner-left-countdown">10</span>s</div>
+          <div class="coop-dialog-btns">
+            <button id="coop-partner-left-continue">Continue Solo</button>
+            <button id="coop-partner-left-quit">Quit</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Co-op Game Over screen -->
+      <div id="coop-game-over-screen" style="display:none;">
+        <div id="coop-game-over-title">GAME OVER</div>
+        <div id="coop-go-combined-score"></div>
+        <div id="coop-go-time"></div>
+        <div id="coop-go-mvp-badge" style="display:none;"></div>
+
+        <!-- Contribution table -->
+        <div id="coop-go-contribution-panel">
+          <table id="coop-go-table">
+            <thead>
+              <tr>
+                <th></th>
+                <th id="coop-go-col-my-name">You</th>
+                <th id="coop-go-col-partner-name">Partner</th>
+              </tr>
+            </thead>
+            <tbody id="coop-go-contribution-table"></tbody>
+          </table>
+        </div>
+
+        <!-- Co-op leaderboard rank (shown after submission) -->
+        <div id="coop-go-rank" style="display:none;"></div>
+        <div id="coop-go-lb-feedback" style="display:none;"></div>
+
+        <!-- Action buttons -->
+        <div id="coop-go-actions">
+          <button id="coop-go-play-again-btn">Play Again</button>
+          <button id="coop-go-change-diff-btn">Change Difficulty</button>
+          <button id="coop-go-share-btn">Share Run</button>
+          <button id="coop-go-lb-btn">&#127942; Co-op Leaderboard</button>
+          <button id="coop-go-main-menu-btn">Main Menu</button>
+        </div>
+      </div>
 
       <!-- Game Over screen -->
       <div id="game-over-screen">
@@ -585,6 +702,8 @@
             <button id="lb-tab-thisweek" class="lb-tab">This Week</button>
             <button id="lb-tab-lastweek" class="lb-tab">Last Week</button>
             <button id="lb-tab-season" class="lb-tab">&#127942; Season</button>
+            <button id="lb-tab-coop" class="lb-tab">&#9760; Co-op</button>
+            <button id="lb-tab-dailycoop" class="lb-tab">&#9760; Daily Co-op</button>
           </div>
           <div id="lb-panel-body"></div>
           <button id="lb-panel-close-btn">Close</button>
@@ -619,6 +738,122 @@
         </div>
       </div>
 
+      <!-- Co-op lobby overlay — shown when Co-op mode card is clicked -->
+      <div id="coop-overlay" style="display:none;">
+        <div id="coop-inner">
+          <!-- Choice view: Create or Join -->
+          <div id="coop-choice-view">
+            <div id="coop-title">CO-OP</div>
+            <div id="coop-subtitle">Play together with a friend</div>
+            <div id="coop-choice-btns">
+              <button id="coop-create-btn">&#127981; Create Room</button>
+              <button id="coop-join-btn-choice">&#128279; Join Room</button>
+            </div>
+            <div id="coop-daily-divider">— or —</div>
+            <button id="coop-daily-btn">&#127775; Daily Co-op Challenge</button>
+            <div id="coop-daily-best-display" style="display:none;"></div>
+            <button id="coop-choice-cancel-btn">&#8592; Back</button>
+          </div>
+          <!-- Create view: waiting for partner -->
+          <div id="coop-create-view" style="display:none;">
+            <div id="coop-title">ROOM CREATED</div>
+            <div id="coop-room-code-label">Room Code</div>
+            <div id="coop-room-code"></div>
+            <button id="coop-copy-link-btn">&#128203; Copy Invite Link</button>
+            <div id="coop-copy-feedback"></div>
+            <div id="coop-waiting-spinner">&#9696; Waiting for partner&#8230;</div>
+            <div id="coop-status-msg"></div>
+            <button id="coop-create-cancel-btn">&#8592; Cancel</button>
+          </div>
+          <!-- Join view: enter room code -->
+          <div id="coop-join-view" style="display:none;">
+            <div id="coop-title">JOIN ROOM</div>
+            <div id="coop-join-hint">Enter the 4-character room code</div>
+            <input id="coop-code-input" type="text" maxlength="4" placeholder="ABCD" autocomplete="off" spellcheck="false">
+            <div id="coop-join-status-msg"></div>
+            <div id="coop-join-btns">
+              <button id="coop-join-confirm-btn">Join</button>
+              <button id="coop-join-cancel-btn">&#8592; Back</button>
+            </div>
+          </div>
+          <!-- Ready view: partner connected, difficulty selector + ready toggles -->
+          <div id="coop-ready-view" style="display:none;">
+            <div id="coop-title">READY!</div>
+            <div id="coop-ready-msg">&#9989; Partner connected!</div>
+            <div id="coop-ready-code"></div>
+            <!-- Difficulty selector (host sees buttons; guest sees read-only label) -->
+            <div id="coop-diff-section">
+              <div class="coop-diff-heading">DIFFICULTY</div>
+              <div id="coop-diff-btns">
+                <button class="coop-diff-btn" data-level="casual">Just vibing<br><span class="coop-diff-stats">1.0x speed &bull; 1.2x score</span></button>
+                <button class="coop-diff-btn coop-diff-selected" data-level="normal">Working together<br><span class="coop-diff-stats">1.5x speed &bull; 1.8x score</span></button>
+                <button class="coop-diff-btn" data-level="challenge">We came to win<br><span class="coop-diff-stats">2.0x speed &bull; 2.5x score</span></button>
+              </div>
+              <div id="coop-diff-guest-display" style="display:none;"><span id="coop-diff-guest-label">NORMAL</span></div>
+            </div>
+            <!-- Ready status indicators -->
+            <div id="coop-ready-status">
+              <div id="coop-host-ready-indicator">&#9633; Host</div>
+              <div id="coop-guest-ready-indicator">&#9633; Guest</div>
+            </div>
+            <button id="coop-start-btn">&#9654; Ready!</button>
+            <button id="coop-ready-cancel-btn">&#8592; Cancel</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Battle lobby overlay — shown when Battle mode card is clicked -->
+      <div id="battle-overlay" style="display:none;">
+        <div id="battle-inner">
+          <!-- Choice view: Create, Join, or Quick Match -->
+          <div id="battle-choice-view">
+            <div id="battle-title">BATTLE</div>
+            <div id="battle-subtitle">Fight for the last standing world</div>
+            <div id="battle-choice-btns">
+              <button id="battle-create-btn">&#127981; Create Room</button>
+              <button id="battle-join-btn-choice">&#128279; Join Room</button>
+            </div>
+            <div id="battle-qm-divider">— or —</div>
+            <button id="battle-quickmatch-btn">&#9889; Quick Match</button>
+            <button id="battle-choice-cancel-btn">&#8592; Back</button>
+          </div>
+          <!-- Create view: waiting for opponent -->
+          <div id="battle-create-view" style="display:none;">
+            <div id="battle-title">ROOM CREATED</div>
+            <div id="battle-room-code-label">Room Code</div>
+            <div id="battle-room-code"></div>
+            <button id="battle-copy-link-btn">&#128203; Copy Invite Link</button>
+            <div id="battle-copy-feedback"></div>
+            <div id="battle-waiting-spinner">&#9696; Waiting for opponent&#8230;</div>
+            <div id="battle-status-msg"></div>
+            <button id="battle-create-cancel-btn">&#8592; Cancel</button>
+          </div>
+          <!-- Join view: enter room code -->
+          <div id="battle-join-view" style="display:none;">
+            <div id="battle-title">JOIN BATTLE</div>
+            <div id="battle-join-hint">Enter the 4-character room code</div>
+            <input id="battle-code-input" type="text" maxlength="4" placeholder="ABCD" autocomplete="off" spellcheck="false">
+            <div id="battle-join-status-msg"></div>
+            <div id="battle-join-btns">
+              <button id="battle-join-confirm-btn">Join</button>
+              <button id="battle-join-cancel-btn">&#8592; Back</button>
+            </div>
+          </div>
+          <!-- Ready view: opponent connected, ready toggles -->
+          <div id="battle-ready-view" style="display:none;">
+            <div id="battle-title">READY!</div>
+            <div id="battle-ready-msg">&#9889; Opponent connected!</div>
+            <div id="battle-ready-code"></div>
+            <div id="battle-ready-status">
+              <div id="battle-host-ready-indicator">&#9633; You</div>
+              <div id="battle-guest-ready-indicator">&#9633; Opponent</div>
+            </div>
+            <button id="battle-start-btn">&#9654; Ready!</button>
+            <button id="battle-ready-cancel-btn">&#8592; Cancel</button>
+          </div>
+        </div>
+      </div>
+
       <!-- Editor draft prompt — shown before entering editor if a saved draft exists -->
       <div id="editor-draft-prompt" style="display:none;">
         <div id="editor-draft-prompt-inner">
@@ -646,6 +881,11 @@
               <button class="cb-filter-btn" data-diff="medium">2&#9733; Medium</button>
               <button class="cb-filter-btn" data-diff="hard">3&#9733; Hard</button>
             </div>
+          </div>
+          <div id="cb-featured-section" style="display:none;">
+            <div id="cb-featured-title">&#11088; FEATURED</div>
+            <div id="cb-featured-list"></div>
+            <div class="cb-section-divider"></div>
           </div>
           <div id="cb-spinner" style="display:none;">&#9696; Loading&#8230;</div>
           <div id="cb-error" style="display:none;">
@@ -680,6 +920,22 @@
         <div id="editor-piece-sequence"></div>
         <!-- Block palette strip -->
         <div id="editor-palette"></div>
+      </div>
+
+      <!-- Editor first-time onboarding tutorial -->
+      <!-- Spotlight: transparent overlay with box-shadow that darkens everything outside the target area -->
+      <div id="editor-tutorial-spotlight" style="display:none;"></div>
+      <!-- Info panel: step title, instruction, progress counter, skip link -->
+      <div id="editor-tutorial-panel" style="display:none;">
+        <div id="editor-tut-header">
+          <span id="editor-tut-count"></span>
+        </div>
+        <div id="editor-tut-title"></div>
+        <div id="editor-tut-text"></div>
+        <div id="editor-tut-subtext" style="display:none;"></div>
+        <div id="editor-tut-footer">
+          <button id="editor-tut-skip-btn" onclick="skipEditorTutorial()">Skip tutorial</button>
+        </div>
       </div>
 
       <!-- Custom puzzle load screen — shown when opening a shared puzzle link -->
@@ -753,8 +1009,15 @@
     <script src="js/events.js"></script>
     <script src="js/puzzle-codec.js"></script>
     <script src="js/qr-canvas.js"></script>
+    <script src="js/editor-tutorial.js"></script>
     <script src="js/editor.js"></script>
     <script src="js/community.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/renderers/CSS2DRenderer.js"></script>
+    <script src="js/coop.js"></script>
+    <script src="js/coop-avatar.js"></script>
+    <script src="js/coop-trade.js"></script>
+    <script src="js/coop-emote.js"></script>
+    <script src="js/battle.js"></script>
     <script src="js/main.js"></script>
   </body>
 </html>
