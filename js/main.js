@@ -1821,6 +1821,7 @@ function init() {
           const reflectSeed = Math.floor(Math.random() * 0xffffffff) >>> 0;
           battle.send({ type: 'battle_attack', lines: reflectRows, gapSeed: reflectSeed });
           battleGarbageSent += reflectRows;
+          if (typeof onMissionBattleGarbageSent === 'function') onMissionBattleGarbageSent(reflectRows);
           if (typeof battleHud !== 'undefined') {
             battleHud.showOutgoingAttack(reflectRows);
           }
@@ -2909,7 +2910,10 @@ function onMouseDown(event) {
       spawnDustParticles(targetedBlock, { breakBurst: true });
       blocksMined++;
       if (isCoopMode) coopMyBlocksMined++;
-      if (isBattleMode && _isRubble) battleRubbleMined++;
+      if (isBattleMode && _isRubble) {
+        battleRubbleMined++;
+        if (typeof onMissionBattleRubbleMined === 'function') onMissionBattleRubbleMined();
+      }
       const _objType = targetedBlock.userData.objectType;
       const _matName = targetedBlock.userData.materialType ||
         (_objType ? OBJECT_TYPE_TO_MATERIAL[_objType] : null);

@@ -915,6 +915,11 @@ function triggerBattleResult(result) {
     achOnBattleResult(result, _myStats.garbageReceived, _myStats.duration);
   }
 
+  // Fire battle mission hooks
+  if (result === 'win' && typeof onMissionBattleWin === 'function') {
+    onMissionBattleWin();
+  }
+
   // Submit rating to online leaderboard (non-blocking, rate-limited to 1/day)
   if (typeof trySubmitBattleRatingToLeaderboard === 'function') {
     setTimeout(trySubmitBattleRatingToLeaderboard, 500);

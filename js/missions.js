@@ -4,7 +4,7 @@
 
 const MISSIONS_KEY = 'mineCtris_missions';
 
-// ── Mission Pool (30 templates, must match worker/src/index.js) ───────────────
+// ── Mission Pool (33 templates, must match worker/src/index.js) ───────────────
 
 const MISSION_POOL = [
   // EASY — 10 missions, 50 XP each
@@ -40,6 +40,10 @@ const MISSION_POOL = [
   { id: 28, difficulty: 'hard',   xp: 100, text: 'Mine 150 blocks across any modes',         metric: 'blocks_mined_total',           target: 150,  condition: 'gte', accumulation: 'cumulative' },
   { id: 29, difficulty: 'hard',   xp: 100, text: 'Score 8,000+ in a Daily Challenge',        metric: 'daily_challenge_high_score',   target: 8000, condition: 'gte', accumulation: 'best'       },
   { id: 30, difficulty: 'hard',   xp: 100, text: 'Craft 5 different item types in a single run', metric: 'unique_items_crafted_session', target: 5, condition: 'gte', accumulation: 'best' },
+  // BATTLE — 3 missions (medium/hard)
+  { id: 31, difficulty: 'medium', xp: 75,  text: 'Win a battle match',                                      metric: 'battle_wins',          target: 1,  condition: 'gte', accumulation: 'cumulative' },
+  { id: 32, difficulty: 'hard',   xp: 100, text: 'Send 10 or more garbage rows in a single battle match',   metric: 'battle_garbage_sent',  target: 10, condition: 'gte', accumulation: 'best'       },
+  { id: 33, difficulty: 'medium', xp: 75,  text: 'Mine 15 or more Rubble blocks in a single battle match',  metric: 'battle_rubble_mined',  target: 15, condition: 'gte', accumulation: 'best'       },
 ];
 
 // ── Deterministic date-seeded selection (mirrors worker algorithm) ────────────
@@ -84,6 +88,9 @@ function _defaultMissionProgress() {
     triple_clears_blitz: 0,
     weekly_challenge_runs: 0,
     weekly_challenge_high_score: 0,
+    battle_wins: 0,
+    battle_garbage_sent: 0,
+    battle_rubble_mined: 0,
   };
 }
 
@@ -105,13 +112,17 @@ function _todayUTC() {
 
 // ── Session-scoped in-memory state (reset on each game start) ─────────────────
 
-let _sessionPowerupsActivated = 0;
-let _sessionUniqueCraftIds    = new Set();
+let _sessionPowerupsActivated  = 0;
+let _sessionUniqueCraftIds     = new Set();
+let _sessionBattleGarbageSent  = 0;
+let _sessionBattleRubbleMined  = 0;
 
 /** Call at the start of each new game session. */
 function resetMissionSession() {
   _sessionPowerupsActivated = 0;
   _sessionUniqueCraftIds    = new Set();
+  _sessionBattleGarbageSent = 0;
+  _sessionBattleRubbleMined = 0;
 }
 
 // ── Initialization ────────────────────────────────────────────────────────────
@@ -367,6 +378,31 @@ function onMissionPowerupActivated() {
  */
 function onMissionScoreShared() {
   _updateMetric('score_shared', 1, 'set');
+}
+
+/**
+ * Called when the player wins a battle match.
+ */
+function onMissionBattleWin() {
+  _updateMetric('battle_wins', 1, 'add');
+}
+
+/**
+ * Called each time garbage rows are sent to the opponent in battle mode
+ * (line-clear attacks and Counter reflections only — excludes Sabotage power-up).
+ * @param {number} rows  Number of garbage rows sent.
+ */
+function onMissionBattleGarbageSent(rows) {
+  _sessionBattleGarbageSent += rows;
+  _updateMetric('battle_garbage_sent', _sessionBattleGarbageSent, 'max');
+}
+
+/**
+ * Called each time a Rubble block is fully mined in battle mode.
+ */
+function onMissionBattleRubbleMined() {
+  _sessionBattleRubbleMined++;
+  _updateMetric('battle_rubble_mined', _sessionBattleRubbleMined, 'max');
 }
 
 // ── Panel rendering ───────────────────────────────────────────────────────────

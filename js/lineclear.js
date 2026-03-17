@@ -206,6 +206,7 @@ function checkLineClear(newBlocks) {
     const _gapSeed = Math.floor((typeof _rng === 'function' ? _rng() : Math.random()) * 0xffffffff) >>> 0;
     battle.send({ type: 'battle_attack', lines: _garbageRows, gapSeed: _gapSeed });
     battleGarbageSent += _garbageRows;
+    if (typeof onMissionBattleGarbageSent === 'function') onMissionBattleGarbageSent(_garbageRows);
     // Show outgoing attack preview on our opponent mini-map HUD
     if (typeof battleHud !== 'undefined') battleHud.showOutgoingAttack(_garbageRows);
     // Outgoing particle streak + whoosh
