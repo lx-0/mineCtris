@@ -281,6 +281,7 @@ function init() {
       if (e.target.id === "start-missions-btn") return;
       if (e.target.id === "start-resume-btn") return;
       if (e.target.id === "start-create-btn") return;
+      if (e.target.id === "start-community-btn") return;
       // If ?editor=1 URL param preset editor mode, go straight into editor
       if (isEditorMode) { requestPointerLock(); return; }
       // Show mode select screen instead of jumping straight into the game
@@ -763,12 +764,14 @@ function init() {
     if (puzzleRetryBtn) {
       puzzleRetryBtn.addEventListener("click", function () {
         if (isCustomPuzzleMode) {
-          // Retry custom puzzle — preserve layout and win condition
+          // Retry custom puzzle — preserve layout, win condition, and piece sequence
           const savedLayout = customPuzzleLayout.slice();
           const savedWC = customPuzzleWinCondition ? Object.assign({}, customPuzzleWinCondition) : null;
+          const savedPS = customPieceSequence ? { mode: customPieceSequence.mode, pieces: customPieceSequence.pieces.slice() } : { mode: "random", pieces: [] };
           resetGame();
           customPuzzleLayout = savedLayout;
           customPuzzleWinCondition = savedWC;
+          customPieceSequence = savedPS;
           isCustomPuzzleMode = true;
           puzzleComplete = false;
           difficultyMultiplier = 0.5;
@@ -796,6 +799,47 @@ function init() {
     if (puzzleMainMenuBtn) {
       puzzleMainMenuBtn.addEventListener("click", function () {
         resetGame();
+      });
+    }
+
+    // Custom puzzle completion overlay — Share button (copies share URL to clipboard)
+    const puzzleCompleteShareBtn = document.getElementById("puzzle-complete-share-btn");
+    if (puzzleCompleteShareBtn) {
+      puzzleCompleteShareBtn.addEventListener("click", function () {
+        var url = this._puzzleShareUrl;
+        if (!url && typeof encodeCustomPuzzleShareURL === "function") {
+          url = encodeCustomPuzzleShareURL();
+        }
+        if (!url) return;
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(url).then(function () {
+            puzzleCompleteShareBtn.textContent = "\u2713 Copied!";
+            setTimeout(function () { puzzleCompleteShareBtn.textContent = "\uD83D\uDD17 Copy Link"; }, 2000);
+          }).catch(function () { window.prompt("Copy puzzle link:", url); });
+        } else {
+          window.prompt("Copy puzzle link:", url);
+        }
+      });
+    }
+
+    // Custom puzzle completion overlay — Edit button (return to editor with current layout)
+    const puzzleCompleteEditBtn = document.getElementById("puzzle-complete-edit-btn");
+    if (puzzleCompleteEditBtn) {
+      puzzleCompleteEditBtn.addEventListener("click", function () {
+        // Build a draft from the current custom puzzle layout so the editor restores it
+        if (typeof customPuzzleLayout !== "undefined" && customPuzzleLayout.length > 0) {
+          _pendingEditorDraft = {
+            blocks: customPuzzleLayout.map(function (b) {
+              return { x: b.x, y: b.y, z: b.z, color: parseInt((b.color || "#808080").replace("#", ""), 16) };
+            }),
+            winCondition: customPuzzleWinCondition ? Object.assign({}, customPuzzleWinCondition) : { mode: "mine_all", n: 10 },
+            metadata: customPuzzleMetadata ? Object.assign({}, customPuzzleMetadata) : { name: "", description: "", author: "", difficulty: 0 },
+            pieceSequence: customPieceSequence ? { mode: customPieceSequence.mode, pieces: customPieceSequence.pieces.slice() } : { mode: "random", pieces: [] },
+          };
+        }
+        resetGame();
+        isEditorMode = true;
+        // Blocker is now visible; user clicks to re-enter editor with draft loaded
       });
     }
 
@@ -868,10 +912,11 @@ function init() {
       // Restore inventory HUD if non-empty
       if (inventoryTotal() > 0) updateInventoryHUD();
 
-      // Custom puzzle mode: place editor-built preset blocks, use infinite pieces
+      // Custom puzzle mode: place editor-built preset blocks, init piece queue
       if (isCustomPuzzleMode) {
         if (typeof resetPuzzleState === "function") resetPuzzleState();
         if (typeof setupCustomPuzzleLayout === "function") setupCustomPuzzleLayout();
+        if (typeof initCustomPuzzlePieceQueue === "function") initCustomPuzzlePieceQueue();
         const badgeEl = document.getElementById("puzzle-badge");
         if (badgeEl) {
           badgeEl.style.display = "block";
@@ -917,6 +962,7 @@ function init() {
           // Clear the world (resetGame does this) then launch custom puzzle
           resetGame();
           isCustomPuzzleMode = true;
+          customPlayFromEditor = true;
           puzzleComplete = false;
           difficultyMultiplier = 0.5;
           lastDifficultyTier = 0;
@@ -1100,6 +1146,16 @@ function init() {
     });
   }
 
+  // Community browser button
+  const startCommunityBtn = document.getElementById("start-community-btn");
+  if (startCommunityBtn) {
+    startCommunityBtn.addEventListener("click", function (e) {
+      e.stopPropagation();
+      blocker.style.display = "none";
+      if (typeof openCommunityBrowser === "function") openCommunityBrowser();
+    });
+  }
+
   // Draft prompt — Load button
   const editorDraftLoadBtn = document.getElementById("editor-draft-load-btn");
   if (editorDraftLoadBtn) {
@@ -1183,12 +1239,15 @@ function init() {
         ? { name: editorPuzzleMetadata.name, description: editorPuzzleMetadata.description,
             author: editorPuzzleMetadata.author, difficulty: editorPuzzleMetadata.difficulty }
         : { name: "", description: "", author: "", difficulty: 0 };
+      customPieceSequence = (typeof editorPieceSequence !== "undefined")
+        ? { mode: editorPieceSequence.mode, pieces: editorPieceSequence.pieces.slice() }
+        : { mode: "random", pieces: [] };
       _editorToCustomPuzzle = true;
       controls.unlock();
     });
   }
 
-  // Editor "Share" button — copy puzzle share URL to clipboard
+  // Editor "Share" button — opens share modal with QR code + copy link
   const editorShareBtn = document.getElementById("editor-share-btn");
   if (editorShareBtn) {
     editorShareBtn.addEventListener("click", function (e) {
@@ -1201,19 +1260,124 @@ function init() {
         return;
       }
       const url = location.origin + location.pathname + "?puzzle=" + encodeURIComponent(code);
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(url).then(function () {
-          editorShareBtn.textContent = "\u2713 Link Copied!";
-          setTimeout(function () { editorShareBtn.textContent = "\uD83D\uDD17 Share"; }, 2000);
-        }).catch(function () {
-          editorShareBtn.textContent = "Copy failed";
-          setTimeout(function () { editorShareBtn.textContent = "\uD83D\uDD17 Share"; }, 1500);
-        });
-      } else {
-        // Fallback: prompt
-        window.prompt("Copy puzzle link:", url);
-      }
+      _openPuzzleShareModal(url);
     });
+  }
+
+  // Wire share modal close + copy + publish buttons
+  (function () {
+    var modal = document.getElementById("puzzle-share-modal");
+    var closeBtn = document.getElementById("psm-close-btn");
+    var copyBtn = document.getElementById("psm-copy-btn");
+    var feedback = document.getElementById("psm-copy-feedback");
+    if (closeBtn) closeBtn.addEventListener("click", function () { if (modal) modal.style.display = "none"; });
+    if (modal) modal.addEventListener("click", function (e) { if (e.target === modal) modal.style.display = "none"; });
+    if (copyBtn) {
+      copyBtn.addEventListener("click", function () {
+        var input = document.getElementById("psm-url-input");
+        if (!input) return;
+        var url = input.value;
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(url).then(function () {
+            copyBtn.textContent = "\u2713 Copied!";
+            if (feedback) feedback.textContent = "Link copied to clipboard!";
+            setTimeout(function () {
+              copyBtn.textContent = "\uD83D\uDD17 Copy Link";
+              if (feedback) feedback.textContent = "";
+            }, 2000);
+          }).catch(function () {
+            window.prompt("Copy puzzle link:", url);
+          });
+        } else {
+          window.prompt("Copy puzzle link:", url);
+        }
+      });
+    }
+
+    // Publish to Community button
+    var publishBtn = document.getElementById("psm-publish-btn");
+    var publishFeedback = document.getElementById("psm-publish-feedback");
+    if (publishBtn) {
+      publishBtn.addEventListener("click", function () {
+        var input = document.getElementById("psm-url-input");
+        if (!input) return;
+        var puzzleParam;
+        try {
+          puzzleParam = new URL(input.value).searchParams.get("puzzle");
+        } catch (_) { return; }
+        if (!puzzleParam) return;
+        var code = decodeURIComponent(puzzleParam);
+
+        // Get or generate creator ID
+        var creatorId = localStorage.getItem("mineCtris_creatorId");
+        if (!creatorId) {
+          creatorId = "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function (c) {
+            var r = Math.random() * 16 | 0;
+            return (c === "x" ? r : (r & 0x3 | 0x8)).toString(16);
+          });
+          localStorage.setItem("mineCtris_creatorId", creatorId);
+        }
+
+        publishBtn.textContent = "Publishing\u2026";
+        publishBtn.disabled = true;
+        if (publishFeedback) publishFeedback.textContent = "";
+
+        var workerUrl = (typeof LEADERBOARD_WORKER_URL !== "undefined")
+          ? LEADERBOARD_WORKER_URL
+          : "https://minectris-leaderboard.workers.dev";
+
+        fetch(workerUrl + "/api/puzzles", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ code: code }),
+        })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          if (data.id) {
+            // Track this puzzle ID so we can check play count achievements later
+            var published;
+            try { published = JSON.parse(localStorage.getItem("mineCtris_publishedPuzzles") || "[]"); } catch (_) { published = []; }
+            if (published.indexOf(data.id) === -1) {
+              published.push(data.id);
+              localStorage.setItem("mineCtris_publishedPuzzles", JSON.stringify(published));
+            }
+            // Unlock Workshop Owner achievement
+            if (typeof achOnPuzzlePublished === "function") achOnPuzzlePublished();
+            publishBtn.textContent = "\u2713 Published!";
+            if (publishFeedback) publishFeedback.textContent = "Your puzzle is live in the community!";
+          } else {
+            throw new Error(data.error || "Publish failed");
+          }
+        })
+        .catch(function (err) {
+          publishBtn.textContent = "\u{1F310} Publish to Community";
+          publishBtn.disabled = false;
+          if (publishFeedback) publishFeedback.textContent = "Could not publish. " + (err.message || "Try again.");
+        });
+      });
+    }
+  })();
+
+  function _openPuzzleShareModal(url) {
+    var modal = document.getElementById("puzzle-share-modal");
+    if (!modal) return;
+    var input = document.getElementById("psm-url-input");
+    if (input) input.value = url;
+    var copyBtn = document.getElementById("psm-copy-btn");
+    if (copyBtn) copyBtn.textContent = "\uD83D\uDD17 Copy Link";
+    var feedback = document.getElementById("psm-copy-feedback");
+    if (feedback) feedback.textContent = "";
+    // Reset publish button state
+    var publishBtn = document.getElementById("psm-publish-btn");
+    if (publishBtn) { publishBtn.textContent = "\u{1F310} Publish to Community"; publishBtn.disabled = false; }
+    var publishFeedback = document.getElementById("psm-publish-feedback");
+    if (publishFeedback) publishFeedback.textContent = "";
+    // Render QR code
+    var qrCanvas = document.getElementById("psm-qr-canvas");
+    if (qrCanvas && typeof QRCanvas !== "undefined") {
+      QRCanvas.draw(qrCanvas, url, { scale: 4, margin: 3 });
+    }
+    modal.style.display = "flex";
   }
 
   // Pre-set editor mode if ?editor=1 URL param is present
@@ -1225,6 +1389,18 @@ function init() {
   // Load custom puzzle from ?puzzle= URL param
   const _puzzleParam = _urlParams.get("puzzle");
   if (_puzzleParam) {
+    // Show loading indicator immediately while decoding
+    (function () {
+      var screen = document.getElementById("custom-puzzle-load-screen");
+      var spinner = document.getElementById("cpls-spinner");
+      var nameEl = document.getElementById("cpls-name");
+      var playBtn = document.getElementById("cpls-play-btn");
+      if (screen) screen.style.display = "flex";
+      if (spinner) spinner.style.display = "";
+      if (nameEl) nameEl.textContent = "";
+      if (playBtn) playBtn.style.display = "none";
+    })();
+
     // Use rich decoder for proper error messages when available, fall back to simple decoder.
     const _rawCode = decodeURIComponent(_puzzleParam);
     const _decodeResult = (typeof puzzleCodecDecode === "function")
@@ -1233,9 +1409,18 @@ function init() {
           ? { ok: true, ...(decodePuzzleShareCode(_rawCode)) }
           : { ok: false, error: "Could not load puzzle.", versionMismatch: false });
 
+    // Hide spinner
+    (function () {
+      var spinner = document.getElementById("cpls-spinner");
+      if (spinner) spinner.style.display = "none";
+      var screen = document.getElementById("custom-puzzle-load-screen");
+      if (screen) screen.style.display = "none";
+    })();
+
     if (_decodeResult.ok) {
       customPuzzleWinCondition = _decodeResult.winCondition;
       customPuzzleMetadata = _decodeResult.metadata || { name: "", description: "", author: "", difficulty: 0 };
+      customPieceSequence = _decodeResult.pieceSequence || { mode: "random", pieces: [] };
       // Convert share code blocks [x, y, z, paletteIdx] to layout format
       customPuzzleLayout = _decodeResult.blocks.map(function (b) {
         let hexColor = "#808080";
@@ -1251,10 +1436,8 @@ function init() {
       puzzleComplete = false;
       difficultyMultiplier = 0.5;
       lastDifficultyTier = 0;
-      // Show puzzle load screen if metadata has a name, otherwise start directly
-      if (customPuzzleMetadata.name) {
-        _showCustomPuzzleLoadScreen();
-      }
+      // Show puzzle load screen (skips main menu)
+      _showCustomPuzzleLoadScreen();
     } else {
       // Show a friendly error instead of silently failing
       _showPuzzleDecodeError(_decodeResult.versionMismatch);

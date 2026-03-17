@@ -26,6 +26,10 @@ const ACHIEVEMENTS = [
   { id: "weekly_champion",  name: "Weekly Champion",  icon: "\u{1F3C5}", desc: "Complete a Weekly Challenge" },
   { id: "puzzle_master",    name: "Puzzle Master",    icon: "\u{1F9E9}", desc: "3-star all 10 puzzles" },
   { id: "completionist",    name: "Completionist",    icon: "\u{1F3C6}", desc: "Unlock 10 achievements" },
+  // Creator achievements
+  { id: "workshop_owner",   name: "Workshop Owner",   icon: "\u{1F3D7}\uFE0F", desc: "Publish your first puzzle to the community" },
+  { id: "crowd_pleaser",    name: "Crowd Pleaser",    icon: "\u{1F389}", desc: "Your puzzle reached 10 plays" },
+  { id: "viral",            name: "Viral",            icon: "\u{1F525}", desc: "Your puzzle reached 50 plays" },
   // Survival Mode achievements
   { id: "survival_first",   name: "Born Survivor",    icon: "\u{1F331}", desc: "Complete your first Survival session" },
   { id: "survival_5",       name: "Settled In",       icon: "\u{1F3E0}", desc: "Survive 5 sessions in the same world" },
@@ -291,4 +295,23 @@ function achOnSurvivalEventEnd(eventType) {
   if (typeof isSurvivalMode === "undefined" || !isSurvivalMode) return;
   if (eventType === "PIECE_STORM") unlockAchievement("storm_rider");
   if (eventType === "EARTHQUAKE")  unlockAchievement("earthquake_proof");
+}
+
+/** Call after the player successfully publishes a puzzle to the community. */
+function achOnPuzzlePublished() {
+  unlockAchievement("workshop_owner");
+}
+
+/**
+ * Call with the list of community puzzles authored by this player.
+ * Checks Crowd Pleaser (10 plays) and Viral (50 plays).
+ * @param {Array<{id: string, plays: number}>} authoredPuzzles
+ */
+function achOnCreatorPlayCounts(authoredPuzzles) {
+  var maxPlays = 0;
+  authoredPuzzles.forEach(function (p) {
+    if (typeof p.plays === "number" && p.plays > maxPlays) maxPlays = p.plays;
+  });
+  if (maxPlays >= 10) unlockAchievement("crowd_pleaser");
+  if (maxPlays >= 50) unlockAchievement("viral");
 }

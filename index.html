@@ -69,6 +69,7 @@
             <div class="click-info" id="start-random-btn">Click to Start</div>
             <button id="start-resume-btn" style="display:none;">&#9654; Resume Game</button>
             <button id="start-create-btn">&#128736; Create</button>
+            <button id="start-community-btn">&#127760; Community</button>
             <button id="daily-challenge-btn">&#127374; Daily Challenge</button>
             <button id="start-settings-btn">&#9881; Settings</button>
             <button id="start-stats-btn">&#128202; Stats</button>
@@ -324,8 +325,20 @@
         <div id="puzzle-complete-pb"></div>
         <div id="puzzle-xp-earned" class="xp-earned-display"></div>
         <div id="puzzle-complete-remain"></div>
+        <div id="puzzle-complete-time" style="display:none;"></div>
+        <div id="puzzle-complete-score" style="display:none;"></div>
+        <div id="puzzle-vote-area" style="display:none;">
+          <div id="puzzle-vote-label">Rate this puzzle:</div>
+          <div id="puzzle-vote-buttons">
+            <button id="puzzle-vote-up">&#128077;</button>
+            <button id="puzzle-vote-down">&#128078;</button>
+          </div>
+          <div id="puzzle-vote-msg"></div>
+        </div>
         <button id="puzzle-next-btn" style="display:none;">Next Puzzle &#9654;</button>
         <button id="puzzle-retry-btn">Try Again</button>
+        <button id="puzzle-complete-share-btn" style="display:none;">&#128279; Copy Link</button>
+        <button id="puzzle-complete-edit-btn" style="display:none;">&#9998; Edit Puzzle</button>
         <button id="puzzle-select-btn">Puzzle Select</button>
         <button id="puzzle-main-menu-btn">Main Menu</button>
       </div>
@@ -618,6 +631,37 @@
         </div>
       </div>
 
+      <!-- Community puzzle browser screen -->
+      <div id="community-browser-screen" style="display:none;">
+        <div id="cb-inner">
+          <div id="cb-header">
+            <div id="cb-title">&#127760; COMMUNITY</div>
+            <div id="cb-total"></div>
+          </div>
+          <div id="cb-controls">
+            <input id="cb-search" type="text" placeholder="Search by title or author..." autocomplete="off" spellcheck="false" maxlength="60">
+            <div id="cb-filters">
+              <button class="cb-filter-btn cb-filter-active" data-diff="">All</button>
+              <button class="cb-filter-btn" data-diff="easy">1&#9733; Easy</button>
+              <button class="cb-filter-btn" data-diff="medium">2&#9733; Medium</button>
+              <button class="cb-filter-btn" data-diff="hard">3&#9733; Hard</button>
+            </div>
+          </div>
+          <div id="cb-spinner" style="display:none;">&#9696; Loading&#8230;</div>
+          <div id="cb-error" style="display:none;">
+            <div id="cb-error-msg">Failed to load puzzles.</div>
+            <button id="cb-retry-btn">&#8635; Retry</button>
+          </div>
+          <div id="cb-empty" style="display:none;">
+            <div id="cb-empty-msg">No puzzles found.</div>
+            <div id="cb-empty-sub">Be the first! Use &#128736; Create to make one.</div>
+          </div>
+          <div id="cb-list"></div>
+          <button id="cb-load-more" style="display:none;">Load more&#8230;</button>
+          <button id="cb-back-btn">&#8592; Back</button>
+        </div>
+      </div>
+
       <!-- Editor mode HUD — visible while in editor mode with pointer locked -->
       <div id="editor-hud" style="display:none;">
         <div id="editor-hud-badge">&#128736; EDITOR MODE</div>
@@ -625,13 +669,15 @@
         <div id="editor-hud-actions">
           <button id="editor-exit-btn">&#8592; Exit Editor</button>
           <button id="editor-clear-draft-btn">&#128465; Clear Draft</button>
-          <button id="editor-test-btn">&#9654; Test Puzzle</button>
+          <button id="editor-test-btn">&#9654; Play</button>
           <button id="editor-share-btn">&#128279; Share</button>
         </div>
         <!-- Win condition builder -->
         <div id="editor-win-condition"></div>
         <!-- Puzzle metadata panel -->
         <div id="editor-metadata"></div>
+        <!-- Piece sequence panel -->
+        <div id="editor-piece-sequence"></div>
         <!-- Block palette strip -->
         <div id="editor-palette"></div>
       </div>
@@ -640,11 +686,30 @@
       <div id="custom-puzzle-load-screen" style="display:none;">
         <div id="cpls-inner">
           <div id="cpls-label">CUSTOM PUZZLE</div>
+          <div id="cpls-spinner" style="display:none;">&#9696; Loading&#8230;</div>
           <div id="cpls-name"></div>
           <div id="cpls-difficulty"></div>
           <div id="cpls-author"></div>
           <div id="cpls-desc"></div>
           <button id="cpls-play-btn">&#9654; Play</button>
+        </div>
+      </div>
+
+      <!-- Puzzle share modal — opened from editor Share button -->
+      <div id="puzzle-share-modal" style="display:none;">
+        <div id="psm-inner">
+          <button id="psm-close-btn" aria-label="Close">&#x2715;</button>
+          <div id="psm-title">SHARE PUZZLE</div>
+          <canvas id="psm-qr-canvas"></canvas>
+          <div id="psm-url-row">
+            <input id="psm-url-input" type="text" readonly>
+            <button id="psm-copy-btn">&#128279; Copy Link</button>
+          </div>
+          <div id="psm-copy-feedback"></div>
+          <div id="psm-publish-row">
+            <button id="psm-publish-btn">&#127760; Publish to Community</button>
+          </div>
+          <div id="psm-publish-feedback"></div>
         </div>
       </div>
     </div>
@@ -687,7 +752,9 @@
     <script src="js/shareland.js"></script>
     <script src="js/events.js"></script>
     <script src="js/puzzle-codec.js"></script>
+    <script src="js/qr-canvas.js"></script>
     <script src="js/editor.js"></script>
+    <script src="js/community.js"></script>
     <script src="js/main.js"></script>
   </body>
 </html>
