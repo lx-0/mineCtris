@@ -606,13 +606,46 @@
         </div>
       </div>
 
+      <!-- Editor draft prompt — shown before entering editor if a saved draft exists -->
+      <div id="editor-draft-prompt" style="display:none;">
+        <div id="editor-draft-prompt-inner">
+          <div id="editor-draft-prompt-title">Load last draft?</div>
+          <div id="editor-draft-prompt-sub">You have an unsaved editor session.</div>
+          <div id="editor-draft-prompt-btns">
+            <button id="editor-draft-load-btn">&#128196; Load Draft</button>
+            <button id="editor-draft-fresh-btn">&#128465; Start Fresh</button>
+          </div>
+        </div>
+      </div>
+
       <!-- Editor mode HUD — visible while in editor mode with pointer locked -->
       <div id="editor-hud" style="display:none;">
         <div id="editor-hud-badge">&#128736; EDITOR MODE</div>
         <div id="editor-controls-hint">WASD — Move &nbsp;&#124;&nbsp; Space — Up &nbsp;&#124;&nbsp; Shift — Down &nbsp;&#124;&nbsp; Left Click — Place &nbsp;&#124;&nbsp; Right Click — Erase &nbsp;&#124;&nbsp; 1–9 — Block &nbsp;&#124;&nbsp; Esc — Exit</div>
-        <button id="editor-exit-btn">&#8592; Exit Editor</button>
+        <div id="editor-hud-actions">
+          <button id="editor-exit-btn">&#8592; Exit Editor</button>
+          <button id="editor-clear-draft-btn">&#128465; Clear Draft</button>
+          <button id="editor-test-btn">&#9654; Test Puzzle</button>
+          <button id="editor-share-btn">&#128279; Share</button>
+        </div>
+        <!-- Win condition builder -->
+        <div id="editor-win-condition"></div>
+        <!-- Puzzle metadata panel -->
+        <div id="editor-metadata"></div>
         <!-- Block palette strip -->
         <div id="editor-palette"></div>
+      </div>
+
+      <!-- Custom puzzle load screen — shown when opening a shared puzzle link -->
+      <div id="custom-puzzle-load-screen" style="display:none;">
+        <div id="cpls-inner">
+          <div id="cpls-label">CUSTOM PUZZLE</div>
+          <div id="cpls-name"></div>
+          <div id="cpls-difficulty"></div>
+          <div id="cpls-author"></div>
+          <div id="cpls-desc"></div>
+          <button id="cpls-play-btn">&#9654; Play</button>
+        </div>
       </div>
     </div>
 
@@ -653,6 +686,7 @@
     <script src="js/survival.js"></script>
     <script src="js/shareland.js"></script>
     <script src="js/events.js"></script>
+    <script src="js/puzzle-codec.js"></script>
     <script src="js/editor.js"></script>
     <script src="js/main.js"></script>
   </body>
