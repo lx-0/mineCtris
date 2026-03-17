@@ -627,6 +627,9 @@ function resetGame() {
   magnetLastPullTime = 0.0;
   timeFreezeActive = false;
   timeFreezeTimer  = 0.0;
+  counterActive  = false;
+  fortressActive = false;
+  fortressTimer  = 0.0;
   obsidianPickaxeActive = false;
   const powerupHudEl = document.getElementById("powerup-hud");
   if (powerupHudEl) powerupHudEl.style.display = "none";

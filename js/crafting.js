@@ -5,6 +5,23 @@
 let craftingPanelOpen = false;
 let craftingBannerTimer = 0;
 
+// Active crafting tab: 'general' | 'battle'
+// 'battle' tab is only shown (and defaults to) when in battle mode.
+let _craftingTab = 'general';
+
+// Solo-only power-up types (not available in battle mode)
+const _SOLO_ONLY_POWERUPS = ['row_bomb', 'slow_down', 'shield', 'time_freeze'];
+// Battle-only power-up types (not available outside battle mode)
+const _BATTLE_ONLY_POWERUPS = ['sabotage', 'counter', 'fortress'];
+
+/** Return the effective ingredient count for a recipe input in the current mode. */
+function _effectiveIngredientCount(count) {
+  if (typeof isCoopMode !== 'undefined' && isCoopMode && count >= 4) {
+    return Math.ceil(count * COOP_CRAFT_DISCOUNT);
+  }
+  return count;
+}
+
 function toggleCraftingPanel() {
   if (craftingPanelOpen) {
     closeCraftingPanel();
@@ -17,6 +34,8 @@ function openCraftingPanel() {
   // No Iron Week: crafting is disabled
   if (typeof weeklyNoIron !== "undefined" && weeklyNoIron) return;
   craftingPanelOpen = true;
+  // Default to battle tab when in battle mode
+  _craftingTab = (typeof isBattleMode !== 'undefined' && isBattleMode) ? 'battle' : 'general';
   // Notify tutorial that crafting panel was opened
   if (typeof tutorialNotify === "function") tutorialNotify("craftingOpen");
   // Release pointer lock so the mouse cursor is visible and can click buttons
@@ -44,7 +63,7 @@ function closeCraftingPanel() {
 
 function canCraftRecipe(recipe) {
   return recipe.inputs.every(({ cssColor, count }) =>
-    (inventory[cssColor] || 0) >= count
+    (inventory[cssColor] || 0) >= _effectiveIngredientCount(count)
   );
 }
 
@@ -88,19 +107,30 @@ function renderCraftingPanel() {
       header.parentNode.insertBefore(consumableStatusEl, recipesEl);
     }
   }
-  const flaskCount  = consumables.lava_flask  || 0;
-  const bridgeCount = consumables.ice_bridge  || 0;
-  const rowBombCount = powerUps.row_bomb  || 0;
-  const slowDownCount = powerUps.slow_down || 0;
-  const shieldCount  = powerUps.shield    || 0;
-  const magnetCount  = powerUps.magnet    || 0;
+  const flaskCount    = consumables.lava_flask  || 0;
+  const bridgeCount   = consumables.ice_bridge  || 0;
+  const rowBombCount  = powerUps.row_bomb   || 0;
+  const slowDownCount = powerUps.slow_down  || 0;
+  const shieldCount   = powerUps.shield     || 0;
+  const magnetCount   = powerUps.magnet     || 0;
+  const saboCount     = powerUps.sabotage   || 0;
+  const counterCount  = powerUps.counter    || 0;
+  const fortressCount = powerUps.fortress   || 0;
+  const _inBattleStatus = typeof isBattleMode !== 'undefined' && isBattleMode;
   const parts = [];
   if (flaskCount  > 0) parts.push("Lava Flask x" + flaskCount  + " [F]");
   if (bridgeCount > 0) parts.push("Ice Bridge x" + bridgeCount + " [G]");
-  if (rowBombCount > 0) parts.push("Row Bomb x" + rowBombCount);
-  if (slowDownCount > 0) parts.push("Slow Down x" + slowDownCount);
-  if (shieldCount  > 0) parts.push("Shield x" + shieldCount);
-  if (magnetCount  > 0) parts.push("Magnet x" + magnetCount);
+  if (!_inBattleStatus) {
+    if (rowBombCount  > 0) parts.push("Row Bomb x" + rowBombCount);
+    if (slowDownCount > 0) parts.push("Slow Down x" + slowDownCount);
+    if (shieldCount   > 0) parts.push("Shield x" + shieldCount);
+  }
+  if (magnetCount > 0) parts.push("Magnet x" + magnetCount);
+  if (_inBattleStatus) {
+    if (saboCount    > 0) parts.push("Sabotage x" + saboCount);
+    if (counterCount > 0) parts.push("Counter x" + counterCount);
+    if (fortressCount > 0) parts.push("Fortress x" + fortressCount);
+  }
   if (parts.length > 0) {
     consumableStatusEl.textContent = "Inventory: " + parts.join("  |  ");
   } else {
@@ -109,6 +139,36 @@ function renderCraftingPanel() {
 
   recipesEl.innerHTML = "";
   const tierRank = { none: 0, stone: 1, iron: 2, diamond: 3, obsidian: 4 };
+  const _inBattle = typeof isBattleMode !== 'undefined' && isBattleMode;
+
+  // Tab bar: show General / Battle tabs only in battle mode
+  if (_inBattle) {
+    let tabBar = document.getElementById("crafting-tab-bar");
+    if (!tabBar) {
+      tabBar = document.createElement("div");
+      tabBar.id = "crafting-tab-bar";
+      tabBar.style.cssText = "display:flex;gap:4px;margin-bottom:6px;";
+      recipesEl.parentNode.insertBefore(tabBar, recipesEl);
+    }
+    tabBar.innerHTML = "";
+    ["general", "battle"].forEach(function (tab) {
+      const btn = document.createElement("button");
+      btn.className = "craft-btn";
+      btn.style.cssText = "flex:1;padding:4px 8px;font-size:0.85em;" +
+        (_craftingTab === tab ? "background:#555;color:#fff;border-color:#aaa;" : "");
+      btn.textContent = tab === "general" ? "⚒ General" : "⚔ Battle";
+      btn.addEventListener("click", function () {
+        _craftingTab = tab;
+        renderCraftingPanel();
+      });
+      tabBar.appendChild(btn);
+    });
+  } else {
+    // Remove tab bar if not in battle mode
+    const tabBar = document.getElementById("crafting-tab-bar");
+    if (tabBar) tabBar.remove();
+    _craftingTab = 'general';
+  }
 
   RECIPES.forEach((recipe) => {
     // Skip bench recipe if already built
@@ -119,6 +179,17 @@ function renderCraftingPanel() {
     if (recipe.requiresBench && !hasCraftingBench) return;
     // Skip power-up recipes in puzzle mode (Row Bomb and Magnet trivially solve puzzles)
     if (recipe.outputType === "powerup" && typeof isPuzzleMode !== "undefined" && isPuzzleMode) return;
+    // Battle-only recipes: only show in battle mode and only on the battle tab
+    if (recipe.battleOnly) {
+      if (!_inBattle) return;
+      if (_craftingTab !== 'battle') return;
+    }
+    // Solo-only power-ups: not available in battle mode
+    if (_inBattle && recipe.outputType === "powerup" &&
+        _SOLO_ONLY_POWERUPS.includes(recipe.powerUpType)) return;
+    // General tab in battle mode: hide battle-only recipes (already handled above)
+    // Also hide battle power-ups from general tab display (they belong to battle tab)
+    if (_inBattle && _craftingTab === 'general' && recipe.battleOnly) return;
 
     const canCraft = canCraftRecipe(recipe);
     const row = document.createElement("div");
@@ -138,6 +209,7 @@ function renderCraftingPanel() {
     const ingredientsEl = document.createElement("div");
     ingredientsEl.className = "craft-ingredients";
     recipe.inputs.forEach(({ cssColor, label, count }) => {
+      const effectiveCount = _effectiveIngredientCount(count);
       const have = inventory[cssColor] || 0;
       const chip = document.createElement("div");
       chip.className = "craft-chip";
@@ -148,8 +220,8 @@ function renderCraftingPanel() {
 
       const lbl = document.createElement("span");
       lbl.className = "craft-chip-label";
-      lbl.textContent = label + " " + have + "/" + count;
-      lbl.style.color = have >= count ? "#0f0" : "#f66";
+      lbl.textContent = label + " " + have + "/" + effectiveCount;
+      lbl.style.color = have >= effectiveCount ? "#0f0" : "#f66";
 
       chip.appendChild(swatch);
       chip.appendChild(lbl);
@@ -216,9 +288,10 @@ function renderCraftingPanel() {
 function craftRecipe(recipe) {
   if (!canCraftRecipe(recipe)) return false;
 
-  // Consume ingredients
+  // Consume ingredients (apply co-op discount when active)
   recipe.inputs.forEach(({ cssColor, count }) => {
-    inventory[cssColor] = (inventory[cssColor] || 0) - count;
+    const effectiveCount = _effectiveIngredientCount(count);
+    inventory[cssColor] = (inventory[cssColor] || 0) - effectiveCount;
     if (inventory[cssColor] <= 0) delete inventory[cssColor];
   });
 
@@ -245,12 +318,20 @@ function craftRecipe(recipe) {
     savePowerUpBank(_puBank);
     sessionConsumableCrafts++;
     if (typeof achOnConsumableCraft === "function") achOnConsumableCraft(sessionConsumableCrafts);
+    // Battle-only power-up: auto-equip if nothing is currently equipped so F can fire it immediately
+    if (recipe.battleOnly && typeof isBattleMode !== 'undefined' && isBattleMode) {
+      if (typeof equippedPowerUpType !== 'undefined' && !equippedPowerUpType) {
+        equippedPowerUpType = recipe.powerUpType;
+      }
+      if (typeof updatePowerupHUD === 'function') updatePowerupHUD();
+    }
   }
 
   updateInventoryHUD();
   showCraftedBanner(recipe.name);
   closeCraftingPanel();
   sessionCrafts++;
+  if (typeof isCoopMode !== 'undefined' && isCoopMode) coopMyCraftsMade++;
   if (typeof onMissionItemCrafted === "function") onMissionItemCrafted(recipe.id);
   return true;
 }

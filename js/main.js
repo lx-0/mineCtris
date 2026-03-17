@@ -1792,6 +1792,19 @@ function init() {
       });
 
       battle.on("battle_attack", function (msg) {
+        // Counter power-up: absorb and reflect at 50% (min 1 row)
+        if (counterActive) {
+          counterActive = false;
+          const reflectRows = Math.max(1, Math.ceil((msg.lines || 1) * 0.5));
+          const reflectSeed = Math.floor(Math.random() * 0xffffffff) >>> 0;
+          battle.send({ type: 'battle_attack', lines: reflectRows, gapSeed: reflectSeed });
+          if (typeof battleHud !== 'undefined') {
+            battleHud.showOutgoingAttack(reflectRows);
+          }
+          showCraftedBanner("Counter! Reflected " + reflectRows + " row(s).");
+          if (typeof updatePowerupHUD === 'function') updatePowerupHUD();
+          return; // do not queue the incoming garbage
+        }
         if (typeof battleHud !== 'undefined') {
           battleHud.flashLineClear();
           battleHud.showGarbage();
@@ -3151,6 +3164,9 @@ function updatePowerupHUD() {
     shield:     { icon: "\uD83D\uDEE1",  name: "Shield"     },
     magnet:     { icon: "\uD83E\uDDF2",  name: "Magnet"     },
     time_freeze: { icon: "\u2744",       name: "Time Freeze" },
+    sabotage:   { icon: "\uD83D\uDCA5",  name: "Sabotage"   },
+    counter:    { icon: "\uD83D\uDEE1\u2194",  name: "Counter"    },
+    fortress:   { icon: "\uD83D\uDEE1\u26EA", name: "Fortress"   },
   };
   const def = puDefs[equippedPowerUpType];
   if (!def) { hudEl.style.display = "none"; return; }
@@ -3246,6 +3262,42 @@ function activateEquippedPowerup() {
         _applyTimeFreezeGlow(true);
         _triggerPowerupFlash("time-freeze");
       }
+      break;
+    }
+    case "sabotage": {
+      // Send 2 extra garbage rows to opponent immediately
+      if (isBattleMode && typeof battle !== 'undefined' && battle.state === BattleState.IN_GAME) {
+        const _saboSeed = Math.floor(Math.random() * 0xffffffff) >>> 0;
+        battle.send({ type: 'battle_attack', lines: 2, gapSeed: _saboSeed });
+        if (typeof battleHud !== 'undefined') battleHud.showOutgoingAttack(2);
+      }
+      showCraftedBanner("Sabotage! 2 garbage rows sent.");
+      _triggerPowerupFlash("sabotage");
+      // Red edge-flash on local screen
+      (function () {
+        const el = document.getElementById("lc-flash-overlay");
+        if (el) {
+          el.style.backgroundColor = "#ff2200";
+          el.style.transition = "none";
+          el.style.opacity = "0.35";
+          void el.offsetHeight;
+          el.style.transition = "opacity 0.5s ease-out";
+          el.style.opacity = "0";
+        }
+      }());
+      break;
+    }
+    case "counter": {
+      counterActive = true;
+      showCraftedBanner("Counter active! Next attack reflected.");
+      _triggerPowerupFlash("counter");
+      break;
+    }
+    case "fortress": {
+      fortressActive = true;
+      fortressTimer  = 5.0;
+      showCraftedBanner("Fortress! Garbage blocked for 5s.");
+      _triggerPowerupFlash("fortress");
       break;
     }
 
@@ -3355,6 +3407,17 @@ function animate() {
         timeFreezeActive = false;
         timeFreezeTimer  = 0;
         _applyTimeFreezeGlow(false);
+        if (typeof updatePowerupHUD === "function") updatePowerupHUD();
+      }
+    }
+
+    // Tick Fortress power-up timer
+    if (fortressActive) {
+      fortressTimer -= delta;
+      if (fortressTimer <= 0) {
+        fortressActive = false;
+        fortressTimer  = 0;
+        showCraftedBanner("Fortress expired.");
         if (typeof updatePowerupHUD === "function") updatePowerupHUD();
       }
     }

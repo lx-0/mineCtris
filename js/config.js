@@ -493,4 +493,47 @@ const RECIPES = [
     requiresBench: true,
     outputCount: 1,
   },
+  // ── Battle-only power-ups (only craftable and usable in Battle mode) ────────
+  {
+    id: "sabotage",
+    name: "Sabotage",
+    description: "Battle: instantly send 2 extra garbage rows to opponent",
+    inputs: [
+      { cssColor: "#ff0000", label: "Lava",   count: 4 },
+      { cssColor: "#ffff00", label: "Gold",   count: 2 },
+    ],
+    outputType: "powerup",
+    powerUpType: "sabotage",
+    requiresBench: true,
+    battleOnly: true,
+    outputCount: 1,
+  },
+  {
+    id: "counter",
+    name: "Counter",
+    description: "Battle: absorb and reflect next attack at 50% size (min 1 row)",
+    inputs: [
+      { cssColor: "#800080",    label: "Crystal", count: 3 },
+      { cssColor: DIAMOND_COLOR, label: "Diamond", count: 2 },
+    ],
+    outputType: "powerup",
+    powerUpType: "counter",
+    requiresBench: true,
+    battleOnly: true,
+    outputCount: 1,
+  },
+  {
+    id: "fortress",
+    name: "Fortress",
+    description: "Battle: block all incoming garbage for 5 seconds",
+    inputs: [
+      { cssColor: "#808080",         label: "Stone",         count: 6 },
+      { cssColor: OBSIDIAN_SHARD_COLOR, label: "Obsidian Shard", count: 2 },
+    ],
+    outputType: "powerup",
+    powerUpType: "fortress",
+    requiresBench: true,
+    battleOnly: true,
+    outputCount: 1,
+  },
 ];

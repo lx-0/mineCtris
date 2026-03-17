@@ -131,7 +131,9 @@ let consumables = { lava_flask: 0, ice_bridge: 0 };
 
 // Power-up item counts (separate from blocks and consumables).
 // Keys: "row_bomb" | "slow_down" | "shield" | "magnet" | "time_freeze"
-let powerUps = { row_bomb: 0, slow_down: 0, shield: 0, magnet: 0, time_freeze: 0 };
+//       "sabotage" | "counter" | "fortress"  (battle-only)
+let powerUps = { row_bomb: 0, slow_down: 0, shield: 0, magnet: 0, time_freeze: 0,
+                 sabotage: 0, counter: 0, fortress: 0 };
 
 // Ice Bridge slow — reduces falling piece speed by 20% for a duration.
 let iceBridgeSlowActive = false;
@@ -268,7 +270,8 @@ const POWERUP_BANK_KEY = "mineCtris_powerups";
 function loadPowerUpBank() {
   try {
     const raw = localStorage.getItem(POWERUP_BANK_KEY);
-    if (!raw) return { row_bomb: 0, slow_down: 0, shield: 0, magnet: 0, time_freeze: 0 };
+    if (!raw) return { row_bomb: 0, slow_down: 0, shield: 0, magnet: 0, time_freeze: 0,
+                       sabotage: 0, counter: 0, fortress: 0 };
     const data = JSON.parse(raw);
     return {
       row_bomb:   data.row_bomb   || 0,
@@ -276,9 +279,13 @@ function loadPowerUpBank() {
       shield:     data.shield     || 0,
       magnet:     data.magnet     || 0,
       time_freeze: data.time_freeze || 0,
+      sabotage:   data.sabotage   || 0,
+      counter:    data.counter    || 0,
+      fortress:   data.fortress   || 0,
     };
   } catch (_) {
-    return { row_bomb: 0, slow_down: 0, shield: 0, magnet: 0, time_freeze: 0 };
+    return { row_bomb: 0, slow_down: 0, shield: 0, magnet: 0, time_freeze: 0,
+             sabotage: 0, counter: 0, fortress: 0 };
   }
 }
 
@@ -308,6 +315,13 @@ let timeFreezeTimer  = 0.0;
 
 // Obsidian Pickaxe: passive -1 hit reduction on all blocks (min 1).
 let obsidianPickaxeActive = false;
+
+// Battle power-up state ────────────────────────────────────────────────────────
+// Counter: true while the player's next incoming attack will be reflected.
+let counterActive  = false;
+// Fortress: true while all incoming garbage is blocked.
+let fortressActive = false;
+let fortressTimer  = 0.0;
 
 // ── World event engine state ──────────────────────────────────────────────────
 // activeEvent: currently running event type string (see EVENT_TYPES in events.js).

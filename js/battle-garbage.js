@@ -76,6 +76,7 @@ function pendingGarbageRows() {
 /**
  * Deliver one queued garbage entry (called each time a piece spawns in battle mode).
  * Skips silently while a line-clear animation is running or the delay hasn't elapsed.
+ * If Fortress is active, incoming garbage is discarded instead of injected.
  */
 function deliverPendingGarbage() {
   if (!_garbageQueue.length) return;
@@ -84,6 +85,8 @@ function deliverPendingGarbage() {
   const entry = _garbageQueue[0];
   if (now < entry.readyAt) return;  // still in the 0.5 s warning window
   _garbageQueue.shift();
+  // Fortress: block all incoming garbage while active
+  if (typeof fortressActive !== 'undefined' && fortressActive) return;
   _injectRubbleRows(entry.lines, entry.gapSeed);
 }
 
