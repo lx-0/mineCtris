@@ -177,6 +177,11 @@ function spawnFallingPiece() {
     blitzTimerActive = true;
   }
 
+  // Battle: deliver one queued garbage row before this piece spawns.
+  if (isBattleMode && typeof deliverPendingGarbage === 'function') {
+    deliverPendingGarbage();
+  }
+
   // World modifier fall speed multiplier (1.0 for Normal/Ice World/Ocean; 1.35 for Nether).
   const _wmodSpawn = typeof getWorldModifier === 'function' ? getWorldModifier() : null;
   const _wmodFallMult = _wmodSpawn ? _wmodSpawn.fallSpeedMult : 1.0;

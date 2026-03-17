@@ -1775,6 +1775,10 @@ function init() {
           battleHud.flashLineClear();
           battleHud.showGarbage();
         }
+        // Queue the incoming garbage rows for delivery on the next piece spawn.
+        if (typeof queueGarbage === 'function') {
+          queueGarbage(msg.lines || 1, msg.gapSeed || 1);
+        }
       });
 
       var battleReadyCancelBtn = document.getElementById("battle-ready-cancel-btn");

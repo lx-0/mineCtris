@@ -63,6 +63,7 @@ const BLOCK_TYPES = {
   plank:   { hits: 4, points: 15, effect: null },
   diamond: { hits: 6, points: 100, effect: null },
   obsidian: { hits: 8, points: 100, effect: null, dropMaterial: "obsidian_shard" },
+  rubble:  { hits: 2, points: 5,  effect: null, isRubble: true },
 };
 
 // Crafted plank block color (light tan, distinct from all spawned palette colors).
@@ -87,7 +88,11 @@ const COLOR_TO_MATERIAL = {
   0xd4a56a: "plank",
   0x1a237e: "diamond",
   0x1a0020: "obsidian",
+  0x6b6b6b: "rubble",
 };
+
+// Rubble block color — slate grey, used for battle-mode garbage rows.
+const RUBBLE_COLOR = 0x6b6b6b;
 
 // Maps objectType string to material name for world objects.
 const OBJECT_TYPE_TO_MATERIAL = {
@@ -280,6 +285,16 @@ const COLOR_TO_INDEX = {};
     if (COLORS[_i] !== null) COLOR_TO_INDEX[COLORS[_i]] = _i;
   }
 }());
+
+// Co-op crafting discount multiplier — applied to recipe input quantities >= 4.
+const COOP_CRAFT_DISCOUNT = 0.8;
+
+// Co-op difficulty settings: fall speed baseline multiplier and score multiplier.
+const COOP_DIFFICULTY_SETTINGS = {
+  casual:    { fallMult: 1.0, scoreMult: 1.2, label: 'Just vibing' },
+  normal:    { fallMult: 1.5, scoreMult: 1.8, label: 'Working together' },
+  challenge: { fallMult: 2.0, scoreMult: 2.5, label: 'We came to win' },
+};
 
 // Tetromino shape definitions (row-major, value = color index).
 // Index 8 = diamond — only used when eligible (Classic Level 7+).

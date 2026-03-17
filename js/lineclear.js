@@ -196,9 +196,11 @@ function checkLineClear(newBlocks) {
   if (isCoopMode && typeof coop !== 'undefined' && coop.state === CoopState.IN_GAME) {
     coop.send({ type: 'line_clear', rows: completeLevels, score: _lcComputedScore });
   }
-  // Battle: notify opponent that an attack is queued (triggers their garbage indicator)
+  // Battle: notify opponent that an attack is queued (triggers their garbage indicator).
+  // gapSeed is derived from the local PRNG so it is consistent but not predictable.
   if (isBattleMode && typeof battle !== 'undefined' && battle.state === BattleState.IN_GAME) {
-    battle.send({ type: 'battle_attack', lines: completeLevels.length });
+    const _gapSeed = Math.floor((typeof _rng === 'function' ? _rng() : Math.random()) * 0xffffffff) >>> 0;
+    battle.send({ type: 'battle_attack', lines: completeLevels.length, gapSeed: _gapSeed });
   }
 
   // Golden Hour: trigger shimmer flash and show 3× label

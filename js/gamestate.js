@@ -727,6 +727,7 @@ function resetGame() {
   // Reset battle mode state
   isBattleMode = false;
   battleResult = null;
+  if (typeof resetGarbageQueue === 'function') resetGarbageQueue();
   const battleBadgeEl = document.getElementById('battle-mode-badge');
   if (battleBadgeEl) battleBadgeEl.style.display = 'none';
   const battleResultEl = document.getElementById('battle-result-screen');
