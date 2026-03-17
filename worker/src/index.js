@@ -10,6 +10,11 @@
  *   GET  /api/leaderboard/season   — return top 20 for the current season
  *   GET  /api/season/archive/:id   — return permanently archived end-of-season results
  *   GET  /api/badges/:displayName  — return all season badges earned by a player
+ *   POST /api/battle/ratings       — submit player battle rating (once per day)
+ *   GET  /api/battle/ratings       — return top-100 global battle rating leaderboard
+ *   GET  /api/season/ratings       — return top-100 season battle rating leaderboard
+ *   GET  /api/season/hall-of-fame  — list of all past seasons with champions
+ *   GET  /api/season/rating-snapshot/:id — top-100 rating archive for a past season
  *   POST /api/puzzles/:id/play     — increment play count for a community puzzle
  *   POST /api/puzzles/:id/vote     — submit thumbs-up or thumbs-down vote for a puzzle
  *   GET  /api/puzzles/featured     — return curated official featured puzzles (admin-seeded)
@@ -31,9 +36,14 @@
  *   season:{seasonId}:archive     → JSON permanent archive (no TTL):
  *                                     { seasonId, name, theme, endDate, archivedAt,
  *                                       top10: [{ rank, displayName, totalScore, gamesPlayed, badge }] }
- *   season:{seasonId}:archived    → "1" flag to prevent double-archiving
- *   badge:{displayName}           → JSON array (no TTL), each entry:
- *                                     { seasonId, seasonName, rank, label, icon, awardedAt }
+ *   season:{seasonId}:archived        → "1" flag to prevent double-archiving
+ *   season:{seasonId}:rating-leaderboard → JSON top-100 by battle rating for this season
+ *   season:{seasonId}:rating-snapshot    → Permanent top-100 rating archive at season end
+ *   season:hall-of-fame               → JSON array of past season summaries (permanent)
+ *   battle:leaderboard                → JSON top-100 global battle ratings (no TTL)
+ *   battle:submitted:{name}:{date}    → { submittedAt } — rate limit: 1 per player per day
+ *   badge:{displayName}               → JSON array (no TTL), each entry:
+ *                                        { seasonId, seasonName, rank, label, icon, awardedAt }
  */
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -457,8 +467,9 @@ async function handleGetSeason(env) {
     return jsonResponse({ active: false });
   }
   const today = todayUTC();
-  const active = today >= config.startDate && today <= config.endDate;
-  const ended  = today > config.endDate;
+  const active   = today >= config.startDate && today <= config.endDate;
+  const ended    = today > config.endDate;
+  const upcoming = today < config.startDate;
 
   // Trigger archiving in the background when season has just ended
   if (ended) {
@@ -466,7 +477,12 @@ async function handleGetSeason(env) {
     _tryArchiveSeason(config, env).catch(() => {});
   }
 
-  return jsonResponse({ active, ended: ended || undefined, ...config });
+  return jsonResponse({
+    active,
+    ended:    ended    || undefined,
+    upcoming: upcoming || undefined,
+    ...config,
+  });
 }
 
 // ── Season Leaderboard Fetch ──────────────────────────────────────────────────
@@ -490,6 +506,149 @@ async function handleGetSeasonLeaderboard(env) {
     entries: top20,
     total: leaderboard.length,
   });
+}
+
+// ── Battle Rating Submission ──────────────────────────────────────────────────
+
+const BATTLE_LB_KEY = 'battle:leaderboard';
+
+async function handlePostBattleRating(request, env) {
+  let body;
+  try { body = await request.json(); } catch { return jsonResponse({ error: 'Invalid JSON' }, 400); }
+
+  const { displayName, rating, wins, losses, draws, date, clientTimestamp } = body;
+
+  if (!displayName || !DISPLAY_NAME_REGEX.test(displayName)) {
+    return jsonResponse({ error: 'Invalid display name' }, 400);
+  }
+  if (!date || !isValidDate(date) || date !== todayUTC()) {
+    return jsonResponse({ error: 'Invalid or stale date' }, 400);
+  }
+  const ratingNum = parseInt(rating, 10);
+  if (!Number.isInteger(ratingNum) || ratingNum < 0 || ratingNum > 9999) {
+    return jsonResponse({ error: 'Invalid rating' }, 400);
+  }
+
+  // Rate limit: 1 submission per player per day
+  const submittedKey = `battle:submitted:${displayName.toLowerCase()}:${date}`;
+  const existing = await env.LEADERBOARD_KV.get(submittedKey, { type: 'json' });
+  if (existing) {
+    return jsonResponse({ error: 'Already submitted today' }, 429);
+  }
+
+  const now = new Date().toISOString();
+  const entry = {
+    displayName,
+    rating: ratingNum,
+    wins:   Math.max(0, parseInt(wins,   10) || 0),
+    losses: Math.max(0, parseInt(losses, 10) || 0),
+    draws:  Math.max(0, parseInt(draws,  10) || 0),
+    updatedAt: now,
+  };
+
+  // Load global battle leaderboard, upsert, sort, truncate
+  let battleLb = (await env.LEADERBOARD_KV.get(BATTLE_LB_KEY, { type: 'json' })) || [];
+  const existingIdx = battleLb.findIndex(e => e.displayName.toLowerCase() === displayName.toLowerCase());
+  if (existingIdx >= 0) {
+    battleLb[existingIdx] = entry;
+  } else {
+    battleLb.push(entry);
+  }
+  battleLb.sort((a, b) => b.rating - a.rating);
+  if (battleLb.length > LEADERBOARD_MAX) battleLb = battleLb.slice(0, LEADERBOARD_MAX);
+
+  const writes = [
+    env.LEADERBOARD_KV.put(BATTLE_LB_KEY, JSON.stringify(battleLb)),
+    env.LEADERBOARD_KV.put(submittedKey, JSON.stringify({ submittedAt: now }), {
+      expirationTtl: 60 * 60 * 24 * 2,
+    }),
+  ];
+
+  // If season active, also update season rating leaderboard
+  const seasonConfig = await env.LEADERBOARD_KV.get('season:current', { type: 'json' });
+  if (seasonConfig && date >= seasonConfig.startDate && date <= seasonConfig.endDate) {
+    const seasonRatingKey = `season:${seasonConfig.seasonId}:rating-leaderboard`;
+    let seasonRatingLb = (await env.LEADERBOARD_KV.get(seasonRatingKey, { type: 'json' })) || [];
+    const sIdx = seasonRatingLb.findIndex(e => e.displayName.toLowerCase() === displayName.toLowerCase());
+    if (sIdx >= 0) {
+      seasonRatingLb[sIdx] = entry;
+    } else {
+      seasonRatingLb.push(entry);
+    }
+    seasonRatingLb.sort((a, b) => b.rating - a.rating);
+    if (seasonRatingLb.length > LEADERBOARD_MAX) seasonRatingLb = seasonRatingLb.slice(0, LEADERBOARD_MAX);
+    const seasonTtl = 60 * 60 * 24 * (7 * 6 + 7 + 30);
+    writes.push(env.LEADERBOARD_KV.put(seasonRatingKey, JSON.stringify(seasonRatingLb), {
+      expirationTtl: seasonTtl,
+    }));
+  }
+
+  await Promise.all(writes);
+
+  const rank = battleLb.findIndex(e => e.displayName.toLowerCase() === displayName.toLowerCase()) + 1;
+  return jsonResponse({ ok: true, rank, total: battleLb.length });
+}
+
+async function handleGetBattleLeaderboard(env) {
+  const leaderboard = (await env.LEADERBOARD_KV.get(BATTLE_LB_KEY, { type: 'json' })) || [];
+  const top = leaderboard.slice(0, TOP_N).map((e, i) => ({
+    rank:    i + 1,
+    displayName: e.displayName,
+    rating:  e.rating,
+    wins:    e.wins   || 0,
+    losses:  e.losses || 0,
+    draws:   e.draws  || 0,
+  }));
+  return jsonResponse({ entries: top, total: leaderboard.length });
+}
+
+async function handleGetSeasonRatingLeaderboard(request, env) {
+  const config = await env.LEADERBOARD_KV.get('season:current', { type: 'json' });
+  if (!config) return jsonResponse({ error: 'No active season' }, 404);
+
+  const key = `season:${config.seasonId}:rating-leaderboard`;
+  const leaderboard = (await env.LEADERBOARD_KV.get(key, { type: 'json' })) || [];
+  const entries = leaderboard.map((e, i) => ({
+    rank:    i + 1,
+    displayName: e.displayName,
+    rating:  e.rating,
+    wins:    e.wins   || 0,
+    losses:  e.losses || 0,
+    draws:   e.draws  || 0,
+  }));
+
+  // If caller provides displayName and they're outside top-100, include their rank/entry
+  const qName = new URL(request.url).searchParams.get('displayName') || '';
+  let playerEntry = null;
+  if (qName && DISPLAY_NAME_REGEX.test(qName)) {
+    const idx = leaderboard.findIndex(e => e.displayName.toLowerCase() === qName.toLowerCase());
+    if (idx >= 0) {
+      playerEntry = { rank: idx + 1, ...leaderboard[idx] };
+    } else {
+      // Not in top-100; rank is unknown server-side
+      playerEntry = { rank: null };
+    }
+  }
+
+  return jsonResponse({
+    seasonId:   config.seasonId,
+    seasonName: config.name,
+    entries,
+    total:       leaderboard.length,
+    playerEntry,
+  });
+}
+
+async function handleGetHallOfFame(env) {
+  const list = (await env.LEADERBOARD_KV.get('season:hall-of-fame', { type: 'json' })) || [];
+  return jsonResponse({ seasons: list });
+}
+
+async function handleGetSeasonRatingSnapshot(seasonId, env) {
+  if (!seasonId) return jsonResponse({ error: 'Missing seasonId' }, 400);
+  const snapshot = await env.LEADERBOARD_KV.get(`season:${seasonId}:rating-snapshot`, { type: 'json' });
+  if (!snapshot) return jsonResponse({ error: 'Snapshot not found' }, 404);
+  return jsonResponse(snapshot);
 }
 
 // ── Season Archive ────────────────────────────────────────────────────────────
@@ -531,6 +690,45 @@ async function _tryArchiveSeason(config, env) {
 
   // Permanent storage (no TTL)
   await env.LEADERBOARD_KV.put(`season:${config.seasonId}:archive`, JSON.stringify(archive));
+
+  // Archive top-100 rating snapshot at season end
+  const ratingLbKey = `season:${config.seasonId}:rating-leaderboard`;
+  const ratingLb = (await env.LEADERBOARD_KV.get(ratingLbKey, { type: 'json' })) || [];
+  const ratingTop100 = ratingLb.map((e, i) => ({
+    rank:    i + 1,
+    displayName: e.displayName,
+    rating:  e.rating,
+    wins:    e.wins   || 0,
+    losses:  e.losses || 0,
+    draws:   e.draws  || 0,
+  }));
+  const ratingSnapshot = {
+    seasonId:   config.seasonId,
+    name:       config.name,
+    theme:      config.theme,
+    endDate:    config.endDate,
+    archivedAt: archive.archivedAt,
+    top100:     ratingTop100,
+  };
+  await env.LEADERBOARD_KV.put(
+    `season:${config.seasonId}:rating-snapshot`,
+    JSON.stringify(ratingSnapshot)
+  );
+
+  // Update hall-of-fame list (permanent, newest first)
+  const champion = ratingTop100.length > 0 ? ratingTop100[0] : null;
+  let hofList = (await env.LEADERBOARD_KV.get('season:hall-of-fame', { type: 'json' })) || [];
+  if (!hofList.find(s => s.seasonId === config.seasonId)) {
+    hofList.unshift({
+      seasonId:   config.seasonId,
+      name:       config.name,
+      theme:      config.theme,
+      endDate:    config.endDate,
+      archivedAt: archive.archivedAt,
+      champion:   champion ? { displayName: champion.displayName, rating: champion.rating } : null,
+    });
+    await env.LEADERBOARD_KV.put('season:hall-of-fame', JSON.stringify(hofList));
+  }
 
   // Distribute badges to top-3 players
   const badgePromises = top10.slice(0, 3).map(async (player, i) => {
@@ -1191,29 +1389,68 @@ async function handleRoomWs(request, code, env) {
 export class BattleRoom {
   constructor(state, env) {
     this.state = state;
+    this.env = env;
     // Map<playerId ('host'|'guest'), WebSocket>
     this.clients = new Map();
+    // Map<spectatorId, WebSocket> — up to 50 spectators
+    this.spectators = new Map();
     this.roomCode = null;
+    this.isPrivate = false;
+    this.isTournament = false;
+    this._spectatorSeq = 0;
   }
 
+  // Broadcast to players only
   _broadcast(msgStr) {
     for (const ws of this.clients.values()) {
       if (ws.readyState === 1 /* OPEN */) ws.send(msgStr);
     }
   }
 
+  // Broadcast to spectators only
+  _broadcastSpectators(msgStr) {
+    for (const ws of this.spectators.values()) {
+      if (ws.readyState === 1 /* OPEN */) ws.send(msgStr);
+    }
+  }
+
   async fetch(request) {
+    const url = new URL(request.url);
     const upgradeHeader = request.headers.get('Upgrade');
+
+    // Non-WebSocket: return room info (used by spectate endpoint)
     if (!upgradeHeader || upgradeHeader.toLowerCase() !== 'websocket') {
+      if (url.searchParams.get('info') === '1') {
+        return new Response(JSON.stringify({
+          playerCount: this.clients.size,
+          spectatorCount: this.spectators.size,
+          isPrivate: this.isPrivate,
+          isTournament: this.isTournament,
+        }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+      }
       return new Response('Expected WebSocket upgrade', { status: 426 });
     }
 
     if (!this.roomCode) {
-      const parts = new URL(request.url).pathname.split('/');
+      const parts = url.pathname.split('/');
       // path: /battle/room/CODE/ws → parts[3]
       this.roomCode = parts[3] || null;
     }
 
+    const isSpectator = url.searchParams.get('role') === 'spectator';
+
+    if (isSpectator) {
+      // Spectator join
+      if (this.isPrivate) {
+        return new Response(JSON.stringify({ error: 'Room is private' }), { status: 403, headers: { 'Content-Type': 'application/json' } });
+      }
+      if (this.spectators.size >= 50) {
+        return new Response(JSON.stringify({ error: 'Spectator cap reached' }), { status: 409, headers: { 'Content-Type': 'application/json' } });
+      }
+      return this._acceptSpectator(request);
+    }
+
+    // Player join
     let playerId;
     if (!this.clients.has('host')) {
       playerId = 'host';
@@ -1249,12 +1486,40 @@ export class BattleRoom {
         return;
       }
 
-      // Relay all other messages to the partner
+      // Room control messages (host only)
+      if (msg && msg.type === 'room_set_private' && playerId === 'host') {
+        // Tournament matches cannot be made private
+        if (!this.isTournament) {
+          this.isPrivate = !!msg.isPrivate;
+        }
+        server.send(JSON.stringify({ type: 'room_privacy_ack', isPrivate: this.isPrivate }));
+        return;
+      }
+      if (msg && msg.type === 'room_set_tournament' && playerId === 'host') {
+        this.isTournament = true;
+        this.isPrivate = false; // tournament rooms are always public
+        return;
+      }
+
+      // Relay all other messages to the partner AND to spectators for game messages
       const otherId = playerId === 'host' ? 'guest' : 'host';
       const otherWs = this.clients.get(otherId);
       if (otherWs && otherWs.readyState === 1) {
         otherWs.send(event.data);
       }
+
+      // Relay game state messages to spectators, tagging which player sent it
+      const SPECTATOR_RELAY_TYPES = new Set([
+        'battle_board', 'battle_attack', 'battle_score_race_end',
+        'battle_game_over', 'battle_start', 'battle_mode', 'battle_rating',
+        'battle_powerup',
+      ]);
+      if (msg && SPECTATOR_RELAY_TYPES.has(msg.type) && this.spectators.size > 0) {
+        const relayMsg = JSON.stringify(Object.assign({}, msg, { fromPlayer: playerId }));
+        this._broadcastSpectators(relayMsg);
+      }
+
+      // When spectator joins, players will receive spectator_joined and should send board state
     });
 
     server.addEventListener('close', () => {
@@ -1263,6 +1528,10 @@ export class BattleRoom {
       const otherWs = this.clients.get(otherId);
       if (otherWs && otherWs.readyState === 1) {
         otherWs.send(JSON.stringify({ type: 'player_left', playerId }));
+      }
+      // Notify spectators the match ended
+      if (this.spectators.size > 0) {
+        this._broadcastSpectators(JSON.stringify({ type: 'player_left', playerId }));
       }
       if (this.clients.size === 0) {
         this.state.storage.deleteAll().catch(() => {});
@@ -1276,25 +1545,114 @@ export class BattleRoom {
     return new Response(null, { status: 101, webSocket: client });
   }
 
+  _acceptSpectator(request) {
+    const specId = 'spectator_' + (this._spectatorSeq++);
+    const pair = new WebSocketPair();
+    const [client, server] = Object.values(pair);
+    server.accept();
+
+    this.spectators.set(specId, server);
+
+    // Notify players a spectator joined (so they can send board state)
+    const count = this.spectators.size;
+    this._broadcast(JSON.stringify({ type: 'spectator_joined', spectatorCount: count }));
+
+    // Welcome the spectator with current room state
+    server.send(JSON.stringify({
+      type: 'spectator_welcome',
+      spectatorCount: count,
+      isPrivate: this.isPrivate,
+      isTournament: this.isTournament,
+      playersConnected: this.clients.size,
+      mySpecId: specId,
+    }));
+
+    server.addEventListener('message', (event) => {
+      let msg = null;
+      try { msg = JSON.parse(event.data); } catch (_) {}
+      if (!msg) return;
+
+      if (msg.type === 'ping') {
+        server.send(JSON.stringify({ type: 'pong' }));
+        return;
+      }
+
+      // Relay emoji reactions to all spectators; also poke players with a hype tick
+      if (msg.type === 'spectator_reaction') {
+        const VALID_EMOJIS = new Set(['fire','clap','shocked','skull','diamond','crown']);
+        const emoji = typeof msg.emoji === 'string' && VALID_EMOJIS.has(msg.emoji) ? msg.emoji : null;
+        if (emoji) {
+          this._broadcastSpectators(JSON.stringify({ type: 'spectator_reaction', emoji, specId }));
+          this._broadcast(JSON.stringify({ type: 'spectator_hype_tick' }));
+        }
+        return;
+      }
+
+      // Relay chat messages to all spectators (server enforces 100-char limit)
+      if (msg.type === 'spectator_chat') {
+        const text = typeof msg.text === 'string' ? msg.text.slice(0, 100).trim() : '';
+        const name = typeof msg.name === 'string' ? msg.name.slice(0, 24).trim() : 'Anon';
+        if (text.length > 0) {
+          this._broadcastSpectators(JSON.stringify({ type: 'spectator_chat', text, name, specId }));
+        }
+        return;
+      }
+
+      // Relay spectator name registration (for the spectator list in the chat header)
+      if (msg.type === 'spectator_hello') {
+        const name = typeof msg.name === 'string' ? msg.name.slice(0, 24).trim() : '';
+        if (name) {
+          this._broadcastSpectators(JSON.stringify({ type: 'spectator_hello', name, specId }));
+        }
+        return;
+      }
+    });
+
+    server.addEventListener('close', () => {
+      this.spectators.delete(specId);
+      const updatedCount = this.spectators.size;
+      this._broadcast(JSON.stringify({ type: 'spectator_count', spectatorCount: updatedCount }));
+    });
+
+    server.addEventListener('error', () => {
+      this.spectators.delete(specId);
+    });
+
+    return new Response(null, { status: 101, webSocket: client });
+  }
+
   async alarm() {
     for (const ws of this.clients.values()) {
       try { ws.close(1001, 'Room expired'); } catch (_) {}
     }
+    for (const ws of this.spectators.values()) {
+      try { ws.close(1001, 'Room expired'); } catch (_) {}
+    }
     this.clients.clear();
+    this.spectators.clear();
     await this.state.storage.deleteAll();
   }
 }
 
 // ── Battle Room HTTP Handlers ─────────────────────────────────────────────────
 
-function battleRoomWsUrl(requestUrl, code) {
+function battleRoomWsUrl(requestUrl, code, role) {
   const u = new URL(requestUrl);
   const proto = u.protocol === 'https:' ? 'wss:' : 'ws:';
-  return `${proto}//${u.host}/battle/room/${code}/ws`;
+  const base = `${proto}//${u.host}/battle/room/${code}/ws`;
+  return role ? base + '?role=' + role : base;
 }
 
 async function handleBattleRoomCreate(request, env) {
   const code = generateRoomCode();
+  // Register in KV for live room discovery (TTL: 2 hours)
+  if (env.LEADERBOARD_KV) {
+    await env.LEADERBOARD_KV.put(
+      'battle:live:' + code,
+      JSON.stringify({ code, createdAt: Date.now(), isPrivate: false, isTournament: false }),
+      { expirationTtl: 7200 }
+    ).catch(() => {});
+  }
   return jsonResponse({ roomCode: code, wsUrl: battleRoomWsUrl(request.url, code) }, 201);
 }
 
@@ -1312,6 +1670,69 @@ async function handleBattleRoomWs(request, code, env) {
   const id = env.BATTLE_ROOMS.idFromName(code);
   const stub = env.BATTLE_ROOMS.get(id);
   return stub.fetch(request);
+}
+
+async function handleBattleRoomSpectate(request, code, env) {
+  if (!code || !/^[A-Z0-9]{4}$/.test(code)) {
+    return jsonResponse({ error: 'Invalid room code' }, 400);
+  }
+  // Query the DO for current room info before returning wsUrl
+  try {
+    const id = env.BATTLE_ROOMS.idFromName(code);
+    const stub = env.BATTLE_ROOMS.get(id);
+    const infoUrl = new URL(request.url);
+    infoUrl.pathname = '/battle/room/' + code + '/ws';
+    infoUrl.search = '?info=1';
+    const infoResp = await stub.fetch(infoUrl.toString());
+    if (infoResp.ok) {
+      const info = await infoResp.json();
+      if (info.isPrivate) return jsonResponse({ error: 'Room is private' }, 403);
+      if (info.spectatorCount >= 50) return jsonResponse({ error: 'Spectator cap reached', full: true }, 409);
+      const wsUrl = battleRoomWsUrl(request.url, code, 'spectator');
+      return jsonResponse({ wsUrl, spectatorCount: info.spectatorCount, playersConnected: info.playerCount });
+    }
+  } catch (_) {}
+  // Fallback: just provide wsUrl and let the DO reject if needed
+  const wsUrl = battleRoomWsUrl(request.url, code, 'spectator');
+  return jsonResponse({ wsUrl, spectatorCount: 0 });
+}
+
+async function handleBattleRoomsLive(request, env) {
+  if (!env.LEADERBOARD_KV) return jsonResponse({ rooms: [] });
+  try {
+    const list = await env.LEADERBOARD_KV.list({ prefix: 'battle:live:' });
+    const rooms = [];
+    for (const key of list.keys) {
+      const raw = await env.LEADERBOARD_KV.get(key.name, { type: 'json' }).catch(() => null);
+      if (raw) {
+        // Query DO for live spectator count and match status
+        const code = raw.code || key.name.replace('battle:live:', '');
+        try {
+          const id = env.BATTLE_ROOMS.idFromName(code);
+          const stub = env.BATTLE_ROOMS.get(id);
+          const infoUrl = new URL(request.url);
+          infoUrl.pathname = '/battle/room/' + code + '/ws';
+          infoUrl.search = '?info=1';
+          const infoResp = await stub.fetch(infoUrl.toString());
+          if (infoResp.ok) {
+            const info = await infoResp.json();
+            if (!info.isPrivate && info.playerCount > 0) {
+              rooms.push({
+                code,
+                spectatorCount: info.spectatorCount,
+                playerCount: info.playerCount,
+                isTournament: info.isTournament,
+                spectatorFull: info.spectatorCount >= 50,
+              });
+            }
+          }
+        } catch (_) {}
+      }
+    }
+    return jsonResponse({ rooms });
+  } catch (_) {
+    return jsonResponse({ rooms: [] });
+  }
 }
 
 // ── Battle Quick Match ────────────────────────────────────────────────────────
@@ -1346,6 +1767,550 @@ async function handleBattleQuickMatch(request, env) {
   return jsonResponse({ waiting: true, roomCode: code, wsUrl }, 201);
 }
 
+// ── Tournament Engine ─────────────────────────────────────────────────────────
+
+/**
+ * TournamentEngine Durable Object
+ *
+ * Stores the full bracket state for a single 8-player single-elimination
+ * tournament. Authoritative source; mirrors to TOURNAMENTS_KV after each write.
+ *
+ * HTTP RPC interface (called from the main worker fetch handler):
+ *   PUT  /init            → { id, players }  — initialize bracket (idempotent)
+ *   GET  /                → full tournament state
+ *   POST /match-complete  → { matchId, winnerId }  — advance bracket
+ */
+export class TournamentEngine {
+  constructor(state, env) {
+    this.state = state;
+    this.env = env;
+  }
+
+  async fetch(request) {
+    const url = new URL(request.url);
+    const method = request.method.toUpperCase();
+
+    if (method === 'PUT' && url.pathname === '/init') {
+      return this._init(await request.json());
+    } else if (method === 'GET' && url.pathname === '/') {
+      return this._getState();
+    } else if (method === 'POST' && url.pathname === '/match-complete') {
+      return this._matchComplete(await request.json());
+    } else if (method === 'POST' && url.pathname === '/match-join') {
+      return this._matchJoin(await request.json());
+    } else if (method === 'POST' && url.pathname === '/match-heartbeat') {
+      return this._matchHeartbeat(await request.json());
+    }
+    return this._doResponse({ error: 'Not found' }, 404);
+  }
+
+  async _init({ id, players }) {
+    const existing = await this.state.storage.get('tournament');
+    if (existing) {
+      return this._doResponse(existing, 200);
+    }
+    const tournament = _buildTournament(id, players);
+    await this.state.storage.put('tournament', tournament);
+    await this._mirrorToKV(tournament);
+    this._scheduleNextAlarm(tournament);
+    return this._doResponse(tournament, 201);
+  }
+
+  async _getState() {
+    const tournament = await this.state.storage.get('tournament');
+    if (!tournament) return this._doResponse({ error: 'Tournament not found' }, 404);
+    return this._doResponse(tournament);
+  }
+
+  async _matchComplete({ matchId, winnerId }) {
+    const tournament = await this.state.storage.get('tournament');
+    if (!tournament) return this._doResponse({ error: 'Tournament not found' }, 404);
+
+    const match = tournament.matches.find(m => m.id === matchId);
+    if (!match) return this._doResponse({ error: 'Match not found' }, 404);
+    if (match.status !== 'in_progress') {
+      return this._doResponse({ error: `Match is ${match.status}, not in_progress` }, 400);
+    }
+    if (winnerId !== match.player1Id && winnerId !== match.player2Id) {
+      return this._doResponse({ error: 'Winner is not a participant in this match' }, 400);
+    }
+
+    match.status = 'complete';
+    match.winnerId = winnerId;
+    this._advanceBracket(tournament, match);
+
+    await this.state.storage.put('tournament', tournament);
+    await this._mirrorToKV(tournament);
+    this._scheduleNextAlarm(tournament);
+    return this._doResponse(tournament);
+  }
+
+  // Player signals readiness within the 60-second join window.
+  async _matchJoin({ matchId, playerId }) {
+    const tournament = await this.state.storage.get('tournament');
+    if (!tournament) return this._doResponse({ error: 'Tournament not found' }, 404);
+
+    const match = tournament.matches.find(m => m.id === matchId);
+    if (!match) return this._doResponse({ error: 'Match not found' }, 404);
+    if (match.status !== 'in_progress') {
+      return this._doResponse({ error: `Match is ${match.status}, not in_progress` }, 400);
+    }
+    if (playerId !== match.player1Id && playerId !== match.player2Id) {
+      return this._doResponse({ error: 'Player is not a participant in this match' }, 400);
+    }
+    if (match.joinDeadline && Date.now() > match.joinDeadline) {
+      return this._doResponse({ error: 'Join deadline has passed' }, 410);
+    }
+
+    if (!match.joinedPlayerIds) match.joinedPlayerIds = [];
+    if (!match.joinedPlayerIds.includes(playerId)) {
+      match.joinedPlayerIds.push(playerId);
+    }
+    if (!match.heartbeats) match.heartbeats = {};
+    match.heartbeats[playerId] = Date.now();
+
+    await this.state.storage.put('tournament', tournament);
+    await this._mirrorToKV(tournament);
+    this._scheduleNextAlarm(tournament);
+    return this._doResponse(tournament);
+  }
+
+  // Player liveness signal; must be sent every ≤ 20s to avoid disconnect forfeit (30s threshold).
+  async _matchHeartbeat({ matchId, playerId }) {
+    const tournament = await this.state.storage.get('tournament');
+    if (!tournament) return this._doResponse({ error: 'Tournament not found' }, 404);
+
+    const match = tournament.matches.find(m => m.id === matchId);
+    if (!match) return this._doResponse({ error: 'Match not found' }, 404);
+    if (match.status !== 'in_progress') {
+      return this._doResponse({ error: `Match is ${match.status}` }, 400);
+    }
+    if (playerId !== match.player1Id && playerId !== match.player2Id) {
+      return this._doResponse({ error: 'Player is not a participant in this match' }, 400);
+    }
+    const joinedSet = new Set(match.joinedPlayerIds || []);
+    if (!joinedSet.has(playerId)) {
+      return this._doResponse({ error: 'Player has not joined this match yet' }, 400);
+    }
+
+    if (!match.heartbeats) match.heartbeats = {};
+    match.heartbeats[playerId] = Date.now();
+
+    await this.state.storage.put('tournament', tournament);
+    this._scheduleNextAlarm(tournament);
+    return this._doResponse({ ok: true, matchId, playerId });
+  }
+
+  // Durable Object alarm: fires at the earliest pending join-deadline or disconnect-timeout.
+  async alarm() {
+    const tournament = await this.state.storage.get('tournament');
+    if (!tournament) return;
+
+    const now = Date.now();
+    let modified = false;
+
+    for (const match of tournament.matches) {
+      if (match.status !== 'in_progress') continue;
+
+      const players = [match.player1Id, match.player2Id].filter(Boolean);
+      const joinedSet = new Set(match.joinedPlayerIds || []);
+
+      // Check join deadline — forfeit players who didn't join in time.
+      if (match.joinDeadline && now >= match.joinDeadline) {
+        const notJoined = players.filter(p => !joinedSet.has(p));
+        if (notJoined.length >= 1) {
+          // At least one player timed out; opponent wins (or player1 wins if both forfeited).
+          const winner = players.find(p => joinedSet.has(p)) || match.player1Id;
+          match.status = 'complete';
+          match.winnerId = winner;
+          match.forfeitReason = 'timeout';
+          this._advanceBracket(tournament, match);
+          modified = true;
+          continue;
+        }
+        // Both joined on time — clear deadline.
+        match.joinDeadline = null;
+        modified = true;
+      }
+
+      // Check disconnect timeout for joined players (30-second threshold).
+      if (match.heartbeats) {
+        for (const playerId of players) {
+          if (!joinedSet.has(playerId)) continue;
+          const lastSeen = match.heartbeats[playerId];
+          if (lastSeen && now - lastSeen >= 30_000) {
+            const opponent = players.find(p => p !== playerId);
+            if (opponent) {
+              match.status = 'complete';
+              match.winnerId = opponent;
+              match.forfeitReason = 'disconnect';
+              this._advanceBracket(tournament, match);
+              modified = true;
+              break;
+            }
+          }
+        }
+      }
+    }
+
+    if (modified) {
+      await this.state.storage.put('tournament', tournament);
+      await this._mirrorToKV(tournament);
+    }
+    this._scheduleNextAlarm(tournament);
+  }
+
+  // Advance the bracket after a match completes (assumes match.status = 'complete', match.winnerId set).
+  _advanceBracket(tournament, match) {
+    const winnerId = match.winnerId;
+    if (match.nextMatchId) {
+      const next = tournament.matches.find(m => m.id === match.nextMatchId);
+      if (next) {
+        if (match.nextMatchSlot === 1) next.player1Id = winnerId;
+        else next.player2Id = winnerId;
+        if (next.player1Id && next.player2Id) {
+          next.status = 'in_progress';
+          next.joinDeadline = Date.now() + 60_000;
+        }
+      }
+    } else {
+      // Final complete — tournament done.
+      tournament.status = 'complete';
+      tournament.winner = winnerId;
+      tournament.completedAt = new Date().toISOString();
+      const player = tournament.players.find(p => p.id === winnerId);
+      tournament.champion = player
+        ? { playerId: player.id, displayName: player.displayName }
+        : null;
+    }
+  }
+
+  // Schedule the DO alarm at the earliest pending deadline across all in_progress matches.
+  _scheduleNextAlarm(tournament) {
+    const now = Date.now();
+    let earliest = null;
+
+    for (const match of tournament.matches) {
+      if (match.status !== 'in_progress') continue;
+
+      if (match.joinDeadline && match.joinDeadline > now) {
+        if (!earliest || match.joinDeadline < earliest) earliest = match.joinDeadline;
+      }
+      if (match.heartbeats) {
+        for (const ts of Object.values(match.heartbeats)) {
+          const expiry = ts + 30_000;
+          if (expiry > now && (!earliest || expiry < earliest)) earliest = expiry;
+        }
+      }
+    }
+
+    if (earliest) {
+      this.state.storage.setAlarm(earliest).catch(() => {});
+    }
+  }
+
+  async _mirrorToKV(tournament) {
+    if (this.env.TOURNAMENTS_KV) {
+      await this.env.TOURNAMENTS_KV.put(
+        `tournament:${tournament.id}`,
+        JSON.stringify(tournament),
+        { expirationTtl: 60 * 60 * 24 * 90 }, // 90-day history
+      );
+    }
+  }
+
+  _doResponse(data, status = 200) {
+    return new Response(JSON.stringify(data), {
+      status,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+}
+
+// ── Tournament Bracket Builder ────────────────────────────────────────────────
+
+/**
+ * Build an 8-player single-elimination bracket seeded by battle rating.
+ *
+ * Seeding (highest vs lowest, snake pairing):
+ *   QF0: seed 1 vs seed 8  →  SF0 slot 1
+ *   QF1: seed 4 vs seed 5  →  SF0 slot 2
+ *   QF2: seed 2 vs seed 7  →  SF1 slot 1
+ *   QF3: seed 3 vs seed 6  →  SF1 slot 2
+ *   SF0: QF0 winner vs QF1 winner  →  Final slot 1
+ *   SF1: QF2 winner vs QF3 winner  →  Final slot 2
+ *
+ * Null player slots = bye (auto-complete, winner = the non-null player).
+ */
+function _buildTournament(id, players) {
+  const seeded = [...players]
+    .sort((a, b) => (b.rating || 0) - (a.rating || 0))
+    .map((p, i) => ({ ...p, seed: i + 1 }));
+
+  // Pad to 8 with byes (null)
+  while (seeded.length < 8) seeded.push(null);
+
+  // QF pairings: [index into seeded for p1, index for p2]
+  const qfPairings = [
+    [0, 7], // seed 1 vs 8
+    [3, 4], // seed 4 vs 5
+    [1, 6], // seed 2 vs 7
+    [2, 5], // seed 3 vs 6
+  ];
+
+  // Pre-generate all match IDs so QF matches can reference their SF parents
+  const ids = Array.from({ length: 7 }, () =>
+    crypto.randomUUID().replace(/-/g, '').slice(0, 16),
+  );
+  // ids[0..3] = QF0–QF3, ids[4..5] = SF0–SF1, ids[6] = Final
+
+  const matches = [];
+
+  // QF matches
+  for (let i = 0; i < 4; i++) {
+    const [aIdx, bIdx] = qfPairings[i];
+    const p1 = seeded[aIdx];
+    const p2 = seeded[bIdx];
+    const isBye = !p1 || !p2;
+    const winnerId = isBye ? (p1 ? p1.id : p2 ? p2.id : null) : null;
+    const sfId = ids[i < 2 ? 4 : 5];
+    const nextMatchSlot = i % 2 === 0 ? 1 : 2;
+    const qfStatus = isBye ? 'complete' : 'in_progress';
+
+    matches.push({
+      id: ids[i],
+      round: 0,
+      matchIndex: i,
+      status: qfStatus,
+      player1Id: p1 ? p1.id : null,
+      player2Id: p2 ? p2.id : null,
+      winnerId,
+      isBye,
+      nextMatchId: sfId,
+      nextMatchSlot,
+      joinDeadline: qfStatus === 'in_progress' ? Date.now() + 60_000 : null,
+      joinedPlayerIds: [],
+      heartbeats: {},
+      forfeitReason: null,
+    });
+  }
+
+  // SF matches — seed with bye-resolved winners
+  for (let i = 0; i < 2; i++) {
+    const qf1 = matches[i * 2];
+    const qf2 = matches[i * 2 + 1];
+    const p1Id = qf1.winnerId || null;
+    const p2Id = qf2.winnerId || null;
+    const sfStatus = p1Id && p2Id ? 'in_progress' : 'pending';
+
+    matches.push({
+      id: ids[4 + i],
+      round: 1,
+      matchIndex: i,
+      status: sfStatus,
+      player1Id: p1Id,
+      player2Id: p2Id,
+      winnerId: null,
+      isBye: false,
+      nextMatchId: ids[6],
+      nextMatchSlot: i + 1,
+      joinDeadline: sfStatus === 'in_progress' ? Date.now() + 60_000 : null,
+      joinedPlayerIds: [],
+      heartbeats: {},
+      forfeitReason: null,
+    });
+  }
+
+  // Final
+  const sf0 = matches[4];
+  const sf1 = matches[5];
+  const fp1 = sf0.status === 'complete' ? sf0.winnerId : null;
+  const fp2 = sf1.status === 'complete' ? sf1.winnerId : null;
+
+  const finalStatus = fp1 && fp2 ? 'in_progress' : 'pending';
+  matches.push({
+    id: ids[6],
+    round: 2,
+    matchIndex: 0,
+    status: finalStatus,
+    player1Id: fp1,
+    player2Id: fp2,
+    winnerId: null,
+    isBye: false,
+    nextMatchId: null,
+    nextMatchSlot: null,
+    joinDeadline: finalStatus === 'in_progress' ? Date.now() + 60_000 : null,
+    joinedPlayerIds: [],
+    heartbeats: {},
+    forfeitReason: null,
+  });
+
+  return {
+    id,
+    status: 'in_progress',
+    createdAt: new Date().toISOString(),
+    completedAt: null,
+    players: seeded.filter(Boolean),
+    matches,
+    winner: null,
+    champion: null,
+  };
+}
+
+// ── Tournament API Handlers ───────────────────────────────────────────────────
+
+/**
+ * POST /api/tournaments
+ * Body: { players: [{ id, displayName, rating }] }
+ * Creates a tournament, seeds the bracket, returns full tournament object.
+ */
+async function handlePostTournament(request, env) {
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return jsonResponse({ error: 'Invalid JSON' }, 400);
+  }
+
+  const { players } = body;
+  if (!Array.isArray(players) || players.length < 2 || players.length > 8) {
+    return jsonResponse({ error: 'players must be an array of 2–8 entries' }, 400);
+  }
+
+  for (const p of players) {
+    if (!p || typeof p.id !== 'string' || !p.id.trim()) {
+      return jsonResponse({ error: 'Each player must have a non-empty string id' }, 400);
+    }
+    if (typeof p.displayName !== 'string' || !DISPLAY_NAME_REGEX.test(p.displayName)) {
+      return jsonResponse({ error: `Invalid displayName: ${p.displayName}` }, 400);
+    }
+    if (typeof p.rating !== 'number') {
+      return jsonResponse({ error: `Player ${p.id} must have a numeric rating` }, 400);
+    }
+  }
+
+  if (new Set(players.map(p => p.id)).size !== players.length) {
+    return jsonResponse({ error: 'Duplicate player ids' }, 400);
+  }
+
+  const tournamentId = crypto.randomUUID().replace(/-/g, '').slice(0, 16);
+  const doId = env.TOURNAMENT_ROOMS.idFromName(tournamentId);
+  const doStub = env.TOURNAMENT_ROOMS.get(doId);
+
+  const doRes = await doStub.fetch('http://internal/init', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id: tournamentId, players }),
+  });
+
+  const data = await doRes.json();
+  return jsonResponse(data, doRes.status === 201 ? 201 : 200);
+}
+
+/**
+ * GET /api/tournaments/:id
+ * Returns full bracket with match states.
+ */
+async function handleGetTournament(tournamentId, env) {
+  const doId = env.TOURNAMENT_ROOMS.idFromName(tournamentId);
+  const doStub = env.TOURNAMENT_ROOMS.get(doId);
+  const doRes = await doStub.fetch('http://internal/', { method: 'GET' });
+  const data = await doRes.json();
+  return jsonResponse(data, doRes.status);
+}
+
+/**
+ * POST /api/tournaments/:id/match-complete
+ * Body: { matchId, winnerId }
+ * Internal endpoint: called when a match concludes. Advances the bracket.
+ */
+async function handlePostMatchComplete(tournamentId, request, env) {
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return jsonResponse({ error: 'Invalid JSON' }, 400);
+  }
+
+  const { matchId, winnerId } = body;
+  if (!matchId || !winnerId) {
+    return jsonResponse({ error: 'matchId and winnerId are required' }, 400);
+  }
+
+  const doId = env.TOURNAMENT_ROOMS.idFromName(tournamentId);
+  const doStub = env.TOURNAMENT_ROOMS.get(doId);
+
+  const doRes = await doStub.fetch('http://internal/match-complete', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ matchId, winnerId }),
+  });
+
+  const data = await doRes.json();
+  return jsonResponse(data, doRes.status);
+}
+
+/**
+ * POST /api/tournaments/:id/match-join
+ * Body: { matchId, playerId }
+ * Player signals readiness within the 60-second join window. Starts heartbeat tracking.
+ */
+async function handlePostMatchJoin(tournamentId, request, env) {
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return jsonResponse({ error: 'Invalid JSON' }, 400);
+  }
+
+  const { matchId, playerId } = body;
+  if (!matchId || !playerId) {
+    return jsonResponse({ error: 'matchId and playerId are required' }, 400);
+  }
+
+  const doId = env.TOURNAMENT_ROOMS.idFromName(tournamentId);
+  const doStub = env.TOURNAMENT_ROOMS.get(doId);
+  const doRes = await doStub.fetch('http://internal/match-join', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ matchId, playerId }),
+  });
+
+  const data = await doRes.json();
+  return jsonResponse(data, doRes.status);
+}
+
+/**
+ * POST /api/tournaments/:id/match-heartbeat
+ * Body: { matchId, playerId }
+ * Player liveness signal. Must be called every ≤ 20s during a match to avoid
+ * the 30-second disconnect forfeit threshold.
+ */
+async function handlePostMatchHeartbeat(tournamentId, request, env) {
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return jsonResponse({ error: 'Invalid JSON' }, 400);
+  }
+
+  const { matchId, playerId } = body;
+  if (!matchId || !playerId) {
+    return jsonResponse({ error: 'matchId and playerId are required' }, 400);
+  }
+
+  const doId = env.TOURNAMENT_ROOMS.idFromName(tournamentId);
+  const doStub = env.TOURNAMENT_ROOMS.get(doId);
+  const doRes = await doStub.fetch('http://internal/match-heartbeat', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ matchId, playerId }),
+  });
+
+  const data = await doRes.json();
+  return jsonResponse(data, doRes.status);
+}
+
 // ── Router ────────────────────────────────────────────────────────────────────
 
 export default {
@@ -1375,11 +2340,30 @@ export default {
     } else if (method === 'GET' && /^\/battle\/room\/[A-Z0-9]{4}\/join$/.test(url.pathname)) {
       const code = url.pathname.split('/')[3];
       response = await handleBattleRoomJoin(request, code, env);
+    } else if (method === 'GET' && /^\/battle\/room\/[A-Z0-9]{4}\/spectate$/.test(url.pathname)) {
+      const code = url.pathname.split('/')[3];
+      response = await handleBattleRoomSpectate(request, code, env);
     } else if (/^\/battle\/room\/[A-Z0-9]{4}\/ws$/.test(url.pathname)) {
       const code = url.pathname.split('/')[3];
       return handleBattleRoomWs(request, code, env);
+    } else if (method === 'GET' && url.pathname === '/battle/rooms/live') {
+      response = await handleBattleRoomsLive(request, env);
     } else if (method === 'POST' && url.pathname === '/battle/quickmatch') {
       response = await handleBattleQuickMatch(request, env);
+    } else if (method === 'POST' && url.pathname === '/api/tournaments') {
+      response = await handlePostTournament(request, env);
+    } else if (method === 'GET' && /^\/api\/tournaments\/[a-f0-9]{16}$/.test(url.pathname)) {
+      const tid = url.pathname.split('/').pop();
+      response = await handleGetTournament(tid, env);
+    } else if (method === 'POST' && /^\/api\/tournaments\/[a-f0-9]{16}\/match-complete$/.test(url.pathname)) {
+      const tid = url.pathname.split('/')[3];
+      response = await handlePostMatchComplete(tid, request, env);
+    } else if (method === 'POST' && /^\/api\/tournaments\/[a-f0-9]{16}\/match-join$/.test(url.pathname)) {
+      const tid = url.pathname.split('/')[3];
+      response = await handlePostMatchJoin(tid, request, env);
+    } else if (method === 'POST' && /^\/api\/tournaments\/[a-f0-9]{16}\/match-heartbeat$/.test(url.pathname)) {
+      const tid = url.pathname.split('/')[3];
+      response = await handlePostMatchHeartbeat(tid, request, env);
     } else if (method === 'POST' && url.pathname === '/api/puzzles') {
       response = await handlePostPuzzle(request, env);
     } else if (method === 'GET' && url.pathname === '/api/puzzles') {
@@ -1404,8 +2388,19 @@ export default {
       response = await handlePostScore(request, env);
     } else if (method === 'POST' && url.pathname === '/api/scores/weekly') {
       response = await handlePostWeeklyScore(request, env);
+    } else if (method === 'POST' && url.pathname === '/api/battle/ratings') {
+      response = await handlePostBattleRating(request, env);
+    } else if (method === 'GET' && url.pathname === '/api/battle/ratings') {
+      response = await handleGetBattleLeaderboard(env);
     } else if (method === 'GET' && url.pathname === '/api/season') {
       response = await handleGetSeason(env);
+    } else if (method === 'GET' && url.pathname === '/api/season/ratings') {
+      response = await handleGetSeasonRatingLeaderboard(request, env);
+    } else if (method === 'GET' && url.pathname === '/api/season/hall-of-fame') {
+      response = await handleGetHallOfFame(env);
+    } else if (method === 'GET' && url.pathname.startsWith('/api/season/rating-snapshot/')) {
+      const seasonId = url.pathname.replace('/api/season/rating-snapshot/', '');
+      response = await handleGetSeasonRatingSnapshot(seasonId, env);
     } else if (method === 'GET' && url.pathname.startsWith('/api/season/archive/')) {
       const seasonId = url.pathname.replace('/api/season/archive/', '');
       response = await handleGetSeasonArchive(seasonId, env);

@@ -5279,6 +5279,31 @@ body.theme-legendary #score-display {
   font-size: 8px;
   color: rgba(255, 255, 255, 0.5);
 }
+.season-end-your-summary {
+  background: rgba(0,255,136,0.07);
+  border: 1px solid rgba(0,255,136,0.2);
+  border-radius: 6px;
+  padding: 10px 14px;
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.season-end-your-summary-title {
+  font-family: "Press Start 2P", cursive;
+  font-size: 7px;
+  color: rgba(255,255,255,0.45);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.season-end-your-rating {
+  font-size: 0.9em;
+  color: #e0e0e0;
+}
+.season-end-your-record {
+  font-size: 0.8em;
+  color: rgba(255,255,255,0.6);
+}
 #season-end-close-btn {
   align-self: center;
   font-family: "Press Start 2P", cursive;
@@ -7125,4 +7150,1212 @@ body.theme-legendary #score-display {
   15%  { opacity: 1; transform: translateX(-50%) translateY(0);   }
   70%  { opacity: 1; transform: translateX(-50%) translateY(0);   }
   100% { opacity: 0; transform: translateX(-50%) translateY(-8px); }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════ */
+/* ── Tournament mode card ── */
+/* ═══════════════════════════════════════════════════════════════════════════ */
+.mode-card-tournament {
+  border-color: rgba(255, 200, 0, 0.45);
+  box-shadow: 0 0 14px rgba(255, 200, 0, 0.1);
+}
+.mode-card-tournament .mode-card-icon {
+  color: #ffd700;
+}
+.mode-card-tournament .mode-card-name {
+  color: #ffd700;
+  text-shadow: 0 0 6px #ffd700;
+}
+.mode-card-tournament .mode-card-desc {
+  color: #ffe88a;
+}
+.mode-card-tournament:hover {
+  border-color: #ffd700 !important;
+  box-shadow: 0 0 22px rgba(255, 200, 0, 0.45) !important;
+}
+
+/* ── Tournament lobby overlay ── */
+#tournament-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.92);
+  z-index: 300;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow-y: auto;
+}
+#tournament-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  background: rgba(20, 14, 0, 0.97);
+  border: 2px solid rgba(255, 200, 0, 0.45);
+  border-radius: 10px;
+  padding: 36px 44px;
+  width: 560px;
+  max-width: 96vw;
+  max-height: 90vh;
+  overflow-y: auto;
+  font-family: "Press Start 2P", cursive;
+  text-align: center;
+}
+
+/* ── List view ── */
+#tourn-list-title {
+  font-size: 1.1em;
+  color: #ffd700;
+  text-shadow: 0 0 12px rgba(255, 200, 0, 0.7), 0 0 28px rgba(255, 160, 0, 0.4);
+  letter-spacing: 2px;
+  margin-bottom: 16px;
+}
+#tourn-tabs {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  margin-bottom: 18px;
+}
+.tourn-tab {
+  font-family: "Press Start 2P", cursive;
+  font-size: 0.5em;
+  padding: 8px 16px;
+  background: transparent;
+  border: 1px solid rgba(255, 200, 0, 0.35);
+  color: #aa8800;
+  border-radius: 4px;
+  cursor: pointer;
+  letter-spacing: 1px;
+  transition: background 0.15s, color 0.15s;
+}
+.tourn-tab:hover {
+  background: rgba(255, 200, 0, 0.1);
+  color: #ffd700;
+}
+.tourn-tab-active {
+  background: rgba(255, 200, 0, 0.18);
+  border-color: rgba(255, 200, 0, 0.7);
+  color: #ffd700;
+}
+
+/* ── Tournament list items ── */
+#tourn-list-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.tourn-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(255, 200, 0, 0.05);
+  border: 1px solid rgba(255, 200, 0, 0.2);
+  border-radius: 6px;
+  padding: 14px 16px;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.15s, background 0.15s;
+  gap: 12px;
+}
+.tourn-item:hover {
+  border-color: rgba(255, 200, 0, 0.55);
+  background: rgba(255, 200, 0, 0.1);
+}
+.tourn-item-left {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+}
+.tourn-item-name {
+  font-size: 0.65em;
+  color: #ffd700;
+  letter-spacing: 1px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tourn-item-meta {
+  font-size: 0.45em;
+  color: #998855;
+  letter-spacing: 0.5px;
+}
+.tourn-item-prize {
+  font-size: 0.5em;
+  padding: 4px 9px;
+  border-radius: 4px;
+  border: 1px solid rgba(255,255,255,0.15);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.tourn-status-badge {
+  font-size: 0.42em;
+  padding: 3px 8px;
+  border-radius: 3px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.tourn-status-open        { color: #00ff88; border: 1px solid rgba(0,255,136,0.4); background: rgba(0,255,136,0.08); }
+.tourn-status-in_progress { color: #ffaa00; border: 1px solid rgba(255,170,0,0.4); background: rgba(255,170,0,0.08); }
+.tourn-status-completed   { color: #888;    border: 1px solid rgba(136,136,136,0.3); background: rgba(100,100,100,0.06); }
+.tourn-registered-badge   { font-size: 0.42em; color: #00ff88; margin-top: 2px; }
+
+.tourn-empty-msg {
+  font-size: 0.5em;
+  color: #665533;
+  padding: 28px 0;
+  line-height: 2;
+}
+
+/* ── Close / back buttons ── */
+#tourn-list-close-btn,
+#tourn-bracket-back-btn {
+  font-family: "Press Start 2P", cursive;
+  font-size: 0.55em;
+  padding: 12px 24px;
+  background: transparent;
+  border: 1px solid rgba(255, 200, 0, 0.35);
+  color: #aa8800;
+  border-radius: 5px;
+  cursor: pointer;
+  letter-spacing: 1px;
+  margin-top: 4px;
+  transition: background 0.15s, color 0.15s;
+  align-self: center;
+}
+#tourn-list-close-btn:hover,
+#tourn-bracket-back-btn:hover {
+  background: rgba(255, 200, 0, 0.12);
+  color: #ffd700;
+}
+
+/* ── Bracket view ── */
+#tourn-bracket-view {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 16px;
+}
+#tourn-bracket-title {
+  font-size: 0.9em;
+  color: #ffd700;
+  letter-spacing: 2px;
+  text-shadow: 0 0 10px rgba(255,200,0,0.6);
+}
+#tourn-bracket-status-badge {
+  font-size: 0.45em;
+  color: #aa8822;
+  letter-spacing: 1px;
+}
+
+/* ── Bracket tree ── */
+#tourn-bracket-tree {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: stretch;
+}
+.tourn-round-label {
+  font-size: 0.45em;
+  color: #aa8822;
+  letter-spacing: 2px;
+  text-align: left;
+  margin-bottom: -4px;
+}
+.tourn-round {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.tourn-match-slot {
+  display: flex;
+  flex-direction: column;
+  background: rgba(255,200,0,0.05);
+  border: 1px solid rgba(255,200,0,0.2);
+  border-radius: 5px;
+  overflow: hidden;
+  min-width: 160px;
+  flex: 1;
+  max-width: 220px;
+  position: relative;
+}
+.tourn-match-slot.live {
+  border-color: rgba(255,100,0,0.7);
+  box-shadow: 0 0 10px rgba(255,100,0,0.3);
+  animation: tourn-pulse 1.5s ease-in-out infinite;
+}
+@keyframes tourn-pulse {
+  0%, 100% { box-shadow: 0 0 8px rgba(255,100,0,0.3); }
+  50%       { box-shadow: 0 0 18px rgba(255,100,0,0.6); }
+}
+.tourn-match-slot.mine {
+  border-color: rgba(0,255,136,0.55);
+  box-shadow: 0 0 10px rgba(0,255,136,0.2);
+}
+.tourn-live-dot {
+  position: absolute;
+  top: 4px; right: 6px;
+  font-size: 0.4em;
+  color: #ff6600;
+  animation: tourn-blink 1s step-end infinite;
+}
+@keyframes tourn-blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0; }
+}
+.tourn-player-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 7px 10px;
+  font-size: 0.44em;
+  color: #ccaa44;
+  border-bottom: 1px solid rgba(255,200,0,0.1);
+  gap: 6px;
+}
+.tourn-player-row:last-child { border-bottom: none; }
+.tourn-player-row.winner { color: #ffd700; font-weight: bold; }
+.tourn-player-row.loser  { color: #554422; text-decoration: line-through; }
+.tourn-player-row.is-me  { color: #00ff88; }
+.tourn-player-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tourn-player-rating { color: #887744; font-size: 0.85em; }
+.tourn-player-result { font-size: 1em; margin-left: 4px; }
+.tourn-slot-tbd {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px;
+  font-size: 0.4em;
+  color: #554422;
+  letter-spacing: 1px;
+}
+
+/* ── Registration panel (inside bracket view) ── */
+#tourn-reg-panel {
+  background: rgba(0,255,136,0.05);
+  border: 1px solid rgba(0,255,136,0.25);
+  border-radius: 6px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+#tourn-reg-info {
+  font-size: 0.46em;
+  color: #99ddaa;
+  line-height: 1.9;
+}
+#tourn-register-btn {
+  font-family: "Press Start 2P", cursive;
+  font-size: 0.6em;
+  padding: 12px 28px;
+  background: rgba(0,255,136,0.15);
+  border: 2px solid rgba(0,255,136,0.55);
+  color: #00ff88;
+  border-radius: 5px;
+  cursor: pointer;
+  letter-spacing: 1px;
+  transition: background 0.15s, box-shadow 0.15s;
+}
+#tourn-register-btn:hover:not(:disabled) {
+  background: rgba(0,255,136,0.28);
+  box-shadow: 0 0 14px rgba(0,255,136,0.4);
+}
+#tourn-register-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+#tourn-reg-feedback {
+  font-size: 0.45em;
+  color: #ffd700;
+  line-height: 1.8;
+  min-height: 1em;
+}
+
+/* ── Match entry panel ── */
+#tourn-match-entry {
+  background: rgba(0,200,255,0.06);
+  border: 1px solid rgba(0,200,255,0.35);
+  border-radius: 6px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  animation: tourn-pulse-entry 2s ease-in-out infinite;
+}
+@keyframes tourn-pulse-entry {
+  0%, 100% { box-shadow: 0 0 8px rgba(0,200,255,0.2); }
+  50%       { box-shadow: 0 0 20px rgba(0,200,255,0.5); }
+}
+#tourn-match-entry-label {
+  font-size: 0.52em;
+  color: #00ccff;
+  letter-spacing: 1px;
+}
+#tourn-match-countdown {
+  font-size: 1.4em;
+  color: #ff8800;
+  text-shadow: 0 0 10px rgba(255,136,0,0.7);
+  letter-spacing: 2px;
+}
+#tourn-join-match-btn {
+  font-family: "Press Start 2P", cursive;
+  font-size: 0.65em;
+  padding: 14px 32px;
+  background: rgba(0,200,255,0.18);
+  border: 2px solid rgba(0,200,255,0.65);
+  color: #00ccff;
+  border-radius: 5px;
+  cursor: pointer;
+  letter-spacing: 1px;
+  transition: background 0.15s, box-shadow 0.15s;
+}
+#tourn-join-match-btn:hover {
+  background: rgba(0,200,255,0.32);
+  box-shadow: 0 0 16px rgba(0,200,255,0.45);
+}
+
+/* ── Tournament badge in main menu ── */
+#start-tournament-btn {
+  font-family: "Press Start 2P", cursive;
+  font-size: 0.65em;
+  padding: 12px 20px;
+  background: rgba(255, 200, 0, 0.1);
+  border: 2px solid rgba(255, 200, 0, 0.45);
+  color: #ffd700;
+  border-radius: 5px;
+  cursor: pointer;
+  letter-spacing: 1px;
+  transition: background 0.15s, box-shadow 0.15s;
+}
+#start-tournament-btn:hover {
+  background: rgba(255, 200, 0, 0.22);
+  box-shadow: 0 0 14px rgba(255, 200, 0, 0.35);
+}
+
+/* ── Players count bar ── */
+.tourn-player-count-bar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 2px;
+}
+.tourn-count-pip {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  background: rgba(255,200,0,0.2);
+  border: 1px solid rgba(255,200,0,0.3);
+}
+.tourn-count-pip.filled {
+  background: rgba(255,200,0,0.7);
+  border-color: rgba(255,200,0,0.9);
+}
+.tourn-count-pip.mine {
+  background: rgba(0,255,136,0.7);
+  border-color: rgba(0,255,136,0.9);
+}
+
+/* ── Season in-game HUD badge (shown when < 14 days remain) ──────────────── */
+#season-game-hud {
+  display: none;
+  position: absolute;
+  top: 74px;
+  left: 12px;
+  align-items: center;
+  gap: 5px;
+  font-family: "Press Start 2P", cursive;
+  font-size: 8px;
+  padding: 3px 7px;
+  border-radius: 4px;
+  background: rgba(0, 20, 10, 0.7);
+  border: 1px solid #00ff88;
+  color: #00ff88;
+  pointer-events: none;
+  z-index: 20;
+}
+.season-game-hud-icon { font-size: 1.1em; }
+.season-game-hud-name { color: #ccffee; }
+.season-game-hud-days { color: #ffcc00; margin-left: 3px; }
+
+/* ── Season rank badges (profile / stats panel) ───────────────────────────── */
+.season-rank-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-family: "Press Start 2P", cursive;
+  font-size: 0.75em;
+  font-weight: bold;
+  vertical-align: middle;
+}
+.season-rank-pts { font-size: 0.85em; opacity: 0.8; }
+.season-bronze  { color: #cd7f32; background: rgba(205,127,50,0.15);   border: 1px solid #cd7f32; }
+.season-silver  { color: #c0c0c0; background: rgba(192,192,192,0.15);  border: 1px solid #c0c0c0; }
+.season-gold    { color: #ffd700; background: rgba(255,215,0,0.15);    border: 1px solid #ffd700; }
+.season-platinum{ color: #a0d8ef; background: rgba(160,216,239,0.15);  border: 1px solid #a0d8ef; }
+.season-diamond { color: #44ddff; background: rgba(68,221,255,0.15);   border: 1px solid #44ddff; }
+
+/* ── Stats panel season rank section ─────────────────────────────────────── */
+#stats-season-rank {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 0 12px;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+  margin-bottom: 8px;
+}
+.stats-season-rank-label {
+  font-family: "Press Start 2P", cursive;
+  font-size: 7px;
+  color: rgba(255,255,255,0.45);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.stats-season-rank-badge { font-size: 1em; }
+
+/* ── Season Rating leaderboard tab ───────────────────────────────────────── */
+.lb-season-rating-header {
+  font-family: "Press Start 2P", cursive;
+  font-size: 9px;
+  color: #00ff88;
+  text-align: center;
+  padding: 6px 0 10px;
+  letter-spacing: 0.05em;
+}
+.lb-row-me-pinned {
+  border-top: 2px solid rgba(0, 255, 136, 0.4);
+  position: sticky;
+  bottom: 0;
+  background: rgba(0,20,10,0.95);
+}
+
+/* ── Hall of Fame overlay ─────────────────────────────────────────────────── */
+#hof-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.85);
+  z-index: 2200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+#hof-panel {
+  background: #0a1a0f;
+  border: 2px solid var(--hof-accent, #00ff88);
+  border-radius: 8px;
+  padding: 20px 24px;
+  min-width: 340px;
+  max-width: 520px;
+  width: 90%;
+  max-height: 80vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+#hof-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+#hof-icon { font-size: 1.6em; }
+#hof-title {
+  font-family: "Press Start 2P", cursive;
+  font-size: 12px;
+  color: #00ff88;
+  letter-spacing: 0.1em;
+}
+#hof-season-select {
+  background: #0a2a18;
+  border: 1px solid rgba(0,255,136,0.3);
+  color: #e0e0e0;
+  font-family: "Press Start 2P", cursive;
+  font-size: 8px;
+  padding: 5px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.hof-season-title {
+  font-family: "Press Start 2P", cursive;
+  font-size: 8px;
+  color: var(--hof-accent, #00ff88);
+  padding: 4px 0 8px;
+}
+.hof-season-date {
+  color: rgba(255,255,255,0.5);
+  font-size: 7px;
+}
+.hof-champion-icon {
+  font-size: 1.1em;
+  filter: drop-shadow(0 0 4px gold);
+}
+#hof-close-btn {
+  align-self: center;
+  margin-top: 4px;
+  font-family: "Press Start 2P", cursive;
+  font-size: 9px;
+  padding: 8px 20px;
+  background: rgba(0,255,136,0.15);
+  border: 1px solid rgba(0,255,136,0.4);
+  color: #00ff88;
+  cursor: pointer;
+  border-radius: 4px;
+}
+#hof-close-btn:hover { background: rgba(0,255,136,0.25); }
+#hof-open-btn {
+  font-family: "Press Start 2P", cursive;
+  font-size: 9px;
+  padding: 7px 14px;
+  cursor: pointer;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   SEASON PASS — panel, tier track, cosmetic effects
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Season Pass overlay & panel ─────────────────────────────────────────── */
+#season-pass-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.82);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2100;
+}
+
+#season-pass-panel {
+  background: rgba(10,14,10,0.97);
+  border: 2px solid #00ff88;
+  border-radius: 8px;
+  padding: 24px;
+  width: min(540px, 96vw);
+  max-height: 88vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  box-shadow: 0 0 40px rgba(0,255,136,0.2);
+}
+
+#season-pass-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(0,255,136,0.25);
+}
+
+#season-pass-icon {
+  font-size: 28px;
+}
+
+#season-pass-title {
+  font-family: "Press Start 2P", cursive;
+  font-size: 16px;
+  color: #00ff88;
+  text-shadow: 0 0 10px #00ff88;
+}
+
+#season-pass-header-info {
+  font-size: 11px;
+  color: #ccc;
+}
+
+.sp-season-name {
+  font-family: "Press Start 2P", cursive;
+  font-size: 12px;
+  color: #fff;
+  margin-bottom: 6px;
+}
+
+.sp-season-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.sp-days-left {
+  color: #aaa;
+  font-size: 10px;
+}
+
+.sp-no-season {
+  color: #888;
+  font-size: 10px;
+  font-style: italic;
+}
+
+/* ── Tier track rows ──────────────────────────────────────────────────────── */
+#season-pass-panel-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sp-tier-row {
+  display: grid;
+  grid-template-columns: 32px 1fr auto;
+  align-items: center;
+  gap: 10px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 6px;
+  padding: 10px 12px;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.sp-tier-row.sp-tier-reachable {
+  border-color: rgba(255,200,50,0.35);
+  background: rgba(255,200,50,0.06);
+}
+
+.sp-tier-row.sp-tier-earned {
+  border-color: rgba(0,255,136,0.35);
+  background: rgba(0,255,136,0.06);
+}
+
+.sp-tier-row.sp-tier-equipped {
+  border-color: #00ff88;
+  background: rgba(0,255,136,0.10);
+  box-shadow: inset 0 0 12px rgba(0,255,136,0.08);
+}
+
+.sp-tier-status {
+  font-size: 18px;
+  text-align: center;
+}
+
+.sp-tier-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sp-tier-name-badge {
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 3px;
+  display: inline-block;
+  width: fit-content;
+}
+
+.sp-reward-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sp-reward-icon {
+  font-size: 16px;
+}
+
+.sp-reward-name {
+  font-size: 10px;
+  color: #ddd;
+  font-family: "Press Start 2P", cursive;
+}
+
+.sp-reward-desc {
+  font-size: 9px;
+  color: #888;
+  line-height: 1.5;
+}
+
+.sp-tier-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.sp-claim-btn {
+  font-family: "Press Start 2P", cursive;
+  font-size: 8px;
+  padding: 6px 12px;
+  background: rgba(0,255,136,0.15);
+  border: 1px solid #00ff88;
+  color: #00ff88;
+  cursor: pointer;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+.sp-claim-btn:hover { background: rgba(0,255,136,0.3); }
+
+.sp-equip-btn {
+  font-family: "Press Start 2P", cursive;
+  font-size: 8px;
+  padding: 6px 12px;
+  background: rgba(100,100,100,0.2);
+  border: 1px solid #666;
+  color: #ccc;
+  cursor: pointer;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+.sp-equip-btn:hover  { background: rgba(100,100,100,0.35); }
+.sp-equip-btn-active {
+  background: rgba(0,255,136,0.15);
+  border-color: #00ff88;
+  color: #00ff88;
+}
+
+.sp-pending-label {
+  font-size: 8px;
+  color: #f5c518;
+  font-style: italic;
+  white-space: nowrap;
+}
+
+.sp-locked-label {
+  font-size: 8px;
+  color: #555;
+  white-space: nowrap;
+}
+
+#season-pass-close-btn {
+  align-self: center;
+  margin-top: 4px;
+  font-family: "Press Start 2P", cursive;
+  font-size: 9px;
+  padding: 8px 20px;
+  background: rgba(0,255,136,0.15);
+  border: 1px solid rgba(0,255,136,0.4);
+  color: #00ff88;
+  cursor: pointer;
+  border-radius: 4px;
+}
+#season-pass-close-btn:hover { background: rgba(0,255,136,0.25); }
+
+#mode-season-pass-btn {
+  font-family: "Press Start 2P", cursive;
+  font-size: 9px;
+  padding: 7px 14px;
+  cursor: pointer;
+}
+
+/* ── Reward notification in season-end screen ────────────────────────────── */
+.season-reward-notification {
+  margin-top: 12px;
+  padding: 12px;
+  background: rgba(0,200,100,0.10);
+  border: 1px solid rgba(0,255,136,0.4);
+  border-radius: 6px;
+}
+
+.season-reward-notif-title {
+  font-family: "Press Start 2P", cursive;
+  font-size: 10px;
+  color: #00ff88;
+  margin-bottom: 8px;
+}
+
+.season-reward-notif-body {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 11px;
+}
+
+.season-reward-notif-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.season-reward-notif-hint {
+  margin-top: 8px;
+  font-size: 9px;
+  color: #aaa;
+  font-style: italic;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   SEASON COSMETIC EFFECTS — applied via body classes
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Bronze HUD frame — animated bronze border on score/HUD panel ─────────── */
+@keyframes bronze-pulse {
+  0%, 100% { box-shadow: 0 0 6px #cd7f32, inset 0 0 4px rgba(205,127,50,0.2); }
+  50%       { box-shadow: 0 0 14px #cd7f32, inset 0 0 8px rgba(205,127,50,0.3); }
+}
+
+body.season-cosmetic-bronze #score-display,
+body.season-cosmetic-bronze #hud-panel {
+  border-color: #cd7f32 !important;
+  animation: bronze-pulse 2.5s ease-in-out infinite;
+}
+
+body.season-cosmetic-bronze #inventory-hud {
+  border-color: #cd7f32 !important;
+  box-shadow: 0 0 8px rgba(205,127,50,0.4);
+}
+
+/* ── Silver Trail — silver shimmer on piece placements (CSS aura tint) ──────
+   Actual particle trail logic checks getEquippedSeasonCosmetic() at runtime.
+   We apply a subtle CSS shimmer to the next-pieces preview as a visible cue. */
+@keyframes silver-shimmer {
+  0%, 100% { filter: drop-shadow(0 0 3px rgba(192,192,192,0.5)); }
+  50%       { filter: drop-shadow(0 0 8px rgba(220,220,220,0.8)); }
+}
+
+body.season-cosmetic-silver #next-pieces-panel {
+  animation: silver-shimmer 1.8s ease-in-out infinite;
+}
+
+body.season-cosmetic-silver #score-display,
+body.season-cosmetic-silver #hud-panel {
+  border-color: #c0c0c0 !important;
+}
+
+/* ── Gold Frame & Ghost — gold HUD frame + gold tint on ghost/shadow ─────── */
+@keyframes gold-glow {
+  0%, 100% { box-shadow: 0 0 8px #ffd700, inset 0 0 4px rgba(255,215,0,0.15); }
+  50%       { box-shadow: 0 0 18px #ffd700, inset 0 0 10px rgba(255,215,0,0.25); }
+}
+
+body.season-cosmetic-gold #score-display,
+body.season-cosmetic-gold #hud-panel {
+  border-color: #ffd700 !important;
+  animation: gold-glow 2s ease-in-out infinite;
+}
+
+body.season-cosmetic-gold #crosshair {
+  color: #ffd700;
+  text-shadow: 0 0 8px #ffd700;
+}
+
+/* Gold piece ghost — tint the shadow/ghost preview elements gold */
+body.season-cosmetic-gold #renderer-container canvas {
+  filter: none; /* block-level effect is via JS; CSS tint here is cosmetic only */
+}
+
+body.season-cosmetic-gold #inventory-hud {
+  border-color: #ffd700 !important;
+  box-shadow: 0 0 10px rgba(255,215,0,0.35);
+}
+
+body.season-cosmetic-gold #next-pieces-panel {
+  border-color: #ffd700 !important;
+  box-shadow: 0 0 8px rgba(255,215,0,0.3);
+}
+
+/* ── Platinum Board & Badge — animated platinum board border + nameplate ───── */
+@keyframes platinum-border-spin {
+  0%   { border-color: #e8e8e8; box-shadow: 0 0 12px #e0e0e0; }
+  25%  { border-color: #b0c4de; box-shadow: 0 0 18px #b0c4de; }
+  50%  { border-color: #e8e8e8; box-shadow: 0 0 24px #ffffff; }
+  75%  { border-color: #c8c8d8; box-shadow: 0 0 18px #c8c8d8; }
+  100% { border-color: #e8e8e8; box-shadow: 0 0 12px #e0e0e0; }
+}
+
+@keyframes platinum-nameplate {
+  0%, 100% { background: rgba(200,200,220,0.15); }
+  50%       { background: rgba(200,200,220,0.3); }
+}
+
+body.season-cosmetic-platinum #score-display,
+body.season-cosmetic-platinum #hud-panel {
+  border-color: #e8e8e8 !important;
+  animation: platinum-border-spin 3s ease-in-out infinite;
+}
+
+body.season-cosmetic-platinum #inventory-hud {
+  animation: platinum-border-spin 3s ease-in-out infinite;
+}
+
+/* Platinum nameplate badge on display name / HUD elements */
+body.season-cosmetic-platinum #stats-season-rank::before,
+body.season-cosmetic-platinum .season-rank-badge {
+  animation: platinum-nameplate 2s ease-in-out infinite;
+}
+
+body.season-cosmetic-platinum #crosshair {
+  color: #e8e8e8;
+  text-shadow: 0 0 10px #e8e8e8;
+}
+
+body.season-cosmetic-platinum #next-pieces-panel {
+  border-color: #e0e0e0 !important;
+  animation: platinum-border-spin 3s ease-in-out infinite;
+}
+
+/* ── Diamond Full Skin — body class activates HUD + title effects ────────── */
+/* Block colors are handled by JS (_applyDiamondSeasonTheme).
+   CSS covers HUD accent, title glow, and animated title. */
+@keyframes diamond-sparkle {
+  0%   { text-shadow: 0 0 8px #00e5ff, 0 0 20px #7fffff; color: #00e5ff; }
+  33%  { text-shadow: 0 0 12px #b8eaff, 0 0 30px #00bfff; color: #b8eaff; }
+  66%  { text-shadow: 0 0 8px #7fffff, 0 0 20px #00e5ff; color: #7fffff; }
+  100% { text-shadow: 0 0 8px #00e5ff, 0 0 20px #7fffff; color: #00e5ff; }
+}
+
+@keyframes diamond-border-glow {
+  0%, 100% { border-color: #00e5ff; box-shadow: 0 0 12px #00e5ff, inset 0 0 6px rgba(0,229,255,0.15); }
+  50%       { border-color: #7fffff; box-shadow: 0 0 24px #7fffff, inset 0 0 12px rgba(127,255,255,0.2); }
+}
+
+body.season-cosmetic-diamond #score-display,
+body.season-cosmetic-diamond #hud-panel {
+  border-color: #00e5ff !important;
+  animation: diamond-border-glow 2.5s ease-in-out infinite;
+}
+
+body.season-cosmetic-diamond #inventory-hud {
+  border-color: #00e5ff !important;
+  animation: diamond-border-glow 2.5s ease-in-out infinite;
+}
+
+body.season-cosmetic-diamond #next-pieces-panel {
+  border-color: #7fffff !important;
+  animation: diamond-border-glow 2.5s ease-in-out infinite;
+}
+
+body.season-cosmetic-diamond #crosshair {
+  color: #00e5ff;
+  text-shadow: 0 0 12px #00e5ff, 0 0 24px #7fffff;
+}
+
+/* Animated diamond title on game-over / mode-select screens */
+body.season-cosmetic-diamond #mode-select-title,
+body.season-cosmetic-diamond .game-over-title,
+body.season-cosmetic-diamond h1,
+body.season-cosmetic-diamond h2 {
+  animation: diamond-sparkle 3s ease-in-out infinite;
+}
+
+body.theme-diamond-season #score-display { border-color: #00e5ff; }
+
+/* ── Silver Trail runtime hook (applied by trails.js / pieces.js if present) ─
+   The equipped cosmetic ID is queryable via getEquippedSeasonCosmetic().
+   This @keyframes is available for JS-driven particle color. */
+@keyframes silver-trail-particle {
+  from { opacity: 0.9; transform: scale(1); }
+  to   { opacity: 0; transform: scale(1.6) translateY(-8px); }
+}
+
+/* ── Platinum nameplate badge (floated above player name in HUD) ─────────── */
+.season-platinum-nameplate {
+  display: inline-block;
+  padding: 1px 5px;
+  background: linear-gradient(135deg, #c8c8d8, #e8e8ff, #c8c8d8);
+  color: #222;
+  font-size: 8px;
+  border-radius: 3px;
+  font-family: "Press Start 2P", cursive;
+  animation: platinum-nameplate 2s ease-in-out infinite;
+}
+
+/* ── Spectator Engagement: Hype Bar, Reactions, Chat ────────────────────── */
+
+/* Floating emoji animation */
+@keyframes spec-emoji-float {
+  0%   { opacity: 1; transform: translateY(0) scale(1); }
+  80%  { opacity: 0.7; transform: translateY(-120px) scale(1.2); }
+  100% { opacity: 0; transform: translateY(-160px) scale(0.9); }
+}
+.spec-floating-emoji {
+  position: absolute;
+  font-size: 2em;
+  pointer-events: none;
+  animation: spec-emoji-float 1.8s ease-out forwards;
+  z-index: 9100;
+}
+
+/* Hype bar */
+#spec-hype-wrap {
+  width: 100%;
+  max-width: 800px;
+  margin-bottom: 8px;
+}
+#spec-hype-label {
+  font-size: 0.65em;
+  letter-spacing: 2px;
+  color: #ffd700;
+  margin-bottom: 3px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+#spec-hype-track {
+  height: 8px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 4px;
+  overflow: hidden;
+  border: 1px solid rgba(255,215,0,0.3);
+}
+#spec-hype-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #f0a500, #ffd700, #ff6b00);
+  border-radius: 4px;
+  transition: width 0.15s linear;
+}
+
+/* Electric banner at 100% hype */
+#spec-electric-banner {
+  display: none;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: linear-gradient(135deg, #ffd700, #ff6b00);
+  color: #000;
+  font-size: 1.1em;
+  font-weight: bold;
+  letter-spacing: 2px;
+  padding: 10px 24px;
+  border-radius: 6px;
+  z-index: 9200;
+  white-space: nowrap;
+  box-shadow: 0 0 30px #ffd700, 0 0 60px #ff6b00;
+  animation: spec-electric-pulse 0.4s ease-in-out infinite alternate;
+  font-family: monospace;
+}
+@keyframes spec-electric-pulse {
+  from { box-shadow: 0 0 20px #ffd700, 0 0 40px #ff6b00; }
+  to   { box-shadow: 0 0 40px #ffd700, 0 0 80px #ff6b00, 0 0 100px rgba(255,107,0,0.6); }
+}
+
+/* Screen edge glow at 100% hype */
+#spectator-overlay.hype-electric {
+  box-shadow: inset 0 0 60px rgba(255,215,0,0.35), inset 0 0 120px rgba(255,107,0,0.2);
+}
+
+/* Emoji reaction buttons */
+#spec-reactions {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+.spec-react-btn {
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 6px;
+  color: #fff;
+  font-size: 1.4em;
+  padding: 6px 10px;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+  font-family: sans-serif;
+  line-height: 1;
+}
+.spec-react-btn:hover {
+  background: rgba(255,255,255,0.18);
+  transform: scale(1.15);
+}
+.spec-react-btn:active {
+  transform: scale(0.9);
+}
+.spec-react-btn.rate-limited {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Spectator chat panel */
+#spec-chat-panel {
+  position: absolute;
+  top: 0;
+  right: 0;
+  height: 100%;
+  width: 240px;
+  background: rgba(0,0,0,0.7);
+  border-left: 1px solid rgba(255,255,255,0.1);
+  display: flex;
+  flex-direction: column;
+  font-family: monospace;
+  font-size: 0.78em;
+  box-sizing: border-box;
+  transition: width 0.2s;
+}
+#spec-chat-panel.collapsed {
+  width: 36px;
+  overflow: hidden;
+}
+#spec-chat-toggle {
+  background: none;
+  border: none;
+  color: #aaa;
+  cursor: pointer;
+  padding: 6px 8px;
+  font-size: 0.9em;
+  text-align: center;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  white-space: nowrap;
+  overflow: hidden;
+}
+#spec-chat-header {
+  padding: 6px 8px;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+  color: #aaa;
+  font-size: 0.85em;
+  line-height: 1.4;
+  flex-shrink: 0;
+}
+#spec-chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 6px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.spec-chat-msg {
+  word-break: break-word;
+  line-height: 1.4;
+  color: #ddd;
+}
+.spec-chat-msg .spec-chat-name {
+  color: #4db8ff;
+  margin-right: 4px;
+}
+#spec-chat-input-row {
+  display: flex;
+  border-top: 1px solid rgba(255,255,255,0.1);
+  flex-shrink: 0;
+}
+#spec-chat-input {
+  flex: 1;
+  background: rgba(255,255,255,0.06);
+  border: none;
+  color: #fff;
+  padding: 6px 8px;
+  font-size: 0.85em;
+  font-family: monospace;
+  outline: none;
+  min-width: 0;
+}
+#spec-chat-send {
+  background: rgba(0,180,255,0.2);
+  border: none;
+  color: #4db8ff;
+  cursor: pointer;
+  padding: 6px 8px;
+  font-size: 0.85em;
+}
+#spec-chat-send:hover {
+  background: rgba(0,180,255,0.35);
+}
+
+/* Player hype indicator (visible to in-game players) */
+#battle-spectator-hype {
+  display: none;
+  font-size: 0.65em;
+  color: #ffd700;
+  margin-top: 3px;
+  text-align: center;
+  letter-spacing: 1px;
 }

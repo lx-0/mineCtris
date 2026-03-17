@@ -75,6 +75,7 @@
             <button id="start-stats-btn">&#128202; Stats</button>
             <button id="start-achievements-btn">&#127942; Achievements</button>
             <button id="start-missions-btn">&#127919; Daily Missions</button>
+            <button id="start-tournament-btn">&#127942; Tournaments</button>
           </div>
           <div id="hs-start-panel"></div>
         </div>
@@ -136,6 +137,12 @@
               <div class="mode-card-name">Battle</div>
               <div class="mode-card-desc">Fight your opponent. Last miner standing wins.</div>
             </div>
+            <!-- Tournament -->
+            <div class="mode-card mode-card-tournament" id="mode-card-tournament" data-mode="tournament">
+              <div class="mode-card-icon">&#127942;</div>
+              <div class="mode-card-name">Tournament</div>
+              <div class="mode-card-desc">8-player brackets. Compete for the prize.</div>
+            </div>
             <!-- Daily Challenge -->
             <div class="mode-card mode-card-daily" id="mode-card-daily" data-mode="daily">
               <div class="mode-card-icon">&#128197;</div>
@@ -168,7 +175,9 @@
             <div id="mode-powerup-label">&#9889; EQUIP POWER-UP</div>
             <div id="mode-powerup-picker"></div>
           </div>
+          <button id="mode-season-pass-btn">&#127873; Season Pass</button>
           <button id="mode-select-lb-btn">&#127942; Leaderboard</button>
+          <button id="hof-open-btn">&#127942; Hall of Fame</button>
           <button id="mode-select-back">&#8592; Back</button>
         </div>
       </div>
@@ -189,6 +198,13 @@
 
       <!-- Daily streak badge (top-left HUD, below level badge) -->
       <div id="hud-streak-badge" style="display:none;"></div>
+
+      <!-- Season HUD badge: shown in-game when < 14 days remain in the active season -->
+      <div id="season-game-hud" style="display:none;">
+        <span class="season-game-hud-icon">&#127942;</span>
+        <span class="season-game-hud-name"></span>
+        <span class="season-game-hud-days"></span>
+      </div>
 
       <!-- Daily challenge badge (shown during daily runs) -->
       <div id="daily-challenge-badge" style="display:none;"></div>
@@ -523,6 +539,7 @@
       <div id="stats-overlay">
         <div id="stats-panel">
           <div id="stats-title">STATS</div>
+          <div id="stats-season-rank" style="display:none;"></div>
           <div id="stats-panel-body"></div>
           <button id="stats-close-btn">Close</button>
         </div>
@@ -702,6 +719,7 @@
             <button id="lb-tab-thisweek" class="lb-tab">This Week</button>
             <button id="lb-tab-lastweek" class="lb-tab">Last Week</button>
             <button id="lb-tab-season" class="lb-tab">&#127942; Season</button>
+            <button id="lb-tab-seasonrating" class="lb-tab">&#127942; Season Rating</button>
             <button id="lb-tab-coop" class="lb-tab">&#9760; Co-op</button>
             <button id="lb-tab-dailycoop" class="lb-tab">&#9760; Daily Co-op</button>
             <button id="lb-tab-battle" class="lb-tab">&#9876; Battle</button>
@@ -736,6 +754,32 @@
             <div id="season-end-your-rank"></div>
           </div>
           <button id="season-end-close-btn">Continue</button>
+        </div>
+      </div>
+
+      <!-- Hall of Fame overlay — past season final standings -->
+      <div id="hof-overlay" style="display:none;">
+        <div id="hof-panel">
+          <div id="hof-header">
+            <span id="hof-icon">&#127942;</span>
+            <div id="hof-title">HALL OF FAME</div>
+          </div>
+          <select id="hof-season-select" style="display:none;"></select>
+          <div id="hof-body"></div>
+          <button id="hof-close-btn">Close</button>
+        </div>
+      </div>
+
+      <!-- Season Pass overlay — tier track, claim & equip -->
+      <div id="season-pass-overlay" style="display:none;">
+        <div id="season-pass-panel">
+          <div id="season-pass-header">
+            <span id="season-pass-icon">&#127873;</span>
+            <div id="season-pass-title">SEASON PASS</div>
+          </div>
+          <div id="season-pass-header-info"></div>
+          <div id="season-pass-panel-body"></div>
+          <button id="season-pass-close-btn">Close</button>
         </div>
       </div>
 
@@ -817,7 +861,21 @@
             </div>
             <div id="battle-qm-divider">— or —</div>
             <button id="battle-quickmatch-btn">&#9889; Quick Match</button>
+            <div id="battle-watch-divider">— or —</div>
+            <button id="battle-watch-btn">&#128065; Watch a Match</button>
+            <div id="battle-live-rooms"></div>
             <button id="battle-choice-cancel-btn">&#8592; Back</button>
+          </div>
+          <!-- Spectate view: enter room code to watch -->
+          <div id="battle-spectate-view" style="display:none;">
+            <div id="battle-title">WATCH MATCH</div>
+            <div id="battle-join-hint">Enter the room code to spectate</div>
+            <input id="battle-spectate-code-input" type="text" maxlength="4" placeholder="ABCD" autocomplete="off" spellcheck="false">
+            <div id="battle-spectate-status-msg"></div>
+            <div id="battle-join-btns">
+              <button id="battle-spectate-confirm-btn">Watch</button>
+              <button id="battle-spectate-cancel-btn">&#8592; Back</button>
+            </div>
           </div>
           <!-- Create view: waiting for opponent -->
           <div id="battle-create-view" style="display:none;">
@@ -846,6 +904,14 @@
             <div id="battle-title">READY!</div>
             <div id="battle-ready-msg">&#9889; Opponent connected!</div>
             <div id="battle-ready-code"></div>
+            <!-- Private toggle (host only, hidden for tournament matches) -->
+            <div id="battle-private-toggle" style="display:none;">
+              <label style="font-size:0.85em;cursor:pointer;">
+                <input type="checkbox" id="battle-private-checkbox"> &#128274; Private (no spectators)
+              </label>
+            </div>
+            <div id="battle-spectator-count-display" style="font-size:0.8em;opacity:0.7;"></div>
+            <div id="battle-spectator-hype"></div>
             <!-- Match mode selector: host can toggle, guest sees read-only -->
             <div id="battle-mode-selector">
               <div class="battle-mode-selector-label">Match Mode</div>
@@ -863,6 +929,130 @@
             <button id="battle-ready-cancel-btn">&#8592; Cancel</button>
           </div>
         </div>
+      </div>
+
+      <!-- Spectator overlay — shown when watching a live match -->
+      <div id="spectator-overlay" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.93);z-index:9000;flex-direction:column;align-items:center;justify-content:flex-start;padding:16px;padding-right:256px;box-sizing:border-box;font-family:monospace;color:#fff;overflow-y:auto;">
+
+        <!-- Floating emoji animation container -->
+        <div id="spec-emoji-float-layer" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;overflow:hidden;z-index:9100;"></div>
+
+        <!-- THE CROWD IS ELECTRIC banner -->
+        <div id="spec-electric-banner">&#9889; THE CROWD IS ELECTRIC! &#9889;</div>
+
+        <!-- Top bar: label, room, spectator count, leave -->
+        <div id="spectator-header" style="display:flex;align-items:center;gap:12px;margin-bottom:8px;width:100%;max-width:800px;justify-content:space-between;">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <span style="font-size:1.2em;font-weight:bold;color:#00ffcc;">&#128065; SPECTATING</span>
+            <span id="spectator-room-label" style="opacity:0.55;font-size:0.85em;"></span>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;">
+            <span id="spectator-count-badge" style="font-size:0.8em;opacity:0.65;"></span>
+            <button id="spectator-leave-btn" style="background:#c0392b;color:#fff;border:none;padding:5px 12px;cursor:pointer;font-size:0.85em;border-radius:3px;">Leave</button>
+          </div>
+        </div>
+
+        <!-- CROWD HYPE bar -->
+        <div id="spec-hype-wrap">
+          <div id="spec-hype-label">
+            <span>&#128293; CROWD HYPE</span>
+            <span id="spec-hype-pct">0%</span>
+          </div>
+          <div id="spec-hype-track">
+            <div id="spec-hype-fill"></div>
+          </div>
+        </div>
+
+        <!-- Match context: mode badge, timer, tournament label -->
+        <div id="spectator-match-header" style="display:flex;align-items:center;justify-content:center;gap:16px;margin-bottom:10px;width:100%;max-width:800px;">
+          <div id="spectator-mode-badge" style="background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);border-radius:4px;padding:3px 10px;font-size:0.85em;font-weight:bold;letter-spacing:1px;">&#9876; SURVIVAL</div>
+          <div id="spectator-match-timer" style="font-size:1.4em;font-weight:bold;color:#ffd700;min-width:60px;text-align:center;display:none;"></div>
+          <div id="spectator-tournament-ctx" style="font-size:0.8em;color:#f0a500;display:none;">&#127942; Tournament</div>
+        </div>
+
+        <!-- Two-player boards side by side -->
+        <div id="spectator-players" style="display:flex;gap:24px;width:100%;max-width:800px;justify-content:center;align-items:flex-start;flex-wrap:wrap;">
+
+          <!-- Host (P1) panel -->
+          <div class="spectator-player-panel" style="flex:0 0 auto;background:rgba(255,255,255,0.04);border:1px solid rgba(0,180,255,0.35);border-radius:6px;padding:10px;display:flex;flex-direction:column;align-items:center;">
+            <!-- Name + rating header -->
+            <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:4px;width:100%;">
+              <span id="spectator-host-name" style="font-weight:bold;color:#4db8ff;font-size:1em;">P1</span>
+              <span id="spectator-host-rating" style="font-size:0.75em;opacity:0.65;"></span>
+            </div>
+            <!-- Board with flash/powerup overlays -->
+            <div style="position:relative;display:inline-block;">
+              <canvas id="spectator-host-board" width="140" height="280" style="display:block;image-rendering:pixelated;border:1px solid rgba(0,180,255,0.4);"></canvas>
+              <div id="spectator-host-flash" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;opacity:0;border-radius:2px;"></div>
+              <div id="spectator-host-pu" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:2em;pointer-events:none;opacity:0;transition:opacity 0.3s;"></div>
+            </div>
+            <!-- Score + lines below board -->
+            <div style="margin-top:6px;font-size:0.78em;opacity:0.8;display:flex;gap:14px;">
+              <span>Score: <strong id="spectator-host-score">—</strong></span>
+              <span>Lines: <strong id="spectator-host-lines">—</strong></span>
+            </div>
+          </div>
+
+          <!-- VS divider -->
+          <div style="display:flex;align-items:center;font-size:1.1em;font-weight:bold;opacity:0.45;padding-top:130px;">VS</div>
+
+          <!-- Guest (P2) panel -->
+          <div class="spectator-player-panel" style="flex:0 0 auto;background:rgba(255,255,255,0.04);border:1px solid rgba(0,255,140,0.35);border-radius:6px;padding:10px;display:flex;flex-direction:column;align-items:center;">
+            <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:4px;width:100%;">
+              <span id="spectator-guest-name" style="font-weight:bold;color:#00ff8c;font-size:1em;">P2</span>
+              <span id="spectator-guest-rating" style="font-size:0.75em;opacity:0.65;"></span>
+            </div>
+            <div style="position:relative;display:inline-block;">
+              <canvas id="spectator-guest-board" width="140" height="280" style="display:block;image-rendering:pixelated;border:1px solid rgba(0,255,140,0.4);"></canvas>
+              <div id="spectator-guest-flash" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;opacity:0;border-radius:2px;"></div>
+              <div id="spectator-guest-pu" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:2em;pointer-events:none;opacity:0;transition:opacity 0.3s;"></div>
+            </div>
+            <div style="margin-top:6px;font-size:0.78em;opacity:0.8;display:flex;gap:14px;">
+              <span>Score: <strong id="spectator-guest-score">—</strong></span>
+              <span>Lines: <strong id="spectator-guest-lines">—</strong></span>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Scrolling event ticker -->
+        <div id="spectator-ticker" style="margin-top:12px;width:100%;max-width:800px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.12);border-radius:4px;padding:6px 10px;min-height:36px;box-sizing:border-box;">
+          <div id="spectator-ticker-inner" style="display:flex;flex-direction:column-reverse;gap:2px;max-height:90px;overflow:hidden;font-size:0.78em;"></div>
+        </div>
+
+        <!-- Emoji reaction buttons -->
+        <div id="spec-reactions">
+          <button class="spec-react-btn" data-emoji="fire"     title="Fire">&#128293;</button>
+          <button class="spec-react-btn" data-emoji="clap"     title="Clap">&#128079;</button>
+          <button class="spec-react-btn" data-emoji="shocked"  title="Shocked">&#128562;</button>
+          <button class="spec-react-btn" data-emoji="skull"    title="Skull">&#128128;</button>
+          <button class="spec-react-btn" data-emoji="diamond"  title="Diamond">&#128142;</button>
+          <button class="spec-react-btn" data-emoji="crown"    title="Crown">&#128081;</button>
+        </div>
+
+        <div id="spectator-status-msg" style="margin-top:10px;opacity:0.55;font-size:0.85em;">Waiting for match to start…</div>
+
+        <!-- Match result shown for 5s when match ends -->
+        <div id="spectator-result" style="display:none;margin-top:20px;text-align:center;">
+          <div id="spectator-result-title" style="font-size:2em;font-weight:bold;"></div>
+          <div id="spectator-result-sub" style="opacity:0.7;margin-top:8px;"></div>
+          <div id="spectator-result-countdown" style="margin-top:10px;font-size:0.85em;opacity:0.5;"></div>
+        </div>
+
+        <!-- Spectator chat panel (right side, collapsible) -->
+        <div id="spec-chat-panel">
+          <button id="spec-chat-toggle">&#128172; CHAT <span id="spec-chat-toggle-arrow">&#9664;</span></button>
+          <div id="spec-chat-header">
+            <div id="spec-chat-spectator-count" style="color:#4db8ff;margin-bottom:3px;">1 spectator</div>
+            <div id="spec-chat-spectator-names" style="opacity:0.6;font-size:0.85em;"></div>
+          </div>
+          <div id="spec-chat-messages"></div>
+          <div id="spec-chat-input-row">
+            <input id="spec-chat-input" type="text" maxlength="100" placeholder="Say something…" autocomplete="off" />
+            <button id="spec-chat-send">&#10148;</button>
+          </div>
+        </div>
+
       </div>
 
       <!-- Battle FX: incoming attack red vignette flash -->
@@ -1016,6 +1206,42 @@
       </div>
     </div>
 
+    <!-- Tournament overlay — shown when Tournament mode card is clicked -->
+    <div id="tournament-overlay" style="display:none;">
+      <div id="tournament-inner">
+
+        <!-- ── List view ── -->
+        <div id="tourn-list-view">
+          <div id="tourn-list-title">&#127942; TOURNAMENTS</div>
+          <div id="tourn-tabs">
+            <button class="tourn-tab tourn-tab-active" id="tourn-tab-all">All</button>
+            <button class="tourn-tab" id="tourn-tab-mine">My Tournaments</button>
+          </div>
+          <div id="tourn-list-body"></div>
+          <button id="tourn-list-close-btn">&#8592; Back</button>
+        </div>
+
+        <!-- ── Bracket view ── -->
+        <div id="tourn-bracket-view" style="display:none;">
+          <div id="tourn-bracket-title"></div>
+          <div id="tourn-bracket-status-badge"></div>
+          <div id="tourn-bracket-tree"></div>
+          <div id="tourn-match-entry" style="display:none;">
+            <div id="tourn-match-entry-label">&#9989; Your match is ready!</div>
+            <div id="tourn-match-countdown"></div>
+            <button id="tourn-join-match-btn">&#9654; Join Match</button>
+          </div>
+          <div id="tourn-reg-panel" style="display:none;">
+            <div id="tourn-reg-info"></div>
+            <button id="tourn-register-btn">Register</button>
+            <div id="tourn-reg-feedback"></div>
+          </div>
+          <button id="tourn-bracket-back-btn">&#8592; Back to List</button>
+        </div>
+
+      </div>
+    </div>
+
     <!-- Game modules — order matters: dependencies before dependents -->
     <script src="js/config.js"></script>
     <script src="js/shaders.js"></script>
@@ -1047,6 +1273,7 @@
     <script src="js/tutorial.js"></script>
     <script src="js/settings.js"></script>
     <script src="js/season.js"></script>
+    <script src="js/season-pass.js"></script>
     <script src="js/leaderboard.js"></script>
     <script src="js/missions.js"></script>
     <script src="js/savestate.js"></script>
@@ -1068,6 +1295,7 @@
     <script src="js/battle-hud.js"></script>
     <script src="js/battle-garbage.js"></script>
     <script src="js/battle-fx.js"></script>
+    <script src="js/tournament.js"></script>
     <script src="js/main.js"></script>
   </body>
 </html>

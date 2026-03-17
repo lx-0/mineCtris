@@ -152,6 +152,8 @@ function init() {
   initSettings();
   if (typeof initLeaderboard === "function") initLeaderboard();
   if (typeof initSeasonBanner === "function") initSeasonBanner();
+  if (typeof initSeasonHUD === "function") initSeasonHUD();
+  if (typeof initSeasonPassPanel === "function") initSeasonPassPanel();
   if (typeof updateLevelBadgeHUD === "function") updateLevelBadgeHUD();
   if (typeof updateStreakHUD === "function") updateStreakHUD();
 
@@ -1439,23 +1441,25 @@ function init() {
 
     // ── Battle mode card + lobby overlay ──────────────────────────────────────
     (function () {
-      var battleOverlay    = document.getElementById("battle-overlay");
-      var battleChoiceView = document.getElementById("battle-choice-view");
-      var battleCreateView = document.getElementById("battle-create-view");
-      var battleJoinView   = document.getElementById("battle-join-view");
-      var battleReadyView  = document.getElementById("battle-ready-view");
+      var battleOverlay      = document.getElementById("battle-overlay");
+      var battleChoiceView   = document.getElementById("battle-choice-view");
+      var battleCreateView   = document.getElementById("battle-create-view");
+      var battleJoinView     = document.getElementById("battle-join-view");
+      var battleReadyView    = document.getElementById("battle-ready-view");
+      var battleSpectateView = document.getElementById("battle-spectate-view");
 
       if (!battleOverlay || typeof battle === "undefined") return;
 
       function showBattleView(name) {
-        [battleChoiceView, battleCreateView, battleJoinView, battleReadyView].forEach(function (v) {
+        [battleChoiceView, battleCreateView, battleJoinView, battleReadyView, battleSpectateView].forEach(function (v) {
           if (v) v.style.display = "none";
         });
         var target = {
-          choice: battleChoiceView,
-          create: battleCreateView,
-          join:   battleJoinView,
-          ready:  battleReadyView,
+          choice:   battleChoiceView,
+          create:   battleCreateView,
+          join:     battleJoinView,
+          ready:    battleReadyView,
+          spectate: battleSpectateView,
         }[name];
         if (target) target.style.display = "";
       }
@@ -1473,6 +1477,40 @@ function init() {
             ' <span class="battle-rank-pts">' + rd.rating + ' pts</span>' +
             ' <span class="battle-rank-record">' + rd.wins + 'W&nbsp;' + rd.losses + 'L&nbsp;' + rd.draws + 'D</span>';
         }
+        // Load live rooms for Watch section
+        _loadLiveRooms();
+      }
+
+      function _loadLiveRooms() {
+        var liveEl = document.getElementById('battle-live-rooms');
+        if (!liveEl) return;
+        liveEl.textContent = '';
+        fetch('https://minectris-leaderboard.workers.dev/battle/rooms/live')
+          .then(function (r) { return r.json(); })
+          .then(function (data) {
+            if (!data.rooms || data.rooms.length === 0) return;
+            var html = '<div style="font-size:0.78em;opacity:0.6;margin-bottom:4px;">Live matches:</div>';
+            data.rooms.slice(0, 5).forEach(function (room) {
+              var full = room.spectatorFull;
+              var badge = room.isTournament ? ' &#127942;' : '';
+              html += '<div style="display:flex;align-items:center;gap:8px;margin:3px 0;">' +
+                '<span style="font-family:monospace;font-size:0.9em;letter-spacing:2px;">' + room.code + '</span>' +
+                badge +
+                '<span style="font-size:0.75em;opacity:0.55;">' + room.spectatorCount + ' watching</span>' +
+                '<button data-code="' + room.code + '" data-full="' + full + '" class="battle-live-watch-btn" style="font-size:0.75em;padding:2px 8px;' + (full ? 'opacity:0.4;cursor:not-allowed;' : '') + '">' +
+                  (full ? 'Full' : 'Watch') +
+                '</button>' +
+              '</div>';
+            });
+            liveEl.innerHTML = html;
+            liveEl.querySelectorAll('.battle-live-watch-btn').forEach(function (btn) {
+              btn.addEventListener('click', function () {
+                if (this.dataset.full === 'true') return;
+                _startWatchRoom(this.dataset.code);
+              });
+            });
+          })
+          .catch(function () {});
       }
 
       function closeBattleOverlay() {
@@ -1557,6 +1595,11 @@ function init() {
           if (copyFeedback) copyFeedback.textContent = "";
           battle.createRoom().then(function (code) {
             if (roomCodeEl) roomCodeEl.textContent = code;
+            // If this is a tournament match, register the room code for spectators
+            if (isTournamentMatch && typeof tournamentLobby !== 'undefined' &&
+                typeof tournamentLobby.setMatchRoomCode === 'function') {
+              tournamentLobby.setMatchRoomCode(code);
+            }
           }).catch(function () {
             if (statusMsg) statusMsg.textContent = "Failed to create room.";
           });
@@ -1677,6 +1720,71 @@ function init() {
         });
       }
 
+      // ── Watch button (opens spectate code input view) ──
+      var battleWatchBtn = document.getElementById("battle-watch-btn");
+      if (battleWatchBtn) {
+        battleWatchBtn.addEventListener("click", function () {
+          showBattleView("spectate");
+          var inp = document.getElementById("battle-spectate-code-input");
+          var msg = document.getElementById("battle-spectate-status-msg");
+          if (inp) { inp.value = ""; inp.focus(); }
+          if (msg) msg.textContent = "";
+        });
+      }
+
+      var spectateCodeInput = document.getElementById("battle-spectate-code-input");
+      if (spectateCodeInput) {
+        spectateCodeInput.addEventListener("input", function () {
+          this.value = this.value.toUpperCase().replace(/[^A-Z0-9]/g, "");
+        });
+        spectateCodeInput.addEventListener("keydown", function (e) {
+          if (e.key === "Enter") {
+            var btn = document.getElementById("battle-spectate-confirm-btn");
+            if (btn) btn.click();
+          }
+        });
+      }
+
+      var spectateConfirmBtn = document.getElementById("battle-spectate-confirm-btn");
+      if (spectateConfirmBtn) {
+        spectateConfirmBtn.addEventListener("click", function () {
+          var code = spectateCodeInput ? spectateCodeInput.value.trim().toUpperCase() : "";
+          var msgEl = document.getElementById("battle-spectate-status-msg");
+          if (!code || code.length !== 4) {
+            if (msgEl) msgEl.textContent = "Enter a 4-character code.";
+            return;
+          }
+          if (msgEl) msgEl.textContent = "Connecting\u2026";
+          _startWatchRoom(code);
+        });
+      }
+
+      var spectateCancelBtn = document.getElementById("battle-spectate-cancel-btn");
+      if (spectateCancelBtn) {
+        spectateCancelBtn.addEventListener("click", function () {
+          showBattleView("choice");
+        });
+      }
+
+      function _startWatchRoom(code) {
+        var msgEl = document.getElementById("battle-spectate-status-msg");
+        battle.watchRoom(code).then(function () {
+          // Connected — close battle overlay, show spectator overlay
+          battleOverlay.style.display = "none";
+          _openSpectatorOverlay(code);
+        }).catch(function (err) {
+          var text = (err && err.message) || "Cannot spectate this room.";
+          if (err && err.full) text = "Spectator cap reached — room is full.";
+          if (msgEl) msgEl.textContent = text;
+          else {
+            // might have been triggered from live-rooms list (choice view)
+            showBattleView("spectate");
+            var msgEl2 = document.getElementById("battle-spectate-status-msg");
+            if (msgEl2) msgEl2.textContent = text;
+          }
+        });
+      }
+
       // ── Ready view ──
       var battleStartBtn = document.getElementById("battle-start-btn");
       if (battleStartBtn) {
@@ -1769,7 +1877,9 @@ function init() {
 
         // Exchange ratings with opponent so Elo can be computed accurately
         if (typeof loadBattleRating === 'function') {
-          battle.send({ type: 'battle_rating', rating: loadBattleRating().rating });
+          var _myDisplayName = 'Player';
+          try { _myDisplayName = localStorage.getItem('mineCtris_displayName') || 'Player'; } catch (_) {}
+          battle.send({ type: 'battle_rating', rating: loadBattleRating().rating, playerName: _myDisplayName });
         }
         // Start at Level 3 equivalent speed; escalates via updateDifficulty offset
         difficultyMultiplier = BATTLE_START_MULTIPLIER;
@@ -1847,6 +1957,678 @@ function init() {
         battleReadyCancelBtn.addEventListener("click", function () { closeBattleOverlay(); });
       }
 
+      // ── Private room toggle (host only) ──
+      var _privateCheckbox = document.getElementById("battle-private-checkbox");
+      var _privateToggleEl = document.getElementById("battle-private-toggle");
+      if (_privateCheckbox) {
+        _privateCheckbox.addEventListener("change", function () {
+          var isPrivate = _privateCheckbox.checked;
+          battle.send({ type: 'room_set_private', isPrivate: isPrivate });
+        });
+      }
+      battle.on("spectator_joined", function (data) {
+        _spectatorCount = data.spectatorCount || 0;
+        _updateSpectatorCountDisplay();
+        // If in-game, broadcast board state to newly joined spectator
+        if (battle.state === BattleState.IN_GAME && typeof broadcastBoardState === 'function') {
+          broadcastBoardState();
+        }
+      });
+
+      battle.on("spectator_count", function (data) {
+        _spectatorCount = data.spectatorCount || 0;
+        _updateSpectatorCountDisplay();
+      });
+
+      var _spectatorCount = 0;
+      function _updateSpectatorCountDisplay() {
+        var el = document.getElementById("battle-spectator-count-display");
+        if (el) {
+          el.textContent = _spectatorCount > 0 ? '\uD83D\uDC41 ' + _spectatorCount + ' watching' : '';
+        }
+      }
+
+      // ── Spectator overlay logic ──
+      var _spectatorResultTimer = null;
+
+      // Spectator state
+      var _spectatorMatchMode = 'survival';
+      var _spectatorScoreRaceMs = 0;
+      var _spectatorTimerRaf = null;
+      var _spectatorTimerLast = 0;
+      var _spectatorTickerEvents = []; // last 5 ticker events
+
+      var _SPEC_PU_DEFS = {
+        row_bomb:   { icon: '\uD83D\uDCA3', name: 'Row Bomb' },
+        slow_down:  { icon: '\u23F1',       name: 'Slow Down' },
+        shield:     { icon: '\uD83D\uDEE1', name: 'Shield' },
+        magnet:     { icon: '\uD83E\uDDF2', name: 'Magnet' },
+        time_freeze:{ icon: '\u2744',       name: 'Time Freeze' },
+        sabotage:   { icon: '\uD83D\uDCA5', name: 'Sabotage' },
+        counter:    { icon: '\uD83D\uDEE1\u2194', name: 'Counter' },
+        fortress:   { icon: '\uD83D\uDEE1\u26EA', name: 'Fortress' },
+      };
+
+      function _openSpectatorOverlay(roomCode) {
+        var overlayEl = document.getElementById("spectator-overlay");
+        if (!overlayEl) return;
+        overlayEl.style.display = "flex";
+
+        var roomLabel = document.getElementById("spectator-room-label");
+        if (roomLabel) roomLabel.textContent = "Room: " + roomCode;
+
+        var statusEl = document.getElementById("spectator-status-msg");
+        if (statusEl) statusEl.textContent = "Connected \u2014 waiting for match state\u2026";
+
+        var resultEl = document.getElementById("spectator-result");
+        if (resultEl) resultEl.style.display = "none";
+
+        // Reset ticker and timer state
+        _spectatorTickerEvents = [];
+        _spectatorMatchMode = 'survival';
+        _spectatorScoreRaceMs = 0;
+        _spectatorStopTimer();
+        var tickerInner = document.getElementById("spectator-ticker-inner");
+        if (tickerInner) tickerInner.innerHTML = '';
+        var timerEl = document.getElementById("spectator-match-timer");
+        if (timerEl) timerEl.style.display = "none";
+        var tournCtx = document.getElementById("spectator-tournament-ctx");
+        if (tournCtx) tournCtx.style.display = "none";
+
+        _updateSpectatorCountBadge(battle.spectatorCount);
+
+        // Register spectator event listeners
+        battle.on("spectator_welcome",      _onSpectatorWelcome);
+        battle.on("battle_board",           _onSpectatorBattleBoard);
+        battle.on("battle_rating",          _onSpectatorBattleRating);
+        battle.on("battle_attack",          _onSpectatorBattleAttack);
+        battle.on("battle_powerup",         _onSpectatorBattlePowerup);
+        battle.on("battle_start",           _onSpectatorMatchStart);
+        battle.on("battle_game_over",       _onSpectatorGameOver);
+        battle.on("battle_score_race_end",  _onSpectatorScoreRaceEnd);
+        battle.on("player_left",            _onSpectatorPlayerLeft);
+        battle.on("state_change",           _onSpectatorStateChange);
+
+        document.addEventListener("keydown", _spectatorEscHandler);
+      }
+
+      function _closeSpectatorOverlay() {
+        var overlayEl = document.getElementById("spectator-overlay");
+        if (overlayEl) overlayEl.style.display = "none";
+
+        if (_spectatorResultTimer) { clearTimeout(_spectatorResultTimer); _spectatorResultTimer = null; }
+        _spectatorStopTimer();
+
+        battle.off("spectator_welcome",     _onSpectatorWelcome);
+        battle.off("battle_board",          _onSpectatorBattleBoard);
+        battle.off("battle_rating",         _onSpectatorBattleRating);
+        battle.off("battle_attack",         _onSpectatorBattleAttack);
+        battle.off("battle_powerup",        _onSpectatorBattlePowerup);
+        battle.off("battle_start",          _onSpectatorMatchStart);
+        battle.off("battle_game_over",      _onSpectatorGameOver);
+        battle.off("battle_score_race_end", _onSpectatorScoreRaceEnd);
+        battle.off("player_left",           _onSpectatorPlayerLeft);
+        battle.off("state_change",          _onSpectatorStateChange);
+        document.removeEventListener("keydown", _spectatorEscHandler);
+
+        battle.disconnect();
+        blocker.style.display = "flex";
+        instructions.style.display = "";
+      }
+
+      function _spectatorEscHandler(e) {
+        if (e.key === "Escape") _closeSpectatorOverlay();
+      }
+
+      function _updateSpectatorCountBadge(count) {
+        var el = document.getElementById("spectator-count-badge");
+        if (el) el.textContent = count + ' spectator' + (count !== 1 ? 's' : '');
+      }
+
+      // ── Ticker helpers ──────────────────────────────────────────────────────
+
+      function _specTickerAdd(text, player) {
+        // player: 'host' (blue), 'guest' (green), or null (neutral grey)
+        var color = player === 'guest' ? '#00ff8c' : (player === 'host' ? '#4db8ff' : '#aaaaaa');
+        var entry = { text: text, color: color };
+        _spectatorTickerEvents.push(entry);
+        if (_spectatorTickerEvents.length > 5) _spectatorTickerEvents.shift();
+        var inner = document.getElementById("spectator-ticker-inner");
+        if (!inner) return;
+        // Rebuild visible ticker (newest on top via column-reverse)
+        inner.innerHTML = '';
+        var visible = _spectatorTickerEvents.slice().reverse();
+        for (var i = 0; i < visible.length; i++) {
+          var div = document.createElement('div');
+          div.style.color = visible[i].color;
+          div.style.opacity = String(1 - i * 0.18);
+          div.textContent = visible[i].text;
+          inner.appendChild(div);
+        }
+      }
+
+      function _specPlayerLabel(player) {
+        var nameId = player === 'host' ? 'spectator-host-name' : 'spectator-guest-name';
+        var el = document.getElementById(nameId);
+        return el && el.textContent ? el.textContent : (player === 'host' ? 'P1' : 'P2');
+      }
+
+      // ── Timer helpers ───────────────────────────────────────────────────────
+
+      function _spectatorStartTimer() {
+        if (_spectatorTimerRaf) return;
+        _spectatorTimerLast = performance.now();
+        function _tick(now) {
+          var delta = now - _spectatorTimerLast;
+          _spectatorTimerLast = now;
+          _spectatorScoreRaceMs -= delta;
+          if (_spectatorScoreRaceMs < 0) _spectatorScoreRaceMs = 0;
+          var timerEl = document.getElementById("spectator-match-timer");
+          if (timerEl) {
+            var s = Math.ceil(_spectatorScoreRaceMs / 1000);
+            var mm = Math.floor(s / 60);
+            var ss = s % 60;
+            timerEl.textContent = mm + ':' + (ss < 10 ? '0' : '') + ss;
+          }
+          if (_spectatorScoreRaceMs > 0) {
+            _spectatorTimerRaf = requestAnimationFrame(_tick);
+          } else {
+            _spectatorTimerRaf = null;
+          }
+        }
+        _spectatorTimerRaf = requestAnimationFrame(_tick);
+      }
+
+      function _spectatorStopTimer() {
+        if (_spectatorTimerRaf) { cancelAnimationFrame(_spectatorTimerRaf); _spectatorTimerRaf = null; }
+      }
+
+      // ── Flash animation ─────────────────────────────────────────────────────
+
+      function _spectatorFlashBoard(player) {
+        var flashId = player === 'host' ? 'spectator-host-flash' : 'spectator-guest-flash';
+        var el = document.getElementById(flashId);
+        if (!el) return;
+        el.style.transition = 'none';
+        el.style.background = 'rgba(255,80,0,0.55)';
+        el.style.opacity = '1';
+        void el.offsetHeight; // reflow
+        el.style.transition = 'opacity 0.55s ease-out';
+        el.style.opacity = '0';
+      }
+
+      // ── Power-up overlay ────────────────────────────────────────────────────
+
+      function _spectatorShowPowerupOverlay(player, puType) {
+        var puId = player === 'host' ? 'spectator-host-pu' : 'spectator-guest-pu';
+        var el = document.getElementById(puId);
+        if (!el) return;
+        var def = _SPEC_PU_DEFS[puType];
+        el.textContent = def ? def.icon : '\u26A1';
+        el.style.transition = 'none';
+        el.style.opacity = '1';
+        void el.offsetHeight;
+        el.style.transition = 'opacity 0.8s ease-out 0.6s';
+        el.style.opacity = '0';
+      }
+
+      // ── Event handlers ──────────────────────────────────────────────────────
+
+      function _onSpectatorWelcome(msg) {
+        _updateSpectatorCountBadge(msg.spectatorCount || 0);
+        var statusEl = document.getElementById("spectator-status-msg");
+        if (statusEl) {
+          statusEl.textContent = msg.playersConnected >= 2
+            ? "Match in progress"
+            : "Waiting for players\u2026";
+        }
+        if (msg.isTournament) {
+          var tournCtx = document.getElementById("spectator-tournament-ctx");
+          if (tournCtx) tournCtx.style.display = "inline";
+        }
+      }
+
+      function _onSpectatorStateChange(data) {
+        if (data.state === BattleState.DISCONNECTED) {
+          _closeSpectatorOverlay();
+        }
+      }
+
+      function _onSpectatorMatchStart(msg) {
+        _spectatorMatchMode = (msg.matchMode || 'survival');
+        var modeBadge = document.getElementById("spectator-mode-badge");
+        var timerEl = document.getElementById("spectator-match-timer");
+        var statusEl = document.getElementById("spectator-status-msg");
+        if (_spectatorMatchMode === 'score_race') {
+          if (modeBadge) modeBadge.textContent = '\u23F1 SCORE RACE';
+          _spectatorScoreRaceMs = 180000;
+          if (timerEl) { timerEl.style.display = "block"; timerEl.textContent = "3:00"; }
+          _spectatorStartTimer();
+          if (statusEl) statusEl.textContent = "Score Race in progress";
+          _specTickerAdd("Score Race started — 3 minutes!", null);
+        } else {
+          if (modeBadge) modeBadge.textContent = '\u2694 SURVIVAL';
+          if (timerEl) timerEl.style.display = "none";
+          if (statusEl) statusEl.textContent = "Survival match in progress";
+          _specTickerAdd("Survival match started!", null);
+        }
+      }
+
+      function _onSpectatorBattleRating(msg) {
+        var from = msg.fromPlayer || 'host';
+        var nameId = from === 'host' ? 'spectator-host-name' : 'spectator-guest-name';
+        var ratingId = from === 'host' ? 'spectator-host-rating' : 'spectator-guest-rating';
+        if (msg.playerName) {
+          var nameEl = document.getElementById(nameId);
+          if (nameEl) nameEl.textContent = msg.playerName;
+        }
+        if (typeof msg.rating === 'number') {
+          var ratingEl = document.getElementById(ratingId);
+          if (ratingEl) ratingEl.textContent = '\u2605 ' + msg.rating;
+        }
+      }
+
+      // Render a column array to a spectator board canvas
+      function _drawSpectatorBoard(canvasId, cols) {
+        var canvas = document.getElementById(canvasId);
+        if (!canvas || !cols) return;
+        var ctx = canvas.getContext("2d");
+        var cw = canvas.width, ch = canvas.height;
+        ctx.clearRect(0, 0, cw, ch);
+        var numCols = cols.length;
+        var numRows = numCols > 0 ? cols[0].length : 0;
+        if (!numCols || !numRows) return;
+        var cellW = cw / numCols;
+        var cellH = ch / numRows;
+        for (var c = 0; c < numCols; c++) {
+          for (var r = 0; r < numRows; r++) {
+            var cell = cols[c][r];
+            if (cell) {
+              ctx.fillStyle = typeof cell === 'string' ? cell : '#4a9eff';
+              ctx.fillRect(c * cellW + 1, r * cellH + 1, cellW - 2, cellH - 2);
+            }
+          }
+        }
+      }
+
+      function _onSpectatorBattleBoard(msg) {
+        var statusEl = document.getElementById("spectator-status-msg");
+        if (statusEl && statusEl.textContent.indexOf("Waiting") !== -1) {
+          statusEl.textContent = "Match in progress";
+        }
+        var from = msg.fromPlayer || 'host';
+        var scoreId = from === 'host' ? 'spectator-host-score' : 'spectator-guest-score';
+        var linesId = from === 'host' ? 'spectator-host-lines' : 'spectator-guest-lines';
+        var boardId = from === 'host' ? 'spectator-host-board' : 'spectator-guest-board';
+        var scoreEl = document.getElementById(scoreId);
+        var linesEl = document.getElementById(linesId);
+        if (scoreEl) scoreEl.textContent = msg.score != null ? msg.score : '\u2014';
+        if (linesEl) linesEl.textContent = msg.linesCleared != null ? msg.linesCleared : '\u2014';
+        _drawSpectatorBoard(boardId, msg.cols);
+      }
+
+      function _onSpectatorBattleAttack(msg) {
+        // Garbage was sent — flash the recipient's board
+        var attacker = msg.fromPlayer || 'host';
+        var recipient = attacker === 'host' ? 'guest' : 'host';
+        var lines = msg.lines || 0;
+        _spectatorFlashBoard(recipient);
+        var attackerLabel = _specPlayerLabel(attacker);
+        var recipientLabel = _specPlayerLabel(recipient);
+        var lineWord = lines === 1 ? 'row' : 'rows';
+        _specTickerAdd(attackerLabel + ' sent ' + lines + ' garbage ' + lineWord + ' \u2192 ' + recipientLabel, attacker);
+      }
+
+      function _onSpectatorBattlePowerup(msg) {
+        var from = msg.fromPlayer || 'host';
+        var puType = msg.powerUp || '';
+        _spectatorShowPowerupOverlay(from, puType);
+        var def = _SPEC_PU_DEFS[puType];
+        var puName = def ? def.name : 'Power-up';
+        var icon = def ? def.icon : '\u26A1';
+        _specTickerAdd(_specPlayerLabel(from) + ' activated ' + icon + ' ' + puName, from);
+      }
+
+      function _onSpectatorGameOver(msg) {
+        var from = msg.fromPlayer || 'host';
+        var loserName = _specPlayerLabel(from);
+        var winnerName = _specPlayerLabel(from === 'host' ? 'guest' : 'host');
+        _spectatorStopTimer();
+        _specTickerAdd(loserName + ' was eliminated!', from);
+        _showSpectatorResult(winnerName + " wins!", loserName + " was eliminated");
+      }
+
+      function _onSpectatorScoreRaceEnd(msg) {
+        _spectatorStopTimer();
+        var from = msg.fromPlayer || 'host';
+        var label = _specPlayerLabel(from);
+        _specTickerAdd("Score Race ended — " + label + " submitted final score", from);
+        _showSpectatorResult("Score Race ended!", "Final score submitted by " + label);
+      }
+
+      function _onSpectatorPlayerLeft(msg) {
+        _spectatorStopTimer();
+        var statusEl = document.getElementById("spectator-status-msg");
+        if (statusEl) statusEl.textContent = "A player disconnected.";
+        _specTickerAdd("A player disconnected", null);
+        _showSpectatorResult("Match ended", "A player disconnected");
+      }
+
+      function _showSpectatorResult(title, sub) {
+        var resultEl = document.getElementById("spectator-result");
+        var titleEl = document.getElementById("spectator-result-title");
+        var subEl = document.getElementById("spectator-result-sub");
+        var countEl = document.getElementById("spectator-result-countdown");
+        if (!resultEl) return;
+        if (titleEl) titleEl.textContent = title;
+        if (subEl) subEl.textContent = sub;
+        resultEl.style.display = "block";
+        var secs = 5;
+        if (countEl) countEl.textContent = "Returning to lobby in " + secs + "s\u2026";
+        _spectatorResultTimer = setInterval(function () {
+          secs--;
+          if (secs <= 0) {
+            clearInterval(_spectatorResultTimer);
+            _spectatorResultTimer = null;
+            _closeSpectatorOverlay();
+          } else {
+            if (countEl) countEl.textContent = "Returning to lobby in " + secs + "s\u2026";
+          }
+        }, 1000);
+      }
+
+      var spectatorLeaveBtn = document.getElementById("spectator-leave-btn");
+      if (spectatorLeaveBtn) {
+        spectatorLeaveBtn.addEventListener("click", function () { _closeSpectatorOverlay(); });
+      }
+
+      // ── Spectator Engagement: Hype Bar, Emoji Reactions, Chat ───────────────
+
+      var EMOJI_MAP = {
+        fire:    '\uD83D\uDD25',
+        clap:    '\uD83D\uDC4F',
+        shocked: '\uD83D\uDE32',
+        skull:   '\uD83D\uDC80',
+        diamond: '\uD83D\uDC8E',
+        crown:   '\uD83D\uDC51',
+      };
+
+      // Hype bar state
+      var _hypeLevel     = 0;   // 0–100
+      var _hypeRafId     = null;
+      var _hypeLastTs    = 0;
+      var _hypeElectric  = false;
+      var _hypeElectricTimer = null;
+
+      function _updateHypeBar() {
+        var fill = document.getElementById('spec-hype-fill');
+        var pct  = document.getElementById('spec-hype-pct');
+        if (fill) fill.style.width = _hypeLevel.toFixed(1) + '%';
+        if (pct)  pct.textContent  = Math.round(_hypeLevel) + '%';
+      }
+
+      function _hypeDecayTick(ts) {
+        if (_hypeLastTs) {
+          var dt = (ts - _hypeLastTs) / 1000;
+          _hypeLevel = Math.max(0, _hypeLevel - 2 * dt);
+          _updateHypeBar();
+        }
+        _hypeLastTs = ts;
+        _hypeRafId = requestAnimationFrame(_hypeDecayTick);
+      }
+
+      function _startHypeDecay() {
+        if (_hypeRafId) return;
+        _hypeLastTs = 0;
+        _hypeRafId = requestAnimationFrame(_hypeDecayTick);
+      }
+
+      function _stopHypeDecay() {
+        if (_hypeRafId) { cancelAnimationFrame(_hypeRafId); _hypeRafId = null; }
+      }
+
+      function _addHypeReaction() {
+        _hypeLevel = Math.min(100, _hypeLevel + 5);
+        _updateHypeBar();
+        if (_hypeLevel >= 100 && !_hypeElectric) {
+          _triggerHypeElectric();
+        }
+      }
+
+      function _triggerHypeElectric() {
+        _hypeElectric = true;
+        var overlay = document.getElementById('spectator-overlay');
+        var banner  = document.getElementById('spec-electric-banner');
+        if (overlay) overlay.classList.add('hype-electric');
+        if (banner)  banner.style.display = 'block';
+        if (_hypeElectricTimer) clearTimeout(_hypeElectricTimer);
+        _hypeElectricTimer = setTimeout(function () {
+          _hypeElectric = false;
+          if (overlay) overlay.classList.remove('hype-electric');
+          if (banner)  banner.style.display = 'none';
+          _hypeElectricTimer = null;
+        }, 3000);
+      }
+
+      // Floating emoji animation
+      function _spawnFloatingEmoji(emojiChar) {
+        var layer = document.getElementById('spec-emoji-float-layer');
+        if (!layer) return;
+        var el = document.createElement('div');
+        el.className = 'spec-floating-emoji';
+        el.textContent = emojiChar;
+        var xPct = 10 + Math.random() * 80;
+        el.style.left  = xPct + '%';
+        el.style.bottom = '80px';
+        layer.appendChild(el);
+        setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el); }, 1900);
+      }
+
+      // Reaction button rate limiting
+      var _lastReactionTime = 0;
+
+      document.querySelectorAll('.spec-react-btn').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          if (!battle.isSpectator) return;
+          var now = Date.now();
+          if (now - _lastReactionTime < 2000) return; // rate limited
+          _lastReactionTime = now;
+          var emoji = btn.getAttribute('data-emoji');
+          // Send to server
+          battle.send({ type: 'spectator_reaction', emoji: emoji });
+          // Optimistically spawn local animation + add hype
+          _spawnFloatingEmoji(EMOJI_MAP[emoji] || emoji);
+          _addHypeReaction();
+          // Brief button cooldown indicator
+          btn.classList.add('rate-limited');
+          setTimeout(function () { btn.classList.remove('rate-limited'); }, 2000);
+        });
+      });
+
+      // Handle incoming reactions (from server relay)
+      function _onSpectatorReaction(msg) {
+        var emoji = msg.emoji;
+        var char  = EMOJI_MAP[emoji];
+        if (!char) return;
+        _spawnFloatingEmoji(char);
+        _addHypeReaction();
+      }
+
+      // Spectator chat
+      var _specMySpecId = null;
+      var _specMyName   = (function () {
+        // Use saved display name if available, else 'Spectator'
+        try {
+          var n = localStorage.getItem('mineCtris_displayName') || '';
+          return n.trim().slice(0, 24) || 'Spectator';
+        } catch (_) { return 'Spectator'; }
+      })();
+
+      var _specKnownSpectators = {}; // specId → name
+
+      function _specChatRender(name, text, isSelf) {
+        var msgs = document.getElementById('spec-chat-messages');
+        if (!msgs) return;
+        var div = document.createElement('div');
+        div.className = 'spec-chat-msg';
+        var nameSpan = document.createElement('span');
+        nameSpan.className = 'spec-chat-name';
+        nameSpan.textContent = (isSelf ? '(you) ' : '') + name + ':';
+        if (isSelf) nameSpan.style.color = '#ffd700';
+        div.appendChild(nameSpan);
+        div.appendChild(document.createTextNode(' ' + text));
+        msgs.appendChild(div);
+        msgs.scrollTop = msgs.scrollHeight;
+        // Keep max 80 messages
+        while (msgs.children.length > 80) msgs.removeChild(msgs.firstChild);
+      }
+
+      function _specUpdateSpectatorList() {
+        var names  = Object.values(_specKnownSpectators).filter(Boolean);
+        var countEl = document.getElementById('spec-chat-spectator-count');
+        var namesEl = document.getElementById('spec-chat-spectator-names');
+        if (countEl) countEl.textContent = names.length + ' spectator' + (names.length !== 1 ? 's' : '');
+        if (namesEl) namesEl.textContent = names.slice(0, 5).join(', ') + (names.length > 5 ? '\u2026' : '');
+      }
+
+      var _profanityList = ['fuck','shit','ass','bitch','cunt','nigger','nigga','dick','pussy','bastard'];
+      function _filterProfanity(text) {
+        var out = text;
+        _profanityList.forEach(function (w) {
+          out = out.replace(new RegExp('\\b' + w + '\\b', 'gi'), function (m) {
+            return m[0] + '*'.repeat(m.length - 1);
+          });
+        });
+        return out;
+      }
+
+      function _specSendChat() {
+        if (!battle.isSpectator) return;
+        var input = document.getElementById('spec-chat-input');
+        if (!input) return;
+        var raw  = input.value.trim().slice(0, 100);
+        if (!raw) return;
+        var text = _filterProfanity(raw);
+        battle.send({ type: 'spectator_chat', text: text, name: _specMyName });
+        _specChatRender(_specMyName, text, true);
+        input.value = '';
+      }
+
+      var specChatSend = document.getElementById('spec-chat-send');
+      if (specChatSend) specChatSend.addEventListener('click', _specSendChat);
+
+      var specChatInput = document.getElementById('spec-chat-input');
+      if (specChatInput) {
+        specChatInput.addEventListener('keydown', function (e) {
+          if (e.key === 'Enter') { e.preventDefault(); _specSendChat(); }
+        });
+      }
+
+      // Chat panel collapse/expand
+      var _chatCollapsed = false;
+      var specChatToggle = document.getElementById('spec-chat-toggle');
+      if (specChatToggle) {
+        specChatToggle.addEventListener('click', function () {
+          _chatCollapsed = !_chatCollapsed;
+          var panel = document.getElementById('spec-chat-panel');
+          var arrow = document.getElementById('spec-chat-toggle-arrow');
+          if (panel) panel.classList.toggle('collapsed', _chatCollapsed);
+          if (arrow) arrow.textContent = _chatCollapsed ? '\u25BA' : '\u25C4';
+        });
+      }
+
+      // Handle incoming chat messages
+      function _onSpectatorChat(msg) {
+        if (!msg.text) return;
+        var isSelf = msg.specId === _specMySpecId;
+        if (!isSelf) {  // own messages already rendered optimistically
+          _specChatRender(msg.name || 'Anon', msg.text, false);
+        }
+      }
+
+      // Handle spectator hello (name registration)
+      function _onSpectatorHello(msg) {
+        if (msg.specId && msg.name) {
+          _specKnownSpectators[msg.specId] = msg.name;
+          _specUpdateSpectatorList();
+        }
+      }
+
+      // Enhance spectator welcome to grab mySpecId and init name
+      var _origOnSpectatorWelcome = _onSpectatorWelcome;
+      function _onSpectatorWelcomeEnhanced(msg) {
+        _origOnSpectatorWelcome(msg);
+        if (msg.mySpecId) {
+          _specMySpecId = msg.mySpecId;
+          _specKnownSpectators[_specMySpecId] = _specMyName;
+          _specUpdateSpectatorList();
+          // Announce ourselves to other spectators
+          battle.send({ type: 'spectator_hello', name: _specMyName });
+        }
+        // Update spectator count in chat header
+        _specUpdateSpectatorList();
+      }
+
+      // Register enhanced welcome + new events in _openSpectatorOverlay
+      // (patched below)
+
+      // Player hype indicator — shown to in-game players when spectators react
+      battle.on('spectator_hype_tick', function () {
+        var el = document.getElementById('battle-spectator-hype');
+        if (!el) return;
+        el.style.display = 'block';
+        el.textContent = '\uD83D\uDD25 Crowd reacting!';
+        if (el._fadeTimer) clearTimeout(el._fadeTimer);
+        el._fadeTimer = setTimeout(function () {
+          el.style.display = 'none';
+        }, 3000);
+      });
+
+      // Patch _openSpectatorOverlay to register new events and start hype decay
+      var _origOpenSpectatorOverlay = _openSpectatorOverlay;
+      _openSpectatorOverlay = function (roomCode) {
+        _origOpenSpectatorOverlay(roomCode);
+        // Reset hype state
+        _hypeLevel = 0;
+        _hypeElectric = false;
+        if (_hypeElectricTimer) { clearTimeout(_hypeElectricTimer); _hypeElectricTimer = null; }
+        var overlay = document.getElementById('spectator-overlay');
+        if (overlay) overlay.classList.remove('hype-electric');
+        var banner = document.getElementById('spec-electric-banner');
+        if (banner) banner.style.display = 'none';
+        _updateHypeBar();
+        _startHypeDecay();
+        // Reset chat
+        _chatCollapsed = false;
+        var panel = document.getElementById('spec-chat-panel');
+        if (panel) panel.classList.remove('collapsed');
+        var msgs = document.getElementById('spec-chat-messages');
+        if (msgs) msgs.innerHTML = '';
+        _specKnownSpectators = {};
+        _specMySpecId = null;
+        _specUpdateSpectatorList();
+        // Re-register with enhanced welcome
+        battle.off('spectator_welcome', _onSpectatorWelcome);
+        battle.on('spectator_welcome',  _onSpectatorWelcomeEnhanced);
+        battle.on('spectator_reaction', _onSpectatorReaction);
+        battle.on('spectator_chat',     _onSpectatorChat);
+        battle.on('spectator_hello',    _onSpectatorHello);
+      };
+
+      // Patch _closeSpectatorOverlay to unregister and stop hype
+      var _origCloseSpectatorOverlay = _closeSpectatorOverlay;
+      _closeSpectatorOverlay = function () {
+        _stopHypeDecay();
+        if (_hypeElectricTimer) { clearTimeout(_hypeElectricTimer); _hypeElectricTimer = null; }
+        battle.off('spectator_welcome',  _onSpectatorWelcomeEnhanced);
+        battle.off('spectator_reaction', _onSpectatorReaction);
+        battle.off('spectator_chat',     _onSpectatorChat);
+        battle.off('spectator_hello',    _onSpectatorHello);
+        _origCloseSpectatorOverlay();
+      };
+
+      // ── End Spectator Engagement ─────────────────────────────────────────────
+
       // ── Mode toggle (host only in ready view) ──
       var _battleModeSurvivalBtn  = document.getElementById("battle-mode-survival-btn");
       var _battleModeScoreRaceBtn = document.getElementById("battle-mode-score-race-btn");
@@ -1889,12 +2671,21 @@ function init() {
         if (battle.isHost) {
           if (_battleModeToggleHost)   _battleModeToggleHost.style.display   = '';
           if (_battleModeDisplayGuest) _battleModeDisplayGuest.style.display = 'none';
+          // Show private toggle for host (unless tournament match)
+          if (_privateToggleEl) _privateToggleEl.style.display = isTournamentMatch ? 'none' : '';
+          if (_privateCheckbox)  _privateCheckbox.checked = false;
+          // Tournament rooms are always spectatable — notify server
+          if (isTournamentMatch) {
+            battle.send({ type: 'room_set_tournament' });
+          }
         } else {
           if (_battleModeToggleHost)   _battleModeToggleHost.style.display   = 'none';
           if (_battleModeDisplayGuest) _battleModeDisplayGuest.style.display = '';
           _battleSelectedMode = 'survival';
           if (_battleModeDisplayGuest) _battleModeDisplayGuest.textContent = '\u2694 Survival';
+          if (_privateToggleEl) _privateToggleEl.style.display = 'none';
         }
+        _updateSpectatorCountDisplay();
       }
 
       // Opponent score race end: opponent's timer expired; resolve if ours hasn't
@@ -1916,6 +2707,385 @@ function init() {
 
     })();
     // ── End battle setup ───────────────────────────────────────────────────────
+
+    // ── Tournament lobby ──────────────────────────────────────────────────────
+    (function () {
+      var tournOverlay       = document.getElementById('tournament-overlay');
+      var tournListView      = document.getElementById('tourn-list-view');
+      var tournBracketView   = document.getElementById('tourn-bracket-view');
+      var tournListBody      = document.getElementById('tourn-list-body');
+      var tournBracketTitle  = document.getElementById('tourn-bracket-title');
+      var tournBracketStatus = document.getElementById('tourn-bracket-status-badge');
+      var tournBracketTree   = document.getElementById('tourn-bracket-tree');
+      var tournRegPanel      = document.getElementById('tourn-reg-panel');
+      var tournRegInfo       = document.getElementById('tourn-reg-info');
+      var tournRegBtn        = document.getElementById('tourn-register-btn');
+      var tournRegFeedback   = document.getElementById('tourn-reg-feedback');
+      var tournMatchEntry    = document.getElementById('tourn-match-entry');
+      var tournMatchCountdown= document.getElementById('tourn-match-countdown');
+      var tournJoinMatchBtn  = document.getElementById('tourn-join-match-btn');
+      var tournTabAll        = document.getElementById('tourn-tab-all');
+      var tournTabMine       = document.getElementById('tourn-tab-mine');
+
+      if (!tournOverlay || typeof tournamentLobby === 'undefined') return;
+
+      var _activeTournId = null;
+      var _activeTab     = 'all'; // 'all' | 'mine'
+
+      // ── View switching ──
+
+      function _showView(name) {
+        tournListView.style.display    = name === 'list'    ? '' : 'none';
+        tournBracketView.style.display = name === 'bracket' ? '' : 'none';
+      }
+
+      // ── Open / close ──
+
+      function openTournamentOverlay() {
+        hideModeSelect();
+        blocker.style.display = 'none';
+        tournOverlay.style.display = 'flex';
+        _activeTab = 'all';
+        _renderList();
+        _showView('list');
+      }
+
+      function closeTournamentOverlay() {
+        tournamentLobby.stopCountdown();
+        tournOverlay.style.display = 'none';
+        blocker.style.display = 'flex';
+        instructions.style.display = '';
+      }
+
+      // ── Tab rendering ──
+
+      function _setTab(tab) {
+        _activeTab = tab;
+        if (tournTabAll)  tournTabAll.classList.toggle('tourn-tab-active',  tab === 'all');
+        if (tournTabMine) tournTabMine.classList.toggle('tourn-tab-active', tab === 'mine');
+        _renderList();
+      }
+
+      if (tournTabAll)  tournTabAll.addEventListener('click',  function () { _setTab('all'); });
+      if (tournTabMine) tournTabMine.addEventListener('click', function () { _setTab('mine'); });
+
+      // ── List rendering ──
+
+      function _statusLabel(status) {
+        if (status === 'open')        return '<span class="tourn-status-badge tourn-status-open">OPEN</span>';
+        if (status === 'in_progress') return '<span class="tourn-status-badge tourn-status-in_progress">&#9654; LIVE</span>';
+        return '<span class="tourn-status-badge tourn-status-completed">DONE</span>';
+      }
+
+      function _pipBar(count, max, isMine) {
+        var html = '<div class="tourn-player-count-bar">';
+        for (var i = 0; i < max; i++) {
+          var cls = 'tourn-count-pip' + (i < count ? (isMine && i === count - 1 ? ' mine' : ' filled') : '');
+          html += '<div class="' + cls + '"></div>';
+        }
+        html += '</div>';
+        return html;
+      }
+
+      function _renderList() {
+        if (!tournListBody) return;
+        var all  = tournamentLobby.getAll();
+        var regs = tournamentLobby.getRegistrations();
+
+        var items = _activeTab === 'mine'
+          ? all.filter(function (t) { return !!regs[t.id]; })
+          : all;
+
+        if (items.length === 0) {
+          tournListBody.innerHTML = '<div class="tourn-empty-msg">' +
+            (_activeTab === 'mine' ? 'You have not joined any tournaments yet.' : 'No tournaments available.') +
+            '</div>';
+          return;
+        }
+
+        tournListBody.innerHTML = items.map(function (t) {
+          var isReg  = !!regs[t.id];
+          var isMine = isReg;
+          var regBadge = isReg ? '<span class="tourn-registered-badge">&#10003; Registered</span>' : '';
+          var prizeStyle = 'color:' + (t.prize ? t.prize.color : '#ffd700') + ';';
+          return '<div class="tourn-item" data-id="' + t.id + '">' +
+            '<div class="tourn-item-left">' +
+              '<div class="tourn-item-name">' + t.name + '</div>' +
+              '<div class="tourn-item-meta">' +
+                t.players.length + ' / 8 players &nbsp;&bull;&nbsp; ' + _statusLabel(t.status) +
+              '</div>' +
+              _pipBar(t.players.length, 8, isMine) +
+              regBadge +
+            '</div>' +
+            '<span class="tourn-item-prize" style="' + prizeStyle + '">' + (t.prize ? t.prize.label : '') + '</span>' +
+          '</div>';
+        }).join('');
+
+        // Bind click handlers
+        var itemEls = tournListBody.querySelectorAll('.tourn-item');
+        itemEls.forEach(function (el) {
+          el.addEventListener('click', function () {
+            _openBracketView(el.getAttribute('data-id'));
+          });
+        });
+      }
+
+      // ── Bracket view ──
+
+      function _playerRow(p, myName, result, isLive) {
+        if (!p) return '<div class="tourn-player-row"><span class="tourn-player-name" style="color:#443322">TBD</span></div>';
+        var isMe  = p.name === myName;
+        var isWin = result === 'p1' ? true : (result === 'p2' ? false : null);
+        // For this row, win = true if 'p1' result and this is p1, etc.
+        // We'll pass win/loss directly from the caller
+        var rowCls = 'tourn-player-row' + (isMe ? ' is-me' : '');
+        var resultHtml = '';
+        return '<div class="' + rowCls + '">' +
+          '<span class="tourn-player-name">' + p.name + '</span>' +
+          '<span class="tourn-player-rating">' + p.rating + '</span>' +
+          resultHtml +
+        '</div>';
+      }
+
+      function _matchSlotHtml(match, myName, roundIdx, matchIdx) {
+        if (!match) return '';
+        var isMine = (match.p1 && match.p1.name === myName) || (match.p2 && match.p2.name === myName);
+        var isLive = !!match.live;
+        var slotCls = 'tourn-match-slot' + (isLive ? ' live' : '') + (isMine ? ' mine' : '');
+        var liveDot = isLive ? '<div class="tourn-live-dot">&#9679; LIVE</div>' : '';
+
+        // Watch button for live matches with a known room code
+        var watchBtn = '';
+        if (isLive && match.roomCode) {
+          var spec = match.spectatorCount || 0;
+          var full = spec >= 50;
+          watchBtn = '<button class="tourn-watch-btn" data-code="' + match.roomCode + '" data-full="' + full + '" style="font-size:0.75em;margin-top:4px;padding:2px 8px;' + (full ? 'opacity:0.4;cursor:not-allowed;' : '') + '">' +
+            '&#128065; Watch' + (spec > 0 ? ' (' + spec + ')' : '') + (full ? ' — Full' : '') +
+          '</button>';
+        }
+
+        function _row(p, didWin) {
+          if (!p) return '<div class="tourn-slot-tbd">TBD</div>';
+          var isMe  = p.name === myName;
+          var cls   = 'tourn-player-row' + (didWin === true ? ' winner' : didWin === false ? ' loser' : '') + (isMe ? ' is-me' : '');
+          var res   = didWin === true ? ' <span class="tourn-player-result">W</span>' : didWin === false ? ' <span class="tourn-player-result">L</span>' : '';
+          return '<div class="' + cls + '">' +
+            '<span class="tourn-player-name">' + p.name + '</span>' +
+            '<span class="tourn-player-rating">' + p.rating + '</span>' +
+            res +
+          '</div>';
+        }
+
+        var p1Win = match.result === 'p1' ? true  : (match.result === 'p2' ? false : null);
+        var p2Win = match.result === 'p2' ? true  : (match.result === 'p1' ? false : null);
+
+        return '<div class="' + slotCls + '">' + liveDot + _row(match.p1, p1Win) + _row(match.p2, p2Win) + watchBtn + '</div>';
+      }
+
+      function _openBracketView(tournId) {
+        var t = tournamentLobby.getById(tournId);
+        if (!t) return;
+        _activeTournId = tournId;
+        var myName = tournamentLobby.getRegistration(tournId)
+          ? tournamentLobby.getRegistration(tournId).playerName
+          : null;
+
+        if (tournBracketTitle)  tournBracketTitle.textContent  = t.name;
+        if (tournBracketStatus) {
+          var statusText = { open: 'Open — accepting registrations', in_progress: '\u25b6 Live now', completed: 'Completed' };
+          tournBracketStatus.textContent = statusText[t.status] || t.status;
+        }
+
+        // Render bracket tree if in_progress or completed and has bracket
+        if (tournBracketTree) {
+          if (t.bracket) {
+            var html = '';
+            // QF
+            html += '<div class="tourn-round-label">QUARTER-FINALS</div><div class="tourn-round">';
+            t.bracket.qf.forEach(function (m, i) { html += _matchSlotHtml(m, myName, 0, i); });
+            html += '</div>';
+            // SF
+            html += '<div class="tourn-round-label">SEMI-FINALS</div><div class="tourn-round">';
+            t.bracket.sf.forEach(function (m, i) { html += _matchSlotHtml(m, myName, 1, i); });
+            html += '</div>';
+            // Final
+            html += '<div class="tourn-round-label">FINAL</div><div class="tourn-round">';
+            html += _matchSlotHtml(t.bracket.final, myName, 2, 0);
+            html += '</div>';
+            tournBracketTree.innerHTML = html;
+            // Bind Watch buttons in bracket
+            tournBracketTree.querySelectorAll('.tourn-watch-btn').forEach(function (btn) {
+              btn.addEventListener('click', function (e) {
+                e.stopPropagation();
+                if (this.dataset.full === 'true') return;
+                closeTournamentOverlay();
+                _startWatchRoom(this.dataset.code);
+              });
+            });
+          } else if (t.status === TournamentStatus.OPEN) {
+            // Show player list for open tournaments
+            var plHtml = '<div class="tourn-round-label">REGISTERED (' + t.players.length + ' / 8)</div>';
+            plHtml += '<div class="tourn-round">';
+            t.players.forEach(function (p) {
+              var isMe = myName && p.name === myName;
+              plHtml += '<div class="tourn-match-slot' + (isMe ? ' mine' : '') + '" style="max-width:200px;">' +
+                '<div class="tourn-player-row' + (isMe ? ' is-me' : '') + '">' +
+                  '<span class="tourn-player-name">' + p.name + '</span>' +
+                  '<span class="tourn-player-rating">' + p.rating + '</span>' +
+                '</div></div>';
+            });
+            plHtml += '</div>';
+            tournBracketTree.innerHTML = plHtml;
+          } else {
+            tournBracketTree.innerHTML = '<div class="tourn-slot-tbd" style="padding:20px;">Bracket unavailable.</div>';
+          }
+        }
+
+        // Registration panel: show for open tournaments the player has not joined
+        var isReg = tournamentLobby.isRegistered(tournId);
+        if (tournRegPanel) {
+          if (t.status === 'open' && !isReg && t.players.length < 8) {
+            var myRating = tournamentLobby.getRegistration(tournId)
+              ? tournamentLobby.getRegistration(tournId).rating
+              : (typeof loadBattleRating === 'function' ? loadBattleRating().rating : 1000);
+            if (tournRegInfo) {
+              tournRegInfo.innerHTML =
+                'Your rating: <b style="color:#ffd700">' + myRating + '</b><br>' +
+                'Spots left: <b style="color:#00ff88">' + (8 - t.players.length) + '</b>';
+            }
+            if (tournRegBtn)      { tournRegBtn.disabled = false; tournRegBtn.textContent = 'Register'; }
+            if (tournRegFeedback) tournRegFeedback.textContent = '';
+            tournRegPanel.style.display = '';
+          } else if (t.status === 'open' && isReg) {
+            var reg = tournamentLobby.getRegistration(tournId);
+            if (tournRegInfo) {
+              tournRegInfo.innerHTML =
+                '&#10003; Registered &mdash; Seed #' + reg.seedPos + '<br>' +
+                'Rating: <b style="color:#ffd700">' + reg.rating + '</b>';
+            }
+            if (tournRegBtn) { tournRegBtn.disabled = true; tournRegBtn.textContent = 'Registered'; }
+            if (tournRegFeedback) tournRegFeedback.textContent = '';
+            tournRegPanel.style.display = '';
+          } else if (t.status === 'open' && t.players.length >= 8) {
+            if (tournRegInfo)     tournRegInfo.textContent = 'Tournament is full.';
+            if (tournRegBtn)      { tournRegBtn.disabled = true; tournRegBtn.textContent = 'Full'; }
+            if (tournRegFeedback) tournRegFeedback.textContent = '';
+            tournRegPanel.style.display = '';
+          } else {
+            tournRegPanel.style.display = 'none';
+          }
+        }
+
+        // Match entry: show if registered and match is ready
+        if (tournMatchEntry) {
+          var showMatch = t.matchReady && tournamentLobby.isRegistered(tournId);
+          tournMatchEntry.style.display = showMatch ? '' : 'none';
+          if (showMatch) {
+            _startCountdownUI();
+          }
+        }
+
+        _showView('bracket');
+      }
+
+      // ── Register button ──
+
+      if (tournRegBtn) {
+        tournRegBtn.addEventListener('click', function () {
+          if (!_activeTournId) return;
+          tournRegBtn.disabled = true;
+          var result = tournamentLobby.register(_activeTournId);
+          if (result.ok) {
+            if (tournRegFeedback) {
+              tournRegFeedback.innerHTML =
+                '&#10003; Registered! Seed #' + result.seedPos +
+                '<br>Rating: ' + result.rating;
+            }
+            if (tournRegInfo) {
+              tournRegInfo.innerHTML =
+                '&#10003; Registered &mdash; Seed #' + result.seedPos + '<br>' +
+                'Rating: <b style="color:#ffd700">' + result.rating + '</b>';
+            }
+            if (tournRegBtn) tournRegBtn.textContent = 'Registered';
+          } else {
+            if (tournRegFeedback) tournRegFeedback.textContent = 'Could not register: ' + result.reason;
+            tournRegBtn.disabled = false;
+          }
+        });
+      }
+
+      // ── Join match button ──
+
+      if (tournJoinMatchBtn) {
+        tournJoinMatchBtn.addEventListener('click', function () {
+          tournamentLobby.stopCountdown();
+          closeTournamentOverlay();
+          // Flag this battle match as a tournament match so the +50 bonus fires on win
+          if (typeof isTournamentMatch !== 'undefined') {
+            isTournamentMatch = true;
+          }
+          // Open battle overlay with tournament context flag
+          var battleCardEl = document.getElementById('mode-card-battle');
+          if (battleCardEl) battleCardEl.click();
+        });
+      }
+
+      // ── Countdown UI ──
+
+      function _startCountdownUI() {
+        _onCountdownTick = function (secs) {
+          if (tournMatchCountdown) {
+            tournMatchCountdown.textContent = secs + 's';
+          }
+        };
+        if (tournMatchCountdown) tournMatchCountdown.textContent = '60s';
+        tournamentLobby.startCountdown(60, function () {
+          // Auto-forfeit: hide match entry
+          if (tournMatchEntry) tournMatchEntry.style.display = 'none';
+        });
+      }
+
+      // ── Bracket back button ──
+
+      var brackBackBtn = document.getElementById('tourn-bracket-back-btn');
+      if (brackBackBtn) {
+        brackBackBtn.addEventListener('click', function () {
+          tournamentLobby.stopCountdown();
+          _activeTournId = null;
+          _renderList();
+          _showView('list');
+        });
+      }
+
+      // ── List close button ──
+
+      var listCloseBtn = document.getElementById('tourn-list-close-btn');
+      if (listCloseBtn) {
+        listCloseBtn.addEventListener('click', function () {
+          closeTournamentOverlay();
+        });
+      }
+
+      // ── Mode card click (from mode-select) ──
+
+      var tournCardEl = document.getElementById('mode-card-tournament');
+      if (tournCardEl) {
+        tournCardEl.addEventListener('click', function () {
+          openTournamentOverlay();
+        });
+      }
+
+      // ── Main menu Tournaments button ──
+
+      var startTournBtn = document.getElementById('start-tournament-btn');
+      if (startTournBtn) {
+        startTournBtn.addEventListener('click', function () {
+          openTournamentOverlay();
+        });
+      }
+
+    })();
+    // ── End tournament setup ──────────────────────────────────────────────────
 
     // Survival: Reset World button + confirmation dialog
     const survivalResetBtn = document.getElementById("survival-reset-btn");
@@ -2681,6 +3851,9 @@ function init() {
 
   renderHighScoresStart();
 
+  // Restore equipped season cosmetic (scene objects now exist for material swapping).
+  if (typeof restoreSeasonCosmetic === "function") restoreSeasonCosmetic();
+
   console.log("Initialization complete. Starting animation loop.");
   animate();
 }
@@ -3333,6 +4506,11 @@ function activateEquippedPowerup() {
       _triggerPowerupFlash("fortress");
       break;
     }
+
+  // Notify spectators of power-up activation in battle mode
+  if (isBattleMode && typeof battle !== 'undefined' && battle.state === BattleState.IN_GAME) {
+    battle.send({ type: 'battle_powerup', powerUp: equippedPowerUpType });
+  }
 
   updatePowerupHUD();
   if (typeof onMissionPowerupActivated === "function") onMissionPowerupActivated();
