@@ -734,6 +734,10 @@ function resetGame() {
   battleScoreRaceRemainingMs = 180000;
   battleOpponentScore = 0;
   battleOpponentLines = 0;
+  battleGarbageSent = 0;
+  battleGarbageReceived = 0;
+  battleRubbleMined = 0;
+  battleOpponentStats = null;
   if (typeof resetGarbageQueue === 'function') resetGarbageQueue();
   const battleBadgeEl = document.getElementById('battle-mode-badge');
   if (battleBadgeEl) battleBadgeEl.style.display = 'none';
@@ -853,7 +857,7 @@ const BATTLE_START_MULTIPLIER = Math.pow(1.1, 2); // ≈ 1.21
 const BATTLE_START_TIER = 2; // Display "Level 3" at game start
 
 /**
- * Show battle result overlay (win/loss/draw) then return to battle lobby after 5s.
+ * Show battle post-match summary screen (win/loss/draw).
  * Called from checkGameOver (loss), battle opponent-left handler (win), or
  * opponent_game_over message (win). Sets battleResult and isBattleMode = false.
  */
@@ -874,61 +878,32 @@ function triggerBattleResult(result) {
   if (badgeEl) badgeEl.style.display = 'none';
   if (typeof battleHud !== 'undefined') battleHud.hide();
 
-  // Notify opponent so they can show their win screen
+  // Capture our stats snapshot before WebSocket disconnect
+  const _myStats = {
+    score: score,
+    linesCleared: linesCleared,
+    blocksMined: blocksMined,
+    rubbleMined: battleRubbleMined,
+    garbageSent: battleGarbageSent,
+    garbageReceived: battleGarbageReceived,
+    highestCombo: sessionHighestComboCount,
+    duration: Math.floor(gameElapsedSeconds),
+  };
+
+  // Notify opponent and share our stats so they can show their summary
   if (result === 'loss' && typeof battle !== 'undefined' && battle.state === BattleState.IN_GAME) {
-    battle.send({ type: 'battle_game_over' });
+    battle.send({ type: 'battle_game_over', stats: _myStats });
   }
 
   if (typeof stopBgMusic === 'function') stopBgMusic();
 
-  const titleEl = document.getElementById('battle-result-title');
-  const statsEl = document.getElementById('battle-result-stats');
-  const resultEl = document.getElementById('battle-result-screen');
-
-  // Mode label
-  const modeEl = document.getElementById('battle-result-mode');
-  if (modeEl) {
-    modeEl.textContent = battleMatchMode === 'score_race' ? 'SCORE RACE' : 'SURVIVAL';
-  }
-
-  if (titleEl) {
-    if (battleMatchMode === 'survival') {
-      if (result === 'win') {
-        titleEl.textContent = 'VICTORY!';
-        titleEl.className = 'win';
-      } else {
-        titleEl.textContent = 'KO';
-        titleEl.className = 'loss';
-      }
-    } else {
-      // Score Race
-      if (result === 'win') {
-        titleEl.textContent = 'WIN';
-        titleEl.className = 'win';
-      } else if (result === 'loss') {
-        titleEl.textContent = 'LOSS';
-        titleEl.className = 'loss';
-      } else {
-        titleEl.textContent = 'DRAW';
-        titleEl.className = 'draw';
-      }
-    }
-  }
-
-  if (statsEl) {
-    const totalSecs = Math.floor(gameElapsedSeconds);
-    const mm = Math.floor(totalSecs / 60).toString().padStart(2, '0');
-    const ss = (totalSecs % 60).toString().padStart(2, '0');
-    let statsHtml =
-      '<div>Score: ' + score + '</div>' +
-      '<div>Lines Cleared: ' + linesCleared + '</div>' +
-      '<div>Blocks Mined: ' + blocksMined + '</div>' +
-      '<div>Match Time: ' + mm + ':' + ss + '</div>';
-    if (battleMatchMode === 'score_race') {
-      statsHtml += '<div>Opponent Score: ' + battleOpponentScore + '</div>';
-    }
-    statsEl.innerHTML = statsHtml;
-  }
+  // Award flat XP for battle (win: 150, draw: 75, loss: 50)
+  const _xpEarned = result === 'win' ? 150 : result === 'draw' ? 75 : 50;
+  const _lsStats = (typeof loadLifetimeStats === 'function') ? loadLifetimeStats() : { playerXP: 0 };
+  const _oldXP = _lsStats.playerXP || 0;
+  _lsStats.playerXP = _oldXP + _xpEarned;
+  if (typeof saveLifetimeStats === 'function') saveLifetimeStats(_lsStats);
+  const _newXP = _lsStats.playerXP;
 
   if (controls && controls.isLocked) controls.unlock();
 
@@ -937,34 +912,20 @@ function triggerBattleResult(result) {
     try { battle.disconnect(); } catch (_) {}
   }
 
-  // "Play Again" button cancels auto-return and goes straight to lobby
-  const playAgainBtn = document.getElementById('battle-result-play-again-btn');
-  let _autoReturnTimer = null;
+  const resultEl = document.getElementById('battle-result-screen');
 
-  function _returnToBattleLobby() {
-    if (_autoReturnTimer) { clearTimeout(_autoReturnTimer); _autoReturnTimer = null; }
-    if (resultEl) resultEl.style.display = 'none';
-    resetGame();
-    var battleOverlay = document.getElementById('battle-overlay');
-    var blockerEl = document.getElementById('blocker');
-    if (battleOverlay) {
-      ['battle-choice-view', 'battle-create-view', 'battle-join-view', 'battle-ready-view'].forEach(function (id) {
-        var el = document.getElementById(id);
-        if (el) el.style.display = (id === 'battle-choice-view') ? '' : 'none';
-      });
-      if (blockerEl) blockerEl.style.display = 'none';
-      battleOverlay.style.display = 'flex';
-    }
-  }
-
-  if (playAgainBtn) {
-    playAgainBtn.onclick = function () { _returnToBattleLobby(); };
+  // Build the summary DOM into resultEl
+  if (resultEl) {
+    _buildBattleSummaryScreen(resultEl, result, _myStats, battleOpponentStats, _xpEarned, _oldXP, _newXP);
   }
 
   // Show KO/Victory overlay first (~2.4s), then reveal post-match summary.
   function _showResultScreen() {
     if (resultEl) resultEl.style.display = 'flex';
-    _autoReturnTimer = setTimeout(_returnToBattleLobby, 5000);
+    // Fire level-up toasts after a short delay so they play over the summary
+    if (typeof checkLevelUp === 'function') {
+      setTimeout(function () { checkLevelUp(_oldXP, _newXP); }, 600);
+    }
   }
 
   if (typeof battleFx !== 'undefined') {
@@ -972,6 +933,154 @@ function triggerBattleResult(result) {
   } else {
     _showResultScreen();
   }
+}
+
+/**
+ * Build the post-match summary screen HTML and wire up action buttons.
+ * @param {HTMLElement} el        The #battle-result-screen container element.
+ * @param {string}      result    'win' | 'loss' | 'draw'
+ * @param {object}      myStats   Our match stats snapshot.
+ * @param {object|null} oppStats  Opponent stats (may be null if not received yet).
+ * @param {number}      xpEarned  XP awarded this match.
+ * @param {number}      oldXP     Player XP before award.
+ * @param {number}      newXP     Player XP after award.
+ */
+function _buildBattleSummaryScreen(el, result, myStats, oppStats, xpEarned, oldXP, newXP) {
+  const modeLabel = battleMatchMode === 'score_race' ? 'SCORE RACE' : 'SURVIVAL';
+  let bannerText, bannerClass;
+  if (battleMatchMode === 'survival') {
+    bannerText = result === 'win' ? 'VICTORY!' : 'KO';
+    bannerClass = result === 'win' ? 'win' : 'loss';
+  } else {
+    bannerText = result === 'win' ? 'WIN' : result === 'loss' ? 'LOSS' : 'DRAW';
+    bannerClass = result;
+  }
+
+  const opp = oppStats || {};
+
+  function _fmtDur(secs) {
+    const s = Math.max(0, secs | 0);
+    return Math.floor(s / 60).toString().padStart(2, '0') + ':' + (s % 60).toString().padStart(2, '0');
+  }
+
+  const oppDur = (opp.duration != null) ? opp.duration : myStats.duration;
+
+  const statRows = [
+    ['SCORE',    myStats.score,          (opp.score          != null) ? opp.score          : '--'],
+    ['LINES',    myStats.linesCleared,   (opp.linesCleared   != null) ? opp.linesCleared   : '--'],
+    ['MINED',    myStats.blocksMined,    (opp.blocksMined    != null) ? opp.blocksMined    : '--'],
+    ['RUBBLE',   myStats.rubbleMined,    (opp.rubbleMined    != null) ? opp.rubbleMined    : '--'],
+    ['ATK SENT', myStats.garbageSent,    (opp.garbageSent    != null) ? opp.garbageSent    : '--'],
+    ['ATK RECV', myStats.garbageReceived,(opp.garbageReceived!= null) ? opp.garbageReceived: '--'],
+    ['COMBO',    myStats.highestCombo,   (opp.highestCombo   != null) ? opp.highestCombo   : '--'],
+    ['TIME',     _fmtDur(myStats.duration), _fmtDur(oppDur)],
+  ];
+
+  // MVP badges
+  const badges = [];
+  if (opp.linesCleared != null) {
+    badges.push({ icon: 'L', label: 'MOST LINES',  winner: myStats.linesCleared  >= opp.linesCleared  ? 'you' : 'opp' });
+  }
+  if (opp.blocksMined != null) {
+    badges.push({ icon: 'M', label: 'BEST MINER',  winner: myStats.blocksMined   >= opp.blocksMined   ? 'you' : 'opp' });
+  }
+  if (opp.garbageSent != null) {
+    badges.push({ icon: 'A', label: 'ATTACKER',    winner: myStats.garbageSent   >= opp.garbageSent   ? 'you' : 'opp' });
+  }
+  // Survivor badge
+  if (result === 'draw') {
+    badges.push({ icon: 'S', label: 'SURVIVOR', winner: 'both' });
+  } else {
+    badges.push({ icon: 'S', label: 'SURVIVOR', winner: result === 'win' ? 'you' : 'opp' });
+  }
+
+  const levelOld = (typeof getLevelFromXP === 'function') ? getLevelFromXP(oldXP) : 1;
+  const levelNew = (typeof getLevelFromXP === 'function') ? getLevelFromXP(newXP) : 1;
+  const didLevelUp = levelNew > levelOld;
+
+  function _colHtml(rows, colIdx) {
+    return rows.map(function (r) {
+      return '<div class="brs-stat-row"><span class="brs-stat-label">' + r[0] + '</span><span class="brs-stat-val">' + r[colIdx] + '</span></div>';
+    }).join('');
+  }
+
+  function _badgeHtml(b) {
+    const winnerLabel = b.winner === 'both' ? 'BOTH' : (b.winner === 'you' ? 'YOU' : 'OPP');
+    return '<div class="brs-badge brs-badge-' + b.winner + '">' +
+      '<span class="brs-badge-icon brs-bi-' + b.icon.toLowerCase() + '"></span>' +
+      '<span class="brs-badge-label">' + b.label + '</span>' +
+      '<span class="brs-badge-winner">' + winnerLabel + '</span>' +
+      '</div>';
+  }
+
+  el.innerHTML =
+    '<div class="brs-mode">' + modeLabel + '</div>' +
+    '<div class="brs-banner ' + bannerClass + '">' + bannerText + '</div>' +
+    '<div class="brs-columns">' +
+      '<div class="brs-player">' +
+        '<div class="brs-player-label">YOU</div>' +
+        _colHtml(statRows, 1) +
+      '</div>' +
+      '<div class="brs-col-divider"></div>' +
+      '<div class="brs-player">' +
+        '<div class="brs-player-label">OPPONENT</div>' +
+        _colHtml(statRows, 2) +
+      '</div>' +
+    '</div>' +
+    '<div class="brs-badges">' + badges.map(_badgeHtml).join('') + '</div>' +
+    '<div class="brs-xp">' +
+      '<span class="brs-xp-earned">+' + xpEarned + ' XP</span>' +
+      (didLevelUp
+        ? '<span class="brs-level-up">LEVEL UP! L' + levelNew + '</span>'
+        : '<span class="brs-level-cur">L' + levelNew + '</span>') +
+    '</div>' +
+    '<div class="brs-actions">' +
+      '<button id="brs-rematch-btn">Rematch</button>' +
+      '<button id="brs-newmatch-btn">New Opponent</button>' +
+      '<button id="brs-menu-btn">Menu</button>' +
+    '</div>';
+
+  function _toBattleLobby() {
+    el.style.display = 'none';
+    resetGame();
+    var battleOverlay = document.getElementById('battle-overlay');
+    var blockerEl = document.getElementById('blocker');
+    if (battleOverlay) {
+      ['battle-choice-view', 'battle-create-view', 'battle-join-view', 'battle-ready-view'].forEach(function (id) {
+        var v = document.getElementById(id);
+        if (v) v.style.display = (id === 'battle-choice-view') ? '' : 'none';
+      });
+      if (blockerEl) blockerEl.style.display = 'none';
+      battleOverlay.style.display = 'flex';
+    }
+  }
+
+  var rematchBtn  = document.getElementById('brs-rematch-btn');
+  var newMatchBtn = document.getElementById('brs-newmatch-btn');
+  var menuBtn     = document.getElementById('brs-menu-btn');
+
+  if (rematchBtn)  rematchBtn.onclick  = _toBattleLobby;
+  if (newMatchBtn) newMatchBtn.onclick = function () {
+    el.style.display = 'none';
+    resetGame();
+    // Open battle overlay and auto-click quick match
+    var battleOverlay = document.getElementById('battle-overlay');
+    var blockerEl = document.getElementById('blocker');
+    if (battleOverlay) {
+      ['battle-choice-view', 'battle-create-view', 'battle-join-view', 'battle-ready-view'].forEach(function (id) {
+        var v = document.getElementById(id);
+        if (v) v.style.display = (id === 'battle-choice-view') ? '' : 'none';
+      });
+      if (blockerEl) blockerEl.style.display = 'none';
+      battleOverlay.style.display = 'flex';
+      var qmBtn = document.getElementById('battle-quickmatch-btn');
+      if (qmBtn) qmBtn.click();
+    }
+  };
+  if (menuBtn) menuBtn.onclick = function () {
+    el.style.display = 'none';
+    resetGame();
+  };
 }
 
 /**
@@ -1039,9 +1148,20 @@ function checkBattleScoreRace(delta) {
   if (battleScoreRaceRemainingMs <= 0) {
     battleScoreRaceRemainingMs = 0;
     _updateScoreRaceTimerHud();
-    // Notify opponent with our final score
+    // Notify opponent with our final score and summary stats
     if (typeof battle !== 'undefined' && battle.state === BattleState.IN_GAME) {
-      battle.send({ type: 'battle_score_race_end', score: score, linesCleared: linesCleared });
+      battle.send({
+        type: 'battle_score_race_end',
+        score: score,
+        linesCleared: linesCleared,
+        stats: {
+          score: score, linesCleared: linesCleared, blocksMined: blocksMined,
+          rubbleMined: battleRubbleMined, garbageSent: battleGarbageSent,
+          garbageReceived: battleGarbageReceived,
+          highestCombo: sessionHighestComboCount,
+          duration: Math.floor(gameElapsedSeconds),
+        },
+      });
     }
     _resolveScoreRace(score, linesCleared, battleOpponentScore, battleOpponentLines);
   }

@@ -163,6 +163,12 @@ let battleScoreRaceRemainingMs = 180000;
 // Opponent's last known score and lines cleared (updated from battle_board messages)
 let battleOpponentScore = 0;
 let battleOpponentLines = 0;
+// Battle session stats (accumulated during match, reset each new game)
+let battleGarbageSent = 0;
+let battleGarbageReceived = 0;
+let battleRubbleMined = 0;
+// Opponent's end-of-match summary stats (set from battle_game_over / battle_score_race_end msg)
+let battleOpponentStats = null;
 // Back-to-back Tetris detection: true after a 4-line clear; reset on any sub-Tetris clear.
 let lastClearWasTetris = false;
 

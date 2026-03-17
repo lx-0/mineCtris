@@ -1710,7 +1710,8 @@ function init() {
       });
 
       // Handle opponent's game-over broadcast → this player wins
-      battle.on("battle_game_over", function () {
+      battle.on("battle_game_over", function (msg) {
+        if (msg && msg.stats) battleOpponentStats = msg.stats;
         if (!isGameOver && isBattleMode) {
           if (typeof triggerBattleResult === 'function') triggerBattleResult('win');
         }
@@ -1798,6 +1799,7 @@ function init() {
           const reflectRows = Math.max(1, Math.ceil((msg.lines || 1) * 0.5));
           const reflectSeed = Math.floor(Math.random() * 0xffffffff) >>> 0;
           battle.send({ type: 'battle_attack', lines: reflectRows, gapSeed: reflectSeed });
+          battleGarbageSent += reflectRows;
           if (typeof battleHud !== 'undefined') {
             battleHud.showOutgoingAttack(reflectRows);
           }
@@ -1810,6 +1812,7 @@ function init() {
           battleHud.showGarbage();
         }
         // Queue the incoming garbage rows for delivery on the next piece spawn.
+        battleGarbageReceived += (msg.lines || 1);
         if (typeof queueGarbage === 'function') {
           queueGarbage(msg.lines || 1, msg.gapSeed || 1);
         }
@@ -1877,6 +1880,7 @@ function init() {
         if (isGameOver || battleMatchMode !== 'score_race') return;
         battleOpponentScore = msg.score || 0;
         battleOpponentLines = msg.linesCleared || 0;
+        if (msg && msg.stats) battleOpponentStats = msg.stats;
         if (battleScoreRaceRemainingMs > 0) {
           // Freeze our timer and resolve now
           battleScoreRaceRemainingMs = 0;
@@ -2884,6 +2888,7 @@ function onMouseDown(event) {
       spawnDustParticles(targetedBlock, { breakBurst: true });
       blocksMined++;
       if (isCoopMode) coopMyBlocksMined++;
+      if (isBattleMode && _isRubble) battleRubbleMined++;
       const _objType = targetedBlock.userData.objectType;
       const _matName = targetedBlock.userData.materialType ||
         (_objType ? OBJECT_TYPE_TO_MATERIAL[_objType] : null);
@@ -3271,6 +3276,7 @@ function activateEquippedPowerup() {
       if (isBattleMode && typeof battle !== 'undefined' && battle.state === BattleState.IN_GAME) {
         const _saboSeed = Math.floor(Math.random() * 0xffffffff) >>> 0;
         battle.send({ type: 'battle_attack', lines: 2, gapSeed: _saboSeed });
+        battleGarbageSent += 2;
         if (typeof battleHud !== 'undefined') battleHud.showOutgoingAttack(2);
       }
       showCraftedBanner("Sabotage! 2 garbage rows sent.");

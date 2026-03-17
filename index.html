@@ -880,14 +880,8 @@
         <div id="battle-countdown-number"></div>
       </div>
 
-      <!-- Battle result overlay — shown after a match ends -->
-      <div id="battle-result-screen" style="display:none;">
-        <div id="battle-result-mode"></div>
-        <div id="battle-result-title"></div>
-        <div id="battle-result-stats"></div>
-        <div id="battle-result-returning">Returning to lobby…</div>
-        <button id="battle-result-play-again-btn">Play Again</button>
-      </div>
+      <!-- Battle result overlay — populated by _buildBattleSummaryScreen() -->
+      <div id="battle-result-screen" style="display:none;"></div>
 
       <!-- Battle HUD badge (shown in-game when isBattleMode) -->
       <div id="battle-mode-badge" style="display:none;">&#9876; BATTLE</div>
