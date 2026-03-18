@@ -41,6 +41,18 @@
  *   GET    /api/season/guild-hall-of-fame                — list of past guild season HoF entries
  *   GET    /api/season/guild-hof/:seasonId               — full top-10 for a past season
  *
+ *   GET    /guilds/:guildTag                              — public guild profile HTML page (OG meta tags)
+ *   GET    /guilds/:guildTag/card.svg                    — 1200×630 SVG recruitment card
+ *   GET    /api/guilds/by-tag/:tag                       — look up guild by tag; returns full guild data
+ *
+ *   GET    /guild-chat/:guildId/ws                        — guild chat WebSocket upgrade (?userId=X)
+ *   GET    /api/guild-chat/:guildId/messages              — guild chat message history
+ *   POST   /api/guild-chat/:guildId/messages              — post chat message { userId, text }
+ *   DELETE /api/guild-chat/:guildId/messages/:id          — delete message { actorId, actorRole }
+ *   POST   /api/guild-chat/:guildId/pin/:id               — pin a message { actorId, actorRole }
+ *   DELETE /api/guild-chat/:guildId/pin/:id               — unpin a message { actorId, actorRole }
+ *   GET    /api/guild-chat/:guildId/feed                  — activity feed
+ *
  *   POST   /api/guilds/:guildId/invite                   — invite a player by username { inviterId, inviteeUsername }
  *   POST   /api/guilds/:guildId/join-requests            — submit a join request { userId }
  *   GET    /api/guilds/:guildId/join-requests            — list pending requests (officer/owner) { actorId }
@@ -79,6 +91,17 @@
  *   battle:submitted:{name}:{date}    → { submittedAt } — rate limit: 1 per player per day
  *   badge:{displayName}               → JSON array (no TTL), each entry:
  *                                        { seasonId, seasonName, rank, label, icon, awardedAt }
+ *   biomes:registry:v1               → JSON array of all biome configs (seeded on first access)
+ *   expedition:player:{userId}:{seasonId} → expedition map for a player in a given season
+ *   expedition:archive:{userId}:{seasonId} → archived map at season end (no TTL)
+ *
+ * Biome Routes:
+ *   GET  /api/biomes                  — return all active biomes
+ *
+ * Expedition Routes:
+ *   GET  /api/expedition/map          — get player map (?userId=X&seasonId=Y)
+ *   POST /api/expedition/map          — generate map if missing { userId, seasonId }
+ *   POST /api/expedition/score        — record biome node score { userId, seasonId, nodeId, score }
  */
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -2631,9 +2654,10 @@ export class GuildObject {
 
     // ── Weekly reset check ────────────────────────────────────────────────────
     const currentWeek = _isoWeekStr();
+    let sorted = null; // hoisted for activity feed emission below
     if (guild.lastWeekKey && guild.lastWeekKey !== currentWeek) {
       // Save snapshot of top-3 from the just-ended week
-      const sorted = Object.values(members)
+      sorted = Object.values(members)
         .sort((a, b) => (b.weeklyContributionXP || 0) - (a.weeklyContributionXP || 0));
       guild.lastWeekSnapshot = {
         week: guild.lastWeekKey,
@@ -2705,6 +2729,31 @@ export class GuildObject {
       this.state.storage.put('members', members),
       this.state.storage.put('xpLog', log),
     ]);
+
+    // Emit activity feed events (fire-and-forget)
+    if (this.env.GUILD_CHAT_OBJECTS && guild.id) {
+      const chatStub = this.env.GUILD_CHAT_OBJECTS.get(
+        this.env.GUILD_CHAT_OBJECTS.idFromName(guild.id)
+      );
+      if (leveled) {
+        chatStub.fetch('http://internal/feed', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ type: 'guild_leveled_up', data: { level: guild.level } }),
+        }).catch(() => {});
+      }
+      // weekly_top_contributor emitted when week rolls over and top member has XP
+      if (sorted && sorted.length > 0 && sorted[0].weeklyContributionXP > 0) {
+        chatStub.fetch('http://internal/feed', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            type: 'weekly_top_contributor',
+            data: { userId: sorted[0].userId, weeklyXP: sorted[0].weeklyContributionXP || 0, week: guild.lastWeekKey },
+          }),
+        }).catch(() => {});
+      }
+    }
 
     return this._res({ guild, members: Object.values(members), xpAwarded: xpAmount, leveled });
   }
@@ -2780,6 +2829,293 @@ export class GuildObject {
     guild.draws       = draws;
     await this.state.storage.put('guild', guild);
     return this._res({ guild });
+  }
+
+  _res(data, status = 200) {
+    return new Response(JSON.stringify(data), {
+      status,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+}
+
+// ── Guild Chat Constants ──────────────────────────────────────────────────────
+
+const GUILD_CHAT_MAX_MESSAGES   = 500;
+const GUILD_CHAT_MAX_FEED       = 200;
+const GUILD_CHAT_MSG_TTL_DAYS   = 30;
+const GUILD_CHAT_FEED_TTL_DAYS  = 14;
+const GUILD_CHAT_PIN_MAX        = 3;
+const GUILD_CHAT_RATE_MSGS      = 5;      // max messages
+const GUILD_CHAT_RATE_WINDOW_MS = 10000;  // per 10 seconds
+const GUILD_CHAT_MSG_MAX_LEN    = 500;
+
+/**
+ * GuildChatObject — Durable Object for real-time guild chat and activity feed.
+ *
+ * Storage keys:
+ *   messages → [{id, userId, text, ts}]           newest-first, max 500, 30-day window
+ *   pinned   → [{id, userId, text, ts, pinnedBy, pinnedAt}]  max 3
+ *   feed     → [{id, type, data, ts}]             newest-first, max 200, 14-day window
+ *
+ * Internal routes (called via DO stub):
+ *   GET  /ws                ?userId=X            WebSocket upgrade
+ *   GET  /messages          ?limit=N&before=ts   Fetch message history
+ *   POST /messages          {userId,text}         Post message (REST)
+ *   DELETE /messages/:id    {actorId,actorRole}   Delete a message
+ *   POST /pin/:id           {actorId,actorRole}   Pin a message
+ *   DELETE /pin/:id         {actorId,actorRole}   Unpin a message
+ *   GET  /feed              ?limit=N              Activity feed
+ *   POST /feed              {type,data}           Emit activity event (internal)
+ */
+export class GuildChatObject {
+  constructor(state, env) {
+    this.state = state;
+    this.env = env;
+    // In-memory: Map<connId, {ws, userId}>
+    this.connections = new Map();
+    this._connSeq = 0;
+    // In-memory rate limiting: Map<userId, number[]> — timestamps of last sends
+    this._rateLimits = new Map();
+  }
+
+  async fetch(request) {
+    const url    = new URL(request.url);
+    const method = request.method.toUpperCase();
+
+    if (url.pathname === '/ws') return this._handleWs(request, url);
+
+    if (method === 'GET' && url.pathname === '/messages') return this._getMessages(url);
+    if (method === 'POST' && url.pathname === '/messages') return this._postMessage(await request.json());
+    if (method === 'DELETE' && /^\/messages\/[^/]+$/.test(url.pathname)) {
+      return this._deleteMessage(url.pathname.split('/')[2], await request.json());
+    }
+    if (method === 'POST' && /^\/pin\/[^/]+$/.test(url.pathname)) {
+      return this._pinMessage(url.pathname.split('/')[2], await request.json());
+    }
+    if (method === 'DELETE' && /^\/pin\/[^/]+$/.test(url.pathname)) {
+      return this._unpinMessage(url.pathname.split('/')[2], await request.json());
+    }
+    if (method === 'GET' && url.pathname === '/feed') return this._getFeed(url);
+    if (method === 'POST' && url.pathname === '/feed') return this._postFeedEvent(await request.json());
+
+    return this._res({ error: 'Not found' }, 404);
+  }
+
+  // ── WebSocket ─────────────────────────────────────────────────────────────────
+  async _handleWs(request, url) {
+    const upgradeHeader = request.headers.get('Upgrade');
+    if (!upgradeHeader || upgradeHeader.toLowerCase() !== 'websocket') {
+      return new Response('Expected WebSocket upgrade', { status: 426 });
+    }
+    const userId = (url.searchParams.get('userId') || '').trim();
+    if (!userId) return new Response(JSON.stringify({ error: 'userId required' }), { status: 400 });
+
+    const pair   = new WebSocketPair();
+    const [client, server] = Object.values(pair);
+    server.accept();
+
+    const connId = 'conn_' + (this._connSeq++);
+    this.connections.set(connId, { ws: server, userId });
+
+    // Send welcome with recent messages + pinned
+    const [messages, pinned] = await Promise.all([
+      this.state.storage.get('messages'),
+      this.state.storage.get('pinned'),
+    ]);
+    server.send(JSON.stringify({
+      type: 'welcome',
+      messages: (messages || []).slice(0, 50),
+      pinned: pinned || [],
+    }));
+
+    server.addEventListener('message', async (event) => {
+      let msg = null;
+      try { msg = JSON.parse(event.data); } catch (_) {}
+      if (!msg) return;
+
+      if (msg.type === 'ping') {
+        server.send(JSON.stringify({ type: 'pong' }));
+        return;
+      }
+
+      if (msg.type === 'chat_message') {
+        const text = (msg.text || '').trim().slice(0, GUILD_CHAT_MSG_MAX_LEN);
+        if (!text) return;
+        // Rate limit: 5 messages per 10 seconds
+        const now = Date.now();
+        const userTs = this._rateLimits.get(userId) || [];
+        const recent = userTs.filter(ts => now - ts < GUILD_CHAT_RATE_WINDOW_MS);
+        if (recent.length >= GUILD_CHAT_RATE_MSGS) {
+          server.send(JSON.stringify({ type: 'error', error: 'Rate limited: max 5 messages per 10 seconds' }));
+          return;
+        }
+        recent.push(now);
+        this._rateLimits.set(userId, recent);
+        await this._postMessage({ userId, text });
+        return;
+      }
+
+      if (msg.type === 'delete_message') {
+        if (msg.messageId) await this._deleteMessage(msg.messageId, { actorId: userId, actorRole: msg.actorRole });
+        return;
+      }
+
+      if (msg.type === 'pin_message') {
+        if (!msg.messageId || !['officer', 'owner'].includes(msg.actorRole)) return;
+        const msgs = (await this.state.storage.get('messages')) || [];
+        const found = msgs.find(m => m.id === msg.messageId);
+        if (found) await this._pinMessage(msg.messageId, { actorId: userId, actorRole: msg.actorRole, message: found });
+        return;
+      }
+
+      if (msg.type === 'unpin_message') {
+        if (msg.messageId && ['officer', 'owner'].includes(msg.actorRole)) {
+          await this._unpinMessage(msg.messageId, { actorId: userId, actorRole: msg.actorRole });
+        }
+        return;
+      }
+    });
+
+    server.addEventListener('close', () => { this.connections.delete(connId); });
+    server.addEventListener('error', () => { this.connections.delete(connId); });
+
+    return new Response(null, { status: 101, webSocket: client });
+  }
+
+  _broadcast(msgStr) {
+    for (const { ws } of this.connections.values()) {
+      if (ws.readyState === 1 /* OPEN */) ws.send(msgStr);
+    }
+  }
+
+  // ── Messages ──────────────────────────────────────────────────────────────────
+  async _getMessages(url) {
+    const limit  = Math.min(100, parseInt(url.searchParams.get('limit') || '50', 10));
+    const before = url.searchParams.get('before') || null;
+    let messages = (await this.state.storage.get('messages')) || [];
+    if (before) {
+      const idx = messages.findIndex(m => m.ts < before);
+      if (idx >= 0) messages = messages.slice(idx);
+    }
+    const pinned = (await this.state.storage.get('pinned')) || [];
+    return this._res({ messages: messages.slice(0, limit), pinned, total: messages.length });
+  }
+
+  async _postMessage({ userId, text }) {
+    const cleaned = (text || '').trim().slice(0, GUILD_CHAT_MSG_MAX_LEN);
+    if (!cleaned) return this._res({ error: 'Empty message' }, 400);
+    if (!userId)  return this._res({ error: 'userId required' }, 400);
+
+    const msg = { id: crypto.randomUUID(), userId, text: cleaned, ts: new Date().toISOString() };
+
+    let messages = (await this.state.storage.get('messages')) || [];
+    const cutoff = new Date(Date.now() - GUILD_CHAT_MSG_TTL_DAYS * 86400 * 1000).toISOString();
+    messages = messages.filter(m => m.ts >= cutoff);
+    messages.unshift(msg);
+    if (messages.length > GUILD_CHAT_MAX_MESSAGES) messages.length = GUILD_CHAT_MAX_MESSAGES;
+    await this.state.storage.put('messages', messages);
+
+    this._broadcast(JSON.stringify({ type: 'chat_message', ...msg }));
+
+    // Detect @mentions and store push-notification markers in GUILDS_KV
+    const mentions = [...cleaned.matchAll(/@([A-Za-z0-9_-]{1,32})/g)].map(m => m[1]);
+    if (mentions.length > 0 && this.env.GUILDS_KV) {
+      const mentionData = JSON.stringify({ messageId: msg.id, fromUserId: userId, text: cleaned, ts: msg.ts });
+      for (const mentionedUser of [...new Set(mentions)]) {
+        if (mentionedUser === userId) continue;
+        this.env.GUILDS_KV.put(
+          `guild-chat-mention:${mentionedUser}:${msg.id}`,
+          mentionData,
+          { expirationTtl: GUILD_CHAT_MSG_TTL_DAYS * 86400 }
+        ).catch(() => {});
+        // Real-time mention event to that user if connected
+        for (const { ws, userId: connUser } of this.connections.values()) {
+          if (connUser === mentionedUser && ws.readyState === 1) {
+            ws.send(JSON.stringify({ type: 'mention', ...JSON.parse(mentionData) }));
+          }
+        }
+      }
+    }
+
+    return this._res({ message: msg });
+  }
+
+  async _deleteMessage(msgId, { actorId, actorRole }) {
+    if (!actorId) return this._res({ error: 'actorId required' }, 400);
+    let messages = (await this.state.storage.get('messages')) || [];
+    const idx = messages.findIndex(m => m.id === msgId);
+    if (idx < 0) return this._res({ error: 'Message not found' }, 404);
+    const msg = messages[idx];
+    if (msg.userId !== actorId && !['officer', 'owner'].includes(actorRole)) {
+      return this._res({ error: 'Not authorized to delete this message' }, 403);
+    }
+    messages.splice(idx, 1);
+    await this.state.storage.put('messages', messages);
+
+    let pinned = (await this.state.storage.get('pinned')) || [];
+    if (pinned.some(p => p.id === msgId)) {
+      pinned = pinned.filter(p => p.id !== msgId);
+      await this.state.storage.put('pinned', pinned);
+      this._broadcast(JSON.stringify({ type: 'pin_update', pinned }));
+    }
+    this._broadcast(JSON.stringify({ type: 'message_deleted', messageId: msgId }));
+    return this._res({ deleted: true });
+  }
+
+  async _pinMessage(msgId, { actorId, actorRole, message }) {
+    if (!['officer', 'owner'].includes(actorRole)) {
+      return this._res({ error: 'Only officers and owners can pin messages' }, 403);
+    }
+    let pinned = (await this.state.storage.get('pinned')) || [];
+    if (pinned.some(p => p.id === msgId)) return this._res({ error: 'Already pinned' }, 409);
+    if (pinned.length >= GUILD_CHAT_PIN_MAX) {
+      return this._res({ error: `Max ${GUILD_CHAT_PIN_MAX} pinned messages allowed` }, 409);
+    }
+    if (!message) {
+      const messages = (await this.state.storage.get('messages')) || [];
+      message = messages.find(m => m.id === msgId);
+    }
+    if (!message) return this._res({ error: 'Message not found' }, 404);
+    pinned.push({ ...message, pinnedBy: actorId, pinnedAt: new Date().toISOString() });
+    await this.state.storage.put('pinned', pinned);
+    this._broadcast(JSON.stringify({ type: 'pin_update', pinned }));
+    return this._res({ pinned });
+  }
+
+  async _unpinMessage(msgId, { actorId, actorRole }) {
+    if (!['officer', 'owner'].includes(actorRole)) {
+      return this._res({ error: 'Only officers and owners can unpin messages' }, 403);
+    }
+    let pinned = (await this.state.storage.get('pinned')) || [];
+    const before = pinned.length;
+    pinned = pinned.filter(p => p.id !== msgId);
+    if (pinned.length === before) return this._res({ error: 'Not pinned' }, 404);
+    await this.state.storage.put('pinned', pinned);
+    this._broadcast(JSON.stringify({ type: 'pin_update', pinned }));
+    return this._res({ pinned });
+  }
+
+  // ── Activity Feed ─────────────────────────────────────────────────────────────
+  async _getFeed(url) {
+    const limit = Math.min(100, parseInt(url.searchParams.get('limit') || '50', 10));
+    const feed  = (await this.state.storage.get('feed')) || [];
+    return this._res({ feed: feed.slice(0, limit), total: feed.length });
+  }
+
+  async _postFeedEvent({ type, data }) {
+    if (!type) return this._res({ error: 'type required' }, 400);
+    const event = { id: crypto.randomUUID(), type, data: data || {}, ts: new Date().toISOString() };
+
+    let feed = (await this.state.storage.get('feed')) || [];
+    const cutoff = new Date(Date.now() - GUILD_CHAT_FEED_TTL_DAYS * 86400 * 1000).toISOString();
+    feed = feed.filter(e => e.ts >= cutoff);
+    feed.unshift(event);
+    if (feed.length > GUILD_CHAT_MAX_FEED) feed.length = GUILD_CHAT_MAX_FEED;
+    await this.state.storage.put('feed', feed);
+
+    this._broadcast(JSON.stringify({ type: 'feed_event', event }));
+    return this._res({ event });
   }
 
   _res(data, status = 200) {
@@ -3221,6 +3557,90 @@ export class ClanWarObject {
  * Body: { actorId, challengerGuildId, targetGuildId, proposedWindowStart }
  * Sends a war challenge from challengerGuild to targetGuild.
  */
+// ── Guild Chat helpers ────────────────────────────────────────────────────────
+
+function _getGuildChatStub(guildId, env) {
+  return env.GUILD_CHAT_OBJECTS.get(env.GUILD_CHAT_OBJECTS.idFromName(guildId));
+}
+
+/** Fire-and-forget activity event to a guild's chat feed */
+function _emitGuildActivity(guildId, type, data, env) {
+  _getGuildChatStub(guildId, env).fetch('http://internal/feed', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ type, data }),
+  }).catch(() => {});
+}
+
+// ── Guild Chat API handlers ───────────────────────────────────────────────────
+
+async function handleGuildChatWs(request, guildId, env) {
+  if (!guildId) return jsonResponse({ error: 'guildId required' }, 400);
+  return _getGuildChatStub(guildId, env).fetch(request);
+}
+
+async function handleGetGuildChatMessages(guildId, request, env) {
+  const url = new URL(request.url);
+  const res = await _getGuildChatStub(guildId, env).fetch(
+    `http://internal/messages?${url.searchParams.toString()}`
+  );
+  return jsonResponse(await res.json(), res.status);
+}
+
+async function handlePostGuildChatMessage(guildId, request, env) {
+  let body;
+  try { body = await request.json(); } catch { return jsonResponse({ error: 'Invalid JSON' }, 400); }
+  const { userId, text } = body;
+  if (!userId || !text) return jsonResponse({ error: 'userId and text required' }, 400);
+  const res = await _getGuildChatStub(guildId, env).fetch('http://internal/messages', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userId, text }),
+  });
+  return jsonResponse(await res.json(), res.status);
+}
+
+async function handleDeleteGuildChatMessage(guildId, messageId, request, env) {
+  let body;
+  try { body = await request.json(); } catch { return jsonResponse({ error: 'Invalid JSON' }, 400); }
+  const res = await _getGuildChatStub(guildId, env).fetch(`http://internal/messages/${messageId}`, {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  return jsonResponse(await res.json(), res.status);
+}
+
+async function handlePinGuildChatMessage(guildId, messageId, request, env) {
+  let body;
+  try { body = await request.json(); } catch { return jsonResponse({ error: 'Invalid JSON' }, 400); }
+  const res = await _getGuildChatStub(guildId, env).fetch(`http://internal/pin/${messageId}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  return jsonResponse(await res.json(), res.status);
+}
+
+async function handleUnpinGuildChatMessage(guildId, messageId, request, env) {
+  let body;
+  try { body = await request.json(); } catch { return jsonResponse({ error: 'Invalid JSON' }, 400); }
+  const res = await _getGuildChatStub(guildId, env).fetch(`http://internal/pin/${messageId}`, {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  return jsonResponse(await res.json(), res.status);
+}
+
+async function handleGetGuildChatFeed(guildId, request, env) {
+  const url = new URL(request.url);
+  const res = await _getGuildChatStub(guildId, env).fetch(
+    `http://internal/feed?${url.searchParams.toString()}`
+  );
+  return jsonResponse(await res.json(), res.status);
+}
+
 async function handlePostClanWarChallenge(request, env) {
   let body;
   try { body = await request.json(); } catch { return jsonResponse({ error: 'Invalid JSON' }, 400); }
@@ -3303,6 +3723,15 @@ async function handlePostClanWarChallenge(request, env) {
     env.GUILDS_KV.put(`guild:wars:${targetGuildId}:${warId}`, warId),
   ]);
 
+  // Emit war_challenge_sent to challenger guild feed (fire-and-forget)
+  const warEventData = {
+    warId,
+    challengerGuildName: war.challengerGuildName,
+    defenderGuildName:   war.defenderGuildName,
+    proposedWindowStart,
+  };
+  _emitGuildActivity(challengerGuildId, 'war_challenge_sent', warEventData, env);
+
   return jsonResponse({ war }, 201);
 }
 
@@ -3368,6 +3797,20 @@ async function handleRespondClanWar(warId, request, env) {
       );
     }
     await Promise.all(kvOps);
+
+    // Emit activity feed event for accept/decline (fire-and-forget)
+    const w = data.war;
+    const eventData = {
+      warId,
+      challengerGuildName: w.challengerGuildName,
+      defenderGuildName:   w.defenderGuildName,
+    };
+    if (action === 'accept') {
+      _emitGuildActivity(w.challengerGuildId, 'war_challenge_accepted', eventData, env);
+      _emitGuildActivity(w.defenderGuildId, 'war_challenge_accepted', eventData, env);
+    } else if (action === 'decline') {
+      _emitGuildActivity(w.challengerGuildId, 'war_challenge_declined', eventData, env);
+    }
   }
 
   return jsonResponse(data, res.status);
@@ -3735,6 +4178,24 @@ async function handleFinalizeWar(warId, env) {
     // Mark finalized (idempotency guard)
     env.GUILDS_KV.put(`clanwar:${warId}:finalized`, '1'),
   ]);
+
+  // Emit war_completed activity to both guild feeds (fire-and-forget)
+  const warResultDesc = war.winner === 'draw'
+    ? 'Draw'
+    : war.winner === war.challengerGuildId
+      ? `${war.challengerGuildName} won (${cWins}-${dWins})`
+      : `${war.defenderGuildName} won (${dWins}-${cWins})`;
+  const warCompleteData = {
+    warId,
+    challengerGuildName: war.challengerGuildName,
+    defenderGuildName:   war.defenderGuildName,
+    winner:              war.winner,
+    resultDesc:          warResultDesc,
+    challengerWins:      cWins,
+    defenderWins:        dWins,
+  };
+  _emitGuildActivity(war.challengerGuildId, 'war_completed', warCompleteData, env);
+  _emitGuildActivity(war.defenderGuildId,   'war_completed', warCompleteData, env);
 
   return jsonResponse({
     war: warSummary,
@@ -4247,6 +4708,9 @@ async function handleAcceptGuildInvite(inviteId, request, env) {
     env.GUILDS_KV.delete(`user-invites:${userId}:${inviteId}`),
   ]);
 
+  // Emit member_joined activity event (fire-and-forget)
+  _emitGuildActivity(invite.guildId, 'member_joined', { userId }, env);
+
   return jsonResponse({ accepted: true, guild: data.guild, members: data.members });
 }
 
@@ -4389,6 +4853,9 @@ async function handlePatchJoinRequest(guildId, requesterId, request, env) {
     })),
   ]);
 
+  // Emit member_joined activity event (fire-and-forget)
+  _emitGuildActivity(guildId, 'member_joined', { userId: requesterId }, env);
+
   return jsonResponse({ approved: true, guild: joinData.guild, members: joinData.members });
 }
 
@@ -4434,6 +4901,12 @@ async function handleLeaveGuild(guildId, request, env) {
   }
 
   await Promise.all(promises);
+
+  // Emit member_left activity event (fire-and-forget)
+  if (!data.disbanded) {
+    _emitGuildActivity(guildId, 'member_left', { userId }, env);
+  }
+
   return jsonResponse(data);
 }
 
@@ -4493,6 +4966,9 @@ async function handleKickMember(guildId, request, env) {
       level: g.level, memberCount: g.memberCount, guildRating: g.guildRating, isPrivate: !!g.isPrivate,
     })),
   ]);
+
+  // Emit member_left activity event (fire-and-forget)
+  _emitGuildActivity(guildId, 'member_left', { userId: targetUserId, kicked: true }, env);
 
   return jsonResponse(data);
 }
@@ -4578,6 +5054,729 @@ async function handleGetWeeklyNotification(guildId, request, env) {
   return jsonResponse(data, doRes.status);
 }
 
+// ── Guild Public Profile ──────────────────────────────────────────────────────
+
+/** Escape a value for safe embedding in HTML/SVG/XML. */
+function _hesc(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+/** Build a 1200×630 SVG recruitment card. */
+function _buildGuildCardSvg(guild, idx) {
+  const bc          = _hesc(guild.bannerColor || '#1e40af');
+  const emblem      = _hesc(guild.emblem || '⚔️');
+  const name        = _hesc((guild.name || '').slice(0, 22));
+  const tag         = _hesc(guild.tag || '');
+  const level       = guild.level || 1;
+  const rating      = (idx && idx.guildRating) || 1000;
+  const wins        = (idx && idx.wins)        || 0;
+  const losses      = (idx && idx.losses)      || 0;
+  const draws       = (idx && idx.draws)       || 0;
+  const memberCount = guild.memberCount        || 0;
+  const slotsOpen   = Math.max(0, 30 - memberCount);
+  const desc        = _hesc((guild.description || '').slice(0, 80));
+
+  return `<?xml version="1.0" encoding="UTF-8"?><svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630">
+  <rect width="1200" height="630" fill="#0a0a0a"/>
+  <rect width="1200" height="10" fill="${bc}"/>
+  <rect y="620" width="1200" height="10" fill="${bc}"/>
+  <rect x="0" y="10" width="320" height="610" fill="#111111"/>
+  <text x="160" y="320" font-size="100" text-anchor="middle" dominant-baseline="middle" font-family="system-ui,sans-serif">${emblem}</text>
+  <line x1="320" y1="10" x2="320" y2="620" stroke="#222222" stroke-width="1.5"/>
+  <text x="360" y="100" font-size="40" fill="#ffffff" font-family="monospace,sans-serif" font-weight="bold">${name}</text>
+  <text x="360" y="148" font-size="28" fill="${bc}" font-family="monospace,sans-serif">[${tag}]  LV.${level}</text>
+  <rect x="360" y="172" width="800" height="1.5" fill="#333333"/>
+  <text x="360" y="228" font-size="18" fill="#888888" font-family="monospace,sans-serif">RATING</text>
+  <text x="360" y="272" font-size="44" fill="${bc}" font-family="monospace,sans-serif" font-weight="bold">${rating}</text>
+  <text x="640" y="228" font-size="18" fill="#888888" font-family="monospace,sans-serif">SEASON</text>
+  <text x="640" y="272" font-size="38" fill="#ffffff" font-family="monospace,sans-serif">${wins}W  ${losses}L  ${draws}D</text>
+  <rect x="360" y="300" width="800" height="1.5" fill="#333333"/>
+  <text x="360" y="350" font-size="20" fill="#ffffff" font-family="monospace,sans-serif">${memberCount}/30 members  \u00b7  ${slotsOpen} slots open</text>
+  <text x="360" y="420" font-size="16" fill="#aaaaaa" font-family="monospace,sans-serif">${desc}</text>
+  <text x="1180" y="612" font-size="14" fill="#555555" text-anchor="end" font-family="monospace,sans-serif">MINETRIS</text>
+</svg>`;
+}
+
+/** Compute XP progress within the current guild level. */
+function _guildXpProgress(level, xp) {
+  let threshold = 0;
+  for (let i = 1; i < level; i++) threshold += i * i * 500;
+  const current = Math.max(0, (xp || 0) - threshold);
+  const needed  = level >= 20 ? 0 : level * level * 500;
+  const pct     = needed > 0 ? Math.min(100, Math.round(current / needed * 100)) : 100;
+  return { current, needed, pct };
+}
+
+/** 404 HTML page for unknown guild tags. */
+function _guildNotFoundHtml(tag) {
+  return `<!DOCTYPE html><html lang="en"><head>
+  <meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Guild Not Found — MineCtris</title>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet"/>
+  <style>body{background:#0a0a0a;color:#fff;font-family:'Press Start 2P',monospace;display:flex;align-items:center;justify-content:center;min-height:100vh;text-align:center;padding:16px}.msg{color:#f44;margin-bottom:16px;font-size:18px}.sub{color:#666;font-size:11px;margin-bottom:24px;line-height:2}a{color:#60a5fa;font-size:10px}</style>
+</head><body>
+  <div>
+    <div class="msg">GUILD NOT FOUND</div>
+    <div class="sub">[${_hesc(tag)}] does not exist or was disbanded.</div>
+    <a href="https://minetris.pages.dev">PLAY MINETRIS</a>
+  </div>
+</body></html>`;
+}
+
+/** Build the full public guild profile HTML page. */
+function _buildGuildProfileHtml(g, cardUrl, pageUrl, gameUrl) {
+  const title    = `${_hesc(g.emblem)} ${_hesc(g.name)} [${_hesc(g.tag)}] — MineCtris Guild`;
+  const descFull = _hesc(g.description || '');
+  const descMeta = _hesc((g.description || 'A MineCtris guild. Recruiting now!').slice(0, 160));
+  const bc       = _hesc(g.bannerColor || '#1e40af');
+  const { current: xpCurrent, needed: xpNeeded, pct: xpPct } = _guildXpProgress(g.level, g.xp);
+  const slotsOpen = Math.max(0, 30 - g.memberCount);
+
+  const top5Html = g.top5.length === 0
+    ? '<p class="empty">No members yet.</p>'
+    : g.top5.map((m, i) => `<div class="m-row">
+        <span class="m-rank">#${i + 1}</span>
+        <span class="m-name">${_hesc(m.userId)}</span>
+        <span class="m-role role-${_hesc(m.role)}">${_hesc(m.role)}</span>
+        <span class="m-xp">${(m.contributionXP || 0).toLocaleString()} XP</span>
+      </div>`).join('');
+
+  const warsHtml = g.recentWars.length === 0
+    ? '<p class="empty">No wars played yet.</p>'
+    : g.recentWars.map(w => `<div class="w-row">
+        <span class="w-res res-${w.result === 'W' ? 'win' : w.result === 'D' ? 'draw' : 'loss'}">${_hesc(w.result)}</span>
+        <span class="w-opp">${_hesc(w.opponentEmblem || '⚔️')} ${_hesc(w.opponentName || '?')} [${_hesc(w.opponentTag || '?')}]</span>
+        <span class="w-date">${w.completedAt ? new Date(w.completedAt).toLocaleDateString() : ''}</span>
+      </div>`).join('');
+
+  const guildJson = JSON.stringify({ id: g.id, isPrivate: g.isPrivate });
+
+  return `<!DOCTYPE html><html lang="en"><head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>${title}</title>
+  <meta name="description" content="${descMeta}"/>
+  <meta property="og:type" content="website"/>
+  <meta property="og:site_name" content="MineCtris"/>
+  <meta property="og:title" content="${title}"/>
+  <meta property="og:description" content="${descMeta}"/>
+  <meta property="og:image" content="${_hesc(cardUrl)}"/>
+  <meta property="og:image:width" content="1200"/>
+  <meta property="og:image:height" content="630"/>
+  <meta property="og:url" content="${_hesc(pageUrl)}"/>
+  <meta name="twitter:card" content="summary_large_image"/>
+  <meta name="twitter:title" content="${title}"/>
+  <meta name="twitter:description" content="${descMeta}"/>
+  <meta name="twitter:image" content="${_hesc(cardUrl)}"/>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet"/>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{background:#0a0a0a;color:#fff;font-family:'Press Start 2P',monospace;min-height:100vh;font-size:12px}
+    .banner{height:8px;background:${bc}}
+    .wrap{max-width:760px;margin:0 auto;padding:24px 16px}
+    .header{display:flex;gap:20px;align-items:flex-start;padding-bottom:20px;border-bottom:1px solid #222;margin-bottom:20px}
+    .emblem{font-size:64px;line-height:1;min-width:72px;text-align:center}
+    .hi{flex:1}
+    .name{font-size:18px;margin-bottom:6px}
+    .tag{color:${bc};font-size:13px;margin-bottom:12px}
+    .level-row{display:flex;align-items:center;gap:8px;margin-bottom:4px}
+    .level-badge{background:${bc}22;border:1px solid ${bc}66;color:${bc};font-size:9px;padding:3px 8px}
+    .xp-bar{height:10px;background:#1a1a1a;border:1px solid #333;flex:1;overflow:hidden}
+    .xp-fill{height:100%;background:${bc}}
+    .xp-label{font-size:8px;color:#555;margin-top:2px}
+    .stats{display:flex;gap:24px;padding:16px 0;border-bottom:1px solid #222;margin-bottom:20px;flex-wrap:wrap}
+    .stat{text-align:center;min-width:80px}
+    .sv{font-size:22px;color:${bc};margin-bottom:4px}
+    .sl{font-size:8px;color:#666}
+    .record{display:flex;gap:8px}
+    .rec{text-align:center;padding:6px 12px;background:#111;border:1px solid #222}
+    .rec .sv{font-size:18px}
+    .rec.win .sv{color:#4d4}
+    .rec.loss .sv{color:#d44}
+    .rec.draw .sv{color:#aaa}
+    section{margin-bottom:20px;padding-bottom:20px;border-bottom:1px solid #1a1a1a}
+    h2{font-size:9px;color:#555;margin-bottom:12px}
+    .desc{font-size:10px;color:#aaa;line-height:2;word-break:break-word}
+    .m-row,.w-row{display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid #111;font-size:9px}
+    .m-rank{width:24px;color:#555;text-align:right}
+    .m-name{flex:1;color:#ccc;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .m-role{font-size:7px;padding:2px 5px;border-radius:1px}
+    .role-owner{color:#ffd700;border:1px solid #856400;background:#1a1400}
+    .role-officer{color:#9bbdf9;border:1px solid #334;background:#0d1023}
+    .role-member{color:#888;border:1px solid #333;background:#111}
+    .m-xp{color:${bc};min-width:70px;text-align:right}
+    .w-res{font-size:13px;font-weight:bold;width:20px;text-align:center}
+    .res-win{color:#4d4}
+    .res-loss{color:#d44}
+    .res-draw{color:#aaa}
+    .w-opp{flex:1;color:#ccc;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .w-date{font-size:8px;color:#555;white-space:nowrap}
+    .empty{font-size:9px;color:#444;padding:8px 0}
+    .actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px;padding-top:16px;border-top:1px solid #1a1a1a}
+    .btn{padding:10px 16px;font-family:inherit;font-size:9px;cursor:pointer;border:none;text-decoration:none;display:inline-block;line-height:1}
+    .btn-primary{background:${bc};color:#fff}
+    .btn-outline{background:#111;color:${bc};border:1px solid ${bc}}
+    .btn-ghost{background:#1a1a1a;color:#aaa;border:1px solid #333}
+    #join-wrap{display:none}
+    .join-note{font-size:9px;color:#888;padding:10px 0;display:block}
+    .footer{padding:20px;text-align:center;font-size:8px;color:#2a2a2a}
+  </style>
+</head><body>
+<div class="banner"></div>
+<div class="wrap">
+  <div class="header">
+    <div class="emblem">${_hesc(g.emblem)}</div>
+    <div class="hi">
+      <div class="name">${_hesc(g.name)}</div>
+      <div class="tag">[${_hesc(g.tag)}]${g.isPrivate ? ' \u00b7 \uD83D\uDD12 Private' : ''}</div>
+      <div class="level-row">
+        <div class="level-badge">LV.${g.level}</div>
+        <div class="xp-bar"><div class="xp-fill" style="width:${xpPct}%"></div></div>
+      </div>
+      <div class="xp-label">${xpCurrent.toLocaleString()} / ${xpNeeded > 0 ? xpNeeded.toLocaleString() + ' XP to Lv.' + (g.level + 1) : 'MAX LEVEL'}</div>
+    </div>
+  </div>
+  <div class="stats">
+    <div class="stat"><div class="sv">${g.memberCount}</div><div class="sl">MEMBERS</div></div>
+    <div class="stat"><div class="sv">${slotsOpen}</div><div class="sl">OPEN SLOTS</div></div>
+    <div class="stat"><div class="sv">${g.guildRating}</div><div class="sl">RATING</div></div>
+    <div class="stat">
+      <div class="record">
+        <div class="rec win"><div class="sv">${g.wins}</div><div class="sl">W</div></div>
+        <div class="rec loss"><div class="sv">${g.losses}</div><div class="sl">L</div></div>
+        <div class="rec draw"><div class="sv">${g.draws}</div><div class="sl">D</div></div>
+      </div>
+    </div>
+  </div>
+  ${g.description ? `<section><h2>ABOUT</h2><p class="desc">${descFull}</p></section>` : ''}
+  <section>
+    <h2>TOP CONTRIBUTORS</h2>
+    ${top5Html}
+  </section>
+  <section>
+    <h2>RECENT WARS</h2>
+    ${warsHtml}
+  </section>
+  <div id="join-wrap"></div>
+  <div class="actions">
+    <a href="${_hesc(gameUrl)}" class="btn btn-primary">\u25b6 PLAY MINETRIS</a>
+    <a href="${_hesc(cardUrl)}" download="minetris-guild-${_hesc(g.tag)}.svg" class="btn btn-outline">\u2b07 DOWNLOAD CARD</a>
+    <button class="btn btn-ghost" onclick="copyLink()">&#x1F517; COPY LINK</button>
+  </div>
+</div>
+<div class="footer">MINETRIS GUILD PROFILE</div>
+<script>
+(function(){
+  var G = ${guildJson};
+  var userId = null, userGuildId = null;
+  try { userId = localStorage.getItem('mineCtris_displayName'); } catch(_){}
+  try { userGuildId = localStorage.getItem('mineCtris_guildId'); } catch(_){}
+  var wrap = document.getElementById('join-wrap');
+  if (userId && !userGuildId && !G.isPrivate) {
+    wrap.style.display = 'block';
+    wrap.innerHTML = '<button class="btn btn-primary" id="join-btn" style="margin-top:12px">&#x1F4E9; REQUEST TO JOIN</button><div id="join-msg"></div>';
+    document.getElementById('join-btn').addEventListener('click', function() {
+      var btn = document.getElementById('join-btn');
+      var msg = document.getElementById('join-msg');
+      btn.disabled = true; btn.textContent = 'SENDING...';
+      fetch('https://minectris-leaderboard.workers.dev/api/guilds/' + G.id + '/join-requests', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: userId })
+      }).then(function(r){ return r.json(); }).then(function(d){
+        if (d.requested) {
+          btn.style.display = 'none';
+          msg.innerHTML = '<span class="join-note" style="color:#4d4">\u2713 REQUEST SENT!</span>';
+        } else {
+          btn.disabled = false; btn.textContent = '&#x1F4E9; REQUEST TO JOIN';
+          msg.innerHTML = '<span class="join-note" style="color:#d44">' + (d.error || 'Something went wrong') + '</span>';
+        }
+      }).catch(function(){
+        btn.disabled = false; btn.textContent = '&#x1F4E9; REQUEST TO JOIN';
+        msg.innerHTML = '<span class="join-note" style="color:#d44">Network error.</span>';
+      });
+    });
+  } else if (userId && userGuildId && userGuildId !== G.id) {
+    wrap.style.display = 'block';
+    wrap.innerHTML = '<span class="join-note">You are already in a guild.</span>';
+  }
+  window.copyLink = function() {
+    var url = window.location.href;
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(url).then(function(){
+        var btn = document.querySelector('[onclick="copyLink()"]');
+        if (btn) { btn.textContent = '\u2713 COPIED!'; setTimeout(function(){ btn.textContent = '&#x1F517; COPY LINK'; }, 2000); }
+      }).catch(function(){ prompt('Copy this link:', url); });
+    } else { prompt('Copy this link:', url); }
+  };
+})();
+</script>
+</body></html>`;
+}
+
+/**
+ * GET /api/guilds/by-tag/:tag
+ * Returns full guild data by tag (case-insensitive).
+ */
+async function handleGetGuildByTag(tag, env) {
+  const normalTag = String(tag).toUpperCase();
+  const guildId = await env.GUILDS_KV.get(`guild:tag:${normalTag}`);
+  if (!guildId) return jsonResponse({ error: 'Guild not found' }, 404);
+  return handleGetGuild(guildId, env);
+}
+
+/**
+ * GET /guilds/:guildTag/card.svg
+ * Returns a 1200×630 SVG recruitment card for social sharing.
+ */
+async function handleGuildCardSvg(guildTag, env) {
+  const normalTag = String(guildTag).toUpperCase();
+  const guildId = await env.GUILDS_KV.get(`guild:tag:${normalTag}`);
+  if (!guildId) return new Response('Guild not found', { status: 404 });
+
+  const [doRes, idx] = await Promise.all([
+    env.GUILD_OBJECTS.get(env.GUILD_OBJECTS.idFromName(guildId)).fetch('http://internal/', { method: 'GET' }),
+    env.GUILDS_KV.get(`guild:index:${guildId}`, { type: 'json' }),
+  ]);
+  const { guild } = await doRes.json();
+  if (!guild) return new Response('Guild not found', { status: 404 });
+
+  return new Response(_buildGuildCardSvg(guild, idx), {
+    headers: {
+      'Content-Type': 'image/svg+xml',
+      'Cache-Control': 'public, max-age=300',
+    },
+  });
+}
+
+/**
+ * GET /guilds/:guildTag
+ * Public guild profile HTML page with Open Graph meta tags.
+ * Publicly accessible without login (read-only).
+ */
+async function handleGuildProfilePage(guildTag, env) {
+  const normalTag = String(guildTag).toUpperCase();
+  const guildId = await env.GUILDS_KV.get(`guild:tag:${normalTag}`);
+  if (!guildId) {
+    return new Response(_guildNotFoundHtml(normalTag), {
+      status: 404,
+      headers: { 'Content-Type': 'text/html; charset=utf-8' },
+    });
+  }
+
+  const [doRes, idx, warResult] = await Promise.all([
+    env.GUILD_OBJECTS.get(env.GUILD_OBJECTS.idFromName(guildId)).fetch('http://internal/', { method: 'GET' }),
+    env.GUILDS_KV.get(`guild:index:${guildId}`, { type: 'json' }),
+    env.GUILDS_KV.list({ prefix: `guild:wars:${guildId}:` }),
+  ]);
+
+  const doData = await doRes.json();
+  if (!doData.guild) {
+    return new Response(_guildNotFoundHtml(normalTag), {
+      status: 404,
+      headers: { 'Content-Type': 'text/html; charset=utf-8' },
+    });
+  }
+
+  const guild   = doData.guild;
+  const members = doData.members || [];
+
+  // Top 5 by all-time contributionXP
+  const top5 = members.slice()
+    .sort((a, b) => (b.contributionXP || 0) - (a.contributionXP || 0))
+    .slice(0, 5);
+
+  // Last 3 completed wars
+  const recentWars = (await Promise.all(
+    warResult.keys.slice(-10).map(async k => {
+      const warId = k.name.split(':').pop();
+      return env.GUILDS_KV.get(`clanwar:${warId}`, { type: 'json' });
+    })
+  ))
+    .filter(w => w && w.status === 'completed')
+    .sort((a, b) => new Date(b.completedAt || 0) - new Date(a.completedAt || 0))
+    .slice(0, 3)
+    .map(w => ({
+      opponentName:   w.challengerGuildId === guildId ? w.defenderGuildName   : w.challengerGuildName,
+      opponentTag:    w.challengerGuildId === guildId ? w.defenderGuildTag    : w.challengerGuildTag,
+      opponentEmblem: w.challengerGuildId === guildId ? w.defenderGuildEmblem : w.challengerGuildEmblem,
+      result:         w.winner === guildId ? 'W' : w.winner === 'draw' ? 'D' : 'L',
+      completedAt:    w.completedAt,
+    }));
+
+  const baseUrl  = 'https://minectris-leaderboard.workers.dev';
+  const cardUrl  = `${baseUrl}/guilds/${normalTag}/card.svg`;
+  const pageUrl  = `${baseUrl}/guilds/${normalTag}`;
+  const gameUrl  = `https://minetris.pages.dev?guild=${normalTag}`;
+
+  const guildData = {
+    id:          guildId,
+    name:        guild.name,
+    tag:         guild.tag,
+    emblem:      guild.emblem      || '⚔️',
+    bannerColor: guild.bannerColor || '#1e40af',
+    description: guild.description || '',
+    level:       guild.level       || 1,
+    xp:          guild.xp          || 0,
+    memberCount: guild.memberCount || members.length,
+    isPrivate:   !!guild.isPrivate,
+    guildRating: (idx && idx.guildRating) || 1000,
+    wins:        (idx && idx.wins)        || 0,
+    losses:      (idx && idx.losses)      || 0,
+    draws:       (idx && idx.draws)       || 0,
+    top5,
+    recentWars,
+  };
+
+  return new Response(_buildGuildProfileHtml(guildData, cardUrl, pageUrl, gameUrl), {
+    headers: { 'Content-Type': 'text/html; charset=utf-8' },
+  });
+}
+
+// ── Biome Registry ───────────────────────────────────────────────────────────
+
+const BIOME_REGISTRY_KEY = 'biomes:registry:v1';
+
+const BIOME_SEEDS = [
+  {
+    id: 'stone',
+    name: 'Stone',
+    active: true,
+    theme: {
+      skyColor: '#1a1a2e',
+      blockPalette: ['#6b7280', '#9ca3af', '#4b5563', '#374151', '#d1d5db'],
+      backgroundTexture: 'stone',
+      particleEffect: null,
+    },
+    pieceSetConfig: {
+      pieceSet: 'standard',
+      customPieces: [],
+    },
+    gravityModifier: 1.0,
+    specialRules: {
+      boardWidth: 10,
+      boardHeight: 20,
+      delayedLock: false,
+      pieceSlide: false,
+    },
+  },
+  {
+    id: 'forest',
+    name: 'Forest',
+    active: true,
+    theme: {
+      skyColor: '#064e3b',
+      blockPalette: ['#065f46', '#047857', '#059669', '#34d399', '#6ee7b7'],
+      backgroundTexture: 'forest',
+      particleEffect: 'leaves',
+    },
+    pieceSetConfig: {
+      pieceSet: 'standard',
+      customPieces: [],
+    },
+    gravityModifier: 1.0,
+    specialRules: {
+      boardWidth: 12,
+      boardHeight: 20,
+      delayedLock: false,
+      pieceSlide: false,
+    },
+  },
+  {
+    id: 'nether',
+    name: 'Nether',
+    active: true,
+    theme: {
+      skyColor: '#7f1d1d',
+      blockPalette: ['#991b1b', '#dc2626', '#f97316', '#ea580c', '#b91c1c'],
+      backgroundTexture: 'nether',
+      particleEffect: 'embers',
+    },
+    pieceSetConfig: {
+      pieceSet: 'standard',
+      customPieces: [],
+    },
+    gravityModifier: 1.5,
+    specialRules: {
+      boardWidth: 10,
+      boardHeight: 20,
+      delayedLock: false,
+      pieceSlide: false,
+    },
+  },
+  {
+    id: 'ice',
+    name: 'Ice',
+    active: true,
+    theme: {
+      skyColor: '#0c4a6e',
+      blockPalette: ['#bfdbfe', '#93c5fd', '#60a5fa', '#3b82f6', '#dbeafe'],
+      backgroundTexture: 'ice',
+      particleEffect: 'snow',
+    },
+    pieceSetConfig: {
+      pieceSet: 'standard',
+      customPieces: [],
+    },
+    gravityModifier: 1.0,
+    specialRules: {
+      boardWidth: 10,
+      boardHeight: 20,
+      delayedLock: true,
+      pieceSlide: true,
+    },
+  },
+];
+
+async function getBiomeRegistry(env) {
+  let registry = await env.LEADERBOARD_KV.get(BIOME_REGISTRY_KEY, { type: 'json' });
+  if (!registry) {
+    registry = BIOME_SEEDS;
+    await env.LEADERBOARD_KV.put(BIOME_REGISTRY_KEY, JSON.stringify(registry));
+  }
+  return registry;
+}
+
+async function handleGetBiomes(env) {
+  const registry = await getBiomeRegistry(env);
+  const active = registry.filter(b => b.active);
+  return jsonResponse({ biomes: active });
+}
+
+// ── Expedition Map ────────────────────────────────────────────────────────────
+
+/**
+ * Generate a branching-path layout for N nodes.
+ * Returns array of { row, col } positions (0-indexed).
+ * Layouts:
+ *   4 nodes: 1-2-1
+ *   5 nodes: 1-2-2
+ *   6 nodes: 1-2-1-2
+ *   7 nodes: 1-2-2-2
+ *   8 nodes: 1-3-2-2
+ */
+function _expeditionLayout(n) {
+  const LAYOUTS = {
+    4: [[1,1],[1,0],[1,2],[1,1]],   // row assignments per node
+    5: [[1,1],[1,0],[1,2],[1,0],[1,2]],
+    6: [[1,1],[1,0],[1,2],[1,1],[1,0],[1,2]],
+    7: [[1,1],[1,0],[1,2],[1,0],[1,2],[1,0],[1,2]],
+    8: [[1,1],[1,0],[1,1],[1,2],[1,0],[1,1],[1,2],[1,1]],
+  };
+  // Build row-based layout: each row is a tier; columns spread nodes within tier
+  const tiers = {
+    4: [[0],[1,2],[3]],
+    5: [[0],[1,2],[3,4]],
+    6: [[0],[1,2],[3],[4,5]],
+    7: [[0],[1,2],[3,4],[5,6]],
+    8: [[0],[1,2,3],[4,5],[6,7]],
+  };
+  const tierMap = tiers[n] || tiers[6];
+  const positions = new Array(n);
+  tierMap.forEach((tier, rowIdx) => {
+    const span = tier.length;
+    tier.forEach((nodeIdx, posInRow) => {
+      // Center columns within a 3-wide grid
+      const col = span === 1 ? 1 : (span === 2 ? [0, 2][posInRow] : posInRow);
+      positions[nodeIdx] = { row: rowIdx, col };
+    });
+  });
+  return { positions, tiers: tierMap };
+}
+
+/**
+ * Determine connections between nodes: each node connects to nodes in the next tier.
+ * - If next tier has 1 node: all current tier nodes connect to it.
+ * - If next tier has > 1 nodes: pair up (or fan out from single-node tier).
+ */
+function _expeditionConnections(tiers) {
+  const connections = {}; // nodeId → [childNodeId]
+  for (let t = 0; t < tiers.length - 1; t++) {
+    const cur = tiers[t];
+    const next = tiers[t + 1];
+    cur.forEach(nodeId => { connections[nodeId] = []; });
+    if (next.length === 1) {
+      // All current nodes connect to the single next node
+      cur.forEach(nodeId => connections[nodeId].push(next[0]));
+    } else if (cur.length === 1) {
+      // Single current node fans out to all next nodes
+      next.forEach(childId => connections[cur[0]].push(childId));
+    } else {
+      // Pair up: each current node connects to nearest next node(s)
+      cur.forEach((nodeId, i) => {
+        const childIdx = Math.min(i, next.length - 1);
+        if (!connections[nodeId].includes(next[childIdx])) {
+          connections[nodeId].push(next[childIdx]);
+        }
+      });
+    }
+  }
+  // Last tier has no children
+  tiers[tiers.length - 1].forEach(nodeId => { connections[nodeId] = []; });
+  return connections;
+}
+
+/**
+ * Build tier-to-order map: nodes in tier 0 have order 0, tier 1 → order 1, etc.
+ * Unlocking: when ALL nodes of order N have highScore > 0, nodes of order N+1 unlock.
+ */
+function _tierForNode(tiers, nodeId) {
+  for (let t = 0; t < tiers.length; t++) {
+    if (tiers[t].includes(nodeId)) return t;
+  }
+  return 0;
+}
+
+/**
+ * Generate a new expedition map for a player.
+ * Picks 4–8 biome nodes from the registry, cycling if necessary to fill the target count.
+ */
+async function _generateExpeditionMap(userId, seasonId, env) {
+  const biomes = await getBiomeRegistry(env);
+  const active = biomes.filter(b => b.active);
+  if (!active.length) return null;
+
+  // Deterministic node count from seasonId hash (6 or 8 for visual variety)
+  let hash = 0;
+  for (let i = 0; i < (seasonId || 'default').length; i++) {
+    hash = (hash * 31 + (seasonId || 'default').charCodeAt(i)) & 0xffffffff;
+  }
+  const nodeCount = active.length >= 6 ? Math.min(active.length, 8) : (active.length >= 4 ? 6 : active.length);
+
+  // Assign biomes to nodes — cycle through active biomes
+  const nodeCount_ = Math.max(4, Math.min(8, nodeCount));
+  const { positions, tiers } = _expeditionLayout(nodeCount_);
+  const connections = _expeditionConnections(tiers);
+
+  const nodes = [];
+  for (let i = 0; i < nodeCount_; i++) {
+    const biome = active[i % active.length];
+    const tier = _tierForNode(tiers, i);
+    nodes.push({
+      nodeId: i,
+      biomeId: biome.id,
+      biomeName: biome.name,
+      order: tier,
+      row: positions[i].row,
+      col: positions[i].col,
+      connections: connections[i] || [],
+      unlocked: tier === 0,
+      highScore: 0,
+    });
+  }
+
+  return {
+    userId,
+    seasonId: seasonId || 'default',
+    generatedAt: new Date().toISOString(),
+    nodes,
+  };
+}
+
+function _expeditionMapKey(userId, seasonId) {
+  return `expedition:player:${userId}:${seasonId || 'default'}`;
+}
+
+function _expeditionArchiveKey(userId, seasonId) {
+  return `expedition:archive:${userId}:${seasonId || 'default'}`;
+}
+
+/**
+ * Recompute unlock state for all nodes based on highScore data.
+ * Tier 0 always unlocked. Tier N unlocks when ALL nodes in tier N-1 have highScore > 0.
+ */
+function _recomputeUnlocks(nodes) {
+  // Group nodes by order
+  const byOrder = {};
+  for (const n of nodes) {
+    if (!byOrder[n.order]) byOrder[n.order] = [];
+    byOrder[n.order].push(n);
+  }
+  const maxOrder = Math.max(...nodes.map(n => n.order));
+  for (let ord = 0; ord <= maxOrder; ord++) {
+    const tier = byOrder[ord] || [];
+    if (ord === 0) {
+      tier.forEach(n => { n.unlocked = true; });
+    } else {
+      const prevTier = byOrder[ord - 1] || [];
+      const prevDone = prevTier.every(n => n.highScore > 0);
+      tier.forEach(n => { n.unlocked = n.unlocked || prevDone; });
+    }
+  }
+}
+
+async function handleGetExpeditionMap(request, env) {
+  const url = new URL(request.url);
+  const userId = url.searchParams.get('userId');
+  const seasonId = url.searchParams.get('seasonId');
+  if (!userId) return jsonResponse({ error: 'userId required' }, 400);
+
+  const key = _expeditionMapKey(userId, seasonId);
+  const map = await env.LEADERBOARD_KV.get(key, { type: 'json' });
+  if (!map) return jsonResponse({ map: null }, 200);
+  return jsonResponse({ map });
+}
+
+async function handlePostExpeditionMap(request, env) {
+  let body;
+  try { body = await request.json(); } catch { return jsonResponse({ error: 'Invalid JSON' }, 400); }
+  const { userId, seasonId } = body;
+  if (!userId) return jsonResponse({ error: 'userId required' }, 400);
+
+  const key = _expeditionMapKey(userId, seasonId);
+
+  // Return existing map if present and same season
+  let map = await env.LEADERBOARD_KV.get(key, { type: 'json' });
+  if (map && map.seasonId === (seasonId || 'default')) {
+    return jsonResponse({ map, created: false });
+  }
+
+  // Archive prior map if it exists and belongs to a different season
+  if (map && map.seasonId !== (seasonId || 'default')) {
+    const archiveKey = _expeditionArchiveKey(userId, map.seasonId);
+    await env.LEADERBOARD_KV.put(archiveKey, JSON.stringify(map));
+  }
+
+  // Generate fresh map
+  map = await _generateExpeditionMap(userId, seasonId, env);
+  if (!map) return jsonResponse({ error: 'No active biomes' }, 503);
+  await env.LEADERBOARD_KV.put(key, JSON.stringify(map));
+  return jsonResponse({ map, created: true });
+}
+
+async function handlePostExpeditionScore(request, env) {
+  let body;
+  try { body = await request.json(); } catch { return jsonResponse({ error: 'Invalid JSON' }, 400); }
+  const { userId, seasonId, nodeId, score } = body;
+  if (!userId || nodeId === undefined || score === undefined) {
+    return jsonResponse({ error: 'userId, nodeId, score required' }, 400);
+  }
+  if (typeof score !== 'number' || score < 0) return jsonResponse({ error: 'Invalid score' }, 400);
+
+  const key = _expeditionMapKey(userId, seasonId);
+  let map = await env.LEADERBOARD_KV.get(key, { type: 'json' });
+  if (!map) return jsonResponse({ error: 'Map not found — call POST /api/expedition/map first' }, 404);
+
+  const node = map.nodes.find(n => n.nodeId === Number(nodeId));
+  if (!node) return jsonResponse({ error: 'Node not found' }, 404);
+  if (!node.unlocked) return jsonResponse({ error: 'Node locked' }, 403);
+
+  // Update high score
+  if (score > node.highScore) node.highScore = score;
+
+  // Recompute unlocks
+  _recomputeUnlocks(map.nodes);
+
+  await env.LEADERBOARD_KV.put(key, JSON.stringify(map));
+  return jsonResponse({ map });
+}
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
@@ -4644,6 +5843,14 @@ export default {
     } else if (method === 'GET' && url.pathname.startsWith('/api/puzzles/')) {
       const puzzleId = url.pathname.replace('/api/puzzles/', '');
       response = await handleGetPuzzleById(puzzleId, env);
+    } else if (method === 'GET' && url.pathname === '/api/biomes') {
+      response = await handleGetBiomes(env);
+    } else if (method === 'GET' && url.pathname === '/api/expedition/map') {
+      response = await handleGetExpeditionMap(request, env);
+    } else if (method === 'POST' && url.pathname === '/api/expedition/map') {
+      response = await handlePostExpeditionMap(request, env);
+    } else if (method === 'POST' && url.pathname === '/api/expedition/score') {
+      response = await handlePostExpeditionScore(request, env);
     } else if (method === 'GET' && url.pathname === '/api/missions') {
       response = handleGetMissions(todayUTC());
     } else if (method === 'GET' && url.pathname.startsWith('/api/missions/')) {
@@ -4800,6 +6007,42 @@ export default {
     } else if (method === 'DELETE' && url.pathname.startsWith('/api/guilds/')) {
       const guildId = url.pathname.replace('/api/guilds/', '');
       response = await handleDeleteGuild(guildId, request, env);
+
+    // ── Guild Chat REST API ──────────────────────────────────────────────────
+    } else if (/^\/guild-chat\/[^/]+\/ws$/.test(url.pathname)) {
+      // WebSocket upgrade — bypass CORS header merging
+      const guildId = url.pathname.split('/')[2];
+      return handleGuildChatWs(request, guildId, env);
+    } else if (method === 'GET' && /^\/api\/guild-chat\/[^/]+\/messages$/.test(url.pathname)) {
+      const guildId = url.pathname.split('/')[3];
+      response = await handleGetGuildChatMessages(guildId, request, env);
+    } else if (method === 'POST' && /^\/api\/guild-chat\/[^/]+\/messages$/.test(url.pathname)) {
+      const guildId = url.pathname.split('/')[3];
+      response = await handlePostGuildChatMessage(guildId, request, env);
+    } else if (method === 'DELETE' && /^\/api\/guild-chat\/[^/]+\/messages\/[^/]+$/.test(url.pathname)) {
+      const parts = url.pathname.split('/');
+      response = await handleDeleteGuildChatMessage(parts[3], parts[5], request, env);
+    } else if (method === 'POST' && /^\/api\/guild-chat\/[^/]+\/pin\/[^/]+$/.test(url.pathname)) {
+      const parts = url.pathname.split('/');
+      response = await handlePinGuildChatMessage(parts[3], parts[5], request, env);
+    } else if (method === 'DELETE' && /^\/api\/guild-chat\/[^/]+\/pin\/[^/]+$/.test(url.pathname)) {
+      const parts = url.pathname.split('/');
+      response = await handleUnpinGuildChatMessage(parts[3], parts[5], request, env);
+    } else if (method === 'GET' && /^\/api\/guild-chat\/[^/]+\/feed$/.test(url.pathname)) {
+      const guildId = url.pathname.split('/')[3];
+      response = await handleGetGuildChatFeed(guildId, request, env);
+
+    // ── Guild Public Profile (HTML + SVG card) ──────────────────────────────
+    } else if (method === 'GET' && /^\/api\/guilds\/by-tag\/[A-Za-z0-9]{3,5}$/.test(url.pathname)) {
+      const tag = url.pathname.split('/').pop();
+      response = await handleGetGuildByTag(tag, env);
+    } else if (method === 'GET' && /^\/guilds\/[A-Za-z0-9]{3,5}\/card\.svg$/.test(url.pathname)) {
+      const tag = url.pathname.split('/')[2];
+      return handleGuildCardSvg(tag, env);  // return directly — not an API call
+    } else if (method === 'GET' && /^\/guilds\/[A-Za-z0-9]{3,5}$/.test(url.pathname)) {
+      const tag = url.pathname.split('/')[2];
+      return handleGuildProfilePage(tag, env);  // return directly — not an API call
+
     } else {
       response = jsonResponse({ error: 'Not found' }, 404);
     }

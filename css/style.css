@@ -10710,3 +10710,230 @@ body.theme-diamond-season #score-display { border-color: #00e5ff; }
   padding: 8px 0 0;
 }
 .war-page-label { font-size: 9px; color: #666; }
+
+/* ── Expedition Map ─────────────────────────────────────────────────────────── */
+
+#expedition-map-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.82);
+  backdrop-filter: blur(4px);
+}
+
+#expedition-map-panel {
+  background: #0f172a;
+  border: 1px solid #1e3a5f;
+  border-radius: 12px;
+  box-shadow: 0 0 40px #0ea5e944, 0 8px 32px #000c;
+  display: flex;
+  flex-direction: column;
+  width: min(860px, 96vw);
+  max-height: 90vh;
+  overflow: hidden;
+  color: #e2e8f0;
+  font-family: 'Segoe UI', monospace, sans-serif;
+}
+
+#expedition-map-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 20px 10px;
+  border-bottom: 1px solid #1e3a5f;
+  background: #0a1628;
+  flex-shrink: 0;
+}
+
+#expedition-map-icon {
+  font-size: 26px;
+}
+
+#expedition-map-title {
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: #7dd3fc;
+  text-shadow: 0 0 10px #38bdf880;
+}
+
+#expedition-map-subtitle {
+  font-size: 11px;
+  color: #64748b;
+  margin-top: 1px;
+}
+
+#expedition-map-loading {
+  padding: 40px;
+  text-align: center;
+  color: #64748b;
+  font-size: 13px;
+}
+
+#expedition-map-content {
+  display: flex;
+  flex-direction: row;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+#expedition-map-scroll {
+  flex: 1;
+  overflow: auto;
+  padding: 20px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+}
+
+#expedition-map-canvas {
+  position: relative;
+}
+
+/* Biome node cards */
+.exp-node {
+  position: absolute;
+  border: 2px solid #4b5563;
+  border-radius: 10px;
+  padding: 8px 6px;
+  text-align: center;
+  cursor: pointer;
+  transition: transform 0.12s, box-shadow 0.12s;
+  user-select: none;
+  height: 88px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+}
+
+.exp-node:hover:not(.exp-node-locked) {
+  transform: scale(1.06);
+}
+
+.exp-node-locked {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.exp-node-selected {
+  transform: scale(1.08);
+  z-index: 2;
+}
+
+.exp-node-done .exp-node-score {
+  color: #4ade80;
+}
+
+.exp-node-icon {
+  font-size: 22px;
+  line-height: 1;
+}
+
+.exp-node-name {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: #e2e8f0;
+  white-space: nowrap;
+}
+
+.exp-node-score {
+  font-size: 9px;
+  color: #94a3b8;
+  white-space: nowrap;
+}
+
+/* Info panel */
+#expedition-map-info {
+  width: 200px;
+  flex-shrink: 0;
+  border-left: 1px solid #1e3a5f;
+  padding: 20px 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  background: #0a1628;
+}
+
+.exp-info-icon {
+  font-size: 36px;
+}
+
+.exp-info-name {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: #e2e8f0;
+  text-align: center;
+}
+
+.exp-info-status {
+  font-size: 11px;
+  text-align: center;
+  min-height: 30px;
+}
+
+.exp-locked-label { color: #64748b; }
+.exp-done-label   { color: #4ade80; }
+.exp-avail-label  { color: #7dd3fc; }
+
+.exp-play-btn {
+  margin-top: 6px;
+  padding: 9px 18px;
+  background: #0369a1;
+  border: none;
+  border-radius: 8px;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  letter-spacing: 0.5px;
+  transition: background 0.15s;
+  width: 100%;
+}
+.exp-play-btn:hover { background: #0284c7; }
+
+/* Footer */
+#expedition-map-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 20px;
+  border-top: 1px solid #1e3a5f;
+  background: #0a1628;
+  flex-shrink: 0;
+}
+
+.exp-hint {
+  font-size: 10px;
+  color: #475569;
+  letter-spacing: 0.3px;
+}
+
+#expedition-map-close-btn {
+  padding: 6px 16px;
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 6px;
+  color: #94a3b8;
+  font-size: 12px;
+  cursor: pointer;
+}
+#expedition-map-close-btn:hover { background: #334155; color: #e2e8f0; }
+
+.exp-error {
+  color: #f87171;
+  font-size: 13px;
+  text-align: center;
+  padding: 40px 20px;
+}

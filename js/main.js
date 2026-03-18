@@ -151,9 +151,12 @@ function init() {
   initAudio();
   initSettings();
   if (typeof initLeaderboard === "function") initLeaderboard();
+  if (typeof initGuild === "function") initGuild();
   if (typeof initSeasonBanner === "function") initSeasonBanner();
   if (typeof initSeasonHUD === "function") initSeasonHUD();
   if (typeof initSeasonPassPanel === "function") initSeasonPassPanel();
+  if (typeof initExpeditionMap === "function") initExpeditionMap();
+  if (typeof initRecapFromUrl === "function") initRecapFromUrl();
   if (typeof updateLevelBadgeHUD === "function") updateLevelBadgeHUD();
   if (typeof updateStreakHUD === "function") updateStreakHUD();
 
@@ -1917,6 +1920,15 @@ function init() {
       battle.on("battle_board", function (msg) {
         if (typeof battleHud !== 'undefined') {
           battleHud.update(msg.cols, msg.score, msg.level);
+          // Apply opponent guild cosmetics on first message that carries them
+          if (msg.guildEmblem !== undefined || msg.guildBoardSkin !== undefined) {
+            battleHud.setOpponentGuild(
+              msg.guildEmblem || null,
+              msg.guildBoardSkin || null,
+              msg.guildBannerColor || null,
+              !!msg.guildIsLegendary
+            );
+          }
         }
         // Cache opponent's latest score/lines for Score Race comparison
         if (typeof msg.score === 'number') battleOpponentScore = msg.score;
@@ -1973,11 +1985,19 @@ function init() {
         if (battle.state === BattleState.IN_GAME && typeof broadcastBoardState === 'function') {
           broadcastBoardState();
         }
+        // Tournament achievement + season mission: spectator watching your match
+        if (!battle.isSpectator && battle.state === BattleState.IN_GAME) {
+          if (typeof achOnSpectatorCountUpdate === 'function') achOnSpectatorCountUpdate(_spectatorCount);
+          if (typeof onSeasonMissionSpectatorWatchedYourMatch === 'function') onSeasonMissionSpectatorWatchedYourMatch();
+        }
       });
 
       battle.on("spectator_count", function (data) {
         _spectatorCount = data.spectatorCount || 0;
         _updateSpectatorCountDisplay();
+        if (!battle.isSpectator && battle.state === BattleState.IN_GAME) {
+          if (typeof achOnSpectatorCountUpdate === 'function') achOnSpectatorCountUpdate(_spectatorCount);
+        }
       });
 
       var _spectatorCount = 0;
@@ -2323,6 +2343,7 @@ function init() {
         if (titleEl) titleEl.textContent = title;
         if (subEl) subEl.textContent = sub;
         resultEl.style.display = "block";
+        if (typeof onSeasonMissionMatchWatched === 'function') onSeasonMissionMatchWatched();
         var secs = 5;
         if (countEl) countEl.textContent = "Returning to lobby in " + secs + "s\u2026";
         _spectatorResultTimer = setInterval(function () {
@@ -2439,6 +2460,7 @@ function init() {
           // Optimistically spawn local animation + add hype
           _spawnFloatingEmoji(EMOJI_MAP[emoji] || emoji);
           _addHypeReaction();
+          if (typeof onSeasonMissionHypeReactionSent === 'function') onSeasonMissionHypeReactionSent();
           // Brief button cooldown indicator
           btn.classList.add('rate-limited');
           setTimeout(function () { btn.classList.remove('rate-limited'); }, 2000);

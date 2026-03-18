@@ -77,7 +77,7 @@
             <button id="start-missions-btn">&#127919; Daily Missions</button>
             <button id="start-season-missions-btn">&#128336; Season Missions</button>
             <button id="start-tournament-btn">&#127942; Tournaments</button>
-            <button id="start-guild-btn">&#9876; Guild</button>
+            <button id="start-guild-btn">&#9876; Guild <span id="guild-btn-badge" style="display:none;background:#ef4444;color:#fff;border-radius:999px;font-size:9px;padding:1px 5px;vertical-align:middle;margin-left:2px;"></span></button>
           </div>
           <div id="hs-start-panel"></div>
         </div>
@@ -177,6 +177,7 @@
             <div id="mode-powerup-label">&#9889; EQUIP POWER-UP</div>
             <div id="mode-powerup-picker"></div>
           </div>
+          <button id="mode-expedition-btn">&#127758; Expeditions</button>
           <button id="mode-season-pass-btn">&#127873; Season Pass</button>
           <button id="mode-select-lb-btn">&#127942; Leaderboard</button>
           <button id="hof-open-btn">&#127942; Hall of Fame</button>
@@ -703,6 +704,9 @@
       <!-- Guild error toast -->
       <div id="guild-error-toast" style="display:none;"></div>
 
+      <!-- Guild @mention toast -->
+      <div id="guild-mention-toast" style="display:none;position:fixed;bottom:80px;right:16px;background:#1e293b;border:1px solid #6366f1;color:#e2e8f0;padding:10px 14px;border-radius:8px;font-size:11px;max-width:260px;z-index:9999;box-shadow:0 4px 12px rgba(0,0,0,0.4);"></div>
+
       <!-- Clan War: Post-War Result Screen -->
       <div id="war-result-screen" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="wrs-title">
         <div id="war-result-screen-inner"></div>
@@ -873,6 +877,28 @@
           <div id="season-pass-header-info"></div>
           <div id="season-pass-panel-body"></div>
           <button id="season-pass-close-btn">Close</button>
+        </div>
+      </div>
+
+      <!-- Expedition Map overlay -->
+      <div id="expedition-map-overlay" style="display:none;" role="dialog" aria-label="Expedition World Map">
+        <div id="expedition-map-panel">
+          <div id="expedition-map-header">
+            <span id="expedition-map-icon">&#127758;</span>
+            <div id="expedition-map-title">EXPEDITIONS</div>
+            <div id="expedition-map-subtitle">Explore biomes &amp; unlock new worlds</div>
+          </div>
+          <div id="expedition-map-loading" style="display:none;">Loading map&hellip;</div>
+          <div id="expedition-map-content" style="display:none;">
+            <div id="expedition-map-scroll">
+              <div id="expedition-map-canvas"></div>
+            </div>
+            <div id="expedition-map-info"></div>
+          </div>
+          <div id="expedition-map-footer">
+            <span class="exp-hint">&#8592;&#8594; Navigate &nbsp;|&nbsp; Enter / A: Play &nbsp;|&nbsp; Esc / B: Close</span>
+            <button id="expedition-map-close-btn">&#8592; Close</button>
+          </div>
         </div>
       </div>
 
@@ -1394,9 +1420,12 @@
     <script src="js/battle-fx.js"></script>
     <script src="js/tournament.js"></script>
     <script src="js/guild.js"></script>
+    <script src="js/guild-chat.js"></script>
+    <script src="js/guild-profile.js"></script>
     <script src="js/clan-war-engine.js"></script>
     <script src="js/clan-war-results.js"></script>
     <script src="js/clan-war-standings.js"></script>
+    <script src="js/expedition-map.js"></script>
     <script src="js/main.js"></script>
   </body>
 </html>
