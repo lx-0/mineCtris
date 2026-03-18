@@ -178,6 +178,7 @@
             <div id="mode-powerup-picker"></div>
           </div>
           <button id="mode-expedition-btn">&#127758; Expeditions</button>
+          <button id="mode-biome-cosmetics-btn">&#127775; Expedition Cosmetics</button>
           <button id="mode-season-pass-btn">&#127873; Season Pass</button>
           <button id="mode-select-lb-btn">&#127942; Leaderboard</button>
           <button id="hof-open-btn">&#127942; Hall of Fame</button>
@@ -876,7 +877,21 @@
           </div>
           <div id="season-pass-header-info"></div>
           <div id="season-pass-panel-body"></div>
+          <div id="season-pass-featured-body" style="display:none;"></div>
           <button id="season-pass-close-btn">Close</button>
+        </div>
+      </div>
+
+      <!-- Biome Cosmetics overlay — equip board skins & piece themes from expedition tracks -->
+      <div id="biome-cosmetics-overlay" style="display:none;">
+        <div id="biome-cosmetics-panel">
+          <div id="biome-cosmetics-header">
+            <span id="biome-cosmetics-icon">&#127775;</span>
+            <div id="biome-cosmetics-title">EXPEDITION COSMETICS</div>
+            <div id="biome-cosmetics-subtitle">Biome-exclusive board skins &amp; piece themes</div>
+          </div>
+          <div id="biome-cosmetics-panel-body"></div>
+          <button id="biome-cosmetics-close-btn">Close</button>
         </div>
       </div>
 
@@ -897,8 +912,88 @@
           </div>
           <div id="expedition-map-footer">
             <span class="exp-hint">&#8592;&#8594; Navigate &nbsp;|&nbsp; Enter / A: Play &nbsp;|&nbsp; Esc / B: Close</span>
-            <button id="expedition-map-close-btn">&#8592; Close</button>
+            <div class="exp-footer-btns">
+              <button id="expedition-codex-open-btn">&#128218; Codex</button>
+              <button id="expedition-map-close-btn">&#8592; Close</button>
+            </div>
           </div>
+        </div>
+      </div>
+
+      <!-- Expedition Codex overlay — collectible fragment gallery -->
+      <div id="expedition-codex-overlay" style="display:none;" role="dialog" aria-label="Expedition Codex">
+        <div id="expedition-codex-panel">
+          <div id="expedition-codex-header">
+            <span id="expedition-codex-icon">&#128218;</span>
+            <div>
+              <div id="expedition-codex-title">EXPEDITION CODEX</div>
+              <div id="expedition-codex-subtitle">Collected story fragments</div>
+            </div>
+          </div>
+          <div id="expedition-codex-tabs" role="tablist"></div>
+          <div id="expedition-codex-grid-wrap">
+            <div id="expedition-codex-biome-header"></div>
+            <div id="expedition-codex-grid"></div>
+          </div>
+          <!-- Fragment detail panel — slides up over the grid -->
+          <div id="expedition-codex-detail" style="display:none;" role="dialog" aria-label="Fragment Detail"></div>
+          <div id="expedition-codex-footer">
+            <span class="codex-hint">Click a fragment to read &nbsp;|&nbsp; Esc: Close</span>
+            <button id="expedition-codex-close-btn">&#8592; Close</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Expedition Lore Intro overlay — shown before a biome session starts -->
+      <div id="expedition-lore-overlay" style="display:none;" role="dialog" aria-label="Biome Lore Introduction">
+        <div id="expedition-lore-panel">
+          <div id="exp-lore-header">
+            <span id="exp-lore-biome-icon"></span>
+            <div id="exp-lore-biome-name"></div>
+          </div>
+          <div id="exp-lore-body"></div>
+          <div id="exp-lore-progress"><div id="exp-lore-progress-fill"></div></div>
+          <button id="exp-lore-begin-btn">Skip &#9658;</button>
+        </div>
+      </div>
+
+      <!-- Expedition Results overlay — shown after a biome session ends -->
+      <div id="expedition-results-overlay" style="display:none;" role="dialog" aria-label="Expedition Results">
+        <div id="expedition-results-panel">
+          <div id="exp-results-header">
+            <span id="exp-results-biome-icon"></span>
+            <div id="exp-results-title">EXPEDITION COMPLETE</div>
+            <div id="exp-results-biome-name"></div>
+            <div id="exp-results-featured-badge" class="exp-results-featured-badge" style="display:none;">&#11088; FEATURED &mdash; 2&#215; XP</div>
+          </div>
+          <div id="exp-results-stats"></div>
+          <div id="exp-results-fragment" style="display:none;"></div>
+          <div id="exp-results-track"></div>
+          <div id="exp-results-featured-pass" style="display:none;"></div>
+          <div id="exp-results-weekly-rank" style="display:none;"></div>
+          <div id="exp-results-actions">
+            <button id="exp-results-play-again-btn">&#9654; Play Again <span class="key-hint">[Enter]</span></button>
+            <button id="exp-results-map-btn">&#8592; Return to Map <span class="key-hint">[Esc]</span></button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Biome Weekly Leaderboard overlay -->
+      <div id="biome-lb-overlay" style="display:none;" role="dialog" aria-label="Biome Weekly Leaderboard">
+        <div id="biome-lb-panel">
+          <div id="biome-lb-header">
+            <span id="biome-lb-title">&#127942; WEEKLY LEADERBOARD</span>
+            <button id="biome-lb-refresh-btn" title="Refresh">&#8635;</button>
+          </div>
+          <div id="biome-lb-biome-tabs">
+            <button id="biome-lb-tab-stone"  class="biome-lb-biome-tab biome-lb-tab-active">&#9935; Stone</button>
+            <button id="biome-lb-tab-forest" class="biome-lb-biome-tab">&#127795; Forest</button>
+            <button id="biome-lb-tab-nether" class="biome-lb-biome-tab">&#128293; Nether</button>
+            <button id="biome-lb-tab-ice"    class="biome-lb-biome-tab">&#10052; Ice</button>
+          </div>
+          <div id="biome-lb-week-tabs"></div>
+          <div id="biome-lb-body"></div>
+          <button id="biome-lb-close-btn">Close</button>
         </div>
       </div>
 
@@ -1369,6 +1464,7 @@
     <script src="js/state.js"></script>
     <script src="js/audio.js"></script>
     <script src="js/worldmodifier.js"></script>
+    <script src="js/biome-rules.js"></script>
     <script src="js/inventory.js"></script>
     <script src="js/world.js"></script>
     <script src="js/gamestate.js"></script>
@@ -1396,6 +1492,7 @@
     <script src="js/season.js"></script>
     <script src="js/season-recap.js"></script>
     <script src="js/season-pass.js"></script>
+    <script src="js/featured-season-pass.js"></script>
     <script src="js/leaderboard.js"></script>
     <script src="js/missions.js"></script>
     <script src="js/season-missions.js"></script>
@@ -1422,10 +1519,18 @@
     <script src="js/guild.js"></script>
     <script src="js/guild-chat.js"></script>
     <script src="js/guild-profile.js"></script>
+    <script src="js/guild-expedition.js"></script>
     <script src="js/clan-war-engine.js"></script>
     <script src="js/clan-war-results.js"></script>
     <script src="js/clan-war-standings.js"></script>
+    <script src="js/biome-themes.js"></script>
+    <script src="js/expedition-reward-tracks.js"></script>
+    <script src="js/biome-cosmetics.js"></script>
     <script src="js/expedition-map.js"></script>
+    <script src="js/story-fragments.js"></script>
+    <script src="js/expedition-codex.js"></script>
+    <script src="js/expedition-session.js"></script>
+    <script src="js/expedition-leaderboard.js"></script>
     <script src="js/main.js"></script>
   </body>
 </html>

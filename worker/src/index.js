@@ -7,6 +7,7 @@
  *   POST /api/scores/weekly        — validate and submit a weekly score
  *   GET  /api/leaderboard/week/:w  — return top 20 for a given ISO week (YYYY-Www)
  *   GET  /api/season               — return current season config (or { active: false })
+ *   POST /api/admin/season/featured-biome — set/clear featuredBiomeId on season:current (requires ADMIN_SECRET)
  *   GET  /api/leaderboard/season   — return top 20 for the current season
  *   GET  /api/season/archive/:id   — return permanently archived end-of-season results
  *   GET  /api/badges/:displayName  — return all season badges earned by a player
@@ -94,6 +95,8 @@
  *   biomes:registry:v1               → JSON array of all biome configs (seeded on first access)
  *   expedition:player:{userId}:{seasonId} → expedition map for a player in a given season
  *   expedition:archive:{userId}:{seasonId} → archived map at season end (no TTL)
+ *   guild:expedition:daily:{guildId}:{biomeId}:{date} → { sessionId, startedBy, startedAt } — rate limit (TTL 25h)
+ *   guild:expedition:history:{guildId}    → JSON array of up to 50 expedition results (newest first)
  *
  * Biome Routes:
  *   GET  /api/biomes                  — return all active biomes
@@ -102,6 +105,27 @@
  *   GET  /api/expedition/map          — get player map (?userId=X&seasonId=Y)
  *   POST /api/expedition/map          — generate map if missing { userId, seasonId }
  *   POST /api/expedition/score        — record biome node score { userId, seasonId, nodeId, score }
+ *
+ * Guild Expedition Routes:
+ *   POST /api/guild-expedition/start  — Officer+ starts a guild expedition { guildId, userId, biomeId }
+ *   GET  /api/guild-expedition/:sessionId — REST snapshot of expedition session state
+ *   GET  /guild-expedition/:sessionId/ws?userId=X — WebSocket upgrade (join/reconnect)
+ *   GET  /api/guilds/:guildId/expedition-history  — last 7 days of expedition results
+ *
+ * Expedition Biome Weekly Leaderboard Routes:
+ *   POST /api/scores/expedition/weekly
+ *     — submit biome weekly score { displayName, score, linesCleared, biomeId, week }
+ *     — allows best-score updates; tie-break by earliest submittedAt
+ *     — returns { ok, rank, total, improved, weeklyTitle } (weeklyTitle set for top 10)
+ *   GET  /api/leaderboard/expedition/weekly/:biomeId/:weekStr
+ *     — return top 100 for a biome/week; ?displayName=X for own-rank lookup
+ *     — returns { biomeId, week, entries, total, ownEntry }
+ *
+ * Additional KV keys:
+ *   leaderboard:expedition:week:{biomeId}:{weekStr}
+ *     → JSON array of up to 200 entries, sorted desc score, tie-break asc submittedAt
+ *   player:expedition:week:{name}:{biomeId}:{weekStr}
+ *     → JSON { submittedAt, score } — best score per player/biome/week
  */
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -540,6 +564,56 @@ async function handleGetSeason(env) {
     ended:    ended    || undefined,
     upcoming: upcoming || undefined,
     ...config,
+  });
+}
+
+// ── Admin: Set Featured Biome ─────────────────────────────────────────────────
+
+/**
+ * POST /api/admin/season/featured-biome
+ * Sets or clears the featuredBiomeId on the current season config.
+ * Body: { featuredBiomeId: string|null, adminSecret: string }
+ *
+ * Valid biome IDs: stone, forest, nether, ice.
+ * Pass featuredBiomeId: null to clear the featured biome.
+ * Requires ADMIN_SECRET env var to match.
+ */
+const VALID_BIOME_IDS = new Set(['stone', 'forest', 'nether', 'ice']);
+
+async function handleAdminSetFeaturedBiome(request, env) {
+  let body;
+  try { body = await request.json(); } catch { return jsonResponse({ error: 'Invalid JSON' }, 400); }
+
+  // Validate admin secret
+  const { featuredBiomeId, adminSecret } = body;
+  const expectedSecret = env.ADMIN_SECRET;
+  if (!expectedSecret || adminSecret !== expectedSecret) {
+    return jsonResponse({ error: 'Unauthorized' }, 401);
+  }
+
+  // Validate biomeId (null clears it)
+  if (featuredBiomeId !== null && featuredBiomeId !== undefined && !VALID_BIOME_IDS.has(featuredBiomeId)) {
+    return jsonResponse({ error: 'Invalid featuredBiomeId — must be one of: stone, forest, nether, ice (or null to clear)' }, 400);
+  }
+
+  const config = await env.LEADERBOARD_KV.get('season:current', { type: 'json' });
+  if (!config) {
+    return jsonResponse({ error: 'No active season config found' }, 404);
+  }
+
+  // Update or clear the featured biome field
+  if (featuredBiomeId) {
+    config.featuredBiomeId = featuredBiomeId;
+  } else {
+    delete config.featuredBiomeId;
+  }
+
+  await env.LEADERBOARD_KV.put('season:current', JSON.stringify(config));
+
+  return jsonResponse({
+    ok: true,
+    seasonId:       config.seasonId,
+    featuredBiomeId: config.featuredBiomeId || null,
   });
 }
 
@@ -1438,6 +1512,371 @@ async function handleRoomWs(request, code, env) {
   const id = env.COOP_ROOMS.idFromName(code);
   const stub = env.COOP_ROOMS.get(id);
   return stub.fetch(request);
+}
+
+// ── Guild Expedition Object (Durable Object) ─────────────────────────────────
+//
+// Manages a co-op guild expedition session:
+//   - Up to 5 guild members join within a 60s lobby window
+//   - Each plays independently on the same biome
+//   - Scores aggregate in real-time; collective target = 50,000 × participant count
+//   - On completion: distributes success/failure result to all participants
+//
+// WebSocket: /guild-expedition/:sessionId/ws?userId=X
+// HTTP:      POST /guild-expedition/:sessionId/init   { sessionId, guildId, biomeId, startedBy, lobbyDeadline }
+//            GET  /guild-expedition/:sessionId/state
+
+export class GuildExpeditionObject {
+  constructor(state, env) {
+    this.state    = state;
+    this.env      = env;
+    this.connections  = new Map(); // userId -> WebSocket
+    this.players      = new Map(); // userId -> { score, linesCleared, status }
+    this.phase        = 'lobby';   // 'lobby' | 'in_game' | 'completed'
+    this.sessionId    = null;
+    this.guildId      = null;
+    this.biomeId      = null;
+    this.startedBy    = null;
+    this.lobbyDeadline = null;
+  }
+
+  _broadcastAll(msg) {
+    const str = JSON.stringify(msg);
+    for (const ws of this.connections.values()) {
+      if (ws.readyState === 1) ws.send(str);
+    }
+  }
+
+  _broadcast(msg, excludeUserId) {
+    const str = JSON.stringify(msg);
+    for (const [uid, ws] of this.connections.entries()) {
+      if (uid !== excludeUserId && ws.readyState === 1) ws.send(str);
+    }
+  }
+
+  _collectiveScore() {
+    let total = 0;
+    for (const p of this.players.values()) total += p.score;
+    return total;
+  }
+
+  _target() {
+    return 50000 * this.players.size;
+  }
+
+  _sendLobbyUpdate() {
+    const players = [];
+    for (const [uid, p] of this.players.entries()) {
+      players.push({ userId: uid, status: p.status, score: p.score });
+    }
+    this._broadcastAll({
+      type: 'lobby_update', players, phase: this.phase,
+      biomeId: this.biomeId, lobbyDeadline: this.lobbyDeadline, maxPlayers: 5,
+    });
+  }
+
+  _startGame() {
+    if (this.phase !== 'lobby') return;
+    this.phase = 'in_game';
+    for (const p of this.players.values()) p.status = 'playing';
+    this._broadcastAll({
+      type: 'game_start', biomeId: this.biomeId,
+      playerCount: this.players.size, collectiveTarget: this._target(),
+    });
+  }
+
+  async _finalize() {
+    if (this.phase === 'completed') return;
+    this.phase = 'completed';
+    const totalScore = this._collectiveScore();
+    const target     = this._target();
+    const success    = totalScore >= target;
+    const playerSummaries = [];
+    for (const [uid, p] of this.players.entries()) {
+      playerSummaries.push({ userId: uid, score: p.score, linesCleared: p.linesCleared, status: p.status });
+    }
+    if (this.env && this.env.GUILDS_KV && this.guildId) {
+      const histKey = `guild:expedition:history:${this.guildId}`;
+      let history = [];
+      try {
+        const raw = await this.env.GUILDS_KV.get(histKey, 'json');
+        history = Array.isArray(raw) ? raw : [];
+      } catch (_) {}
+      history.unshift({
+        sessionId: this.sessionId, biomeId: this.biomeId,
+        completedAt: new Date().toISOString(), success,
+        collectiveScore: totalScore, collectiveTarget: target, players: playerSummaries,
+      });
+      if (history.length > 50) history = history.slice(0, 50);
+      await this.env.GUILDS_KV.put(histKey, JSON.stringify(history)).catch(() => {});
+    }
+    this._broadcastAll({
+      type: 'expedition_complete', success,
+      collectiveScore: totalScore, collectiveTarget: target, players: playerSummaries,
+    });
+  }
+
+  _checkAllDone() {
+    for (const p of this.players.values()) {
+      if (p.status === 'playing') return false;
+    }
+    return true;
+  }
+
+  async fetch(request) {
+    const url = new URL(request.url);
+
+    if (request.method === 'POST' && url.pathname.endsWith('/init')) {
+      const body = await request.json().catch(() => ({}));
+      this.sessionId     = body.sessionId     || null;
+      this.guildId       = body.guildId       || null;
+      this.biomeId       = body.biomeId       || null;
+      this.startedBy     = body.startedBy     || null;
+      this.lobbyDeadline = body.lobbyDeadline ? Number(body.lobbyDeadline) : null;
+      if (this.lobbyDeadline) {
+        await this.state.storage.setAlarm(this.lobbyDeadline);
+      }
+      return new Response(JSON.stringify({ ok: true }), {
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (request.method === 'GET' && url.pathname.endsWith('/state')) {
+      const players = [];
+      for (const [uid, p] of this.players.entries()) {
+        players.push({ userId: uid, status: p.status, score: p.score, linesCleared: p.linesCleared });
+      }
+      return new Response(JSON.stringify({
+        sessionId: this.sessionId, guildId: this.guildId, biomeId: this.biomeId,
+        phase: this.phase, players, collectiveScore: this._collectiveScore(),
+        collectiveTarget: this._target(), lobbyDeadline: this.lobbyDeadline,
+      }), { headers: { 'Content-Type': 'application/json' } });
+    }
+
+    // WebSocket upgrade
+    const upgradeHeader = request.headers.get('Upgrade');
+    if (!upgradeHeader || upgradeHeader.toLowerCase() !== 'websocket') {
+      return new Response('Expected WebSocket upgrade', { status: 426 });
+    }
+    const userId = url.searchParams.get('userId');
+    if (!userId) return new Response('Missing userId', { status: 400 });
+    if (!this.players.has(userId) && this.players.size >= 5) {
+      return new Response('Expedition full', { status: 409 });
+    }
+    if (this.phase === 'completed') {
+      return new Response('Expedition already completed', { status: 410 });
+    }
+    if (this.phase === 'in_game' && !this.players.has(userId)) {
+      return new Response('Expedition already started', { status: 409 });
+    }
+
+    const pair = new WebSocketPair();
+    const [client, server] = Object.values(pair);
+    server.accept();
+
+    if (!this.players.has(userId)) {
+      this.players.set(userId, { score: 0, linesCleared: 0, status: 'lobby' });
+    }
+    const oldWs = this.connections.get(userId);
+    if (oldWs) { try { oldWs.close(1001, 'Reconnected'); } catch (_) {} }
+    this.connections.set(userId, server);
+
+    // Send current state to the new joiner
+    const playerList = [];
+    for (const [uid, p] of this.players.entries()) {
+      playerList.push({ userId: uid, status: p.status, score: p.score });
+    }
+    server.send(JSON.stringify({
+      type: 'session_joined', sessionId: this.sessionId, biomeId: this.biomeId,
+      phase: this.phase, players: playerList,
+      collectiveScore: this._collectiveScore(), collectiveTarget: this._target(),
+      lobbyDeadline: this.lobbyDeadline,
+    }));
+
+    this._broadcast({ type: 'player_joined', userId }, userId);
+
+    if (this.phase === 'lobby' && this.players.size >= 5) {
+      this._startGame();
+    } else {
+      this._sendLobbyUpdate();
+    }
+
+    server.addEventListener('message', async (event) => {
+      let msg;
+      try { msg = JSON.parse(event.data); } catch (_) { return; }
+
+      if (msg.type === 'ping') {
+        server.send(JSON.stringify({ type: 'pong' }));
+        return;
+      }
+
+      if (msg.type === 'score_update' && this.phase === 'in_game') {
+        const p = this.players.get(userId);
+        if (p && p.status === 'playing') {
+          if (typeof msg.score === 'number') p.score = msg.score;
+          if (typeof msg.linesCleared === 'number') p.linesCleared = msg.linesCleared;
+        }
+        const scoreMap = {};
+        for (const [uid, pp] of this.players.entries()) scoreMap[uid] = pp.score;
+        this._broadcastAll({
+          type: 'collective_score',
+          collectiveScore: this._collectiveScore(),
+          collectiveTarget: this._target(),
+          playerScores: scoreMap,
+        });
+        return;
+      }
+
+      if (msg.type === 'run_complete' && this.phase === 'in_game') {
+        const p = this.players.get(userId);
+        if (p && (p.status === 'playing' || p.status === 'lobby')) {
+          if (typeof msg.score === 'number') p.score = msg.score;
+          if (typeof msg.linesCleared === 'number') p.linesCleared = msg.linesCleared;
+          p.status = 'done';
+        }
+        this._broadcast({ type: 'player_done', userId, score: p ? p.score : 0 }, userId);
+        if (this._checkAllDone()) await this._finalize();
+        return;
+      }
+    });
+
+    server.addEventListener('close', async () => {
+      this.connections.delete(userId);
+      const p = this.players.get(userId);
+      if (!p) return;
+      if (this.phase === 'lobby') {
+        this.players.delete(userId);
+        this._broadcast({ type: 'player_left', userId });
+        this._sendLobbyUpdate();
+      } else if (this.phase === 'in_game' && p.status === 'playing') {
+        p.status = 'dropped';
+        this._broadcast({ type: 'player_dropped', userId, score: p.score });
+        if (this._checkAllDone()) await this._finalize();
+      }
+    });
+
+    server.addEventListener('error', () => { this.connections.delete(userId); });
+
+    return new Response(null, { status: 101, webSocket: client });
+  }
+
+  async alarm() {
+    if (this.phase !== 'lobby') return;
+    if (this.players.size >= 2) {
+      this._startGame();
+    } else {
+      this.phase = 'completed';
+      this._broadcastAll({ type: 'expedition_cancelled', reason: 'not_enough_players' });
+      if (this.env && this.env.GUILDS_KV && this.guildId && this.biomeId) {
+        const date = new Date().toISOString().slice(0, 10);
+        await this.env.GUILDS_KV.delete(
+          `guild:expedition:daily:${this.guildId}:${this.biomeId}:${date}`
+        ).catch(() => {});
+      }
+    }
+  }
+}
+
+// ── Guild Expedition REST Handlers ────────────────────────────────────────────
+
+function _expeditionWsUrl(requestUrl, sessionId) {
+  const u = new URL(requestUrl);
+  const proto = u.protocol === 'https:' ? 'wss:' : 'ws:';
+  return `${proto}//${u.host}/guild-expedition/${sessionId}/ws`;
+}
+
+/**
+ * POST /api/guild-expedition/start
+ * Body: { guildId, userId, biomeId }
+ * Officer+ starts a guild expedition (once per day per biome per guild).
+ */
+async function handleGuildExpeditionStart(request, env) {
+  let body;
+  try { body = await request.json(); } catch (_) { return jsonResponse({ error: 'Invalid JSON' }, 400); }
+  const { guildId, userId, biomeId } = body;
+  if (!guildId || !userId || !biomeId) {
+    return jsonResponse({ error: 'guildId, userId, and biomeId are required' }, 400);
+  }
+  const validBiomes = ['stone', 'forest', 'nether', 'ice'];
+  if (!validBiomes.includes(biomeId)) {
+    return jsonResponse({ error: 'Invalid biome. Must be stone, forest, nether, or ice' }, 400);
+  }
+
+  const guildStub = env.GUILD_OBJECTS.get(env.GUILD_OBJECTS.idFromName(guildId));
+  const guildRes  = await guildStub.fetch('http://internal/', { method: 'GET' });
+  if (!guildRes.ok) return jsonResponse({ error: 'Guild not found' }, 404);
+  const guildData = await guildRes.json();
+  const members   = guildData.members || [];
+  const me        = members.find(m => m.userId === userId);
+  if (!me) return jsonResponse({ error: 'You are not a member of this guild' }, 403);
+  if (me.role === 'member') {
+    return jsonResponse({ error: 'Officer or Owner rank required to start a guild expedition' }, 403);
+  }
+
+  const date         = new Date().toISOString().slice(0, 10);
+  const rateLimitKey = `guild:expedition:daily:${guildId}:${biomeId}:${date}`;
+  const existing     = await env.GUILDS_KV.get(rateLimitKey, 'json').catch(() => null);
+  if (existing) {
+    return jsonResponse({
+      error: 'A guild expedition for this biome was already started today',
+      sessionId: existing.sessionId,
+      wsUrl: _expeditionWsUrl(request.url, existing.sessionId),
+    }, 409);
+  }
+
+  const sessionId     = crypto.randomUUID();
+  const lobbyDeadline = Date.now() + 60000;
+
+  const expStub = env.GUILD_EXPEDITION_OBJECTS.get(
+    env.GUILD_EXPEDITION_OBJECTS.idFromName(sessionId)
+  );
+  await expStub.fetch(new Request(
+    `https://internal/guild-expedition/${sessionId}/init`,
+    {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ sessionId, guildId, biomeId, startedBy: userId, lobbyDeadline }),
+    }
+  ));
+
+  await env.GUILDS_KV.put(rateLimitKey, JSON.stringify({
+    sessionId, startedBy: userId, startedAt: new Date().toISOString(),
+  }), { expirationTtl: 90000 });
+
+  return jsonResponse({
+    ok: true, sessionId, wsUrl: _expeditionWsUrl(request.url, sessionId),
+    biomeId, lobbyDeadline,
+  }, 201);
+}
+
+/**
+ * GET /api/guild-expedition/:sessionId
+ * REST snapshot of expedition session state.
+ */
+async function handleGetGuildExpeditionSession(sessionId, env) {
+  if (!sessionId) return jsonResponse({ error: 'Missing sessionId' }, 400);
+  const expStub = env.GUILD_EXPEDITION_OBJECTS.get(
+    env.GUILD_EXPEDITION_OBJECTS.idFromName(sessionId)
+  );
+  const res  = await expStub.fetch(
+    new Request(`https://internal/guild-expedition/${sessionId}/state`, { method: 'GET' })
+  );
+  const data = await res.json().catch(() => ({}));
+  return jsonResponse(data, res.ok ? 200 : 500);
+}
+
+/**
+ * GET /api/guilds/:guildId/expedition-history
+ * Last 7 days of guild expedition results.
+ */
+async function handleGetGuildExpeditionHistory(guildId, env) {
+  const histKey  = `guild:expedition:history:${guildId}`;
+  const history  = await env.GUILDS_KV.get(histKey, 'json').catch(() => null);
+  const cutoff   = Date.now() - 7 * 24 * 60 * 60 * 1000;
+  const filtered = Array.isArray(history)
+    ? history.filter(r => r.completedAt && new Date(r.completedAt).getTime() >= cutoff)
+    : [];
+  return jsonResponse({ guildId, history: filtered });
 }
 
 // ── Battle Room Relay (Durable Object) ───────────────────────────────────────
@@ -5777,6 +6216,148 @@ async function handlePostExpeditionScore(request, env) {
   return jsonResponse({ map });
 }
 
+// ── Expedition Biome Weekly Leaderboard ───────────────────────────────────────
+//
+// KV keys:
+//   leaderboard:expedition:week:{biomeId}:{weekStr}
+//     → JSON array of up to 200 entries, sorted by score desc, tie-break submittedAt asc
+//   player:expedition:week:{name}:{biomeId}:{weekStr}
+//     → JSON { submittedAt, score } — best score tracking per player/biome/week
+
+const EXPEDITION_BIOME_IDS = ['stone', 'forest', 'nether', 'ice'];
+const EXPEDITION_WEEKLY_TOP10_TITLES = {
+  stone:  'Stone Champion',
+  forest: 'Forest Champion',
+  nether: 'Nether Champion',
+  ice:    'Ice Champion',
+};
+// Store up to 200 so out-of-top-100 players still have a rank
+const EXPEDITION_WEEKLY_MAX = 200;
+const EXPEDITION_WEEKLY_RETURN_MAX = 100;
+// TTL: keep for 5 weeks (current + 4 browsable history)
+const EXPEDITION_WEEKLY_TTL = 60 * 60 * 24 * 7 * 5;
+
+async function handlePostExpeditionWeeklyScore(request, env) {
+  let body;
+  try { body = await request.json(); } catch { return jsonResponse({ error: 'Invalid JSON' }, 400); }
+
+  const { displayName, score, linesCleared, biomeId, week } = body;
+
+  if (!displayName || !DISPLAY_NAME_REGEX.test(displayName)) {
+    return jsonResponse({ error: 'Invalid display name' }, 400);
+  }
+  if (!biomeId || !EXPEDITION_BIOME_IDS.includes(biomeId)) {
+    return jsonResponse({ error: 'Invalid biomeId' }, 400);
+  }
+  if (!week || !isValidWeek(week) || week !== currentISOWeek()) {
+    return jsonResponse({ error: 'Invalid or stale week' }, 400);
+  }
+
+  const scoreNum = parseInt(score, 10);
+  const linesNum = parseInt(linesCleared, 10);
+  if (!Number.isInteger(scoreNum) || scoreNum < 0 ||
+      !Number.isInteger(linesNum)  || linesNum < 0) {
+    return jsonResponse({ error: 'Invalid score or linesCleared' }, 400);
+  }
+  if (scoreNum / (linesNum + 1) > MAX_SCORE_PER_LINE) {
+    return jsonResponse({ error: 'Score fails plausibility check' }, 400);
+  }
+
+  const nameLower   = displayName.toLowerCase();
+  const playerKey   = `player:expedition:week:${nameLower}:${biomeId}:${week}`;
+  const existingPrev = await env.LEADERBOARD_KV.get(playerKey, { type: 'json' });
+
+  // Allow updates only if new score is strictly better
+  if (existingPrev && existingPrev.score >= scoreNum) {
+    // Return current rank without updating
+    const lbKey = `leaderboard:expedition:week:${biomeId}:${week}`;
+    const leaderboard = (await env.LEADERBOARD_KV.get(lbKey, { type: 'json' })) || [];
+    const idx = leaderboard.findIndex(e => e.displayName.toLowerCase() === nameLower);
+    const rank = idx >= 0 ? idx + 1 : null;
+    return jsonResponse({ ok: true, rank, total: leaderboard.length, improved: false });
+  }
+
+  const submittedAt = new Date().toISOString();
+  const lbKey = `leaderboard:expedition:week:${biomeId}:${week}`;
+  let leaderboard = (await env.LEADERBOARD_KV.get(lbKey, { type: 'json' })) || [];
+
+  // Remove existing entry for this player (will re-insert with new score)
+  if (existingPrev) {
+    leaderboard = leaderboard.filter(e => e.displayName.toLowerCase() !== nameLower);
+  }
+
+  const entry = { displayName, score: scoreNum, linesCleared: linesNum, biomeId, week, submittedAt };
+  leaderboard.push(entry);
+
+  // Sort: desc score, tie-break asc submittedAt (first to achieve wins)
+  leaderboard.sort((a, b) => {
+    if (b.score !== a.score) return b.score - a.score;
+    return a.submittedAt.localeCompare(b.submittedAt);
+  });
+  if (leaderboard.length > EXPEDITION_WEEKLY_MAX) {
+    leaderboard = leaderboard.slice(0, EXPEDITION_WEEKLY_MAX);
+  }
+
+  const rank = leaderboard.findIndex(
+    e => e.displayName.toLowerCase() === nameLower
+  ) + 1;
+
+  await Promise.all([
+    env.LEADERBOARD_KV.put(lbKey, JSON.stringify(leaderboard), { expirationTtl: EXPEDITION_WEEKLY_TTL }),
+    env.LEADERBOARD_KV.put(playerKey, JSON.stringify({ submittedAt, score: scoreNum }), { expirationTtl: EXPEDITION_WEEKLY_TTL }),
+  ]);
+
+  const weeklyTitle = (rank > 0 && rank <= 10)
+    ? (EXPEDITION_WEEKLY_TOP10_TITLES[biomeId] || null)
+    : null;
+
+  return jsonResponse({ ok: true, rank, total: leaderboard.length, improved: true, weeklyTitle });
+}
+
+async function handleGetExpeditionWeeklyLeaderboard(biomeId, weekStr, request, env) {
+  if (!biomeId || !EXPEDITION_BIOME_IDS.includes(biomeId)) {
+    return jsonResponse({ error: 'Invalid biomeId' }, 400);
+  }
+  if (!weekStr || !isValidWeek(weekStr)) {
+    return jsonResponse({ error: 'Invalid week format. Use YYYY-Www.' }, 400);
+  }
+
+  const displayName = new URL(request.url).searchParams.get('displayName') || '';
+
+  const lbKey = `leaderboard:expedition:week:${biomeId}:${weekStr}`;
+  const leaderboard = (await env.LEADERBOARD_KV.get(lbKey, { type: 'json' })) || [];
+
+  const top100 = leaderboard.slice(0, EXPEDITION_WEEKLY_RETURN_MAX).map((e, i) => ({
+    rank: i + 1,
+    displayName: e.displayName,
+    score: e.score,
+    linesCleared: e.linesCleared,
+  }));
+
+  // Own rank: search full stored list
+  let ownEntry = null;
+  if (displayName) {
+    const nameLower = displayName.toLowerCase();
+    const idx = leaderboard.findIndex(e => e.displayName.toLowerCase() === nameLower);
+    if (idx >= 0) {
+      ownEntry = {
+        rank: idx + 1,
+        displayName: leaderboard[idx].displayName,
+        score: leaderboard[idx].score,
+        linesCleared: leaderboard[idx].linesCleared,
+      };
+    }
+  }
+
+  return jsonResponse({
+    biomeId,
+    week: weekStr,
+    entries: top100,
+    total: leaderboard.length,
+    ownEntry,
+  });
+}
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
@@ -5851,6 +6432,12 @@ export default {
       response = await handlePostExpeditionMap(request, env);
     } else if (method === 'POST' && url.pathname === '/api/expedition/score') {
       response = await handlePostExpeditionScore(request, env);
+    } else if (method === 'POST' && url.pathname === '/api/scores/expedition/weekly') {
+      response = await handlePostExpeditionWeeklyScore(request, env);
+    } else if (method === 'GET' && /^\/api\/leaderboard\/expedition\/weekly\/[^/]+\/[^/]+$/.test(url.pathname)) {
+      const parts = url.pathname.split('/');
+      // /api/leaderboard/expedition/weekly/{biomeId}/{weekStr}
+      response = await handleGetExpeditionWeeklyLeaderboard(parts[5], parts[6], request, env);
     } else if (method === 'GET' && url.pathname === '/api/missions') {
       response = handleGetMissions(todayUTC());
     } else if (method === 'GET' && url.pathname.startsWith('/api/missions/')) {
@@ -5864,6 +6451,8 @@ export default {
       response = await handlePostBattleRating(request, env);
     } else if (method === 'GET' && url.pathname === '/api/battle/ratings') {
       response = await handleGetBattleLeaderboard(env);
+    } else if (method === 'POST' && url.pathname === '/api/admin/season/featured-biome') {
+      response = await handleAdminSetFeaturedBiome(request, env);
     } else if (method === 'GET' && url.pathname === '/api/season') {
       response = await handleGetSeason(env);
     } else if (method === 'GET' && url.pathname === '/api/season/ratings') {
@@ -5895,6 +6484,23 @@ export default {
     } else if (method === 'GET' && url.pathname.startsWith('/api/leaderboard/')) {
       const date = url.pathname.replace('/api/leaderboard/', '');
       response = await handleGetLeaderboard(date, env);
+    // ── Guild Expedition routes ──────────────────────────────────────────────
+    } else if (method === 'POST' && url.pathname === '/api/guild-expedition/start') {
+      response = await handleGuildExpeditionStart(request, env);
+    } else if (method === 'GET' && /^\/api\/guild-expedition\/[^/]+$/.test(url.pathname)) {
+      const sessionId = url.pathname.split('/').pop();
+      response = await handleGetGuildExpeditionSession(sessionId, env);
+    } else if (/^\/guild-expedition\/[^/]+\/ws$/.test(url.pathname)) {
+      // WebSocket upgrade for expedition — bypass CORS header merging
+      const sessionId = url.pathname.split('/')[2];
+      const expStub   = env.GUILD_EXPEDITION_OBJECTS.get(
+        env.GUILD_EXPEDITION_OBJECTS.idFromName(sessionId)
+      );
+      return expStub.fetch(request);
+    } else if (method === 'GET' && /^\/api\/guilds\/[^/]+\/expedition-history$/.test(url.pathname)) {
+      const guildId = url.pathname.split('/')[3];
+      response = await handleGetGuildExpeditionHistory(guildId, env);
+
     } else if (method === 'POST' && url.pathname === '/api/clan-wars') {
       response = await handlePostClanWarChallenge(request, env);
     } else if (method === 'GET' && /^\/api\/clan-wars\/[^/]+$/.test(url.pathname)) {

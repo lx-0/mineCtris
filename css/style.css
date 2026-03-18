@@ -10937,3 +10937,2029 @@ body.theme-diamond-season #score-display { border-color: #00e5ff; }
   text-align: center;
   padding: 40px 20px;
 }
+
+/* ── Biome expedition HUD accents ─────────────────────────────────────────── */
+/* Stone biome: grey cave */
+body.biome-stone #score-display,
+body.biome-stone #next-pieces-display {
+  border-color: #666666;
+  color: #cccccc;
+}
+body.biome-stone #inventory-hud { border-color: #444; }
+
+/* Forest biome: earthy green */
+body.biome-forest #score-display,
+body.biome-forest #next-pieces-display {
+  border-color: #2d6b22;
+  color: #7dda6e;
+}
+body.biome-forest #inventory-hud { border-color: #2d6b22; }
+
+/* Nether biome: fiery red */
+body.biome-nether #score-display,
+body.biome-nether #next-pieces-display {
+  border-color: #cc2200;
+  color: #ff6644;
+}
+body.biome-nether #inventory-hud { border-color: #cc2200; }
+
+/* Ice biome: frosty blue */
+body.biome-ice #score-display,
+body.biome-ice #next-pieces-display {
+  border-color: #4499dd;
+  color: #aaddff;
+}
+body.biome-ice #inventory-hud { border-color: #4499dd; }
+
+/* Biome banner shown at game start (injected by biome-themes.js) */
+#biome-entry-banner {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(0, 0, 0, 0.75);
+  border: 2px solid #fff;
+  border-radius: 8px;
+  padding: 16px 32px;
+  text-align: center;
+  pointer-events: none;
+  z-index: 1000;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+#biome-entry-banner.visible { opacity: 1; }
+#biome-entry-banner .biome-banner-icon { font-size: 32px; display: block; margin-bottom: 8px; }
+#biome-entry-banner .biome-banner-name { font-size: 14px; letter-spacing: 1px; }
+
+/* ── Expedition Lore Intro overlay ──────────────────────────────────────────── */
+
+#expedition-lore-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10001; /* above biome-transition-overlay (9999) */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.88);
+  backdrop-filter: blur(6px);
+}
+
+#expedition-lore-panel {
+  background: #0f172a;
+  border: 1px solid #1e3a5f;
+  border-radius: 14px;
+  box-shadow: 0 0 48px #0ea5e944, 0 12px 40px #000c;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  width: min(520px, 94vw);
+  padding: 32px 36px 28px;
+  color: #e2e8f0;
+  font-family: 'Segoe UI', monospace, sans-serif;
+  text-align: center;
+}
+
+#exp-lore-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+#exp-lore-biome-icon {
+  font-size: 40px;
+  line-height: 1;
+}
+
+#exp-lore-biome-name {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  color: #7dd3fc;
+  text-shadow: 0 0 12px #38bdf880;
+}
+
+#exp-lore-body {
+  font-size: 13px;
+  line-height: 1.7;
+  color: #94a3b8;
+  max-width: 420px;
+}
+
+#exp-lore-body p {
+  margin: 0 0 6px;
+}
+
+#exp-lore-body p:last-child {
+  margin-bottom: 0;
+}
+
+#exp-lore-progress {
+  width: 100%;
+  height: 3px;
+  background: #1e3a5f;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+#exp-lore-progress-fill {
+  height: 100%;
+  width: 0%;
+  background: #7dd3fc;
+  border-radius: 2px;
+}
+
+#exp-lore-begin-btn {
+  padding: 10px 28px;
+  background: #1e3a5f;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  color: #94a3b8;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  letter-spacing: 0.5px;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+#exp-lore-begin-btn:hover {
+  background: #0369a1;
+  border-color: #0ea5e9;
+  color: #fff;
+}
+
+#exp-lore-begin-btn.exp-lore-ready {
+  background: #0369a1;
+  border-color: #38bdf8;
+  color: #fff;
+  animation: exp-lore-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes exp-lore-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 #38bdf840; }
+  50%       { box-shadow: 0 0 0 8px #38bdf800; }
+}
+
+/* ── Expedition Results overlay ──────────────────────────────────────────────── */
+
+#expedition-results-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1300;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(5px);
+}
+
+#expedition-results-panel {
+  background: #0f172a;
+  border: 1px solid #1e3a5f;
+  border-radius: 14px;
+  box-shadow: 0 0 48px #0ea5e944, 0 12px 40px #000c;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  width: min(480px, 94vw);
+  padding: 28px 32px 24px;
+  color: #e2e8f0;
+  font-family: 'Segoe UI', monospace, sans-serif;
+  text-align: center;
+}
+
+#exp-results-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+#exp-results-biome-icon {
+  font-size: 36px;
+  line-height: 1;
+}
+
+#exp-results-title {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  color: #4ade80;
+  text-shadow: 0 0 12px #4ade8066;
+}
+
+#exp-results-biome-name {
+  font-size: 12px;
+  letter-spacing: 2px;
+  color: #64748b;
+  margin-top: 2px;
+}
+
+#exp-results-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  width: 100%;
+}
+
+.exp-res-stat {
+  background: #0a1628;
+  border: 1px solid #1e3a5f;
+  border-radius: 8px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.exp-res-label {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: #475569;
+  text-transform: uppercase;
+}
+
+.exp-res-val {
+  font-size: 22px;
+  font-weight: 700;
+  color: #e2e8f0;
+  line-height: 1;
+}
+
+/* Reward track */
+#exp-results-track {
+  width: 100%;
+  background: #0a1628;
+  border: 1px solid #1e3a5f;
+  border-radius: 10px;
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.exp-res-track-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.exp-res-tier-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: #7dd3fc;
+  letter-spacing: 0.5px;
+}
+
+.exp-res-xp-delta {
+  font-size: 12px;
+  color: #4ade80;
+  font-weight: 600;
+}
+
+.exp-res-tier-up {
+  font-size: 12px;
+  color: #facc15;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+}
+
+.exp-res-track-bar-wrap {
+  height: 8px;
+  background: #1e3a5f;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.exp-res-track-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #0ea5e9, #38bdf8);
+  border-radius: 4px;
+  transition: width 0.6s ease;
+}
+
+.exp-res-track-next {
+  font-size: 10px;
+  color: #475569;
+}
+
+.exp-res-track-max {
+  color: #facc15;
+}
+
+/* Action buttons */
+#exp-results-actions {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+}
+
+#exp-results-play-again-btn {
+  flex: 1;
+  padding: 11px 16px;
+  background: #0369a1;
+  border: none;
+  border-radius: 8px;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  letter-spacing: 0.3px;
+  transition: background 0.15s;
+}
+
+#exp-results-play-again-btn:hover { background: #0284c7; }
+
+#exp-results-map-btn {
+  flex: 1;
+  padding: 11px 16px;
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  color: #94a3b8;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  letter-spacing: 0.3px;
+  transition: background 0.15s, color 0.15s;
+}
+
+#exp-results-map-btn:hover {
+  background: #334155;
+  color: #e2e8f0;
+}
+
+/* ── Story fragment card (expedition results) ────────────────────────────── */
+
+#exp-results-fragment {
+  width: 100%;
+  background: #0a1628;
+  border-radius: 10px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  animation: fragmentReveal 0.5s ease forwards;
+}
+
+#exp-results-fragment.fragment-common   { border: 1px solid #475569; }
+#exp-results-fragment.fragment-rare     { border: 1px solid #7c3aed; box-shadow: 0 0 16px #7c3aed33; }
+#exp-results-fragment.fragment-legendary {
+  border: 1px solid #ca8a04;
+  box-shadow: 0 0 24px #ca8a0455, 0 0 8px #fbbf2422;
+}
+
+@keyframes fragmentReveal {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.exp-frag-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.exp-frag-label {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  color: #4ade80;
+  text-transform: uppercase;
+}
+
+.exp-frag-rarity {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  padding: 2px 7px;
+  border-radius: 99px;
+}
+
+.exp-frag-rarity-common    { background: #1e293b; color: #94a3b8; }
+.exp-frag-rarity-rare      { background: #2e1065; color: #a78bfa; }
+.exp-frag-rarity-legendary { background: #422006; color: #fbbf24; }
+
+.exp-frag-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #e2e8f0;
+  text-align: left;
+  letter-spacing: 0.3px;
+}
+
+.exp-frag-lore {
+  font-size: 11px;
+  color: #94a3b8;
+  line-height: 1.6;
+  text-align: left;
+  font-style: italic;
+}
+
+.exp-frag-progress {
+  font-size: 9px;
+  color: #475569;
+  letter-spacing: 0.5px;
+  text-align: right;
+}
+
+/* Reward track in biome detail card (expedition map info panel) */
+.exp-info-lore-teaser {
+  font-size: 11px;
+  color: #64748b;
+  font-style: italic;
+  line-height: 1.5;
+  text-align: center;
+  padding: 0 4px;
+}
+
+.exp-info-track {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 0 2px;
+}
+
+.exp-info-track-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.exp-info-tier-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #7dd3fc;
+}
+
+.exp-info-tier-xp {
+  font-size: 10px;
+  color: #475569;
+}
+
+.exp-info-track-bar-wrap {
+  height: 5px;
+  background: #1e3a5f;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.exp-info-track-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #0ea5e9, #38bdf8);
+  border-radius: 3px;
+}
+
+/* ── Expedition Map footer button group ────────────────────────────────────── */
+
+.exp-footer-btns {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+#expedition-codex-open-btn {
+  padding: 6px 14px;
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 6px;
+  color: #7dd3fc;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+#expedition-codex-open-btn:hover { background: #0f3460; color: #e2e8f0; }
+
+/* ── Expedition Codex overlay ──────────────────────────────────────────────── */
+
+#expedition-codex-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1300;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.88);
+  backdrop-filter: blur(4px);
+}
+
+#expedition-codex-panel {
+  background: #0f172a;
+  border: 1px solid #1e3a5f;
+  border-radius: 12px;
+  box-shadow: 0 0 40px #0ea5e944, 0 8px 32px #000c;
+  display: flex;
+  flex-direction: column;
+  width: min(780px, 96vw);
+  max-height: 92vh;
+  overflow: hidden;
+  color: #e2e8f0;
+  font-family: 'Segoe UI', monospace, sans-serif;
+  position: relative;
+}
+
+#expedition-codex-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 20px 10px;
+  border-bottom: 1px solid #1e3a5f;
+  background: #0a1628;
+  flex-shrink: 0;
+}
+
+#expedition-codex-icon {
+  font-size: 26px;
+}
+
+#expedition-codex-title {
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: #7dd3fc;
+  text-shadow: 0 0 10px #38bdf880;
+}
+
+#expedition-codex-subtitle {
+  font-size: 11px;
+  color: #64748b;
+  margin-top: 1px;
+}
+
+/* Tabs */
+#expedition-codex-tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid #1e3a5f;
+  background: #0a1628;
+  flex-shrink: 0;
+  overflow-x: auto;
+}
+
+.codex-tab {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 10px 18px;
+  background: none;
+  border: none;
+  border-bottom: 3px solid transparent;
+  color: #64748b;
+  cursor: pointer;
+  font-size: 11px;
+  font-family: inherit;
+  transition: color 0.15s, border-color 0.15s;
+  white-space: nowrap;
+  flex: 1;
+}
+
+.codex-tab:hover { color: #94a3b8; }
+
+.codex-tab-active {
+  color: #7dd3fc;
+  border-bottom-color: #0ea5e9;
+}
+
+.codex-tab-icon {
+  font-size: 18px;
+  line-height: 1;
+}
+
+.codex-tab-name {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+}
+
+.codex-tab-pct {
+  font-size: 9px;
+  color: #475569;
+}
+.codex-tab-active .codex-tab-pct { color: #4ade80; }
+
+.codex-tab-new-dot {
+  position: absolute;
+  top: 6px;
+  right: 10px;
+  width: 7px;
+  height: 7px;
+  background: #4ade80;
+  border-radius: 50%;
+  box-shadow: 0 0 6px #4ade8088;
+}
+
+/* Grid wrap (scrollable area) */
+#expedition-codex-grid-wrap {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 20px 20px;
+  min-height: 0;
+}
+
+/* Biome header (completion bar) */
+#expedition-codex-biome-header {
+  margin-bottom: 14px;
+}
+
+.codex-biome-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.codex-biome-icon { font-size: 18px; }
+
+.codex-biome-name {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: #e2e8f0;
+  flex: 1;
+}
+
+.codex-biome-pct {
+  font-size: 11px;
+  color: #4ade80;
+  font-weight: 700;
+}
+
+.codex-progress-bar-wrap {
+  height: 5px;
+  background: #1e3a5f;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.codex-progress-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #16a34a, #4ade80);
+  border-radius: 3px;
+  transition: width 0.4s ease;
+}
+
+/* Fragment grid */
+#expedition-codex-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 12px;
+}
+
+/* Fragment cards */
+.codex-card {
+  position: relative;
+  border-radius: 10px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 120px;
+  box-sizing: border-box;
+  transition: transform 0.12s, box-shadow 0.15s;
+}
+
+.codex-card-collected {
+  background: #0d1f3c;
+  cursor: pointer;
+}
+.codex-card-collected:hover {
+  transform: translateY(-2px);
+}
+
+/* Rarity borders */
+.codex-card-common    { border: 1px solid #334155; }
+.codex-card-rare      { border: 1px solid #7c3aed; box-shadow: 0 0 12px #7c3aed22; }
+.codex-card-legendary {
+  border: 1px solid #ca8a04;
+  box-shadow: 0 0 20px #ca8a0455, 0 0 8px #fbbf2422;
+  background: linear-gradient(135deg, #0d1f3c 60%, #1a1200 100%);
+}
+.codex-card-legendary:hover {
+  box-shadow: 0 0 28px #ca8a0477, 0 0 10px #fbbf2433;
+}
+
+/* Locked silhouette */
+.codex-card-locked {
+  background: #0d1b2a;
+  border: 1px solid #1e293b;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.5;
+  cursor: default;
+}
+
+.codex-locked-icon {
+  font-size: 22px;
+  color: #334155;
+}
+
+.codex-locked-label {
+  font-size: 11px;
+  color: #334155;
+  letter-spacing: 1px;
+}
+
+/* Card contents */
+.codex-card-rarity {
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  border-radius: 99px;
+  width: fit-content;
+}
+
+.codex-rarity-common    { background: #1e293b; color: #94a3b8; }
+.codex-rarity-rare      { background: #2e1065; color: #a78bfa; }
+.codex-rarity-legendary { background: #422006; color: #fbbf24; }
+
+.codex-card-legendary-star {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  font-size: 14px;
+  filter: drop-shadow(0 0 4px #fbbf24aa);
+}
+
+.codex-card-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: #e2e8f0;
+  line-height: 1.3;
+}
+
+.codex-card-lore-preview {
+  font-size: 10px;
+  color: #64748b;
+  line-height: 1.5;
+  font-style: italic;
+  flex: 1;
+}
+
+.codex-card-tap-hint {
+  font-size: 9px;
+  color: #334155;
+  text-align: right;
+  margin-top: 2px;
+}
+.codex-card-collected:hover .codex-card-tap-hint { color: #475569; }
+
+/* NEW badge */
+.codex-new-badge {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  background: #16a34a;
+  color: #fff;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  padding: 2px 5px;
+  border-radius: 99px;
+  box-shadow: 0 0 8px #16a34a88;
+}
+
+/* Codex footer */
+#expedition-codex-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 20px;
+  border-top: 1px solid #1e3a5f;
+  background: #0a1628;
+  flex-shrink: 0;
+}
+
+.codex-hint {
+  font-size: 10px;
+  color: #475569;
+  letter-spacing: 0.3px;
+}
+
+#expedition-codex-close-btn {
+  padding: 6px 16px;
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 6px;
+  color: #94a3b8;
+  font-size: 12px;
+  cursor: pointer;
+}
+#expedition-codex-close-btn:hover { background: #334155; color: #e2e8f0; }
+
+/* ── Fragment detail view ───────────────────────────────────────────────────── */
+
+#expedition-codex-detail {
+  position: absolute;
+  inset: 0;
+  background: #0a1628ee;
+  z-index: 10;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  backdrop-filter: blur(2px);
+  animation: codexDetailSlideUp 0.22s ease forwards;
+}
+
+@keyframes codexDetailSlideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.codex-detail-inner {
+  width: 100%;
+  max-height: 90%;
+  background: #0f172a;
+  border-top: 1px solid #1e3a5f;
+  border-radius: 12px 12px 0 0;
+  padding: 20px 24px 28px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.codex-detail-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.codex-detail-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.codex-detail-biome {
+  font-size: 12px;
+  color: #64748b;
+}
+
+.codex-detail-close-btn {
+  background: none;
+  border: 1px solid #334155;
+  border-radius: 6px;
+  color: #64748b;
+  font-size: 14px;
+  padding: 4px 10px;
+  cursor: pointer;
+  line-height: 1;
+}
+.codex-detail-close-btn:hover { background: #1e293b; color: #e2e8f0; }
+
+.codex-detail-legendary-bar {
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #fbbf24, transparent);
+  border-radius: 1px;
+  margin: -6px 0 0;
+}
+
+.codex-detail-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: #e2e8f0;
+  letter-spacing: 0.3px;
+}
+
+.codex-detail-art-wrap {
+  display: flex;
+  justify-content: center;
+}
+
+.codex-detail-art {
+  width: 180px;
+  height: 120px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #0a1628;
+  border: 1px solid #1e3a5f;
+}
+
+.codex-detail-art-common    { border-color: #334155; }
+.codex-detail-art-rare      { border-color: #7c3aed; box-shadow: 0 0 16px #7c3aed33; }
+.codex-detail-art-legendary {
+  border-color: #ca8a04;
+  box-shadow: 0 0 24px #ca8a0455;
+  background: linear-gradient(135deg, #0a1628, #1a1200);
+}
+
+.codex-detail-art-placeholder {
+  font-size: 42px;
+  opacity: 0.5;
+}
+
+.codex-detail-lore {
+  font-size: 13px;
+  color: #94a3b8;
+  line-height: 1.7;
+  font-style: italic;
+}
+
+/* ── Biome Cosmetics Panel ─────────────────────────────────────────────────── */
+
+#biome-cosmetics-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1400;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(5px);
+}
+
+#biome-cosmetics-panel {
+  background: #0f172a;
+  border: 1px solid #1e3a5f;
+  border-radius: 14px;
+  box-shadow: 0 0 48px #f59e0b33, 0 12px 40px #000c;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  width: min(560px, 96vw);
+  max-height: 88vh;
+  overflow: hidden;
+  color: #e2e8f0;
+  font-family: 'Segoe UI', monospace, sans-serif;
+}
+
+#biome-cosmetics-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 24px 28px 16px;
+  border-bottom: 1px solid #1e3a5f;
+  flex-shrink: 0;
+}
+
+#biome-cosmetics-icon {
+  font-size: 32px;
+  line-height: 1;
+}
+
+#biome-cosmetics-title {
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  color: #fbbf24;
+  text-shadow: 0 0 12px #f59e0b80;
+}
+
+#biome-cosmetics-subtitle {
+  font-size: 12px;
+  color: #64748b;
+  letter-spacing: 0.5px;
+}
+
+#biome-cosmetics-panel-body {
+  overflow-y: auto;
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  flex: 1;
+}
+
+#biome-cosmetics-panel-body::-webkit-scrollbar { width: 5px; }
+#biome-cosmetics-panel-body::-webkit-scrollbar-track { background: #0f172a; }
+#biome-cosmetics-panel-body::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+
+.bc-biome-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.bc-biome-header {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: #7dd3fc;
+  text-transform: uppercase;
+  padding-bottom: 6px;
+  border-bottom: 1px solid #1e3a5f;
+}
+
+.bc-cosmetic-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid #1e293b;
+  background: #0d1b2a;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.bc-cosmetic-row.bc-cosmetic-unlocked {
+  background: #0f1e32;
+  border-color: #1e3a5f;
+}
+
+.bc-cosmetic-row.bc-cosmetic-equipped {
+  background: #0c2340;
+  border-color: #0ea5e9;
+  box-shadow: 0 0 12px #0ea5e922;
+}
+
+.bc-cosmetic-row.bc-cosmetic-locked {
+  opacity: 0.55;
+}
+
+.bc-cosmetic-icon {
+  font-size: 26px;
+  line-height: 1;
+  flex-shrink: 0;
+  width: 34px;
+  text-align: center;
+}
+
+.bc-cosmetic-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.bc-cosmetic-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #e2e8f0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bc-cosmetic-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.bc-type-badge {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  text-transform: uppercase;
+}
+
+.bc-type-board {
+  background: #1e3a5f;
+  color: #7dd3fc;
+}
+
+.bc-type-piece {
+  background: #2d1b54;
+  color: #c4b5fd;
+}
+
+.bc-lock-hint {
+  font-size: 10px;
+  color: #64748b;
+}
+
+.bc-cosmetic-desc {
+  font-size: 11px;
+  color: #64748b;
+  line-height: 1.4;
+}
+
+.bc-cosmetic-actions {
+  flex-shrink: 0;
+}
+
+.bc-equip-btn {
+  padding: 6px 14px;
+  background: #1e3a5f;
+  border: 1px solid #334155;
+  border-radius: 6px;
+  color: #94a3b8;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.bc-equip-btn:hover {
+  background: #0369a1;
+  border-color: #0ea5e9;
+  color: #fff;
+}
+
+.bc-equip-btn.bc-equip-btn-active {
+  background: #0369a1;
+  border-color: #38bdf8;
+  color: #fff;
+}
+
+.bc-locked-label {
+  font-size: 11px;
+  color: #475569;
+  white-space: nowrap;
+}
+
+#biome-cosmetics-close-btn {
+  margin: 12px 20px 16px;
+  padding: 9px 20px;
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  color: #94a3b8;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  align-self: center;
+  flex-shrink: 0;
+  transition: background 0.15s, color 0.15s;
+}
+
+#biome-cosmetics-close-btn:hover {
+  background: #334155;
+  color: #e2e8f0;
+}
+
+/* ── Biome Weekly Leaderboard ─────────────────────────────────────────────── */
+
+#biome-lb-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.88);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 500;
+}
+
+#biome-lb-panel {
+  background: #0d1117;
+  border: 2px solid #f59e0b;
+  border-radius: 6px;
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 500px;
+  max-width: 95vw;
+  max-height: 88vh;
+  overflow-y: auto;
+  box-shadow: 0 0 28px rgba(245, 158, 11, 0.3);
+}
+
+#biome-lb-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  width: 100%;
+}
+
+#biome-lb-title {
+  font-family: "Press Start 2P", cursive;
+  font-size: 11px;
+  color: #f59e0b;
+  letter-spacing: 2px;
+  text-shadow: 0 0 10px #f59e0b;
+}
+
+#biome-lb-refresh-btn {
+  font-size: 15px;
+  background: transparent;
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  border-radius: 4px;
+  color: #f59e0b;
+  cursor: pointer;
+  padding: 2px 7px;
+  line-height: 1;
+  transition: background 0.15s;
+}
+#biome-lb-refresh-btn:hover { background: rgba(245, 158, 11, 0.15); }
+
+#biome-lb-biome-tabs {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.biome-lb-biome-tab {
+  font-family: "Press Start 2P", cursive;
+  font-size: 8px;
+  background: transparent;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  border-radius: 4px;
+  color: rgba(245, 158, 11, 0.5);
+  padding: 6px 12px;
+  cursor: pointer;
+  transition: all 0.15s;
+  flex: 1;
+}
+.biome-lb-biome-tab:hover { color: #f59e0b; border-color: #f59e0b; }
+
+#biome-lb-week-tabs {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.biome-lb-week-tab {
+  font-family: "Press Start 2P", cursive;
+  font-size: 7px;
+  background: transparent;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  border-radius: 4px;
+  color: rgba(148, 163, 184, 0.5);
+  padding: 5px 10px;
+  cursor: pointer;
+  transition: all 0.15s;
+  flex: 1;
+}
+.biome-lb-week-tab:hover { color: #94a3b8; border-color: #94a3b8; }
+.biome-lb-tab-active {
+  color: #f59e0b !important;
+  border-color: #f59e0b !important;
+  background: rgba(245, 158, 11, 0.1) !important;
+}
+
+#biome-lb-body {
+  width: 100%;
+  min-height: 80px;
+}
+
+.biome-lb-loading, .biome-lb-error, .biome-lb-empty {
+  font-family: "Press Start 2P", cursive;
+  font-size: 8px;
+  color: rgba(245, 158, 11, 0.6);
+  text-align: center;
+  padding: 24px 0;
+}
+.biome-lb-error { color: #f55; }
+
+.biome-lb-week-label {
+  font-family: "Press Start 2P", cursive;
+  font-size: 8px;
+  color: rgba(245, 158, 11, 0.7);
+  text-align: center;
+  margin-bottom: 8px;
+}
+
+.biome-lb-table { width: 100%; }
+.biome-lb-table.lb-table thead th { color: rgba(245, 158, 11, 0.6); }
+.biome-lb-table.lb-table tbody tr:hover { background: rgba(245, 158, 11, 0.06); }
+
+.biome-lb-top10-badge {
+  font-size: 11px;
+}
+
+.biome-lb-own-rank {
+  font-family: "Press Start 2P", cursive;
+  font-size: 8px;
+  color: #94a3b8;
+  text-align: center;
+  padding: 10px 0 4px;
+  border-top: 1px solid rgba(148, 163, 184, 0.15);
+  margin-top: 6px;
+}
+.biome-lb-own-rank-hint { color: rgba(148, 163, 184, 0.5); }
+
+#biome-lb-close-btn {
+  margin-top: 6px;
+  padding: 9px 20px;
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  color: #94a3b8;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  align-self: center;
+  transition: background 0.15s, color 0.15s;
+}
+#biome-lb-close-btn:hover { background: #334155; color: #e2e8f0; }
+
+/* Biome info panel: action row with play + leaderboard buttons */
+.exp-info-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 6px;
+}
+.exp-info-actions .exp-play-btn {
+  flex: 2;
+  margin-top: 0;
+}
+.exp-lb-btn {
+  flex: 1;
+  padding: 9px 10px;
+  background: #1e293b;
+  border: 1px solid #f59e0b;
+  border-radius: 8px;
+  color: #f59e0b;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  letter-spacing: 0.3px;
+  transition: background 0.15s, color 0.15s;
+}
+.exp-lb-btn:hover { background: rgba(245, 158, 11, 0.15); }
+
+/* Weekly rank result in expedition results screen */
+#exp-results-weekly-rank {
+  width: 100%;
+  text-align: center;
+}
+.exp-res-weekly-top10 {
+  font-family: "Press Start 2P", cursive;
+  font-size: 9px;
+  color: #f59e0b;
+  text-shadow: 0 0 8px #f59e0b;
+  padding: 10px 0 4px;
+  letter-spacing: 0.5px;
+}
+.exp-res-weekly-xp {
+  font-family: "Press Start 2P", cursive;
+  font-size: 8px;
+  color: #fbbf24;
+  padding-bottom: 4px;
+}
+.exp-res-weekly-rank {
+  font-family: "Press Start 2P", cursive;
+  font-size: 8px;
+  color: rgba(148, 163, 184, 0.8);
+  padding: 8px 0 2px;
+}
+
+/* ── Guild Expedition ─────────────────────────────────────────────────────── */
+
+/* Expedition tab panel */
+.gexp-active-banner {
+  background: rgba(34, 197, 94, 0.15);
+  border: 1px solid rgba(34, 197, 94, 0.4);
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-family: "Press Start 2P", cursive;
+  font-size: 8px;
+  color: #22c55e;
+  margin-bottom: 10px;
+  text-align: center;
+}
+.gexp-rules {
+  background: rgba(255,255,255,0.04);
+  border-radius: 6px;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+  font-size: 11px;
+  color: rgba(203,213,225,0.85);
+  line-height: 1.8;
+}
+.gexp-rules div { margin-bottom: 2px; }
+.gexp-start-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+.gexp-biome-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.gexp-biome-label {
+  font-family: "Press Start 2P", cursive;
+  font-size: 8px;
+  color: rgba(148,163,184,0.9);
+  white-space: nowrap;
+}
+.gexp-biome-select {
+  flex: 1;
+  background: rgba(15,23,42,0.9);
+  border: 1px solid rgba(100,116,139,0.4);
+  border-radius: 4px;
+  color: #e2e8f0;
+  font-size: 12px;
+  padding: 5px 8px;
+  cursor: pointer;
+}
+.gexp-biome-select:focus { outline: none; border-color: rgba(99,102,241,0.7); }
+.gexp-start-btn { align-self: flex-start; }
+.gexp-start-error {
+  font-size: 10px;
+  color: #ef4444;
+  padding: 4px 0;
+}
+.gexp-hist-sub {
+  font-size: 7px;
+  color: rgba(148,163,184,0.6);
+  font-weight: normal;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+/* History cards */
+.gexp-hist-card {
+  border-radius: 6px;
+  border: 1px solid rgba(100,116,139,0.25);
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  background: rgba(255,255,255,0.03);
+}
+.gexp-hist-card--success { border-color: rgba(34,197,94,0.35); background: rgba(34,197,94,0.05); }
+.gexp-hist-card--fail    { border-color: rgba(239,68,68,0.25); }
+.gexp-hist-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+  flex-wrap: wrap;
+}
+.gexp-hist-biome {
+  font-family: "Press Start 2P", cursive;
+  font-size: 8px;
+  color: #e2e8f0;
+  flex: 1;
+}
+.gexp-hist-result {
+  font-family: "Press Start 2P", cursive;
+  font-size: 7px;
+  color: #94a3b8;
+}
+.gexp-hist-card--success .gexp-hist-result { color: #22c55e; }
+.gexp-hist-card--fail    .gexp-hist-result { color: #ef4444; }
+.gexp-hist-date {
+  font-size: 10px;
+  color: rgba(148,163,184,0.6);
+}
+.gexp-hist-score {
+  font-family: "Press Start 2P", cursive;
+  font-size: 8px;
+  color: #cbd5e1;
+  margin-bottom: 5px;
+}
+.gexp-hist-pct { color: rgba(148,163,184,0.6); margin-left: 4px; }
+.gexp-hist-bar-wrap {
+  height: 4px;
+  background: rgba(100,116,139,0.25);
+  border-radius: 2px;
+  margin-bottom: 7px;
+  overflow: hidden;
+}
+.gexp-hist-bar-fill {
+  height: 100%;
+  background: #22c55e;
+  border-radius: 2px;
+  transition: width 0.4s;
+  max-width: 100%;
+}
+.gexp-hist-card--fail .gexp-hist-bar-fill { background: #94a3b8; }
+.gexp-hist-players {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.gexp-hist-player {
+  font-size: 9px;
+  background: rgba(255,255,255,0.06);
+  border-radius: 3px;
+  padding: 2px 6px;
+  color: #94a3b8;
+}
+.gexp-hist-player--dropped { text-decoration: line-through; opacity: 0.5; }
+
+/* Lobby overlay */
+.guild-expedition-lobby-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.75);
+  z-index: 9000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: "Press Start 2P", cursive;
+}
+.gexp-lobby-panel {
+  background: #0f172a;
+  border: 1px solid rgba(99,102,241,0.5);
+  border-radius: 10px;
+  padding: 20px 24px;
+  width: 360px;
+  max-width: 94vw;
+  box-shadow: 0 0 30px rgba(99,102,241,0.2);
+}
+.gexp-lobby-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+  border-bottom: 1px solid rgba(100,116,139,0.2);
+  padding-bottom: 10px;
+}
+.gexp-lobby-biome-icon { font-size: 22px; }
+.gexp-lobby-title {
+  font-size: 10px;
+  color: #e2e8f0;
+  letter-spacing: 1px;
+  flex: 1;
+}
+.gexp-lobby-biome-name { font-size: 8px; color: #6366f1; }
+.gexp-lobby-info { margin-bottom: 10px; }
+.gexp-lobby-meta {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+.gexp-lobby-count { font-size: 9px; color: #94a3b8; }
+.gexp-lobby-timer { font-size: 9px; color: #f59e0b; }
+.gexp-lobby-target { font-size: 8px; color: #22c55e; margin-bottom: 8px; }
+.gexp-lobby-section-title {
+  font-size: 7px;
+  color: rgba(148,163,184,0.6);
+  letter-spacing: 1px;
+  margin-bottom: 6px;
+}
+.gexp-lobby-players {
+  min-height: 40px;
+  margin-bottom: 10px;
+}
+.gexp-lobby-player {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+  font-size: 9px;
+  border-bottom: 1px solid rgba(100,116,139,0.1);
+}
+.gexp-lobby-icon { color: #6366f1; width: 12px; text-align: center; }
+.gexp-lobby-name { flex: 1; color: #e2e8f0; }
+.gexp-lobby-score { color: #22c55e; font-size: 8px; }
+.gexp-lobby-rules {
+  background: rgba(255,255,255,0.04);
+  border-radius: 5px;
+  padding: 8px 10px;
+  font-size: 8px;
+  color: rgba(148,163,184,0.8);
+  line-height: 1.9;
+  margin-bottom: 10px;
+}
+.gexp-lobby-host-note {
+  font-size: 8px;
+  color: rgba(148,163,184,0.6);
+  margin-bottom: 10px;
+  text-align: center;
+}
+.gexp-lobby-cancel-btn {
+  width: 100%;
+  background: rgba(239,68,68,0.12);
+  border: 1px solid rgba(239,68,68,0.4);
+  border-radius: 5px;
+  color: #ef4444;
+  font-family: "Press Start 2P", cursive;
+  font-size: 8px;
+  padding: 8px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.gexp-lobby-cancel-btn:hover { background: rgba(239,68,68,0.22); }
+
+/* In-game HUD widget */
+.guild-expedition-hud {
+  position: fixed;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 800;
+  background: rgba(15,23,42,0.92);
+  border: 1px solid rgba(99,102,241,0.5);
+  border-radius: 8px;
+  padding: 8px 14px;
+  min-width: 220px;
+  max-width: 340px;
+  box-shadow: 0 2px 12px rgba(99,102,241,0.2);
+  flex-direction: column;
+  gap: 4px;
+  font-family: "Press Start 2P", cursive;
+}
+.gexp-hud-label {
+  font-size: 7px;
+  color: #6366f1;
+  letter-spacing: 1px;
+  margin-bottom: 2px;
+  text-align: center;
+}
+.gexp-hud-scores {
+  text-align: center;
+  font-size: 10px;
+  color: #e2e8f0;
+}
+.gexp-hud-total  { color: #22c55e; }
+.gexp-hud-sep    { color: rgba(148,163,184,0.5); }
+.gexp-hud-target { color: rgba(148,163,184,0.7); }
+.gexp-hud-bar-wrap {
+  height: 5px;
+  background: rgba(100,116,139,0.3);
+  border-radius: 3px;
+  overflow: hidden;
+  margin: 3px 0;
+}
+.gexp-hud-bar-fill {
+  height: 100%;
+  background: #22c55e;
+  border-radius: 3px;
+  transition: width 0.5s;
+  max-width: 100%;
+}
+.gexp-hud-bar-full { background: #f59e0b; box-shadow: 0 0 6px #f59e0b; }
+.gexp-hud-players {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  justify-content: center;
+}
+.gexp-hud-player {
+  font-size: 7px;
+  background: rgba(255,255,255,0.06);
+  border-radius: 3px;
+  padding: 2px 5px;
+  color: #94a3b8;
+}
+.gexp-hud-player--done    { color: #22c55e; }
+.gexp-hud-player--dropped { color: #ef4444; text-decoration: line-through; }
+
+/* Toast notification */
+.guild-expedition-toast {
+  position: fixed;
+  bottom: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9100;
+  background: #1e293b;
+  border: 1px solid rgba(100,116,139,0.4);
+  border-radius: 6px;
+  padding: 10px 16px;
+  font-family: "Press Start 2P", cursive;
+  font-size: 8px;
+  color: #e2e8f0;
+  text-align: center;
+  max-width: 420px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+  line-height: 1.6;
+}
+
+/* ── Featured Biome — World Map Highlight ─────────────────────────────────── */
+
+.exp-node-featured {
+  animation: fp-node-pulse 2.5s ease-in-out infinite;
+}
+
+@keyframes fp-node-pulse {
+  0%, 100% { box-shadow: 0 0 18px #facc1566, 0 0 6px #fbbf2488; }
+  50%       { box-shadow: 0 0 28px #facc1599, 0 0 12px #fbbf24bb; }
+}
+
+.exp-node-featured-badge {
+  position: absolute;
+  bottom: -14px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #92400e;
+  border: 1px solid #facc15;
+  border-radius: 4px;
+  color: #facc15;
+  font-family: "Press Start 2P", cursive;
+  font-size: 6px;
+  padding: 2px 5px;
+  white-space: nowrap;
+  letter-spacing: 0.5px;
+  text-shadow: 0 0 6px #fbbf24;
+}
+
+/* relative positioning on node needed for the absolute badge */
+.exp-node { position: absolute; }
+
+.exp-info-featured-banner {
+  width: 100%;
+  text-align: center;
+  background: linear-gradient(135deg, #78350f, #92400e);
+  border: 1px solid #facc15;
+  border-radius: 6px;
+  color: #facc15;
+  font-family: "Press Start 2P", cursive;
+  font-size: 7px;
+  padding: 7px 10px;
+  letter-spacing: 0.4px;
+  line-height: 1.6;
+  text-shadow: 0 0 8px #fbbf24;
+}
+
+/* ── Featured Season Pass — Results Screen ────────────────────────────────── */
+
+.fp-results-section {
+  width: 100%;
+  background: rgba(146,64,14,0.15);
+  border: 1px solid #facc15;
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin-top: 8px;
+}
+
+.fp-results-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.fp-results-icon {
+  font-size: 14px;
+}
+
+.fp-results-label {
+  font-family: "Press Start 2P", cursive;
+  font-size: 7px;
+  color: #facc15;
+  letter-spacing: 0.5px;
+  flex: 1;
+}
+
+.fp-results-xp-delta {
+  font-family: "Press Start 2P", cursive;
+  font-size: 8px;
+  color: #fbbf24;
+}
+
+.fp-results-tier-up {
+  font-family: "Press Start 2P", cursive;
+  font-size: 7px;
+  color: #86efac;
+  padding: 2px 0;
+}
+
+.fp-results-cosmetic-claim {
+  font-family: "Press Start 2P", cursive;
+  font-size: 7px;
+  color: #fde68a;
+  padding: 3px 0;
+}
+
+.fp-results-progress-row {
+  display: flex;
+  justify-content: space-between;
+  margin: 6px 0 4px;
+}
+
+.fp-results-tier {
+  font-family: "Press Start 2P", cursive;
+  font-size: 7px;
+  color: #94a3b8;
+}
+
+.fp-results-bar-wrap {
+  width: 100%;
+  height: 6px;
+  background: #1e293b;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.fp-results-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.4s ease;
+}
+
+/* Featured badge in expedition results header */
+.exp-results-featured-badge {
+  font-family: "Press Start 2P", cursive;
+  font-size: 8px;
+  color: #facc15;
+  background: rgba(146,64,14,0.4);
+  border: 1px solid #facc15;
+  border-radius: 4px;
+  padding: 4px 10px;
+  margin-top: 4px;
+  letter-spacing: 0.5px;
+  text-shadow: 0 0 8px #fbbf24;
+}
+
+/* ── Featured Season Pass — Season Pass Panel ─────────────────────────────── */
+
+#season-pass-featured-body {
+  width: 100%;
+  margin-top: 10px;
+}
+
+.fp-panel-section {
+  width: 100%;
+  background: rgba(146,64,14,0.12);
+  border: 1px solid #facc15;
+  border-radius: 10px;
+  padding: 14px 16px;
+}
+
+.fp-panel-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.fp-panel-biome-icon {
+  font-size: 18px;
+}
+
+.fp-panel-title {
+  font-family: "Press Start 2P", cursive;
+  font-size: 9px;
+  color: #facc15;
+  letter-spacing: 0.5px;
+  flex: 1;
+}
+
+.fp-panel-ended-badge {
+  font-family: "Press Start 2P", cursive;
+  font-size: 7px;
+  color: #94a3b8;
+  background: #1e293b;
+  border: 1px solid #475569;
+  border-radius: 4px;
+  padding: 3px 7px;
+}
+
+.fp-panel-progress {
+  margin-bottom: 12px;
+}
+
+.fp-panel-progress-row {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.fp-panel-xp-label,
+.fp-panel-xp-val {
+  font-family: "Press Start 2P", cursive;
+  font-size: 8px;
+  color: #cbd5e1;
+}
+
+.fp-panel-bar-wrap {
+  width: 100%;
+  height: 8px;
+  background: #1e293b;
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 4px;
+}
+
+.fp-panel-bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.4s ease;
+}
+
+.fp-panel-xp-next {
+  font-family: "Press Start 2P", cursive;
+  font-size: 7px;
+  color: #64748b;
+}
+
+.fp-panel-cosmetics {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.fp-tier-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: rgba(15,23,42,0.6);
+  border: 1px solid #1e3a5f;
+}
+
+.fp-tier-row.fp-tier-claimed {
+  border-color: #22c55e;
+  background: rgba(34,197,94,0.08);
+}
+
+.fp-tier-row.fp-tier-locked {
+  opacity: 0.55;
+  border-color: #374151;
+}
+
+.fp-tier-row.fp-tier-reachable {
+  border-color: #facc15;
+  background: rgba(250,204,21,0.06);
+}
+
+.fp-tier-status {
+  font-size: 18px;
+  flex-shrink: 0;
+  padding-top: 2px;
+}
+
+.fp-tier-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.fp-tier-number-badge {
+  display: inline-block;
+  font-family: "Press Start 2P", cursive;
+  font-size: 7px;
+  color: #facc15;
+  background: rgba(146,64,14,0.4);
+  border: 1px solid #facc15;
+  border-radius: 4px;
+  padding: 2px 6px;
+  margin-bottom: 4px;
+}
+
+.fp-tier-name {
+  font-family: "Press Start 2P", cursive;
+  font-size: 8px;
+  color: #e2e8f0;
+  margin-bottom: 3px;
+}
+
+.fp-tier-desc {
+  font-family: "Press Start 2P", cursive;
+  font-size: 7px;
+  color: #94a3b8;
+  line-height: 1.6;
+  margin-bottom: 3px;
+}
+
+.fp-tier-xp-needed {
+  font-family: "Press Start 2P", cursive;
+  font-size: 7px;
+  color: #64748b;
+}
+
+.fp-tier-xp-needed.fp-tier-ready {
+  color: #86efac;
+}
+
+.fp-tier-state {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+
+.fp-claimed-label {
+  font-family: "Press Start 2P", cursive;
+  font-size: 7px;
+  color: #22c55e;
+}
+
+.fp-expired-label {
+  font-family: "Press Start 2P", cursive;
+  font-size: 7px;
+  color: #ef4444;
+}
+
+.fp-pending-label {
+  font-family: "Press Start 2P", cursive;
+  font-size: 7px;
+  color: #fbbf24;
+}
+
+.fp-locked-label {
+  font-family: "Press Start 2P", cursive;
+  font-size: 7px;
+  color: #475569;
+}
+
+.fp-panel-note {
+  font-family: "Press Start 2P", cursive;
+  font-size: 7px;
+  color: #64748b;
+  line-height: 1.6;
+  margin-top: 10px;
+  text-align: center;
+}
+
+.fp-panel-no-biome {
+  font-family: "Press Start 2P", cursive;
+  font-size: 8px;
+  color: #64748b;
+  text-align: center;
+  padding: 10px 0;
+}

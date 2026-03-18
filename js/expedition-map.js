@@ -57,6 +57,10 @@ function _getSeasonId() {
   return s ? s.seasonId : null;
 }
 
+function _getFeaturedBiomeId() {
+  return (typeof getFeaturedBiomeId === 'function') ? getFeaturedBiomeId() : null;
+}
+
 function _getUserId() {
   return (typeof loadDisplayName === 'function') ? (loadDisplayName() || 'guest') : 'guest';
 }
@@ -191,32 +195,50 @@ function _renderExpeditionMap(map) {
   }
 
   // Draw nodes
+  const featuredBiomeId = _getFeaturedBiomeId();
   for (const node of nodes) {
     const center = _nodeCenter(node);
     const colors = _BIOME_COLORS[node.biomeId] || _BIOME_COLORS.stone;
     const icon = _BIOME_ICONS[node.biomeId] || '&#127758;';
-    const isSelected = node.nodeId === _expSelectedNodeId;
-    const isDone = node.highScore > 0;
-    const isLocked = !node.unlocked;
+    const isSelected  = node.nodeId === _expSelectedNodeId;
+    const isDone      = node.highScore > 0;
+    const isLocked    = !node.unlocked;
+    const isFeatured  = !!featuredBiomeId && node.biomeId === featuredBiomeId && !isLocked;
 
     const el = document.createElement('div');
     el.className = 'exp-node' +
-      (isSelected ? ' exp-node-selected' : '') +
-      (isLocked ? ' exp-node-locked' : '') +
-      (isDone ? ' exp-node-done' : '');
+      (isSelected  ? ' exp-node-selected'  : '') +
+      (isLocked    ? ' exp-node-locked'    : '') +
+      (isDone      ? ' exp-node-done'      : '') +
+      (isFeatured  ? ' exp-node-featured'  : '');
     el.dataset.nodeId = node.nodeId;
     el.style.left = (center.x - 50) + 'px';
     el.style.top  = (center.y - 44) + 'px';
     el.style.width = '100px';
-    el.style.borderColor = isSelected ? '#facc15' : (isLocked ? '#4b5563' : colors.border);
+
+    if (isSelected) {
+      el.style.borderColor = '#facc15';
+      el.style.boxShadow   = '0 0 16px #facc1588, 0 0 4px #facc15';
+    } else if (isFeatured) {
+      el.style.borderColor = '#facc15';
+      el.style.boxShadow   = '0 0 18px #facc1566, 0 0 6px #fbbf2488';
+    } else if (isLocked) {
+      el.style.borderColor = '#4b5563';
+    } else {
+      el.style.borderColor = colors.border;
+      el.style.boxShadow   = '0 0 8px ' + colors.glow;
+    }
     el.style.background = isLocked ? '#1f2937' : colors.bg;
-    if (isSelected) el.style.boxShadow = '0 0 16px #facc1588, 0 0 4px #facc15';
-    else if (!isLocked) el.style.boxShadow = '0 0 8px ' + colors.glow;
+
+    const featuredBadge = isFeatured
+      ? '<div class="exp-node-featured-badge">&#11088; FEATURED</div>'
+      : '';
 
     el.innerHTML =
       '<div class="exp-node-icon">' + (isLocked ? '&#128274;' : icon) + '</div>' +
       '<div class="exp-node-name">' + _escHtml(node.biomeName) + '</div>' +
-      '<div class="exp-node-score">' + (isLocked ? 'Locked' : (isDone ? '&#9733; ' + node.highScore : 'Play')) + '</div>';
+      '<div class="exp-node-score">' + (isLocked ? 'Locked' : (isDone ? '&#9733; ' + node.highScore : 'Play')) + '</div>' +
+      featuredBadge;
 
     el.setAttribute('tabindex', isLocked ? '-1' : '0');
     el.setAttribute('role', 'button');
@@ -247,26 +269,61 @@ function _selectNode(nodeId) {
 function _updateInfoPanel(map, nodeId) {
   const infoEl = document.getElementById('expedition-map-info');
   if (!infoEl) return;
-  const node = map.nodes.find(n => n.nodeId === nodeId);
+  const node = map.nodes.find(function (n) { return n.nodeId === nodeId; });
   if (!node) { infoEl.innerHTML = ''; return; }
 
-  const colors = _BIOME_COLORS[node.biomeId] || _BIOME_COLORS.stone;
-  const icon = _BIOME_ICONS[node.biomeId] || '&#127758;';
-  const locked = !node.unlocked;
-  const done = node.highScore > 0;
+  const colors      = _BIOME_COLORS[node.biomeId] || _BIOME_COLORS.stone;
+  const icon        = _BIOME_ICONS[node.biomeId] || '&#127758;';
+  const locked      = !node.unlocked;
+  const done        = node.highScore > 0;
+  const isFeatured  = !!_getFeaturedBiomeId() && node.biomeId === _getFeaturedBiomeId() && !locked;
+
+  // Lore teaser — first sentence from expedition-session.js if loaded
+  const _loreSrc = (typeof _BIOME_LORE !== 'undefined' && _BIOME_LORE[node.biomeId])
+    ? _BIOME_LORE[node.biomeId][0]
+    : null;
+  const loreTeaserHtml = (!locked && _loreSrc)
+    ? '<div class="exp-info-lore-teaser">' + _escHtml(_loreSrc) + '</div>'
+    : '';
+
+  // Featured biome banner
+  const featuredBannerHtml = isFeatured
+    ? '<div class="exp-info-featured-banner">&#11088; FEATURED BIOME &mdash; 2&#215; Expedition XP &bull; Exclusive Season Pass Cosmetics</div>'
+    : '';
+
+  // High-score status
+  const statusHtml =
+    locked ? '<span class="exp-locked-label">Locked — complete prior biome to unlock</span>'
+    : done  ? '<span class="exp-done-label">&#9733; Best: ' + node.highScore + '</span>'
+    :          '<span class="exp-avail-label">Ready to explore</span>';
+
+  // Reward track — per-biome 15-tier system from expedition-reward-tracks.js
+  // Falls back to session helper if direct function isn't available yet.
+  const trackHtml = (!locked && typeof buildBiomeTrackHtml === 'function')
+    ? buildBiomeTrackHtml(node.biomeId, 'exp-info')
+    : (!locked && typeof buildInfoPanelTrack === 'function')
+      ? buildInfoPanelTrack(node.biomeId)
+      : '';
 
   infoEl.innerHTML =
     '<div class="exp-info-icon">' + (locked ? '&#128274;' : icon) + '</div>' +
     '<div class="exp-info-name">' + _escHtml(node.biomeName) + '</div>' +
-    '<div class="exp-info-status">' +
-      (locked ? '<span class="exp-locked-label">Locked — complete prior biome to unlock</span>' :
-       done    ? '<span class="exp-done-label">&#9733; Best: ' + node.highScore + '</span>' :
-                 '<span class="exp-avail-label">Ready to explore</span>') +
-    '</div>' +
-    (!locked ? '<button id="exp-play-btn" class="exp-play-btn">&#9658; Enter Biome</button>' : '');
+    featuredBannerHtml +
+    '<div class="exp-info-status">' + statusHtml + '</div>' +
+    loreTeaserHtml +
+    trackHtml +
+    (!locked
+      ? '<div class="exp-info-actions">' +
+          '<button id="exp-play-btn" class="exp-play-btn">&#9658; Enter Biome</button>' +
+          '<button id="exp-lb-btn" class="exp-lb-btn">&#127942; Leaderboard</button>' +
+        '</div>'
+      : '');
 
   if (!locked) {
-    document.getElementById('exp-play-btn').addEventListener('click', () => _launchBiome(node));
+    document.getElementById('exp-play-btn').addEventListener('click', function () { _launchBiome(node); });
+    document.getElementById('exp-lb-btn').addEventListener('click', function () {
+      if (typeof openBiomeLeaderboard === 'function') openBiomeLeaderboard(node.biomeId);
+    });
   }
 }
 
