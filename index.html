@@ -75,7 +75,9 @@
             <button id="start-stats-btn">&#128202; Stats</button>
             <button id="start-achievements-btn">&#127942; Achievements</button>
             <button id="start-missions-btn">&#127919; Daily Missions</button>
+            <button id="start-season-missions-btn">&#128336; Season Missions</button>
             <button id="start-tournament-btn">&#127942; Tournaments</button>
+            <button id="start-guild-btn">&#9876; Guild</button>
           </div>
           <div id="hs-start-panel"></div>
         </div>
@@ -528,6 +530,19 @@
         </div>
       </div>
 
+      <!-- Season Missions overlay — two weekly track panels -->
+      <div id="season-missions-overlay" style="display:none;">
+        <div id="season-missions-panel">
+          <div id="season-missions-header">
+            <span id="season-missions-title">&#128336; SEASON MISSIONS</span>
+            <span id="season-missions-reset"></span>
+          </div>
+          <div id="season-missions-subtitle">Complete all 5 missions in a track to earn +500 Season XP. Tracks reset every Monday.</div>
+          <div id="season-missions-tracks"></div>
+          <button id="season-missions-close-btn">Close</button>
+        </div>
+      </div>
+
       <!-- Mission complete toast (top-center, above level-up toast) -->
       <div id="mission-complete-toast">
         <div class="mct-title"></div>
@@ -541,6 +556,7 @@
           <div id="stats-title">STATS</div>
           <div id="stats-season-rank" style="display:none;"></div>
           <div id="stats-panel-body"></div>
+          <div id="stats-season-cards" style="display:none;"></div>
           <button id="stats-close-btn">Close</button>
         </div>
       </div>
@@ -649,6 +665,54 @@
       <!-- Crafted banner -->
       <div id="crafted-banner"></div>
 
+      <!-- Guild panel -->
+      <div id="guild-panel" style="display:none;">
+        <div id="guild-panel-header">
+          <span id="guild-panel-title">&#9876; GUILD</span>
+          <button id="guild-panel-close" aria-label="Close guild panel">&#10005;</button>
+        </div>
+        <div id="guild-panel-content"></div>
+      </div>
+
+      <!-- Guild invite toast — shown when a pending invite arrives -->
+      <div id="guild-invite-toast" style="display:none;">
+        <div id="git-header">GUILD INVITE</div>
+        <div id="git-guild-name"></div>
+        <div id="git-guild-meta"></div>
+        <div id="git-inviter"></div>
+        <div id="git-actions">
+          <button id="git-accept-btn">&#10003; Accept</button>
+          <button id="git-decline-btn">&#10005; Decline</button>
+        </div>
+      </div>
+
+      <!-- Guild joined toast -->
+      <div id="guild-joined-toast" style="display:none;"></div>
+
+      <!-- Guild weekly summary toast -->
+      <div id="guild-weekly-toast" style="display:none;">
+        <div class="gwt-header">⚔️ WEEKLY RECAP</div>
+        <div class="gwt-body">
+          You ranked <strong id="gwt-rank"></strong> in <strong id="gwt-guild"></strong>
+          with <strong id="gwt-xp"></strong> contributed.
+          <br><span id="gwt-week" style="color:#555;font-size:7px;"></span>
+        </div>
+        <button id="gwt-close-btn">✕ Close</button>
+      </div>
+
+      <!-- Guild error toast -->
+      <div id="guild-error-toast" style="display:none;"></div>
+
+      <!-- Clan War: War Match Starting modal -->
+      <div id="war-match-modal" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="wmm-title">
+        <div id="war-match-modal-inner">
+          <div id="wmm-title">⚔️ WAR MATCH</div>
+          <div id="wmm-sub"></div>
+          <div id="wmm-timer"></div>
+          <button id="wmm-close" class="guild-secondary-btn">✕ Close</button>
+        </div>
+      </div>
+
       <!-- Level-up toast (bottom-center) -->
       <div id="level-up-toast">
         <div class="lu-toast-icon"></div>
@@ -753,7 +817,23 @@
           <div id="season-end-your-result" style="display:none;">
             <div id="season-end-your-rank"></div>
           </div>
+          <button id="season-end-view-recap-btn" style="display:none;">&#11088; View Season Card</button>
           <button id="season-end-close-btn">Continue</button>
+        </div>
+      </div>
+
+      <!-- Season Recap Card overlay -->
+      <div id="season-recap-overlay" style="display:none;">
+        <div id="season-recap-panel">
+          <button id="season-recap-close-btn" aria-label="Close">&#x2715;</button>
+          <div id="season-recap-canvas-container"></div>
+          <div id="season-recap-actions">
+            <button id="season-recap-export-btn">&#128190; Save PNG</button>
+            <button id="season-recap-copy-btn">Copy Link</button>
+          </div>
+          <div id="season-recap-share-row">
+            <input type="text" id="season-recap-share-url" readonly aria-label="Shareable link">
+          </div>
         </div>
       </div>
 
@@ -1275,9 +1355,11 @@
     <script src="js/tutorial.js"></script>
     <script src="js/settings.js"></script>
     <script src="js/season.js"></script>
+    <script src="js/season-recap.js"></script>
     <script src="js/season-pass.js"></script>
     <script src="js/leaderboard.js"></script>
     <script src="js/missions.js"></script>
+    <script src="js/season-missions.js"></script>
     <script src="js/savestate.js"></script>
     <script src="js/survival.js"></script>
     <script src="js/shareland.js"></script>
@@ -1298,6 +1380,8 @@
     <script src="js/battle-garbage.js"></script>
     <script src="js/battle-fx.js"></script>
     <script src="js/tournament.js"></script>
+    <script src="js/guild.js"></script>
+    <script src="js/clan-war-engine.js"></script>
     <script src="js/main.js"></script>
   </body>
 </html>

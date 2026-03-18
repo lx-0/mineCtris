@@ -19,6 +19,34 @@
  *   POST /api/puzzles/:id/vote     — submit thumbs-up or thumbs-down vote for a puzzle
  *   GET  /api/puzzles/featured     — return curated official featured puzzles (admin-seeded)
  *
+ * Guild Routes:
+ *   POST   /api/guilds                                   — create guild (caller = owner)
+ *   GET    /api/guilds                                   — search guilds by name/tag (?search=query)
+ *   GET    /api/guilds/:guildId                          — get guild + member list
+ *   PATCH  /api/guilds/:guildId                          — update name/description/emblem/isPrivate (owner/officer only)
+ *   DELETE /api/guilds/:guildId                          — disband guild (owner only)
+ *   POST   /api/clan-wars                                — send a war challenge { actorId, challengerGuildId, targetGuildId, proposedWindowStart }
+ *   GET    /api/clan-wars/:warId                         — get war + rosters
+ *   POST   /api/clan-wars/:warId/respond                 — { actorId, actorGuildId, action:'accept'|'counter'|'decline', counterWindowStart? }
+ *   POST   /api/clan-wars/:warId/nominate                — { actorId, actorGuildId, nomineeUserId }
+ *   DELETE /api/clan-wars/:warId/nominate/:userId        — { actorId, actorGuildId }
+ *   POST   /api/clan-wars/:warId/complete                — { winnerGuildId }
+ *   POST   /api/clan-wars/:warId/tick                    — advance state machine
+ *   GET    /api/guilds/:guildId/clan-wars                — list war summaries for a guild
+ *
+ *   POST   /api/guilds/:guildId/invite                   — invite a player by username { inviterId, inviteeUsername }
+ *   POST   /api/guilds/:guildId/join-requests            — submit a join request { userId }
+ *   GET    /api/guilds/:guildId/join-requests            — list pending requests (officer/owner) { actorId }
+ *   PATCH  /api/guilds/:guildId/join-requests/:uid       — approve or deny { actorId, action:'approve'|'deny' }
+ *   POST   /api/guilds/:guildId/leave                    — leave the guild { userId }
+ *   POST   /api/guilds/:guildId/kick                     — kick a member { actorId, targetUserId }
+ *   POST   /api/guilds/:guildId/promote                  — change member role { actorId, targetUserId, newRole }
+ *   GET    /api/guilds/:guildId/leaderboard              — weekly contribution leaderboard + last week snapshot
+ *   GET    /api/guilds/:guildId/weekly-notification      — fetch + clear pending weekly summary notification (?userId=X)
+ *   GET    /api/guild-invites?userId=:id                 — get pending invites for a user
+ *   POST   /api/guild-invites/:inviteId/accept           — accept an invite { userId }
+ *   POST   /api/guild-invites/:inviteId/decline          — decline an invite { userId }
+ *
  * KV Structure (binding: LEADERBOARD_KV):
  *   leaderboard:YYYY-MM-DD        → JSON array of top 100 daily entries, sorted desc by score
  *   player:{name}:{date}          → JSON { submittedAt } for daily rate limiting
@@ -167,7 +195,7 @@ function corsHeaders(origin, allowedOrigin) {
   const isAllowed = allowed === '*' || requestOrigin === allowed;
   return {
     'Access-Control-Allow-Origin': isAllowed ? (allowed === '*' ? '*' : requestOrigin) : '',
-    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+    'Access-Control-Allow-Methods': 'GET, POST, PATCH, DELETE, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type',
     'Access-Control-Max-Age': '86400',
   };
@@ -2313,6 +2341,1900 @@ async function handlePostMatchHeartbeat(tournamentId, request, env) {
 
 // ── Router ────────────────────────────────────────────────────────────────────
 
+// ── Guild Data Model ──────────────────────────────────────────────────────────
+
+const GUILD_TAG_REGEX = /^[A-Z0-9]{3,5}$/;
+const GUILD_NAME_MAX = 32;
+const GUILD_DESC_MAX = 256;
+const GUILD_MEMBERS_MAX = 30;
+const GUILD_LEVEL_MAX = 20;
+const GUILD_XP_LOG_MAX = 200;
+
+// Valid XP event sources and their amounts
+const GUILD_XP_SOURCES = {
+  standard_match_win:   10,
+  tournament_match_win: 25,
+  clan_war_win:         50,
+  daily_mission:         5,
+};
+
+// Cumulative XP needed to reach a given level (level >= 1).
+// XP to go from level N to N+1 = N^2 * 500 (quadratic curve).
+function _guildXpThreshold(level) {
+  let total = 0;
+  for (let i = 1; i < level; i++) total += i * i * 500;
+  return total;
+}
+
+/**
+ * Returns ISO week string "YYYY-Www" for a given Date (UTC).
+ */
+function _isoWeekStr(date = new Date()) {
+  const d = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+  const dow = d.getUTCDay() || 7; // Mon=1 … Sun=7
+  d.setUTCDate(d.getUTCDate() + 4 - dow);
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  const week = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+  return `${d.getUTCFullYear()}-W${String(week).padStart(2, '0')}`;
+}
+
+/**
+ * GuildObject — Durable Object storing a single guild's state.
+ *
+ * Storage keys:
+ *   guild               → { id, name, tag, description, emblem, bannerColor, activeBoardSkin,
+ *                           level, xp, memberCount, guildRating, isPrivate, createdAt,
+ *                           lastWeekKey, lastWeekSnapshot }
+ *   members             → { [userId]: { userId, role, contributionXP, weeklyContributionXP, joinedAt } }
+ *   joinRequests        → { [userId]: { userId, requestedAt } }
+ *   weeklyNotifications → { [userId]: { rank, totalMembers, guildName, weeklyXP, week } }
+ *
+ * Internal routes (called by API handlers via DO stub):
+ *   PUT    /init                  { guild, ownerId }
+ *   GET    /
+ *   PATCH  /update                { userId, name?, description?, emblem?, bannerColor?, isPrivate?, activeBoardSkin? }
+ *   DELETE /disband               { userId }
+ *   POST   /join                  { userId }
+ *   POST   /leave                 { userId }
+ *   POST   /kick                  { actorId, targetUserId }
+ *   GET    /join-requests
+ *   POST   /join-request          { userId }
+ *   DELETE /join-request          { userId }
+ *   GET    /leaderboard           ?period=weekly
+ *   GET    /weekly-notification   ?userId=X
+ */
+export class GuildObject {
+  constructor(state, env) {
+    this.state = state;
+    this.env = env;
+  }
+
+  async fetch(request) {
+    const url = new URL(request.url);
+    const method = request.method.toUpperCase();
+
+    if (method === 'PUT' && url.pathname === '/init') {
+      return this._init(await request.json());
+    } else if (method === 'GET' && url.pathname === '/') {
+      return this._get();
+    } else if (method === 'PATCH' && url.pathname === '/update') {
+      return this._update(await request.json());
+    } else if (method === 'DELETE' && url.pathname === '/disband') {
+      return this._disband(await request.json());
+    } else if (method === 'POST' && url.pathname === '/join') {
+      return this._join(await request.json());
+    } else if (method === 'POST' && url.pathname === '/leave') {
+      return this._leave(await request.json());
+    } else if (method === 'POST' && url.pathname === '/kick') {
+      return this._kick(await request.json());
+    } else if (method === 'GET' && url.pathname === '/join-requests') {
+      return this._getJoinRequests();
+    } else if (method === 'POST' && url.pathname === '/join-request') {
+      return this._addJoinRequest(await request.json());
+    } else if (method === 'DELETE' && url.pathname === '/join-request') {
+      return this._removeJoinRequest(await request.json());
+    } else if (method === 'POST' && url.pathname === '/promote') {
+      return this._promoteOrDemote(await request.json());
+    } else if (method === 'POST' && url.pathname === '/xp') {
+      return this._addXP(await request.json());
+    } else if (method === 'GET' && url.pathname === '/xp-log') {
+      return this._getXpLog(url);
+    } else if (method === 'GET' && url.pathname === '/leaderboard') {
+      return this._getLeaderboard(url);
+    } else if (method === 'GET' && url.pathname === '/weekly-notification') {
+      return this._getWeeklyNotification(url);
+    }
+    return this._res({ error: 'Not found' }, 404);
+  }
+
+  async _init({ guild, ownerId }) {
+    const existing = await this.state.storage.get('guild');
+    if (existing) return this._res({ guild: existing, members: Object.values(await this.state.storage.get('members') || {}) }, 200);
+
+    await this.state.storage.put('guild', guild);
+    const members = {
+      [ownerId]: { userId: ownerId, role: 'owner', contributionXP: 0, joinedAt: guild.createdAt },
+    };
+    await this.state.storage.put('members', members);
+    return this._res({ guild, members: Object.values(members) }, 201);
+  }
+
+  async _get() {
+    const guild = await this.state.storage.get('guild');
+    if (!guild) return this._res({ error: 'Guild not found' }, 404);
+    const members = await this.state.storage.get('members') || {};
+    return this._res({ guild, members: Object.values(members) });
+  }
+
+  async _update({ userId, name, description, emblem, bannerColor, isPrivate, activeBoardSkin }) {
+    const guild = await this.state.storage.get('guild');
+    if (!guild) return this._res({ error: 'Guild not found' }, 404);
+    const members = await this.state.storage.get('members') || {};
+    const member = members[userId];
+    if (!member) return this._res({ error: 'Not a guild member' }, 403);
+    if (member.role !== 'owner' && member.role !== 'officer') {
+      return this._res({ error: 'Only owner or officer can update guild' }, 403);
+    }
+    if (name !== undefined) guild.name = name;
+    if (description !== undefined) guild.description = description;
+    if (emblem !== undefined) guild.emblem = emblem;
+    if (bannerColor !== undefined) guild.bannerColor = bannerColor;
+    if (isPrivate !== undefined) guild.isPrivate = !!isPrivate;
+    if (activeBoardSkin !== undefined) {
+      const SKIN_LEVEL_REQ = { stone_brick: 10, nether_brick: 15 };
+      if (activeBoardSkin !== null && activeBoardSkin !== 'none' && !SKIN_LEVEL_REQ[activeBoardSkin]) {
+        return this._res({ error: 'Invalid board skin' }, 400);
+      }
+      const skinLevel = SKIN_LEVEL_REQ[activeBoardSkin] || 0;
+      if (skinLevel > 0 && (guild.level || 1) < skinLevel) {
+        return this._res({ error: `Guild must be level ${skinLevel} to use this board skin` }, 403);
+      }
+      guild.activeBoardSkin = (activeBoardSkin === 'none' || activeBoardSkin === null) ? null : activeBoardSkin;
+    }
+    await this.state.storage.put('guild', guild);
+    return this._res({ guild, members: Object.values(members) });
+  }
+
+  async _join({ userId }) {
+    const guild = await this.state.storage.get('guild');
+    if (!guild) return this._res({ error: 'Guild not found' }, 404);
+    const members = await this.state.storage.get('members') || {};
+    if (members[userId]) return this._res({ error: 'Already a member' }, 409);
+    if (guild.memberCount >= GUILD_MEMBERS_MAX) return this._res({ error: 'Guild is full' }, 409);
+    members[userId] = { userId, role: 'member', contributionXP: 0, joinedAt: new Date().toISOString() };
+    guild.memberCount = Object.keys(members).length;
+    await this.state.storage.put('guild', guild);
+    await this.state.storage.put('members', members);
+    return this._res({ guild, members: Object.values(members) });
+  }
+
+  async _leave({ userId }) {
+    const guild = await this.state.storage.get('guild');
+    if (!guild) return this._res({ error: 'Guild not found' }, 404);
+    const members = await this.state.storage.get('members') || {};
+    if (!members[userId]) return this._res({ error: 'Not a member' }, 404);
+
+    const isOwner = members[userId].role === 'owner';
+    delete members[userId];
+    const remaining = Object.keys(members);
+
+    if (remaining.length === 0) {
+      // Last member left — disband
+      const tag = guild.tag;
+      const guildId = guild.id;
+      await this.state.storage.deleteAll();
+      return this._res({ left: true, disbanded: true, guildId, tag, memberIds: [] });
+    }
+
+    if (isOwner) {
+      // Transfer to longest-serving officer, else longest-serving member
+      const sorted = remaining
+        .map(id => members[id])
+        .sort((a, b) => new Date(a.joinedAt) - new Date(b.joinedAt));
+      const nextOwner = sorted.find(m => m.role === 'officer') || sorted[0];
+      members[nextOwner.userId].role = 'owner';
+    }
+
+    guild.memberCount = remaining.length;
+    await this.state.storage.put('guild', guild);
+    await this.state.storage.put('members', members);
+    return this._res({ left: true, guild, members: Object.values(members) });
+  }
+
+  async _kick({ actorId, targetUserId }) {
+    const guild = await this.state.storage.get('guild');
+    if (!guild) return this._res({ error: 'Guild not found' }, 404);
+    const members = await this.state.storage.get('members') || {};
+    const actor = members[actorId];
+    const target = members[targetUserId];
+    if (!actor) return this._res({ error: 'Not a guild member' }, 403);
+    if (!target) return this._res({ error: 'Target is not a member' }, 404);
+    if (actor.role === 'member') return this._res({ error: 'Insufficient permissions' }, 403);
+    if (actor.role === 'officer' && target.role !== 'member') {
+      return this._res({ error: 'Officers can only kick members' }, 403);
+    }
+    if (target.role === 'owner') return this._res({ error: 'Cannot kick the owner' }, 403);
+    delete members[targetUserId];
+    guild.memberCount = Object.keys(members).length;
+    await this.state.storage.put('guild', guild);
+    await this.state.storage.put('members', members);
+    return this._res({ kicked: true, guild, members: Object.values(members) });
+  }
+
+  async _getJoinRequests() {
+    const requests = await this.state.storage.get('joinRequests') || {};
+    return this._res(Object.values(requests));
+  }
+
+  async _addJoinRequest({ userId }) {
+    const guild = await this.state.storage.get('guild');
+    if (!guild) return this._res({ error: 'Guild not found' }, 404);
+    if (guild.isPrivate) return this._res({ error: 'This guild only accepts direct invites' }, 403);
+    const members = await this.state.storage.get('members') || {};
+    if (members[userId]) return this._res({ error: 'Already a member' }, 409);
+    if (guild.memberCount >= GUILD_MEMBERS_MAX) return this._res({ error: 'Guild is full' }, 409);
+    const requests = await this.state.storage.get('joinRequests') || {};
+    if (requests[userId]) return this._res({ error: 'Request already pending' }, 409);
+    requests[userId] = { userId, requestedAt: new Date().toISOString() };
+    await this.state.storage.put('joinRequests', requests);
+    return this._res({ requested: true });
+  }
+
+  async _removeJoinRequest({ userId }) {
+    const requests = await this.state.storage.get('joinRequests') || {};
+    delete requests[userId];
+    await this.state.storage.put('joinRequests', requests);
+    return this._res({ removed: true });
+  }
+
+  async _promoteOrDemote({ actorId, targetUserId, newRole }) {
+    if (!['owner', 'officer', 'member'].includes(newRole)) {
+      return this._res({ error: 'Invalid role. Must be owner, officer, or member' }, 400);
+    }
+    const guild = await this.state.storage.get('guild');
+    if (!guild) return this._res({ error: 'Guild not found' }, 404);
+    const members = await this.state.storage.get('members') || {};
+    const actor = members[actorId];
+    const target = members[targetUserId];
+    if (!actor) return this._res({ error: 'Not a guild member' }, 403);
+    if (!target) return this._res({ error: 'Target is not a member' }, 404);
+    if (actor.role !== 'owner') return this._res({ error: 'Only the owner can change member roles' }, 403);
+    if (targetUserId === actorId) return this._res({ error: 'Cannot change your own role' }, 400);
+    if (target.role === 'owner') return this._res({ error: 'Cannot change the owner\'s role directly; transfer ownership instead' }, 400);
+    if (newRole === 'owner') {
+      // Ownership transfer: current owner becomes officer
+      members[actorId].role = 'officer';
+      members[targetUserId].role = 'owner';
+    } else {
+      members[targetUserId].role = newRole;
+    }
+    await this.state.storage.put('members', members);
+    return this._res({ guild, members: Object.values(members) });
+  }
+
+  async _addXP({ userId, amount, source }) {
+    const guild = await this.state.storage.get('guild');
+    if (!guild) return this._res({ error: 'Guild not found' }, 404);
+    const members = await this.state.storage.get('members') || {};
+
+    const xpAmount = Math.max(0, Math.floor(Number(amount) || 0));
+    if (xpAmount === 0) return this._res({ guild, members: Object.values(members), xpAwarded: 0, leveled: false });
+
+    // ── Weekly reset check ────────────────────────────────────────────────────
+    const currentWeek = _isoWeekStr();
+    if (guild.lastWeekKey && guild.lastWeekKey !== currentWeek) {
+      // Save snapshot of top-3 from the just-ended week
+      const sorted = Object.values(members)
+        .sort((a, b) => (b.weeklyContributionXP || 0) - (a.weeklyContributionXP || 0));
+      guild.lastWeekSnapshot = {
+        week: guild.lastWeekKey,
+        top3: sorted.slice(0, 3).map((m, i) => ({
+          rank: i + 1,
+          userId: m.userId,
+          role: m.role,
+          weeklyXP: m.weeklyContributionXP || 0,
+        })),
+      };
+      // Build weekly summary notifications for each member
+      const totalMembers = sorted.length;
+      const notifications = {};
+      sorted.forEach((m, i) => {
+        notifications[m.userId] = {
+          rank: i + 1,
+          totalMembers,
+          guildName: guild.name,
+          weeklyXP: m.weeklyContributionXP || 0,
+          week: guild.lastWeekKey,
+        };
+      });
+      await this.state.storage.put('weeklyNotifications', notifications);
+      // Reset weekly XP for all members
+      for (const uid of Object.keys(members)) {
+        members[uid].weeklyContributionXP = 0;
+      }
+    }
+    if (!guild.lastWeekKey || guild.lastWeekKey !== currentWeek) {
+      guild.lastWeekKey = currentWeek;
+    }
+
+    // Credit guild total XP
+    guild.xp = (guild.xp || 0) + xpAmount;
+
+    // Credit member contribution
+    if (userId && members[userId]) {
+      members[userId].contributionXP = (members[userId].contributionXP || 0) + xpAmount;
+      members[userId].weeklyContributionXP = (members[userId].weeklyContributionXP || 0) + xpAmount;
+    }
+
+    // Level-up check (quadratic curve, cap at 20)
+    let leveled = false;
+    while (guild.level < GUILD_LEVEL_MAX) {
+      const threshold = _guildXpThreshold(guild.level + 1);
+      if (guild.xp >= threshold) {
+        guild.level++;
+        leveled = true;
+      } else {
+        break;
+      }
+    }
+
+    // Append to XP event log (newest first, capped)
+    const log = (await this.state.storage.get('xpLog')) || [];
+    log.unshift({
+      id: crypto.randomUUID(),
+      userId: userId || null,
+      amount: xpAmount,
+      source: source || 'unknown',
+      guildXPAfter: guild.xp,
+      guildLevelAfter: guild.level,
+      ts: new Date().toISOString(),
+    });
+    if (log.length > GUILD_XP_LOG_MAX) log.length = GUILD_XP_LOG_MAX;
+
+    await Promise.all([
+      this.state.storage.put('guild', guild),
+      this.state.storage.put('members', members),
+      this.state.storage.put('xpLog', log),
+    ]);
+
+    return this._res({ guild, members: Object.values(members), xpAwarded: xpAmount, leveled });
+  }
+
+  async _getXpLog(url) {
+    const log = (await this.state.storage.get('xpLog')) || [];
+    const limit = Math.min(50, parseInt(url.searchParams.get('limit') || '50', 10));
+    const offset = Math.max(0, parseInt(url.searchParams.get('offset') || '0', 10));
+    const page = log.slice(offset, offset + limit);
+    return this._res({ log: page, total: log.length, offset, limit });
+  }
+
+  async _getLeaderboard() {
+    const guild = await this.state.storage.get('guild');
+    if (!guild) return this._res({ error: 'Guild not found' }, 404);
+    const members = await this.state.storage.get('members') || {};
+
+    const sorted = Object.values(members)
+      .sort((a, b) => (b.weeklyContributionXP || 0) - (a.weeklyContributionXP || 0));
+
+    const leaderboard = sorted.map((m, i) => ({
+      rank: i + 1,
+      userId: m.userId,
+      role: m.role,
+      weeklyXP: m.weeklyContributionXP || 0,
+      totalXP: m.contributionXP || 0,
+    }));
+
+    return this._res({
+      leaderboard,
+      lastWeekSnapshot: guild.lastWeekSnapshot || null,
+      week: guild.lastWeekKey || _isoWeekStr(),
+    });
+  }
+
+  async _getWeeklyNotification(url) {
+    const userId = url.searchParams.get('userId');
+    if (!userId) return this._res({ error: 'userId is required' }, 400);
+
+    const notifications = await this.state.storage.get('weeklyNotifications') || {};
+    const notification = notifications[userId] || null;
+
+    if (notification) {
+      delete notifications[userId];
+      await this.state.storage.put('weeklyNotifications', notifications);
+    }
+
+    return this._res({ notification });
+  }
+
+  async _disband({ userId }) {
+    const guild = await this.state.storage.get('guild');
+    if (!guild) return this._res({ error: 'Guild not found' }, 404);
+    const members = await this.state.storage.get('members') || {};
+    const member = members[userId];
+    if (!member || member.role !== 'owner') {
+      return this._res({ error: 'Only the guild owner can disband' }, 403);
+    }
+    const memberIds = Object.keys(members);
+    const tag = guild.tag;
+    await this.state.storage.deleteAll();
+    return this._res({ disbanded: true, guildId: guild.id, memberIds, tag });
+  }
+
+  _res(data, status = 200) {
+    return new Response(JSON.stringify(data), {
+      status,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+}
+
+// ── Clan War Constants ────────────────────────────────────────────────────────
+
+const WAR_ROSTER_SIZE = 5;
+const WAR_MAX_ADVANCE_DAYS = 7;
+const WAR_NOMINATION_CLOSE_BEFORE_MS = 60 * 60 * 1000; // 1 hour before start
+const WAR_WINDOW_DURATION_MS = 45 * 60 * 1000;          // 45-minute window
+const WAR_FORFEIT_DELAY_MS   = 2 * 60 * 1000;           // 2 min online-check grace
+
+/**
+ * Validates a proposed war window start time.
+ * Returns an error string, or null if valid.
+ */
+function _validateWarWindow(date) {
+  if (isNaN(date.getTime())) return 'Invalid date format';
+  const now = new Date();
+  const maxFuture = new Date(now.getTime() + WAR_MAX_ADVANCE_DAYS * 24 * 60 * 60 * 1000);
+  if (date <= now) return 'War window must be in the future';
+  if (date > maxFuture) return `War can only be scheduled up to ${WAR_MAX_ADVANCE_DAYS} days in advance`;
+  const mins = date.getUTCMinutes();
+  const secs = date.getUTCSeconds();
+  const ms   = date.getUTCMilliseconds();
+  if ((mins !== 0 && mins !== 30) || secs !== 0 || ms !== 0) {
+    return 'War window must start on the hour or half-hour (e.g. 14:00 or 14:30 UTC)';
+  }
+  return null;
+}
+
+function _getClanWarStub(warId, env) {
+  return env.CLAN_WAR_OBJECTS.get(env.CLAN_WAR_OBJECTS.idFromName(warId));
+}
+
+/**
+ * Aggregate slot results to determine war winner.
+ * Returns { challengerWins, defenderWins, pending, winner: 'challenger'|'defender'|'draw'|null }
+ */
+function _aggregateWarSlots(slots) {
+  let cWins = 0, dWins = 0, pending = 0;
+  for (const slot of slots) {
+    if (slot.status === 'done' || slot.status === 'forfeited') {
+      if (slot.result === 'challenger_win') cWins++;
+      else if (slot.result === 'defender_win') dWins++;
+    } else {
+      pending++;
+    }
+  }
+  // Decide winner when 3+ wins secured or no slots remain
+  let winner = null;
+  if (cWins >= 3) winner = 'challenger';
+  else if (dWins >= 3) winner = 'defender';
+  else if (pending === 0) winner = cWins > dWins ? 'challenger' : dWins > cWins ? 'defender' : 'draw';
+  return { challengerWins: cWins, defenderWins: dWins, pending, winner };
+}
+
+/**
+ * ClanWarObject — Durable Object storing a single clan war's state.
+ *
+ * Storage keys:
+ *   war              → { id, challengerGuildId, challengerGuildName, challengerGuildTag,
+ *                        challengerGuildEmblem, defenderGuildId, defenderGuildName,
+ *                        defenderGuildTag, defenderGuildEmblem, proposedWindowStart,
+ *                        windowStart, lastProposerId, status, format, challengedAt,
+ *                        scheduledAt, completedAt, winner }
+ *   roster:{guildId} → [userId, ...]   (max WAR_ROSTER_SIZE per guild)
+ *   slots            → [{ slotIndex, challengerUserId, defenderUserId, status, result,
+ *                          battleRoomCode, startedAt, completedAt }, ...]
+ *
+ * Statuses: pending_acceptance → scheduled → roster_open → roster_locked → in_progress → completed
+ *           (pending_acceptance can also → cancelled via decline)
+ *
+ * Internal routes:
+ *   PUT    /init                      { war }
+ *   GET    /
+ *   POST   /respond                   { actorGuildId, action: 'accept'|'counter'|'decline', counterWindowStart? }
+ *   POST   /nominate                  { actorGuildId, userId }
+ *   DELETE /nominate                  { actorGuildId, userId }
+ *   POST   /tick                      — advance state machine based on current time
+ *   POST   /complete                  { winnerGuildId }
+ *   GET    /slots                     — return slot array
+ *   POST   /slots/:index/room         { battleRoomCode? } — get/register battle room for slot
+ *   POST   /slots/:index/result       { result } — report match outcome
+ *   POST   /slots/:index/forfeit      { actorId } — forfeit a slot
+ */
+export class ClanWarObject {
+  constructor(state, env) {
+    this.state = state;
+    this.env   = env;
+  }
+
+  async fetch(request) {
+    const url    = new URL(request.url);
+    const method = request.method.toUpperCase();
+
+    if (method === 'PUT'    && url.pathname === '/init')     return this._init(await request.json());
+    if (method === 'GET'    && url.pathname === '/')         return this._get();
+    if (method === 'POST'   && url.pathname === '/respond')  return this._respond(await request.json());
+    if (method === 'POST'   && url.pathname === '/nominate') return this._nominate(await request.json());
+    if (method === 'DELETE' && url.pathname === '/nominate') return this._removeNomination(await request.json());
+    if (method === 'POST'   && url.pathname === '/tick')     return this._tick();
+    if (method === 'POST'   && url.pathname === '/complete') return this._complete(await request.json());
+    // Slot management
+    if (method === 'GET'    && url.pathname === '/slots')    return this._getSlots();
+    const slotMatch = url.pathname.match(/^\/slots\/(\d+)\/(room|result|forfeit)$/);
+    if (slotMatch) {
+      const slotIndex = parseInt(slotMatch[1], 10);
+      const body = method === 'POST' ? await request.json() : {};
+      if (slotMatch[2] === 'room')    return this._slotRoom(slotIndex, body);
+      if (slotMatch[2] === 'result')  return this._slotResult(slotIndex, body);
+      if (slotMatch[2] === 'forfeit') return this._slotForfeit(slotIndex, body);
+    }
+    return this._res({ error: 'Not found' }, 404);
+  }
+
+  async _init({ war }) {
+    await this.state.storage.put('war', war);
+    return this._res({ war }, 201);
+  }
+
+  async _get() {
+    const war = await this.state.storage.get('war');
+    if (!war) return this._res({ error: 'War not found' }, 404);
+    const rosters = await this._getRosters(war);
+    return this._res({ war, rosters });
+  }
+
+  async _respond({ actorGuildId, action, counterWindowStart }) {
+    const war = await this.state.storage.get('war');
+    if (!war) return this._res({ error: 'War not found' }, 404);
+    if (war.status !== 'pending_acceptance') {
+      return this._res({ error: 'War is not awaiting a response' }, 409);
+    }
+
+    // Accept / counter can come from whichever guild did NOT last propose
+    // (challenger sends initial, defender responds — on counter, roles swap)
+    const expectedResponder = war.lastProposerId === war.challengerGuildId
+      ? war.defenderGuildId
+      : war.challengerGuildId;
+    if (actorGuildId !== expectedResponder) {
+      return this._res({ error: 'It is not your turn to respond to this challenge' }, 403);
+    }
+
+    if (action === 'decline') {
+      war.status = 'cancelled';
+      war.completedAt = new Date().toISOString();
+      await this.state.storage.put('war', war);
+      return this._res({ war, rosters: await this._getRosters(war) });
+    }
+
+    if (action === 'counter') {
+      if (!counterWindowStart) return this._res({ error: 'counterWindowStart required for counter' }, 400);
+      const ws  = new Date(counterWindowStart);
+      const err = _validateWarWindow(ws);
+      if (err) return this._res({ error: err }, 400);
+      war.proposedWindowStart = counterWindowStart;
+      war.lastProposerId = actorGuildId;
+      await this.state.storage.put('war', war);
+      return this._res({ war, rosters: await this._getRosters(war) });
+    }
+
+    if (action === 'accept') {
+      war.windowStart  = war.proposedWindowStart;
+      war.scheduledAt  = new Date().toISOString();
+      war.status       = 'roster_open';
+      await this.state.storage.put('war', war);
+      return this._res({ war, rosters: await this._getRosters(war) });
+    }
+
+    return this._res({ error: "action must be 'accept', 'counter', or 'decline'" }, 400);
+  }
+
+  async _nominate({ actorGuildId, userId }) {
+    const war = await this.state.storage.get('war');
+    if (!war) return this._res({ error: 'War not found' }, 404);
+    if (war.status !== 'roster_open') {
+      return this._res({ error: 'Roster nominations are not open' }, 409);
+    }
+    const warStart = new Date(war.windowStart);
+    if (Date.now() >= warStart.getTime() - WAR_NOMINATION_CLOSE_BEFORE_MS) {
+      return this._res({ error: 'Nomination window has closed (1 hour before war start)' }, 409);
+    }
+    if (actorGuildId !== war.challengerGuildId && actorGuildId !== war.defenderGuildId) {
+      return this._res({ error: 'Guild is not a war participant' }, 403);
+    }
+    const rosterKey = `roster:${actorGuildId}`;
+    const roster    = (await this.state.storage.get(rosterKey)) || [];
+    if (roster.includes(userId))         return this._res({ error: 'Player already nominated' }, 409);
+    if (roster.length >= WAR_ROSTER_SIZE) return this._res({ error: `Roster is full (max ${WAR_ROSTER_SIZE})` }, 409);
+    roster.push(userId);
+    await this.state.storage.put(rosterKey, roster);
+    return this._res({ war, rosters: await this._getRosters(war) });
+  }
+
+  async _removeNomination({ actorGuildId, userId }) {
+    const war = await this.state.storage.get('war');
+    if (!war) return this._res({ error: 'War not found' }, 404);
+    if (war.status !== 'roster_open') return this._res({ error: 'Roster nominations are not open' }, 409);
+    const warStart = new Date(war.windowStart);
+    if (Date.now() >= warStart.getTime() - WAR_NOMINATION_CLOSE_BEFORE_MS) {
+      return this._res({ error: 'Nomination window has closed' }, 409);
+    }
+    const rosterKey = `roster:${actorGuildId}`;
+    const roster    = (await this.state.storage.get(rosterKey)) || [];
+    const idx = roster.indexOf(userId);
+    if (idx === -1) return this._res({ error: 'Player not in roster' }, 404);
+    roster.splice(idx, 1);
+    await this.state.storage.put(rosterKey, roster);
+    return this._res({ war, rosters: await this._getRosters(war) });
+  }
+
+  async _tick() {
+    const war = await this.state.storage.get('war');
+    if (!war) return this._res({ error: 'War not found' }, 404);
+    const now      = Date.now();
+    const warStart = war.windowStart ? new Date(war.windowStart).getTime() : null;
+    const warEnd   = warStart ? warStart + WAR_WINDOW_DURATION_MS : null;
+    let changed    = false;
+
+    if (war.status === 'roster_open' && warStart) {
+      if (now >= warStart - WAR_NOMINATION_CLOSE_BEFORE_MS) {
+        war.status = 'roster_locked';
+        changed = true;
+      }
+    }
+    if (war.status === 'roster_locked' && warStart) {
+      if (now >= warStart) {
+        war.status = 'in_progress';
+        changed = true;
+        // Initialise the 5 slot records from the locked rosters
+        await this._initSlots(war);
+      }
+    }
+    if (war.status === 'in_progress' && warEnd) {
+      if (now >= warEnd) {
+        war.status = 'completed';
+        changed = true;
+      }
+    }
+    if (changed) await this.state.storage.put('war', war);
+    return this._res({ war, rosters: await this._getRosters(war), changed });
+  }
+
+  async _complete({ winnerGuildId }) {
+    const war = await this.state.storage.get('war');
+    if (!war) return this._res({ error: 'War not found' }, 404);
+    if (war.status !== 'in_progress' && war.status !== 'roster_locked') {
+      return this._res({ error: 'War is not in progress' }, 409);
+    }
+    if (winnerGuildId !== war.challengerGuildId &&
+        winnerGuildId !== war.defenderGuildId   &&
+        winnerGuildId !== 'draw') {
+      return this._res({ error: 'winnerGuildId must be challengerGuildId, defenderGuildId, or "draw"' }, 400);
+    }
+    war.status      = 'completed';
+    war.winner      = winnerGuildId;
+    war.completedAt = new Date().toISOString();
+    await this.state.storage.put('war', war);
+    return this._res({ war, rosters: await this._getRosters(war) });
+  }
+
+  // ── Slot helpers ─────────────────────────────────────────────────────────────
+
+  /** Initialise 5 slot records from the locked rosters, called at in_progress transition. */
+  async _initSlots(war) {
+    const rosters = await this._getRosters(war);
+    const cRoster = rosters[war.challengerGuildId] || [];
+    const dRoster = rosters[war.defenderGuildId]   || [];
+    const slots = Array.from({ length: WAR_ROSTER_SIZE }, (_, i) => ({
+      slotIndex:         i,
+      challengerUserId:  cRoster[i] || null,
+      defenderUserId:    dRoster[i]   || null,
+      status:            'waiting',  // waiting | in_progress | done | forfeited
+      result:            null,       // challenger_win | defender_win | draw
+      battleRoomCode:    null,
+      startedAt:         null,
+      completedAt:       null,
+    }));
+    await this.state.storage.put('slots', slots);
+    return slots;
+  }
+
+  async _getSlots() {
+    const war = await this.state.storage.get('war');
+    if (!war) return this._res({ error: 'War not found' }, 404);
+    if (war.status !== 'in_progress' && war.status !== 'completed') {
+      return this._res({ slots: [] });
+    }
+    let slots = await this.state.storage.get('slots');
+    if (!slots) slots = await this._initSlots(war);
+    return this._res({ slots });
+  }
+
+  /** POST /slots/:slotIndex/room — register or fetch battle room code for a slot. */
+  async _slotRoom(slotIndex, { battleRoomCode }) {
+    const war = await this.state.storage.get('war');
+    if (!war) return this._res({ error: 'War not found' }, 404);
+    if (war.status !== 'in_progress') return this._res({ error: 'War is not in progress' }, 409);
+    let slots = await this.state.storage.get('slots');
+    if (!slots) slots = await this._initSlots(war);
+    if (slotIndex < 0 || slotIndex >= slots.length) return this._res({ error: 'Invalid slot index' }, 400);
+    const slot = slots[slotIndex];
+    if (slot.status === 'forfeited') return this._res({ error: 'Slot is forfeited' }, 409);
+    if (slot.status === 'done')      return this._res({ error: 'Slot already completed' }, 409);
+
+    if (slot.battleRoomCode) {
+      // Room already created — return it (second player will join)
+      return this._res({ battleRoomCode: slot.battleRoomCode, role: 'guest', slot });
+    }
+
+    if (!battleRoomCode) {
+      // First caller: no room yet, tell client to create one
+      return this._res({ battleRoomCode: null, role: 'host', slot });
+    }
+
+    // First caller is registering the room they created
+    slot.battleRoomCode = battleRoomCode;
+    slot.status    = 'in_progress';
+    slot.startedAt = new Date().toISOString();
+    slots[slotIndex] = slot;
+    await this.state.storage.put('slots', slots);
+    return this._res({ battleRoomCode, role: 'host', slot });
+  }
+
+  /** POST /slots/:slotIndex/result — report match outcome. */
+  async _slotResult(slotIndex, { result }) {
+    const war = await this.state.storage.get('war');
+    if (!war) return this._res({ error: 'War not found' }, 404);
+    if (war.status !== 'in_progress') return this._res({ error: 'War is not in progress' }, 409);
+    if (!['challenger_win', 'defender_win', 'draw'].includes(result)) {
+      return this._res({ error: 'result must be challenger_win, defender_win, or draw' }, 400);
+    }
+    let slots = await this.state.storage.get('slots');
+    if (!slots) return this._res({ error: 'Slots not initialised' }, 409);
+    if (slotIndex < 0 || slotIndex >= slots.length) return this._res({ error: 'Invalid slot index' }, 400);
+    const slot = slots[slotIndex];
+    if (slot.status === 'done' || slot.status === 'forfeited') {
+      return this._res({ slot }); // idempotent
+    }
+    slot.status      = 'done';
+    slot.result      = result;
+    slot.completedAt = new Date().toISOString();
+    slots[slotIndex] = slot;
+    await this.state.storage.put('slots', slots);
+
+    // Check if war is now decided (3+ wins or all slots done)
+    const agg = _aggregateWarSlots(slots);
+    if (agg.winner) {
+      const winnerGuildId = agg.winner === 'draw'        ? 'draw'
+                          : agg.winner === 'challenger'  ? war.challengerGuildId
+                          :                                war.defenderGuildId;
+      war.status      = 'completed';
+      war.winner      = winnerGuildId;
+      war.completedAt = new Date().toISOString();
+      await this.state.storage.put('war', war);
+    }
+    return this._res({ slot, slots, war });
+  }
+
+  /** POST /slots/:slotIndex/forfeit — auto-forfeit a waiting slot. */
+  async _slotForfeit(slotIndex, { actorId }) {
+    const war = await this.state.storage.get('war');
+    if (!war) return this._res({ error: 'War not found' }, 404);
+    if (war.status !== 'in_progress') return this._res({ error: 'War is not in progress' }, 409);
+    let slots = await this.state.storage.get('slots');
+    if (!slots) slots = await this._initSlots(war);
+    if (slotIndex < 0 || slotIndex >= slots.length) return this._res({ error: 'Invalid slot index' }, 400);
+    const slot = slots[slotIndex];
+    if (slot.status === 'done' || slot.status === 'forfeited') return this._res({ slot }); // idempotent
+
+    // Determine forfeit result: whichever side the actor is on loses
+    let result;
+    if (slot.challengerUserId === actorId) result = 'defender_win';
+    else if (slot.defenderUserId === actorId) result = 'challenger_win';
+    else {
+      // Officer/system forfeit: if both nominated, challenger forfeits; else the empty side loses
+      result = !slot.defenderUserId ? 'challenger_win' : 'defender_win';
+    }
+
+    slot.status      = 'forfeited';
+    slot.result      = result;
+    slot.completedAt = new Date().toISOString();
+    slots[slotIndex] = slot;
+    await this.state.storage.put('slots', slots);
+
+    const agg = _aggregateWarSlots(slots);
+    if (agg.winner) {
+      const winnerGuildId = agg.winner === 'draw'       ? 'draw'
+                          : agg.winner === 'challenger' ? war.challengerGuildId
+                          :                               war.defenderGuildId;
+      war.status      = 'completed';
+      war.winner      = winnerGuildId;
+      war.completedAt = new Date().toISOString();
+      await this.state.storage.put('war', war);
+    }
+    return this._res({ slot, slots, war });
+  }
+
+  // ── Roster helpers ────────────────────────────────────────────────────────────
+
+  async _getRosters(war) {
+    const [cRoster, dRoster] = await Promise.all([
+      this.state.storage.get(`roster:${war.challengerGuildId}`),
+      this.state.storage.get(`roster:${war.defenderGuildId}`),
+    ]);
+    return {
+      [war.challengerGuildId]: cRoster || [],
+      [war.defenderGuildId]:   dRoster || [],
+    };
+  }
+
+  _res(data, status = 200) {
+    return new Response(JSON.stringify(data), {
+      status,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+}
+
+// ── Clan War API Handlers ─────────────────────────────────────────────────────
+
+/**
+ * POST /api/clan-wars
+ * Body: { actorId, challengerGuildId, targetGuildId, proposedWindowStart }
+ * Sends a war challenge from challengerGuild to targetGuild.
+ */
+async function handlePostClanWarChallenge(request, env) {
+  let body;
+  try { body = await request.json(); } catch { return jsonResponse({ error: 'Invalid JSON' }, 400); }
+
+  const { actorId, challengerGuildId, targetGuildId, proposedWindowStart } = body;
+  if (!actorId || !challengerGuildId || !targetGuildId || !proposedWindowStart) {
+    return jsonResponse({ error: 'actorId, challengerGuildId, targetGuildId, proposedWindowStart are required' }, 400);
+  }
+  if (challengerGuildId === targetGuildId) {
+    return jsonResponse({ error: 'Cannot challenge your own guild' }, 400);
+  }
+
+  const ws  = new Date(proposedWindowStart);
+  const err = _validateWarWindow(ws);
+  if (err) return jsonResponse({ error: err }, 400);
+
+  // Verify actor is officer/owner of challenger guild
+  const cStub = env.GUILD_OBJECTS.get(env.GUILD_OBJECTS.idFromName(challengerGuildId));
+  const cRes  = await cStub.fetch('http://internal/', { method: 'GET' });
+  const cData = await cRes.json();
+  if (cRes.status !== 200) return jsonResponse(cData, cRes.status);
+  const actor = (cData.members || []).find(m => m.userId === actorId);
+  if (!actor) return jsonResponse({ error: 'You are not in this guild' }, 403);
+  if (actor.role === 'member') return jsonResponse({ error: 'Only officers and owners can send war challenges' }, 403);
+
+  // Verify defender guild exists
+  const dStub = env.GUILD_OBJECTS.get(env.GUILD_OBJECTS.idFromName(targetGuildId));
+  const dRes  = await dStub.fetch('http://internal/', { method: 'GET' });
+  const dData = await dRes.json();
+  if (dRes.status !== 200) return jsonResponse({ error: 'Target guild not found' }, 404);
+
+  // Check neither guild already has an active war
+  const [cActive, dActive] = await Promise.all([
+    env.GUILDS_KV.get(`guild:active-war:${challengerGuildId}`),
+    env.GUILDS_KV.get(`guild:active-war:${targetGuildId}`),
+  ]);
+  if (cActive) return jsonResponse({ error: 'Your guild already has an active war' }, 409);
+  if (dActive) return jsonResponse({ error: 'Target guild already has an active war' }, 409);
+
+  const warId = crypto.randomUUID();
+  const now   = new Date().toISOString();
+  const war   = {
+    id: warId,
+    challengerGuildId,
+    challengerGuildName:   cData.guild.name,
+    challengerGuildTag:    cData.guild.tag,
+    challengerGuildEmblem: cData.guild.emblem,
+    defenderGuildId:       targetGuildId,
+    defenderGuildName:     dData.guild.name,
+    defenderGuildTag:      dData.guild.tag,
+    defenderGuildEmblem:   dData.guild.emblem,
+    proposedWindowStart,
+    windowStart:    null,
+    lastProposerId: challengerGuildId,
+    status:         'pending_acceptance',
+    format:         'best-of-5',
+    challengedAt:   now,
+    scheduledAt:    null,
+    completedAt:    null,
+    winner:         null,
+  };
+
+  const warStub   = _getClanWarStub(warId, env);
+  const initRes   = await warStub.fetch('http://internal/init', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ war }),
+  });
+  if (initRes.status !== 201) return jsonResponse(await initRes.json(), initRes.status);
+
+  const summary = {
+    id: warId, challengerGuildId, defenderGuildId: targetGuildId,
+    status: 'pending_acceptance', proposedWindowStart, challengedAt: now,
+  };
+  await Promise.all([
+    env.GUILDS_KV.put(`clanwar:${warId}`, JSON.stringify(summary)),
+    env.GUILDS_KV.put(`guild:active-war:${challengerGuildId}`, warId),
+    env.GUILDS_KV.put(`guild:active-war:${targetGuildId}`, warId),
+    env.GUILDS_KV.put(`guild:wars:${challengerGuildId}:${warId}`, warId),
+    env.GUILDS_KV.put(`guild:wars:${targetGuildId}:${warId}`, warId),
+  ]);
+
+  return jsonResponse({ war }, 201);
+}
+
+/**
+ * GET /api/clan-wars/:warId
+ */
+async function handleGetClanWar(warId, env) {
+  const res = await _getClanWarStub(warId, env).fetch('http://internal/', { method: 'GET' });
+  return jsonResponse(await res.json(), res.status);
+}
+
+/**
+ * POST /api/clan-wars/:warId/respond
+ * Body: { actorId, actorGuildId, action: 'accept'|'counter'|'decline', counterWindowStart? }
+ */
+async function handleRespondClanWar(warId, request, env) {
+  let body;
+  try { body = await request.json(); } catch { return jsonResponse({ error: 'Invalid JSON' }, 400); }
+
+  const { actorId, actorGuildId, action, counterWindowStart } = body;
+  if (!actorId || !actorGuildId || !action) {
+    return jsonResponse({ error: 'actorId, actorGuildId, action are required' }, 400);
+  }
+  if (!['accept', 'counter', 'decline'].includes(action)) {
+    return jsonResponse({ error: "action must be 'accept', 'counter', or 'decline'" }, 400);
+  }
+
+  // Verify actor is officer/owner
+  const gStub = env.GUILD_OBJECTS.get(env.GUILD_OBJECTS.idFromName(actorGuildId));
+  const gRes  = await gStub.fetch('http://internal/', { method: 'GET' });
+  const gData = await gRes.json();
+  if (gRes.status !== 200) return jsonResponse(gData, gRes.status);
+  const actor = (gData.members || []).find(m => m.userId === actorId);
+  if (!actor) return jsonResponse({ error: 'You are not in this guild' }, 403);
+  if (actor.role === 'member') return jsonResponse({ error: 'Only officers and owners can respond to war challenges' }, 403);
+
+  if (action === 'counter' && counterWindowStart) {
+    const err = _validateWarWindow(new Date(counterWindowStart));
+    if (err) return jsonResponse({ error: err }, 400);
+  }
+
+  const warStub = _getClanWarStub(warId, env);
+  const res     = await warStub.fetch('http://internal/respond', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ actorGuildId, action, counterWindowStart }),
+  });
+  const data = await res.json();
+
+  if (res.status === 200 && data.war) {
+    const w = data.war;
+    const kvOps = [
+      env.GUILDS_KV.put(`clanwar:${warId}`, JSON.stringify({
+        id: warId, challengerGuildId: w.challengerGuildId, defenderGuildId: w.defenderGuildId,
+        status: w.status, windowStart: w.windowStart, proposedWindowStart: w.proposedWindowStart,
+        lastProposerId: w.lastProposerId, challengedAt: w.challengedAt,
+      })),
+    ];
+    if (w.status === 'cancelled') {
+      kvOps.push(
+        env.GUILDS_KV.delete(`guild:active-war:${w.challengerGuildId}`),
+        env.GUILDS_KV.delete(`guild:active-war:${w.defenderGuildId}`),
+      );
+    }
+    await Promise.all(kvOps);
+  }
+
+  return jsonResponse(data, res.status);
+}
+
+/**
+ * POST /api/clan-wars/:warId/nominate
+ * Body: { actorId, actorGuildId, nomineeUserId }
+ */
+async function handleNominateClanWar(warId, request, env) {
+  let body;
+  try { body = await request.json(); } catch { return jsonResponse({ error: 'Invalid JSON' }, 400); }
+
+  const { actorId, actorGuildId, nomineeUserId } = body;
+  if (!actorId || !actorGuildId || !nomineeUserId) {
+    return jsonResponse({ error: 'actorId, actorGuildId, nomineeUserId are required' }, 400);
+  }
+
+  const gStub = env.GUILD_OBJECTS.get(env.GUILD_OBJECTS.idFromName(actorGuildId));
+  const gRes  = await gStub.fetch('http://internal/', { method: 'GET' });
+  const gData = await gRes.json();
+  if (gRes.status !== 200) return jsonResponse(gData, gRes.status);
+  const actor = (gData.members || []).find(m => m.userId === actorId);
+  if (!actor) return jsonResponse({ error: 'You are not in this guild' }, 403);
+  if (actor.role === 'member') return jsonResponse({ error: 'Only officers and owners can manage roster nominations' }, 403);
+  const nominee = (gData.members || []).find(m => m.userId === nomineeUserId);
+  if (!nominee) return jsonResponse({ error: 'Nominee is not a member of your guild' }, 400);
+
+  const res = await _getClanWarStub(warId, env).fetch('http://internal/nominate', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ actorGuildId, userId: nomineeUserId }),
+  });
+  return jsonResponse(await res.json(), res.status);
+}
+
+/**
+ * DELETE /api/clan-wars/:warId/nominate/:userId
+ * Body: { actorId, actorGuildId }
+ */
+async function handleRemoveNomination(warId, nomineeUserId, request, env) {
+  let body;
+  try { body = await request.json(); } catch { return jsonResponse({ error: 'Invalid JSON' }, 400); }
+
+  const { actorId, actorGuildId } = body;
+  if (!actorId || !actorGuildId) return jsonResponse({ error: 'actorId and actorGuildId are required' }, 400);
+
+  const gStub = env.GUILD_OBJECTS.get(env.GUILD_OBJECTS.idFromName(actorGuildId));
+  const gRes  = await gStub.fetch('http://internal/', { method: 'GET' });
+  const gData = await gRes.json();
+  if (gRes.status !== 200) return jsonResponse(gData, gRes.status);
+  const actor = (gData.members || []).find(m => m.userId === actorId);
+  if (!actor) return jsonResponse({ error: 'You are not in this guild' }, 403);
+  if (actor.role === 'member') return jsonResponse({ error: 'Only officers and owners can manage the roster' }, 403);
+
+  const res = await _getClanWarStub(warId, env).fetch('http://internal/nominate', {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ actorGuildId, userId: nomineeUserId }),
+  });
+  return jsonResponse(await res.json(), res.status);
+}
+
+/**
+ * GET /api/guilds/:guildId/clan-wars
+ * Returns all war summaries for a guild (from KV index).
+ */
+async function handleGetGuildClanWars(guildId, env) {
+  const { keys } = await env.GUILDS_KV.list({ prefix: `guild:wars:${guildId}:` });
+  const wars = (await Promise.all(
+    keys.map(async k => {
+      const warId = k.name.split(':').pop();
+      const raw   = await env.GUILDS_KV.get(`clanwar:${warId}`);
+      return raw ? JSON.parse(raw) : null;
+    })
+  )).filter(Boolean);
+  return jsonResponse(wars);
+}
+
+/**
+ * POST /api/clan-wars/:warId/complete
+ * Body: { winnerGuildId } — winnerGuildId = challengerGuildId | defenderGuildId | 'draw'
+ * Reports the final result and releases active-war locks.
+ */
+async function handleCompleteClanWar(warId, request, env) {
+  let body;
+  try { body = await request.json(); } catch { return jsonResponse({ error: 'Invalid JSON' }, 400); }
+
+  const { winnerGuildId } = body;
+  if (!winnerGuildId) return jsonResponse({ error: 'winnerGuildId is required' }, 400);
+
+  const res  = await _getClanWarStub(warId, env).fetch('http://internal/complete', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ winnerGuildId }),
+  });
+  const data = await res.json();
+
+  if (res.status === 200 && data.war) {
+    const w = data.war;
+    await Promise.all([
+      env.GUILDS_KV.delete(`guild:active-war:${w.challengerGuildId}`),
+      env.GUILDS_KV.delete(`guild:active-war:${w.defenderGuildId}`),
+      env.GUILDS_KV.put(`clanwar:${warId}`, JSON.stringify({
+        id: warId, challengerGuildId: w.challengerGuildId, defenderGuildId: w.defenderGuildId,
+        status: 'completed', windowStart: w.windowStart, winner: w.winner, completedAt: w.completedAt,
+      })),
+    ]);
+
+    // Award XP to each winning roster member
+    if (w.winner && w.winner !== 'draw') {
+      const winnerRoster = (data.rosters || {})[w.winner] || [];
+      const winnerStub   = env.GUILD_OBJECTS.get(env.GUILD_OBJECTS.idFromName(w.winner));
+      for (const uid of winnerRoster) {
+        await winnerStub.fetch('http://internal/xp', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: uid, amount: GUILD_XP_SOURCES.clan_war_win, source: 'clan_war_win' }),
+        });
+      }
+    }
+  }
+
+  return jsonResponse(data, res.status);
+}
+
+/**
+ * POST /api/clan-wars/:warId/tick
+ * Advances state machine based on current time.
+ * Call periodically from any client or scheduled trigger.
+ */
+async function handleTickClanWar(warId, env) {
+  const res  = await _getClanWarStub(warId, env).fetch('http://internal/tick', { method: 'POST' });
+  const data = await res.json();
+
+  if (res.status === 200 && data.war) {
+    const w = data.war;
+    await env.GUILDS_KV.put(`clanwar:${warId}`, JSON.stringify({
+      id: warId, challengerGuildId: w.challengerGuildId, defenderGuildId: w.defenderGuildId,
+      status: w.status, windowStart: w.windowStart, proposedWindowStart: w.proposedWindowStart,
+      challengedAt: w.challengedAt, winner: w.winner,
+    }));
+    if (w.status === 'completed' || w.status === 'cancelled') {
+      await Promise.all([
+        env.GUILDS_KV.delete(`guild:active-war:${w.challengerGuildId}`),
+        env.GUILDS_KV.delete(`guild:active-war:${w.defenderGuildId}`),
+      ]);
+    }
+  }
+
+  return jsonResponse(data, res.status);
+}
+
+// ── Clan War Slot Handlers ────────────────────────────────────────────────────
+
+/**
+ * GET /api/clan-wars/:warId/slots
+ * Returns the 5 slot objects for an in_progress war.
+ */
+async function handleGetClanWarSlots(warId, env) {
+  const res = await _getClanWarStub(warId, env).fetch('http://internal/slots', { method: 'GET' });
+  return jsonResponse(await res.json(), res.status);
+}
+
+/**
+ * POST /api/clan-wars/:warId/slots/:slotIndex/room
+ * Body: { actorId, battleRoomCode? }
+ * First call (no battleRoomCode): returns { role:'host', battleRoomCode:null } — caller should create room.
+ * Second call (with battleRoomCode): registers the room code, returns { role:'host', battleRoomCode }.
+ * Subsequent calls from other player: returns { role:'guest', battleRoomCode }.
+ */
+async function handleClanWarSlotRoom(warId, slotIndex, request, env) {
+  let body;
+  try { body = await request.json(); } catch { return jsonResponse({ error: 'Invalid JSON' }, 400); }
+  const res = await _getClanWarStub(warId, env).fetch(
+    `http://internal/slots/${slotIndex}/room`,
+    { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }
+  );
+  return jsonResponse(await res.json(), res.status);
+}
+
+/**
+ * POST /api/clan-wars/:warId/slots/:slotIndex/result
+ * Body: { actorId, result: 'challenger_win'|'defender_win'|'draw' }
+ * Reports the outcome of a slot match. Auto-completes the war if 3+ wins reached.
+ */
+async function handleClanWarSlotResult(warId, slotIndex, request, env) {
+  let body;
+  try { body = await request.json(); } catch { return jsonResponse({ error: 'Invalid JSON' }, 400); }
+  const res = await _getClanWarStub(warId, env).fetch(
+    `http://internal/slots/${slotIndex}/result`,
+    { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }
+  );
+  const data = await res.json();
+  // If war completed via slot result, release active-war KV locks and award XP
+  if (res.status === 200 && data.war && data.war.status === 'completed') {
+    const w = data.war;
+    await Promise.all([
+      env.GUILDS_KV.delete(`guild:active-war:${w.challengerGuildId}`),
+      env.GUILDS_KV.delete(`guild:active-war:${w.defenderGuildId}`),
+      env.GUILDS_KV.put(`clanwar:${w.id}`, JSON.stringify({
+        id: w.id, challengerGuildId: w.challengerGuildId, defenderGuildId: w.defenderGuildId,
+        status: 'completed', windowStart: w.windowStart, winner: w.winner, completedAt: w.completedAt,
+      })),
+    ]);
+    if (w.winner && w.winner !== 'draw') {
+      const winnerRoster = (data.slots || [])
+        .filter(s => (s.result === 'challenger_win' && w.winner === w.challengerGuildId) ||
+                     (s.result === 'defender_win'   && w.winner === w.defenderGuildId))
+        .map(s => w.winner === w.challengerGuildId ? s.challengerUserId : s.defenderUserId)
+        .filter(Boolean);
+      const winnerStub = env.GUILD_OBJECTS.get(env.GUILD_OBJECTS.idFromName(w.winner));
+      for (const uid of winnerRoster) {
+        await winnerStub.fetch('http://internal/xp', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: uid, amount: GUILD_XP_SOURCES.clan_war_win, source: 'clan_war_win' }),
+        });
+      }
+    }
+  }
+  return jsonResponse(data, res.status);
+}
+
+/**
+ * POST /api/clan-wars/:warId/slots/:slotIndex/forfeit
+ * Body: { actorId }
+ * Forfeits a waiting/in_progress slot. Auto-completes war if 3+ wins reached.
+ */
+async function handleClanWarSlotForfeit(warId, slotIndex, request, env) {
+  let body;
+  try { body = await request.json(); } catch { return jsonResponse({ error: 'Invalid JSON' }, 400); }
+  const res = await _getClanWarStub(warId, env).fetch(
+    `http://internal/slots/${slotIndex}/forfeit`,
+    { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }
+  );
+  const data = await res.json();
+  if (res.status === 200 && data.war && data.war.status === 'completed') {
+    const w = data.war;
+    await Promise.all([
+      env.GUILDS_KV.delete(`guild:active-war:${w.challengerGuildId}`),
+      env.GUILDS_KV.delete(`guild:active-war:${w.defenderGuildId}`),
+      env.GUILDS_KV.put(`clanwar:${w.id}`, JSON.stringify({
+        id: w.id, challengerGuildId: w.challengerGuildId, defenderGuildId: w.defenderGuildId,
+        status: 'completed', windowStart: w.windowStart, winner: w.winner, completedAt: w.completedAt,
+      })),
+    ]);
+  }
+  return jsonResponse(data, res.status);
+}
+
+// ── Guild API Handlers ────────────────────────────────────────────────────────
+
+/**
+ * POST /api/guilds
+ * Body: { userId, name, tag, description?, emblem?, bannerColor? }
+ * Creates a new guild. The caller (userId) becomes the owner.
+ */
+async function handlePostGuild(request, env) {
+  let body;
+  try { body = await request.json(); } catch { return jsonResponse({ error: 'Invalid JSON' }, 400); }
+
+  const { userId, name, tag, description = '', emblem = '⚔️', bannerColor = '#1e40af', isPrivate = false } = body;
+
+  if (!userId || typeof userId !== 'string' || !userId.trim()) {
+    return jsonResponse({ error: 'userId is required' }, 400);
+  }
+  if (!name || typeof name !== 'string' || name.trim().length < 2 || name.trim().length > GUILD_NAME_MAX) {
+    return jsonResponse({ error: `name must be 2–${GUILD_NAME_MAX} characters` }, 400);
+  }
+  if (!tag || !GUILD_TAG_REGEX.test(String(tag).toUpperCase())) {
+    return jsonResponse({ error: 'tag must be 3–5 uppercase alphanumeric characters' }, 400);
+  }
+  if (typeof description === 'string' && description.length > GUILD_DESC_MAX) {
+    return jsonResponse({ error: `description must be ≤ ${GUILD_DESC_MAX} characters` }, 400);
+  }
+
+  const normalTag = String(tag).toUpperCase();
+
+  const [existingGuildId, tagOwner] = await Promise.all([
+    env.GUILDS_KV.get(`user:${userId}:guild`),
+    env.GUILDS_KV.get(`guild:tag:${normalTag}`),
+  ]);
+  if (existingGuildId) return jsonResponse({ error: 'User already belongs to a guild' }, 409);
+  if (tagOwner) return jsonResponse({ error: 'Guild tag is already taken' }, 409);
+
+  const guildId = crypto.randomUUID();
+  const now = new Date().toISOString();
+  const guild = {
+    id: guildId,
+    name: name.trim(),
+    tag: normalTag,
+    description,
+    emblem,
+    bannerColor,
+    level: 1,
+    xp: 0,
+    memberCount: 1,
+    guildRating: 0,
+    isPrivate: !!isPrivate,
+    createdAt: now,
+  };
+
+  const doId = env.GUILD_OBJECTS.idFromName(guildId);
+  const doStub = env.GUILD_OBJECTS.get(doId);
+  const doRes = await doStub.fetch('http://internal/init', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ guild, ownerId: userId }),
+  });
+  const data = await doRes.json();
+  if (doRes.status !== 201 && doRes.status !== 200) {
+    return jsonResponse(data, doRes.status);
+  }
+
+  await Promise.all([
+    env.GUILDS_KV.put(`user:${userId}:guild`, guildId),
+    env.GUILDS_KV.put(`guild:tag:${normalTag}`, guildId),
+    env.GUILDS_KV.put(`guild:index:${guildId}`, JSON.stringify({
+      id: guildId, name: guild.name, tag: normalTag, emblem, bannerColor,
+      level: 1, memberCount: 1, guildRating: 0, isPrivate: !!isPrivate,
+    })),
+  ]);
+
+  return jsonResponse(data, 201);
+}
+
+/**
+ * GET /api/guilds?search=:query
+ * Searches guilds by name/tag. Returns up to 50 results.
+ */
+async function handleSearchGuilds(request, env) {
+  const q = (new URL(request.url).searchParams.get('search') || '').trim().toLowerCase();
+  const { keys } = await env.GUILDS_KV.list({ prefix: 'guild:index:' });
+  const summaries = await Promise.all(
+    keys.map(async (k) => {
+      const raw = await env.GUILDS_KV.get(k.name);
+      return raw ? JSON.parse(raw) : null;
+    })
+  );
+  const results = summaries
+    .filter(g => g !== null)
+    .filter(g => !q || g.name.toLowerCase().includes(q) || g.tag.toLowerCase().includes(q))
+    .slice(0, 50);
+  return jsonResponse(results);
+}
+
+/**
+ * GET /api/guilds/:guildId
+ * Returns guild object + member list.
+ */
+async function handleGetGuild(guildId, env) {
+  const doId = env.GUILD_OBJECTS.idFromName(guildId);
+  const doStub = env.GUILD_OBJECTS.get(doId);
+  const doRes = await doStub.fetch('http://internal/', { method: 'GET' });
+  const data = await doRes.json();
+  return jsonResponse(data, doRes.status);
+}
+
+/**
+ * PATCH /api/guilds/:guildId
+ * Body: { userId, name?, description?, emblem?, bannerColor? }
+ * Updates mutable fields. Requires owner or officer role.
+ */
+async function handlePatchGuild(guildId, request, env) {
+  let body;
+  try { body = await request.json(); } catch { return jsonResponse({ error: 'Invalid JSON' }, 400); }
+
+  const { userId, name, description, emblem, bannerColor, isPrivate } = body;
+  if (!userId || typeof userId !== 'string') {
+    return jsonResponse({ error: 'userId is required' }, 400);
+  }
+  if (name !== undefined && (typeof name !== 'string' || name.trim().length < 2 || name.trim().length > GUILD_NAME_MAX)) {
+    return jsonResponse({ error: `name must be 2–${GUILD_NAME_MAX} characters` }, 400);
+  }
+  if (description !== undefined && (typeof description !== 'string' || description.length > GUILD_DESC_MAX)) {
+    return jsonResponse({ error: `description must be ≤ ${GUILD_DESC_MAX} characters` }, 400);
+  }
+
+  const doId = env.GUILD_OBJECTS.idFromName(guildId);
+  const doStub = env.GUILD_OBJECTS.get(doId);
+  const doRes = await doStub.fetch('http://internal/update', {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userId, name: name ? name.trim() : undefined, description, emblem, bannerColor, isPrivate }),
+  });
+  const data = await doRes.json();
+
+  if (doRes.status === 200 && data.guild) {
+    const g = data.guild;
+    await env.GUILDS_KV.put(`guild:index:${guildId}`, JSON.stringify({
+      id: g.id, name: g.name, tag: g.tag, emblem: g.emblem, bannerColor: g.bannerColor,
+      level: g.level, memberCount: g.memberCount, guildRating: g.guildRating, isPrivate: !!g.isPrivate,
+    }));
+  }
+
+  return jsonResponse(data, doRes.status);
+}
+
+/**
+ * DELETE /api/guilds/:guildId
+ * Body: { userId }
+ * Disbands the guild. Owner only.
+ */
+async function handleDeleteGuild(guildId, request, env) {
+  let body;
+  try { body = await request.json(); } catch { return jsonResponse({ error: 'Invalid JSON' }, 400); }
+
+  const { userId } = body;
+  if (!userId || typeof userId !== 'string') {
+    return jsonResponse({ error: 'userId is required' }, 400);
+  }
+
+  const doId = env.GUILD_OBJECTS.idFromName(guildId);
+  const doStub = env.GUILD_OBJECTS.get(doId);
+  const doRes = await doStub.fetch('http://internal/disband', {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userId }),
+  });
+  const data = await doRes.json();
+
+  if (doRes.status === 200 && data.disbanded) {
+    await Promise.all([
+      env.GUILDS_KV.delete(`guild:tag:${data.tag}`),
+      env.GUILDS_KV.delete(`guild:index:${guildId}`),
+      ...data.memberIds.map(mid => env.GUILDS_KV.delete(`user:${mid}:guild`)),
+    ]);
+  }
+
+  return jsonResponse(data, doRes.status);
+}
+
+// ── Guild Invite / Join / Leave / Kick Handlers ───────────────────────────────
+
+const GUILD_INVITE_TTL = 48 * 60 * 60; // 48 hours in seconds
+const LEAVE_COOLDOWN_TTL = 60 * 60;    // 1 hour in seconds
+
+/**
+ * POST /api/guilds/:guildId/invite
+ * Body: { inviterId, inviteeUsername }
+ * Any guild member can invite a player by username (displayName).
+ */
+async function handleGuildInvite(guildId, request, env) {
+  let body;
+  try { body = await request.json(); } catch { return jsonResponse({ error: 'Invalid JSON' }, 400); }
+
+  const { inviterId, inviteeUsername } = body;
+  if (!inviterId || typeof inviterId !== 'string') return jsonResponse({ error: 'inviterId is required' }, 400);
+  if (!inviteeUsername || typeof inviteeUsername !== 'string') return jsonResponse({ error: 'inviteeUsername is required' }, 400);
+
+  const trimmedInvitee = inviteeUsername.trim();
+  if (!trimmedInvitee) return jsonResponse({ error: 'inviteeUsername cannot be empty' }, 400);
+
+  // Check the inviter is actually in this guild
+  const doId = env.GUILD_OBJECTS.idFromName(guildId);
+  const doStub = env.GUILD_OBJECTS.get(doId);
+  const doRes = await doStub.fetch('http://internal/', { method: 'GET' });
+  const data = await doRes.json();
+  if (doRes.status !== 200) return jsonResponse(data, doRes.status);
+
+  const member = (data.members || []).find(m => m.userId === inviterId);
+  if (!member) return jsonResponse({ error: 'You are not a member of this guild' }, 403);
+
+  // Check invitee is not already in a guild
+  const existingGuildId = await env.GUILDS_KV.get(`user:${trimmedInvitee}:guild`);
+  if (existingGuildId) return jsonResponse({ error: 'Player is already in a guild' }, 409);
+
+  // Check guild is not full
+  if (data.guild.memberCount >= GUILD_MEMBERS_MAX) return jsonResponse({ error: 'Guild is full' }, 409);
+
+  // Check for duplicate pending invite
+  const { keys: existingKeys } = await env.GUILDS_KV.list({ prefix: `user-invites:${trimmedInvitee}:` });
+  for (const k of existingKeys) {
+    const inv = await env.GUILDS_KV.get(k.name, { type: 'json' });
+    if (inv && inv.guildId === guildId) return jsonResponse({ error: 'Invite already pending for this player' }, 409);
+  }
+
+  const inviteId = crypto.randomUUID();
+  const invite = {
+    id: inviteId,
+    guildId,
+    guildName: data.guild.name,
+    guildTag: data.guild.tag,
+    guildEmblem: data.guild.emblem,
+    guildLevel: data.guild.level,
+    guildMemberCount: data.guild.memberCount,
+    inviterId,
+    inviteeUserId: trimmedInvitee,
+    createdAt: new Date().toISOString(),
+  };
+
+  await Promise.all([
+    env.GUILDS_KV.put(`guild-invite:${inviteId}`, JSON.stringify(invite), { expirationTtl: GUILD_INVITE_TTL }),
+    env.GUILDS_KV.put(`user-invites:${trimmedInvitee}:${inviteId}`, '', { expirationTtl: GUILD_INVITE_TTL }),
+  ]);
+
+  return jsonResponse({ invited: true, inviteId });
+}
+
+/**
+ * GET /api/guild-invites?userId=:displayName
+ * Returns all pending invites for the given user.
+ */
+async function handleGetGuildInvites(request, env) {
+  const userId = (new URL(request.url).searchParams.get('userId') || '').trim();
+  if (!userId) return jsonResponse({ error: 'userId is required' }, 400);
+
+  const { keys } = await env.GUILDS_KV.list({ prefix: `user-invites:${userId}:` });
+  const invites = (await Promise.all(
+    keys.map(async k => {
+      const inviteId = k.name.split(':').pop();
+      return env.GUILDS_KV.get(`guild-invite:${inviteId}`, { type: 'json' });
+    })
+  )).filter(Boolean);
+
+  return jsonResponse(invites);
+}
+
+/**
+ * POST /api/guild-invites/:inviteId/accept
+ * Body: { userId }
+ * Accepts the invite and adds the user as a member.
+ */
+async function handleAcceptGuildInvite(inviteId, request, env) {
+  let body;
+  try { body = await request.json(); } catch { return jsonResponse({ error: 'Invalid JSON' }, 400); }
+
+  const { userId } = body;
+  if (!userId || typeof userId !== 'string') return jsonResponse({ error: 'userId is required' }, 400);
+
+  const invite = await env.GUILDS_KV.get(`guild-invite:${inviteId}`, { type: 'json' });
+  if (!invite) return jsonResponse({ error: 'Invite not found or expired' }, 404);
+  if (invite.inviteeUserId !== userId) return jsonResponse({ error: 'This invite is not for you' }, 403);
+
+  // Check cooldown
+  const cooldown = await env.GUILDS_KV.get(`leave-cooldown:${userId}`);
+  if (cooldown) return jsonResponse({ error: 'You must wait before joining another guild (1-hour cooldown)' }, 429);
+
+  // Check user not already in a guild
+  const existingGuildId = await env.GUILDS_KV.get(`user:${userId}:guild`);
+  if (existingGuildId) return jsonResponse({ error: 'You are already in a guild' }, 409);
+
+  // Add to guild via DO
+  const doId = env.GUILD_OBJECTS.idFromName(invite.guildId);
+  const doStub = env.GUILD_OBJECTS.get(doId);
+  const doRes = await doStub.fetch('http://internal/join', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userId }),
+  });
+  const data = await doRes.json();
+  if (doRes.status !== 200) return jsonResponse(data, doRes.status);
+
+  // Update KV
+  const g = data.guild;
+  await Promise.all([
+    env.GUILDS_KV.put(`user:${userId}:guild`, invite.guildId),
+    env.GUILDS_KV.put(`guild:index:${invite.guildId}`, JSON.stringify({
+      id: g.id, name: g.name, tag: g.tag, emblem: g.emblem, bannerColor: g.bannerColor,
+      level: g.level, memberCount: g.memberCount, guildRating: g.guildRating, isPrivate: !!g.isPrivate,
+    })),
+    env.GUILDS_KV.delete(`guild-invite:${inviteId}`),
+    env.GUILDS_KV.delete(`user-invites:${userId}:${inviteId}`),
+  ]);
+
+  return jsonResponse({ accepted: true, guild: data.guild, members: data.members });
+}
+
+/**
+ * POST /api/guild-invites/:inviteId/decline
+ * Body: { userId }
+ */
+async function handleDeclineGuildInvite(inviteId, request, env) {
+  let body;
+  try { body = await request.json(); } catch { return jsonResponse({ error: 'Invalid JSON' }, 400); }
+
+  const { userId } = body;
+  if (!userId || typeof userId !== 'string') return jsonResponse({ error: 'userId is required' }, 400);
+
+  const invite = await env.GUILDS_KV.get(`guild-invite:${inviteId}`, { type: 'json' });
+  if (!invite) return jsonResponse({ error: 'Invite not found or expired' }, 404);
+  if (invite.inviteeUserId !== userId) return jsonResponse({ error: 'This invite is not for you' }, 403);
+
+  await Promise.all([
+    env.GUILDS_KV.delete(`guild-invite:${inviteId}`),
+    env.GUILDS_KV.delete(`user-invites:${userId}:${inviteId}`),
+  ]);
+
+  return jsonResponse({ declined: true });
+}
+
+/**
+ * POST /api/guilds/:guildId/join-requests
+ * Body: { userId }
+ * Submits a join request for open guilds.
+ */
+async function handlePostJoinRequest(guildId, request, env) {
+  let body;
+  try { body = await request.json(); } catch { return jsonResponse({ error: 'Invalid JSON' }, 400); }
+
+  const { userId } = body;
+  if (!userId || typeof userId !== 'string') return jsonResponse({ error: 'userId is required' }, 400);
+
+  const cooldown = await env.GUILDS_KV.get(`leave-cooldown:${userId}`);
+  if (cooldown) return jsonResponse({ error: 'You must wait before joining another guild (1-hour cooldown)' }, 429);
+
+  const existingGuildId = await env.GUILDS_KV.get(`user:${userId}:guild`);
+  if (existingGuildId) return jsonResponse({ error: 'You are already in a guild' }, 409);
+
+  const doId = env.GUILD_OBJECTS.idFromName(guildId);
+  const doStub = env.GUILD_OBJECTS.get(doId);
+  const doRes = await doStub.fetch('http://internal/join-request', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userId }),
+  });
+  const data = await doRes.json();
+  return jsonResponse(data, doRes.status);
+}
+
+/**
+ * GET /api/guilds/:guildId/join-requests?actorId=:id
+ * Returns pending join requests. Officer/owner only.
+ */
+async function handleGetJoinRequests(guildId, request, env) {
+  const actorId = (new URL(request.url).searchParams.get('actorId') || '').trim();
+  if (!actorId) return jsonResponse({ error: 'actorId is required' }, 400);
+
+  const doId = env.GUILD_OBJECTS.idFromName(guildId);
+  const doStub = env.GUILD_OBJECTS.get(doId);
+
+  // Verify actor role
+  const guildRes = await doStub.fetch('http://internal/', { method: 'GET' });
+  const guildData = await guildRes.json();
+  if (guildRes.status !== 200) return jsonResponse(guildData, guildRes.status);
+  const actor = (guildData.members || []).find(m => m.userId === actorId);
+  if (!actor) return jsonResponse({ error: 'Not a guild member' }, 403);
+  if (actor.role === 'member') return jsonResponse({ error: 'Only officers and owner can view join requests' }, 403);
+
+  const reqRes = await doStub.fetch('http://internal/join-requests', { method: 'GET' });
+  const requests = await reqRes.json();
+  return jsonResponse(requests, reqRes.status);
+}
+
+/**
+ * PATCH /api/guilds/:guildId/join-requests/:requesterId
+ * Body: { actorId, action: 'approve' | 'deny' }
+ */
+async function handlePatchJoinRequest(guildId, requesterId, request, env) {
+  let body;
+  try { body = await request.json(); } catch { return jsonResponse({ error: 'Invalid JSON' }, 400); }
+
+  const { actorId, action } = body;
+  if (!actorId || typeof actorId !== 'string') return jsonResponse({ error: 'actorId is required' }, 400);
+  if (action !== 'approve' && action !== 'deny') return jsonResponse({ error: 'action must be approve or deny' }, 400);
+
+  const doId = env.GUILD_OBJECTS.idFromName(guildId);
+  const doStub = env.GUILD_OBJECTS.get(doId);
+
+  // Verify actor is officer or owner
+  const guildRes = await doStub.fetch('http://internal/', { method: 'GET' });
+  const guildData = await guildRes.json();
+  if (guildRes.status !== 200) return jsonResponse(guildData, guildRes.status);
+  const actor = (guildData.members || []).find(m => m.userId === actorId);
+  if (!actor) return jsonResponse({ error: 'Not a guild member' }, 403);
+  if (actor.role === 'member') return jsonResponse({ error: 'Only officers and owner can manage join requests' }, 403);
+
+  if (action === 'deny') {
+    const remRes = await doStub.fetch('http://internal/join-request', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: requesterId }),
+    });
+    return jsonResponse(await remRes.json(), remRes.status);
+  }
+
+  // approve — check cooldown and existing guild
+  const cooldown = await env.GUILDS_KV.get(`leave-cooldown:${requesterId}`);
+  if (cooldown) return jsonResponse({ error: 'Player must wait before joining a guild (1-hour cooldown)' }, 429);
+
+  const existingGuildId = await env.GUILDS_KV.get(`user:${requesterId}:guild`);
+  if (existingGuildId) return jsonResponse({ error: 'Player is already in a guild' }, 409);
+
+  // Remove request, then add as member
+  await doStub.fetch('http://internal/join-request', {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userId: requesterId }),
+  });
+
+  const joinRes = await doStub.fetch('http://internal/join', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userId: requesterId }),
+  });
+  const joinData = await joinRes.json();
+  if (joinRes.status !== 200) return jsonResponse(joinData, joinRes.status);
+
+  const g = joinData.guild;
+  await Promise.all([
+    env.GUILDS_KV.put(`user:${requesterId}:guild`, guildId),
+    env.GUILDS_KV.put(`guild:index:${guildId}`, JSON.stringify({
+      id: g.id, name: g.name, tag: g.tag, emblem: g.emblem, bannerColor: g.bannerColor,
+      level: g.level, memberCount: g.memberCount, guildRating: g.guildRating, isPrivate: !!g.isPrivate,
+    })),
+  ]);
+
+  return jsonResponse({ approved: true, guild: joinData.guild, members: joinData.members });
+}
+
+/**
+ * POST /api/guilds/:guildId/leave
+ * Body: { userId }
+ */
+async function handleLeaveGuild(guildId, request, env) {
+  let body;
+  try { body = await request.json(); } catch { return jsonResponse({ error: 'Invalid JSON' }, 400); }
+
+  const { userId } = body;
+  if (!userId || typeof userId !== 'string') return jsonResponse({ error: 'userId is required' }, 400);
+
+  const doId = env.GUILD_OBJECTS.idFromName(guildId);
+  const doStub = env.GUILD_OBJECTS.get(doId);
+  const doRes = await doStub.fetch('http://internal/leave', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userId }),
+  });
+  const data = await doRes.json();
+  if (doRes.status !== 200) return jsonResponse(data, doRes.status);
+
+  const promises = [
+    env.GUILDS_KV.delete(`user:${userId}:guild`),
+    env.GUILDS_KV.put(`leave-cooldown:${userId}`, '1', { expirationTtl: LEAVE_COOLDOWN_TTL }),
+  ];
+
+  if (data.disbanded) {
+    promises.push(
+      env.GUILDS_KV.delete(`guild:tag:${data.tag}`),
+      env.GUILDS_KV.delete(`guild:index:${guildId}`),
+    );
+  } else {
+    const g = data.guild;
+    promises.push(
+      env.GUILDS_KV.put(`guild:index:${guildId}`, JSON.stringify({
+        id: g.id, name: g.name, tag: g.tag, emblem: g.emblem, bannerColor: g.bannerColor,
+        level: g.level, memberCount: g.memberCount, guildRating: g.guildRating, isPrivate: !!g.isPrivate,
+      }))
+    );
+  }
+
+  await Promise.all(promises);
+  return jsonResponse(data);
+}
+
+/**
+ * POST /api/guilds/:guildId/promote
+ * Body: { actorId, targetUserId, newRole }
+ * Changes a member's role. Only the owner can promote/demote.
+ * newRole = 'officer' | 'member' | 'owner' (owner transfer: caller becomes officer).
+ */
+async function handlePromoteMember(guildId, request, env) {
+  let body;
+  try { body = await request.json(); } catch { return jsonResponse({ error: 'Invalid JSON' }, 400); }
+
+  const { actorId, targetUserId, newRole } = body;
+  if (!actorId || !targetUserId || !newRole) {
+    return jsonResponse({ error: 'actorId, targetUserId, and newRole are required' }, 400);
+  }
+
+  const doId = env.GUILD_OBJECTS.idFromName(guildId);
+  const doStub = env.GUILD_OBJECTS.get(doId);
+  const doRes = await doStub.fetch('http://internal/promote', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ actorId, targetUserId, newRole }),
+  });
+  const data = await doRes.json();
+  return jsonResponse(data, doRes.status);
+}
+
+/**
+ * POST /api/guilds/:guildId/kick
+ * Body: { actorId, targetUserId }
+ */
+async function handleKickMember(guildId, request, env) {
+  let body;
+  try { body = await request.json(); } catch { return jsonResponse({ error: 'Invalid JSON' }, 400); }
+
+  const { actorId, targetUserId } = body;
+  if (!actorId || typeof actorId !== 'string') return jsonResponse({ error: 'actorId is required' }, 400);
+  if (!targetUserId || typeof targetUserId !== 'string') return jsonResponse({ error: 'targetUserId is required' }, 400);
+
+  const doId = env.GUILD_OBJECTS.idFromName(guildId);
+  const doStub = env.GUILD_OBJECTS.get(doId);
+  const doRes = await doStub.fetch('http://internal/kick', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ actorId, targetUserId }),
+  });
+  const data = await doRes.json();
+  if (doRes.status !== 200) return jsonResponse(data, doRes.status);
+
+  const g = data.guild;
+  await Promise.all([
+    env.GUILDS_KV.delete(`user:${targetUserId}:guild`),
+    env.GUILDS_KV.put(`guild:index:${guildId}`, JSON.stringify({
+      id: g.id, name: g.name, tag: g.tag, emblem: g.emblem, bannerColor: g.bannerColor,
+      level: g.level, memberCount: g.memberCount, guildRating: g.guildRating, isPrivate: !!g.isPrivate,
+    })),
+  ]);
+
+  return jsonResponse(data);
+}
+
+/**
+ * POST /api/guilds/:guildId/xp
+ * Body: { userId, source }
+ * Internal endpoint called by match/mission systems when XP events fire.
+ * source must be one of: standard_match_win, tournament_match_win, clan_war_win, daily_mission
+ */
+async function handlePostGuildXp(guildId, request, env) {
+  let body;
+  try { body = await request.json(); } catch { return jsonResponse({ error: 'Invalid JSON' }, 400); }
+
+  const { userId, source } = body;
+  if (!source || !GUILD_XP_SOURCES[source]) {
+    return jsonResponse({ error: `source must be one of: ${Object.keys(GUILD_XP_SOURCES).join(', ')}` }, 400);
+  }
+  const amount = GUILD_XP_SOURCES[source];
+
+  const doId = env.GUILD_OBJECTS.idFromName(guildId);
+  const doStub = env.GUILD_OBJECTS.get(doId);
+  const doRes = await doStub.fetch('http://internal/xp', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userId, amount, source }),
+  });
+  const data = await doRes.json();
+
+  // Update KV index if level changed
+  if (doRes.status === 200 && data.guild) {
+    const g = data.guild;
+    await env.GUILDS_KV.put(`guild:index:${guildId}`, JSON.stringify({
+      id: g.id, name: g.name, tag: g.tag, emblem: g.emblem, bannerColor: g.bannerColor,
+      level: g.level, memberCount: g.memberCount, guildRating: g.guildRating, isPrivate: !!g.isPrivate,
+    }));
+  }
+
+  return jsonResponse(data, doRes.status);
+}
+
+/**
+ * GET /api/guilds/:guildId/xp-log?limit=50&offset=0
+ * Returns paginated XP event log for a guild.
+ */
+async function handleGetGuildXpLog(guildId, request, env) {
+  const doId = env.GUILD_OBJECTS.idFromName(guildId);
+  const doStub = env.GUILD_OBJECTS.get(doId);
+  const reqUrl = new URL(request.url);
+  const doRes = await doStub.fetch(
+    `http://internal/xp-log?${reqUrl.searchParams.toString()}`,
+    { method: 'GET' }
+  );
+  const data = await doRes.json();
+  return jsonResponse(data, doRes.status);
+}
+
+/**
+ * GET /api/guilds/:guildId/leaderboard?period=weekly
+ * Returns weekly contribution leaderboard + last week snapshot.
+ */
+async function handleGetGuildLeaderboard(guildId, env) {
+  const doId = env.GUILD_OBJECTS.idFromName(guildId);
+  const doStub = env.GUILD_OBJECTS.get(doId);
+  const doRes = await doStub.fetch('http://internal/leaderboard', { method: 'GET' });
+  const data = await doRes.json();
+  return jsonResponse(data, doRes.status);
+}
+
+/**
+ * GET /api/guilds/:guildId/weekly-notification?userId=X
+ * Returns (and clears) the pending weekly summary notification for a member.
+ */
+async function handleGetWeeklyNotification(guildId, request, env) {
+  const doId = env.GUILD_OBJECTS.idFromName(guildId);
+  const doStub = env.GUILD_OBJECTS.get(doId);
+  const reqUrl = new URL(request.url);
+  const doRes = await doStub.fetch(
+    `http://internal/weekly-notification?${reqUrl.searchParams.toString()}`,
+    { method: 'GET' }
+  );
+  const data = await doRes.json();
+  return jsonResponse(data, doRes.status);
+}
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
@@ -2423,6 +4345,100 @@ export default {
     } else if (method === 'GET' && url.pathname.startsWith('/api/leaderboard/')) {
       const date = url.pathname.replace('/api/leaderboard/', '');
       response = await handleGetLeaderboard(date, env);
+    } else if (method === 'POST' && url.pathname === '/api/clan-wars') {
+      response = await handlePostClanWarChallenge(request, env);
+    } else if (method === 'GET' && /^\/api\/clan-wars\/[^/]+$/.test(url.pathname)) {
+      const warId = url.pathname.split('/').pop();
+      response = await handleGetClanWar(warId, env);
+    } else if (method === 'POST' && /^\/api\/clan-wars\/[^/]+\/respond$/.test(url.pathname)) {
+      const warId = url.pathname.split('/')[3];
+      response = await handleRespondClanWar(warId, request, env);
+    } else if (method === 'POST' && /^\/api\/clan-wars\/[^/]+\/nominate$/.test(url.pathname)) {
+      const warId = url.pathname.split('/')[3];
+      response = await handleNominateClanWar(warId, request, env);
+    } else if (method === 'DELETE' && /^\/api\/clan-wars\/[^/]+\/nominate\/[^/]+$/.test(url.pathname)) {
+      const parts = url.pathname.split('/');
+      response = await handleRemoveNomination(parts[3], decodeURIComponent(parts[5]), request, env);
+    } else if (method === 'POST' && /^\/api\/clan-wars\/[^/]+\/complete$/.test(url.pathname)) {
+      const warId = url.pathname.split('/')[3];
+      response = await handleCompleteClanWar(warId, request, env);
+    } else if (method === 'POST' && /^\/api\/clan-wars\/[^/]+\/tick$/.test(url.pathname)) {
+      const warId = url.pathname.split('/')[3];
+      response = await handleTickClanWar(warId, env);
+    } else if (method === 'GET' && /^\/api\/clan-wars\/[^/]+\/slots$/.test(url.pathname)) {
+      const warId = url.pathname.split('/')[3];
+      response = await handleGetClanWarSlots(warId, env);
+    } else if (/^\/api\/clan-wars\/[^/]+\/slots\/\d+\/(room|result|forfeit)$/.test(url.pathname)) {
+      const parts     = url.pathname.split('/');
+      const warId     = parts[3];
+      const slotIndex = parseInt(parts[5], 10);
+      const action    = parts[6];
+      if (method !== 'POST') {
+        response = jsonResponse({ error: 'Method not allowed' }, 405);
+      } else if (action === 'room') {
+        response = await handleClanWarSlotRoom(warId, slotIndex, request, env);
+      } else if (action === 'result') {
+        response = await handleClanWarSlotResult(warId, slotIndex, request, env);
+      } else {
+        response = await handleClanWarSlotForfeit(warId, slotIndex, request, env);
+      }
+    } else if (method === 'GET' && /^\/api\/guilds\/[^/]+\/clan-wars$/.test(url.pathname)) {
+      const guildId = url.pathname.split('/')[3];
+      response = await handleGetGuildClanWars(guildId, env);
+    } else if (method === 'POST' && url.pathname === '/api/guilds') {
+      response = await handlePostGuild(request, env);
+    } else if (method === 'GET' && url.pathname === '/api/guilds') {
+      response = await handleSearchGuilds(request, env);
+    } else if (method === 'GET' && url.pathname === '/api/guild-invites') {
+      response = await handleGetGuildInvites(request, env);
+    } else if (method === 'POST' && /^\/api\/guild-invites\/[^/]+\/accept$/.test(url.pathname)) {
+      const inviteId = url.pathname.split('/')[3];
+      response = await handleAcceptGuildInvite(inviteId, request, env);
+    } else if (method === 'POST' && /^\/api\/guild-invites\/[^/]+\/decline$/.test(url.pathname)) {
+      const inviteId = url.pathname.split('/')[3];
+      response = await handleDeclineGuildInvite(inviteId, request, env);
+    } else if (method === 'POST' && /^\/api\/guilds\/[^/]+\/invite$/.test(url.pathname)) {
+      const guildId = url.pathname.split('/')[3];
+      response = await handleGuildInvite(guildId, request, env);
+    } else if (method === 'POST' && /^\/api\/guilds\/[^/]+\/join-requests$/.test(url.pathname)) {
+      const guildId = url.pathname.split('/')[3];
+      response = await handlePostJoinRequest(guildId, request, env);
+    } else if (method === 'GET' && /^\/api\/guilds\/[^/]+\/join-requests$/.test(url.pathname)) {
+      const guildId = url.pathname.split('/')[3];
+      response = await handleGetJoinRequests(guildId, request, env);
+    } else if (method === 'PATCH' && /^\/api\/guilds\/[^/]+\/join-requests\/[^/]+$/.test(url.pathname)) {
+      const parts = url.pathname.split('/');
+      response = await handlePatchJoinRequest(parts[3], parts[5], request, env);
+    } else if (method === 'POST' && /^\/api\/guilds\/[^/]+\/leave$/.test(url.pathname)) {
+      const guildId = url.pathname.split('/')[3];
+      response = await handleLeaveGuild(guildId, request, env);
+    } else if (method === 'POST' && /^\/api\/guilds\/[^/]+\/promote$/.test(url.pathname)) {
+      const guildId = url.pathname.split('/')[3];
+      response = await handlePromoteMember(guildId, request, env);
+    } else if (method === 'POST' && /^\/api\/guilds\/[^/]+\/kick$/.test(url.pathname)) {
+      const guildId = url.pathname.split('/')[3];
+      response = await handleKickMember(guildId, request, env);
+    } else if (method === 'POST' && /^\/api\/guilds\/[^/]+\/xp$/.test(url.pathname)) {
+      const guildId = url.pathname.split('/')[3];
+      response = await handlePostGuildXp(guildId, request, env);
+    } else if (method === 'GET' && /^\/api\/guilds\/[^/]+\/xp-log$/.test(url.pathname)) {
+      const guildId = url.pathname.split('/')[3];
+      response = await handleGetGuildXpLog(guildId, request, env);
+    } else if (method === 'GET' && /^\/api\/guilds\/[^/]+\/leaderboard$/.test(url.pathname)) {
+      const guildId = url.pathname.split('/')[3];
+      response = await handleGetGuildLeaderboard(guildId, env);
+    } else if (method === 'GET' && /^\/api\/guilds\/[^/]+\/weekly-notification$/.test(url.pathname)) {
+      const guildId = url.pathname.split('/')[3];
+      response = await handleGetWeeklyNotification(guildId, request, env);
+    } else if (method === 'GET' && url.pathname.startsWith('/api/guilds/')) {
+      const guildId = url.pathname.replace('/api/guilds/', '');
+      response = await handleGetGuild(guildId, env);
+    } else if (method === 'PATCH' && url.pathname.startsWith('/api/guilds/')) {
+      const guildId = url.pathname.replace('/api/guilds/', '');
+      response = await handlePatchGuild(guildId, request, env);
+    } else if (method === 'DELETE' && url.pathname.startsWith('/api/guilds/')) {
+      const guildId = url.pathname.replace('/api/guilds/', '');
+      response = await handleDeleteGuild(guildId, request, env);
     } else {
       response = jsonResponse({ error: 'Not found' }, 404);
     }
