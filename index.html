@@ -703,6 +703,19 @@
       <!-- Guild error toast -->
       <div id="guild-error-toast" style="display:none;"></div>
 
+      <!-- Clan War: Post-War Result Screen -->
+      <div id="war-result-screen" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="wrs-title">
+        <div id="war-result-screen-inner"></div>
+      </div>
+
+      <!-- Clan War: Season Standings + Hall of Fame -->
+      <div id="war-standings-screen" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="wss-title">
+        <div id="war-standings-inner">
+          <div id="wss-title">🏆 CLAN WAR STANDINGS</div>
+          <div id="war-standings-content"></div>
+        </div>
+      </div>
+
       <!-- Clan War: War Match Starting modal -->
       <div id="war-match-modal" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="wmm-title">
         <div id="war-match-modal-inner">
@@ -1382,6 +1395,8 @@
     <script src="js/tournament.js"></script>
     <script src="js/guild.js"></script>
     <script src="js/clan-war-engine.js"></script>
+    <script src="js/clan-war-results.js"></script>
+    <script src="js/clan-war-standings.js"></script>
     <script src="js/main.js"></script>
   </body>
 </html>

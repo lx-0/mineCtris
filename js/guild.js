@@ -206,6 +206,26 @@ async function apiGetGuildClanWars(guildId) {
   return _apiFetch(`/api/guilds/${guildId}/clan-wars`);
 }
 
+async function apiGetGuildWarHistory(guildId, page = 1) {
+  return _apiFetch(`/api/guilds/${guildId}/wars?page=${page}`);
+}
+
+async function apiFinalizeWar(warId) {
+  return _apiFetch(`/api/wars/${warId}/finalize`, { method: 'POST', body: '{}' });
+}
+
+async function apiGetGuildRating(guildId) {
+  return _apiFetch(`/api/guilds/${guildId}/rating`);
+}
+
+async function apiGetGuildStandings(page = 1) {
+  return _apiFetch(`/api/guild-standings?season=current&page=${page}`);
+}
+
+async function apiGetGuildHallOfFame() {
+  return _apiFetch('/api/season/guild-hall-of-fame');
+}
+
 async function apiTickClanWar(warId) {
   return _apiFetch(`/api/clan-wars/${warId}/tick`, { method: 'POST', body: '{}' });
 }
@@ -629,37 +649,57 @@ function _renderHomeView(content) {
   }
 
   // ── Wars tab ──────────────────────────────────────────────────────────────
-  async function _loadWarsTab() {
+  async function _loadWarsTab(page = 1) {
     const warsContent = document.getElementById('guild-wars-content');
     if (!warsContent) return;
     warsContent.innerHTML = '<div class="guild-loading">Loading…</div>';
 
     const guildId = _loadMyGuildId();
-    const res     = await apiGetGuildClanWars(guildId);
-    if (!warsContent) return; // panel may have been closed
+    const myMember = (_myGuild.members || []).find(m => m.userId === guildUserId()) || {};
+    const canAct   = myMember.role === 'officer' || myMember.role === 'owner';
 
-    if (!res.ok) {
+    // Fetch active wars (legacy endpoint) + paginated history + rating in parallel
+    const [activeRes, histRes, ratingRes] = await Promise.all([
+      apiGetGuildClanWars(guildId),
+      apiGetGuildWarHistory(guildId, page),
+      apiGetGuildRating(guildId),
+    ]);
+    if (!warsContent) return;
+
+    if (!activeRes.ok && !histRes.ok) {
       warsContent.innerHTML = `<div class="guild-error">⚠ Could not load wars.</div>`;
       return;
     }
 
-    const wars  = res.data || [];
-    const myMember = (_myGuild.members || []).find(m => m.userId === guildUserId()) || {};
-    const canAct   = myMember.role === 'officer' || myMember.role === 'owner';
-
-    // Active war (pending/scheduled/roster_open/roster_locked/in_progress)
-    const active = wars.find(w =>
+    const allActive = (activeRes.data || []);
+    const active = allActive.find(w =>
       ['pending_acceptance', 'roster_open', 'roster_locked', 'in_progress', 'scheduled'].includes(w.status)
     );
 
-    // Past wars
-    const past   = wars.filter(w => w.status === 'completed' || w.status === 'cancelled')
-                       .sort((a, b) => new Date(b.challengedAt || 0) - new Date(a.challengedAt || 0))
-                       .slice(0, 5);
+    const histData   = histRes.ok ? histRes.data : { wars: [], total: 0, page: 1, pageSize: 20 };
+    const pastWars   = (histData.wars || []).filter(w => w.status === 'completed' || w.status === 'cancelled');
+    const totalWars  = histData.total || 0;
+    const pageSize   = histData.pageSize || 20;
+    const totalPages = Math.max(1, Math.ceil(totalWars / pageSize));
+
+    const rating     = ratingRes.ok ? (ratingRes.data.rating || 1000) : 1000;
+    const warsPlayed = ratingRes.ok ? (ratingRes.data.warsPlayed || 0) : 0;
+    const wins       = ratingRes.ok ? (ratingRes.data.wins || 0) : 0;
+    const losses     = ratingRes.ok ? (ratingRes.data.losses || 0) : 0;
+    const draws      = ratingRes.ok ? (ratingRes.data.draws || 0) : 0;
 
     let html = '';
 
+    // Rating header
+    html += `<div class="war-rating-header">
+      <div class="war-rating-val">⚔️ ${rating} <span class="war-rating-label">Guild Rating</span></div>
+      <div class="war-rating-stats">${wins}W / ${losses}L / ${draws}D · ${warsPlayed} wars</div>
+      <button id="war-standings-btn" class="guild-secondary-btn war-standings-btn">🏆 Season Standings</button>
+    </div>`;
+
+    // Active war section
     if (active) {
+      html += `<div class="guild-section-title">ACTIVE WAR</div>`;
       html += _renderWarSummaryCard(active, guildId, true);
     } else if (canAct) {
       html += `<div class="war-challenge-cta">
@@ -670,26 +710,125 @@ function _renderHomeView(content) {
       html += `<div class="guild-empty">No active clan war. Officers can send a challenge.</div>`;
     }
 
-    if (past.length > 0) {
-      html += `<div class="guild-section-title" style="margin-top:12px">PAST WARS</div>`;
-      html += past.map(w => _renderWarSummaryCard(w, guildId, false)).join('');
+    // War history
+    if (pastWars.length > 0) {
+      html += `<div class="guild-section-title" style="margin-top:12px">WAR HISTORY</div>`;
+      html += pastWars.map(w => _renderWarHistoryCard(w, guildId)).join('');
+    } else if (page === 1 && !active) {
+      html += `<div class="guild-empty" style="margin-top:10px">No completed wars yet.</div>`;
+    }
+
+    // Pagination
+    if (totalPages > 1) {
+      html += `<div class="war-pagination">`;
+      if (page > 1) html += `<button class="guild-secondary-btn" id="war-prev-page" data-page="${page - 1}">← Prev</button>`;
+      html += `<span class="war-page-label">Page ${page}/${totalPages}</span>`;
+      if (page < totalPages) html += `<button class="guild-secondary-btn" id="war-next-page" data-page="${page + 1}">Next →</button>`;
+      html += `</div>`;
     }
 
     warsContent.innerHTML = html;
 
-    // Challenge button
+    // Wire: challenge btn
     const challengeBtn = document.getElementById('war-send-challenge-btn');
     if (challengeBtn) {
       challengeBtn.addEventListener('click', () => _renderChallengeSendView(warsContent, guildId));
     }
 
-    // Active war details button
+    // Wire: active war details btn
     if (active) {
       const detailBtn = document.getElementById(`war-detail-btn-${active.id}`);
       if (detailBtn) {
         detailBtn.addEventListener('click', () => _renderWarDetailView(warsContent, active.id, guildId));
       }
     }
+
+    // Wire: slot expansion on past wars
+    warsContent.querySelectorAll('.war-history-card[data-war-id]').forEach(card => {
+      card.addEventListener('click', () => {
+        const slots = card.querySelector('.war-slots-detail');
+        if (slots) slots.style.display = slots.style.display === 'none' ? '' : 'none';
+      });
+    });
+
+    // Wire: pagination
+    const prevBtn = document.getElementById('war-prev-page');
+    const nextBtn = document.getElementById('war-next-page');
+    if (prevBtn) prevBtn.addEventListener('click', () => _loadWarsTab(parseInt(prevBtn.dataset.page, 10)));
+    if (nextBtn) nextBtn.addEventListener('click', () => _loadWarsTab(parseInt(nextBtn.dataset.page, 10)));
+
+    // Wire: standings btn
+    const standingsBtn = document.getElementById('war-standings-btn');
+    if (standingsBtn) standingsBtn.addEventListener('click', () => ClanWarStandings.open());
+  }
+
+  /** Render a completed/cancelled war card with expandable slot grid. */
+  function _renderWarHistoryCard(war, myGuildId) {
+    const isChallenger = war.challengerGuildId === myGuildId;
+    const opName  = _esc(isChallenger ? (war.defenderGuildName   || war.defenderGuildId)   : (war.challengerGuildName || war.challengerGuildId));
+    const opTag   = _esc(isChallenger ? (war.defenderGuildTag    || '') : (war.challengerGuildTag || ''));
+    const weWon   = war.winner === myGuildId;
+    const isDraw  = war.winner === 'draw';
+    const resCls  = isDraw ? 'draw' : weWon ? 'win' : 'loss';
+    const resLbl  = isDraw ? '🤝 Draw' : weWon ? '🏆 Victory' : '💀 Defeat';
+
+    // Slot score line (e.g. 3-2)
+    const cW = war.challengerSlotWins || 0;
+    const dW = war.defenderSlotWins   || 0;
+    const mySlotWins  = isChallenger ? cW : dW;
+    const opSlotWins  = isChallenger ? dW : cW;
+    const scoreLine   = war.status === 'completed' ? `${mySlotWins}–${opSlotWins}` : '';
+
+    // Rating delta
+    let ratingHtml = '';
+    if (war.status === 'completed') {
+      const delta = isChallenger ? (war.challengerRatingDelta || 0) : (war.defenderRatingDelta || 0);
+      if (delta !== 0) {
+        const sign = delta > 0 ? '+' : '';
+        const cls  = delta > 0 ? 'war-rating-up' : 'war-rating-down';
+        ratingHtml = `<span class="${cls}">${sign}${delta}</span>`;
+      }
+    }
+
+    const dateStr = war.completedAt ? _fmtWarTime(war.completedAt) : (war.windowStart ? _fmtWarTime(war.windowStart) : '');
+
+    // Slot grid (hidden by default, revealed on click)
+    let slotsHtml = '';
+    const slots = war.slots || [];
+    if (slots.length > 0) {
+      const rows = slots.map(s => {
+        const done = s.status === 'done' || s.status === 'forfeited';
+        const isChallengerWin = s.result === 'challenger_win';
+        let slotRes = '—', slotCls = '';
+        if (done) {
+          if (s.result === 'draw') { slotRes = '🤝'; slotCls = 'slot-draw'; }
+          else {
+            const isMineWin = isChallenger ? isChallengerWin : !isChallengerWin;
+            slotRes = isMineWin ? '🏆' : '💀';
+            slotCls = isMineWin ? 'slot-win' : 'slot-loss';
+          }
+        }
+        const myPlayer = _esc(isChallenger ? (s.challengerUserId || '—') : (s.defenderUserId || '—'));
+        const opPlayer = _esc(isChallenger ? (s.defenderUserId   || '—') : (s.challengerUserId || '—'));
+        return `<div class="war-slot-row ${slotCls}">
+          <span class="slot-num">#${s.slotIndex + 1}</span>
+          <span class="slot-player">${myPlayer}</span>
+          <span class="slot-vs">vs</span>
+          <span class="slot-player">${opPlayer}</span>
+          <span class="slot-result">${slotRes}</span>
+        </div>`;
+      }).join('');
+      slotsHtml = `<div class="war-slots-detail" style="display:none">${rows}</div>`;
+    }
+
+    return `<div class="war-history-card war-history-card--${resCls}" data-war-id="${_esc(war.id)}">
+      <div class="war-history-header">
+        <div class="war-history-vs">vs <strong>${opName}</strong> [${opTag}]</div>
+        <div class="war-history-result">${resLbl} ${scoreLine ? `<span class="war-score">${scoreLine}</span>` : ''} ${ratingHtml}</div>
+      </div>
+      <div class="war-history-meta">${dateStr}${slots.length > 0 ? ' · <span class="war-expand-hint">click to expand</span>' : ''}</div>
+      ${slotsHtml}
+    </div>`;
   }
 
   function _renderWarSummaryCard(war, myGuildId, withDetailBtn) {
@@ -959,11 +1098,14 @@ function _renderHomeView(content) {
     }
 
     if (war.status === 'completed' && war.winner) {
-      const weWon = war.winner === myGuildId;
+      const weWon  = war.winner === myGuildId;
       const isDraw = war.winner === 'draw';
       html += `<div class="war-result-banner ${isDraw ? 'war-result-banner--draw' : weWon ? 'war-result-banner--win' : 'war-result-banner--loss'}">
         ${isDraw ? '🤝 DRAW' : weWon ? '🏆 VICTORY' : '💀 DEFEAT'}
       </div>`;
+      // Guild rating block (populated async after render)
+      html += `<div id="war-rating-display" class="war-rating-display"><span class="guild-loading" style="font-size:9px">Loading ratings…</span></div>`;
+      html += `<div style="text-align:center;margin-top:4px"><button class="guild-secondary-btn" id="war-view-result-btn">📊 Full Result Screen</button></div>`;
     }
 
     html += `</div>`;
@@ -973,6 +1115,47 @@ function _renderHomeView(content) {
       ClanWarEngine.stopPolling();
       _loadWarsTab();
     });
+
+    // Load ratings + wire full result screen for completed wars
+    if (war.status === 'completed' && typeof ClanWarResults !== 'undefined') {
+      const ratingDisplay = container.querySelector('#war-rating-display');
+      if (ratingDisplay) {
+        ClanWarResults.apiGetGuildRating(myGuildId).then(res => {
+          if (!res.ok || !res.data.rating) { ratingDisplay.innerHTML = ''; return; }
+          const history = (res.data.history || []).slice(0, 5);
+          const histHtml = history.length
+            ? history.map(h => {
+                const sign = h.change >= 0 ? '+' : '';
+                const cls  = h.change >= 0 ? 'war-rating-hist-up' : 'war-rating-hist-down';
+                return `<span class="${cls}">${sign}${h.change}</span>`;
+              }).join('  ')
+            : '';
+          ratingDisplay.innerHTML = `
+            <div class="war-rating-row-inline">
+              <span class="war-rating-label-sm">Guild Rating:</span>
+              <strong class="war-rating-value">${res.data.rating}</strong>
+              ${histHtml ? `<span class="war-rating-hist">${histHtml}</span>` : ''}
+            </div>`;
+        }).catch(() => { if (ratingDisplay) ratingDisplay.innerHTML = ''; });
+      }
+
+      const viewResultBtn = container.querySelector('#war-view-result-btn');
+      if (viewResultBtn) {
+        viewResultBtn.addEventListener('click', async () => {
+          viewResultBtn.disabled = true;
+          viewResultBtn.textContent = 'Loading…';
+          // Fetch slots for the completed war so we can show the full result screen
+          let slots = [];
+          if (typeof ClanWarEngine !== 'undefined') {
+            const slotsRes = await ClanWarEngine.getSlots(warId);
+            if (slotsRes.ok) slots = slotsRes.data.slots || [];
+          }
+          await ClanWarResults.showResultScreen(war, slots, myGuildId);
+          viewResultBtn.disabled = false;
+          viewResultBtn.textContent = '📊 Full Result Screen';
+        });
+      }
+    }
 
     // Load and wire command center for in_progress wars
     if (war.status === 'in_progress' && typeof ClanWarEngine !== 'undefined') {

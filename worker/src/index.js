@@ -33,6 +33,13 @@
  *   POST   /api/clan-wars/:warId/complete                — { winnerGuildId }
  *   POST   /api/clan-wars/:warId/tick                    — advance state machine
  *   GET    /api/guilds/:guildId/clan-wars                — list war summaries for a guild
+ *   POST   /api/wars/:warId/finalize                     — compute + apply ELO after war (idempotent)
+ *   GET    /api/guilds/:guildId/rating                   — guild ELO rating + recent war history
+ *   GET    /api/guilds/:guildId/wars                     — paginated war history with slot detail (?page=1)
+ *   GET    /api/guild-standings                          — global season standings (?season=current&page=1)
+ *   POST   /api/season/guild-reset                       — season-end ELO soft-reset + HoF snapshot
+ *   GET    /api/season/guild-hall-of-fame                — list of past guild season HoF entries
+ *   GET    /api/season/guild-hof/:seasonId               — full top-10 for a past season
  *
  *   POST   /api/guilds/:guildId/invite                   — invite a player by username { inviterId, inviteeUsername }
  *   POST   /api/guilds/:guildId/join-requests            — submit a join request { userId }
@@ -2443,6 +2450,8 @@ export class GuildObject {
       return this._getLeaderboard(url);
     } else if (method === 'GET' && url.pathname === '/weekly-notification') {
       return this._getWeeklyNotification(url);
+    } else if (method === 'POST' && url.pathname === '/update-stats') {
+      return this._updateStats(await request.json());
     }
     return this._res({ error: 'Not found' }, 404);
   }
@@ -2760,6 +2769,19 @@ export class GuildObject {
     return this._res({ disbanded: true, guildId: guild.id, memberIds, tag });
   }
 
+  /** POST /update-stats { guildRating, warsPlayed, wins, losses, draws } — internal ELO update */
+  async _updateStats({ guildRating, warsPlayed, wins, losses, draws }) {
+    const guild = await this.state.storage.get('guild');
+    if (!guild) return this._res({ error: 'Guild not found' }, 404);
+    guild.guildRating = guildRating;
+    guild.warsPlayed  = warsPlayed;
+    guild.wins        = wins;
+    guild.losses      = losses;
+    guild.draws       = draws;
+    await this.state.storage.put('guild', guild);
+    return this._res({ guild });
+  }
+
   _res(data, status = 200) {
     return new Response(JSON.stringify(data), {
       status,
@@ -2775,6 +2797,14 @@ const WAR_MAX_ADVANCE_DAYS = 7;
 const WAR_NOMINATION_CLOSE_BEFORE_MS = 60 * 60 * 1000; // 1 hour before start
 const WAR_WINDOW_DURATION_MS = 45 * 60 * 1000;          // 45-minute window
 const WAR_FORFEIT_DELAY_MS   = 2 * 60 * 1000;           // 2 min online-check grace
+
+// ── Guild ELO / Standings Constants ──────────────────────────────────────────
+
+const GUILD_WAR_K_FACTOR       = 32;
+const GUILD_WAR_RATING_FLOOR   = 100;
+const GUILD_WAR_DEFAULT_RATING = 1000;
+const GUILD_STANDINGS_PAGE_SIZE = 50;
+const GUILD_WAR_HISTORY_PAGE_SIZE = 20;
 
 /**
  * Validates a proposed war window start time.
@@ -3589,6 +3619,319 @@ async function handleClanWarSlotForfeit(warId, slotIndex, request, env) {
   return jsonResponse(data, res.status);
 }
 
+// ── Guild ELO / Standings Handlers ────────────────────────────────────────────
+
+/**
+ * Helper: compute ELO rating change.
+ */
+function _computeGuildElo(myRating, opRating, outcome) {
+  const expected = 1 / (1 + Math.pow(10, (opRating - myRating) / 400));
+  const actual   = outcome === 'win' ? 1.0 : outcome === 'draw' ? 0.5 : 0.0;
+  return Math.round(GUILD_WAR_K_FACTOR * (actual - expected));
+}
+
+/**
+ * Helper: apply ELO delta enforcing floor.
+ */
+function _applyGuildElo(rating, delta) {
+  return Math.max(GUILD_WAR_RATING_FLOOR, (rating || GUILD_WAR_DEFAULT_RATING) + delta);
+}
+
+/**
+ * POST /api/wars/:warId/finalize
+ * Computes ELO rating changes for both guilds based on completed war result.
+ * Idempotent — ignored if already finalized.
+ */
+async function handleFinalizeWar(warId, env) {
+  // Idempotency check
+  const alreadyDone = await env.GUILDS_KV.get(`clanwar:${warId}:finalized`);
+  if (alreadyDone) {
+    const summary = await env.GUILDS_KV.get(`clanwar:${warId}`, { type: 'json' });
+    return jsonResponse({ already_finalized: true, summary });
+  }
+
+  // Get full war from DO
+  const warRes  = await _getClanWarStub(warId, env).fetch('http://internal/', { method: 'GET' });
+  const warData = await warRes.json();
+  if (warRes.status !== 200) return jsonResponse({ error: 'War not found' }, 404);
+  const war = warData.war;
+  if (war.status !== 'completed') return jsonResponse({ error: 'War not yet completed' }, 409);
+  if (!war.winner) return jsonResponse({ error: 'War has no winner recorded' }, 409);
+
+  // Get slots for score line
+  const slotsRes  = await _getClanWarStub(warId, env).fetch('http://internal/slots', { method: 'GET' });
+  const slotsData = await slotsRes.json();
+  const slots     = slotsData.slots || [];
+  let cWins = 0, dWins = 0, draws = 0;
+  for (const s of slots) {
+    if (s.result === 'challenger_win') cWins++;
+    else if (s.result === 'defender_win') dWins++;
+    else if (s.result === 'draw') draws++;
+  }
+
+  // Read both guild indexes
+  const [cIdx, dIdx] = await Promise.all([
+    env.GUILDS_KV.get(`guild:index:${war.challengerGuildId}`, { type: 'json' }),
+    env.GUILDS_KV.get(`guild:index:${war.defenderGuildId}`,   { type: 'json' }),
+  ]);
+  if (!cIdx || !dIdx) return jsonResponse({ error: 'Guild index not found' }, 404);
+
+  const cRating = cIdx.guildRating || GUILD_WAR_DEFAULT_RATING;
+  const dRating = dIdx.guildRating || GUILD_WAR_DEFAULT_RATING;
+
+  const cOutcome = war.winner === war.challengerGuildId ? 'win' : war.winner === 'draw' ? 'draw' : 'loss';
+  const dOutcome = war.winner === war.defenderGuildId   ? 'win' : war.winner === 'draw' ? 'draw' : 'loss';
+
+  const cDelta = _computeGuildElo(cRating, dRating, cOutcome);
+  const dDelta = _computeGuildElo(dRating, cRating, dOutcome);
+
+  const cNewRating = _applyGuildElo(cRating, cDelta);
+  const dNewRating = _applyGuildElo(dRating, dDelta);
+
+  // Update challenger stats
+  const cStats = {
+    guildRating: cNewRating,
+    warsPlayed:  (cIdx.warsPlayed || 0) + 1,
+    wins:        (cIdx.wins    || 0) + (cOutcome === 'win'  ? 1 : 0),
+    losses:      (cIdx.losses  || 0) + (cOutcome === 'loss' ? 1 : 0),
+    draws:       (cIdx.draws   || 0) + (cOutcome === 'draw' ? 1 : 0),
+  };
+  const dStats = {
+    guildRating: dNewRating,
+    warsPlayed:  (dIdx.warsPlayed || 0) + 1,
+    wins:        (dIdx.wins    || 0) + (dOutcome === 'win'  ? 1 : 0),
+    losses:      (dIdx.losses  || 0) + (dOutcome === 'loss' ? 1 : 0),
+    draws:       (dIdx.draws   || 0) + (dOutcome === 'draw' ? 1 : 0),
+  };
+
+  const cStub = env.GUILD_OBJECTS.get(env.GUILD_OBJECTS.idFromName(war.challengerGuildId));
+  const dStub = env.GUILD_OBJECTS.get(env.GUILD_OBJECTS.idFromName(war.defenderGuildId));
+
+  const warSummary = {
+    id: warId,
+    challengerGuildId: war.challengerGuildId, challengerGuildName: war.challengerGuildName,
+    challengerGuildTag: war.challengerGuildTag, challengerGuildEmblem: war.challengerGuildEmblem,
+    defenderGuildId: war.defenderGuildId, defenderGuildName: war.defenderGuildName,
+    defenderGuildTag: war.defenderGuildTag, defenderGuildEmblem: war.defenderGuildEmblem,
+    status: 'completed', windowStart: war.windowStart, winner: war.winner, completedAt: war.completedAt,
+    challengedAt: war.challengedAt,
+    challengerSlotWins: cWins, defenderSlotWins: dWins, slotDraws: draws,
+    challengerRatingDelta: cDelta, defenderRatingDelta: dDelta,
+  };
+
+  await Promise.all([
+    // Update KV guild indexes
+    env.GUILDS_KV.put(`guild:index:${war.challengerGuildId}`, JSON.stringify({ ...cIdx, ...cStats })),
+    env.GUILDS_KV.put(`guild:index:${war.defenderGuildId}`,   JSON.stringify({ ...dIdx, ...dStats })),
+    // Update guild DO states
+    cStub.fetch('http://internal/update-stats', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(cStats),
+    }),
+    dStub.fetch('http://internal/update-stats', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(dStats),
+    }),
+    // Write enriched war summary
+    env.GUILDS_KV.put(`clanwar:${warId}`, JSON.stringify(warSummary)),
+    // Mark finalized (idempotency guard)
+    env.GUILDS_KV.put(`clanwar:${warId}:finalized`, '1'),
+  ]);
+
+  return jsonResponse({
+    war: warSummary,
+    challenger: { oldRating: cRating, newRating: cNewRating, delta: cDelta },
+    defender:   { oldRating: dRating, newRating: dNewRating, delta: dDelta },
+  });
+}
+
+/**
+ * GET /api/guilds/:guildId/rating
+ * Returns guild's current ELO rating + last-10 war summaries.
+ */
+async function handleGetGuildRating(guildId, env) {
+  const idx = await env.GUILDS_KV.get(`guild:index:${guildId}`, { type: 'json' });
+  if (!idx) return jsonResponse({ error: 'Guild not found' }, 404);
+
+  const { keys } = await env.GUILDS_KV.list({ prefix: `guild:wars:${guildId}:` });
+  const allWars = (await Promise.all(
+    keys.slice(-20).map(async k => {
+      const warId = k.name.split(':').pop();
+      const raw   = await env.GUILDS_KV.get(`clanwar:${warId}`, { type: 'json' });
+      return raw;
+    })
+  )).filter(Boolean)
+    .filter(w => w.status === 'completed')
+    .sort((a, b) => new Date(b.completedAt || 0) - new Date(a.completedAt || 0))
+    .slice(0, 10);
+
+  return jsonResponse({
+    guildId,
+    rating:     idx.guildRating || GUILD_WAR_DEFAULT_RATING,
+    warsPlayed: idx.warsPlayed  || 0,
+    wins:       idx.wins        || 0,
+    losses:     idx.losses      || 0,
+    draws:      idx.draws       || 0,
+    recentWars: allWars,
+  });
+}
+
+/**
+ * GET /api/guild-standings?season=current&page=1
+ * Returns paginated global season standings sorted by guildRating desc.
+ * Only includes guilds that have played at least 1 war.
+ */
+async function handleGetGuildStandings(request, env) {
+  const url  = new URL(request.url);
+  const page = Math.max(1, parseInt(url.searchParams.get('page') || '1', 10));
+
+  const { keys } = await env.GUILDS_KV.list({ prefix: 'guild:index:' });
+  const all = (await Promise.all(
+    keys.map(async k => {
+      const raw = await env.GUILDS_KV.get(k.name, { type: 'json' });
+      return raw;
+    })
+  )).filter(g => g !== null && (g.warsPlayed || 0) > 0)
+    .sort((a, b) => (b.guildRating || 0) - (a.guildRating || 0));
+
+  const total = all.length;
+  const start = (page - 1) * GUILD_STANDINGS_PAGE_SIZE;
+  const rows  = all.slice(start, start + GUILD_STANDINGS_PAGE_SIZE).map((g, i) => ({
+    rank:       start + i + 1,
+    guildId:    g.id,
+    name:       g.name,
+    tag:        g.tag,
+    emblem:     g.emblem,
+    level:      g.level      || 1,
+    guildRating: g.guildRating || GUILD_WAR_DEFAULT_RATING,
+    warsPlayed: g.warsPlayed  || 0,
+    wins:       g.wins        || 0,
+    losses:     g.losses      || 0,
+    draws:      g.draws       || 0,
+    winRate:    (g.warsPlayed || 0) > 0
+      ? Math.round(((g.wins || 0) / g.warsPlayed) * 100)
+      : 0,
+  }));
+
+  return jsonResponse({ total, page, pageSize: GUILD_STANDINGS_PAGE_SIZE, rows });
+}
+
+/**
+ * GET /api/guilds/:guildId/wars?page=1
+ * Returns paginated war history for a guild with slot-level detail.
+ */
+async function handleGetGuildWarHistory(guildId, request, env) {
+  const url  = new URL(request.url);
+  const page = Math.max(1, parseInt(url.searchParams.get('page') || '1', 10));
+
+  const { keys } = await env.GUILDS_KV.list({ prefix: `guild:wars:${guildId}:` });
+  const allSummaries = (await Promise.all(
+    keys.map(async k => {
+      const warId = k.name.split(':').pop();
+      return env.GUILDS_KV.get(`clanwar:${warId}`, { type: 'json' });
+    })
+  )).filter(Boolean)
+    .sort((a, b) => new Date(b.completedAt || b.challengedAt || 0) - new Date(a.completedAt || a.challengedAt || 0));
+
+  const total = allSummaries.length;
+  const start = (page - 1) * GUILD_WAR_HISTORY_PAGE_SIZE;
+  const page_wars = allSummaries.slice(start, start + GUILD_WAR_HISTORY_PAGE_SIZE);
+
+  // For completed wars, fetch slot details from DO
+  const wars = await Promise.all(page_wars.map(async w => {
+    if (w.status !== 'completed') return { ...w, slots: [] };
+    const sRes = await _getClanWarStub(w.id, env).fetch('http://internal/slots', { method: 'GET' });
+    const sData = sRes.status === 200 ? await sRes.json() : {};
+    return { ...w, slots: sData.slots || [] };
+  }));
+
+  return jsonResponse({ total, page, pageSize: GUILD_WAR_HISTORY_PAGE_SIZE, wars });
+}
+
+/**
+ * POST /api/season/guild-reset
+ * Season-end operation: snapshots top-10 guild standings to Hall of Fame, then
+ * applies soft-reset: new_rating = 1000 + (old - 1000) * 0.5
+ * Body: { seasonId, seasonName, adminSecret? }
+ */
+async function handleGuildSeasonReset(request, env) {
+  let body;
+  try { body = await request.json(); } catch { return jsonResponse({ error: 'Invalid JSON' }, 400); }
+  const { seasonId, seasonName } = body;
+  if (!seasonId || !seasonName) return jsonResponse({ error: 'seasonId and seasonName are required' }, 400);
+
+  // Prevent double-reset
+  const alreadyReset = await env.GUILDS_KV.get(`season:guild-reset:${seasonId}`);
+  if (alreadyReset) return jsonResponse({ error: 'Season already reset', seasonId }, 409);
+
+  const { keys } = await env.GUILDS_KV.list({ prefix: 'guild:index:' });
+  const all = (await Promise.all(
+    keys.map(async k => env.GUILDS_KV.get(k.name, { type: 'json' }))
+  )).filter(g => g !== null && (g.warsPlayed || 0) > 0)
+    .sort((a, b) => (b.guildRating || 0) - (a.guildRating || 0));
+
+  // Snapshot top-10
+  const top10 = all.slice(0, 10).map((g, i) => ({
+    rank:        i + 1,
+    guildId:     g.id,
+    name:        g.name,
+    tag:         g.tag,
+    emblem:      g.emblem,
+    guildRating: g.guildRating || GUILD_WAR_DEFAULT_RATING,
+    wins:        g.wins || 0,
+    losses:      g.losses || 0,
+    draws:       g.draws || 0,
+  }));
+
+  // Write Hall of Fame entry for this season
+  const hofKey = `season:guild-hof:${seasonId}`;
+  const hofEntry = { seasonId, seasonName, archivedAt: new Date().toISOString(), top10 };
+  await env.GUILDS_KV.put(hofKey, JSON.stringify(hofEntry));
+
+  // Append to guild Hall of Fame list
+  const hofList = (await env.GUILDS_KV.get('season:guild-hall-of-fame', { type: 'json' })) || [];
+  hofList.unshift({ seasonId, seasonName, archivedAt: hofEntry.archivedAt, champion: top10[0] || null });
+  await env.GUILDS_KV.put('season:guild-hall-of-fame', JSON.stringify(hofList));
+
+  // Apply soft-reset to all guilds and reset war stats
+  await Promise.all(all.map(async g => {
+    const oldRating = g.guildRating || GUILD_WAR_DEFAULT_RATING;
+    const newRating = Math.round(GUILD_WAR_DEFAULT_RATING + (oldRating - GUILD_WAR_DEFAULT_RATING) * 0.5);
+    const newStats  = { guildRating: newRating, warsPlayed: 0, wins: 0, losses: 0, draws: 0 };
+    const newIdx    = { ...g, ...newStats };
+
+    const doStub = env.GUILD_OBJECTS.get(env.GUILD_OBJECTS.idFromName(g.id));
+    await Promise.all([
+      env.GUILDS_KV.put(`guild:index:${g.id}`, JSON.stringify(newIdx)),
+      doStub.fetch('http://internal/update-stats', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(newStats),
+      }),
+    ]);
+  }));
+
+  // Mark season reset done
+  await env.GUILDS_KV.put(`season:guild-reset:${seasonId}`, '1');
+
+  return jsonResponse({ ok: true, seasonId, archivedTop10: top10, guildsReset: all.length });
+}
+
+/**
+ * GET /api/season/guild-hall-of-fame
+ * Returns the list of past season Hall of Fame entries for guilds.
+ */
+async function handleGetGuildHallOfFame(env) {
+  const list = (await env.GUILDS_KV.get('season:guild-hall-of-fame', { type: 'json' })) || [];
+  return jsonResponse(list);
+}
+
+/**
+ * GET /api/season/guild-hof/:seasonId
+ * Returns the full top-10 Hall of Fame snapshot for a specific season.
+ */
+async function handleGetGuildHofSeason(seasonId, env) {
+  const entry = await env.GUILDS_KV.get(`season:guild-hof:${seasonId}`, { type: 'json' });
+  if (!entry) return jsonResponse({ error: 'Season HoF not found' }, 404);
+  return jsonResponse(entry);
+}
+
 // ── Guild API Handlers ────────────────────────────────────────────────────────
 
 /**
@@ -4385,6 +4728,24 @@ export default {
     } else if (method === 'GET' && /^\/api\/guilds\/[^/]+\/clan-wars$/.test(url.pathname)) {
       const guildId = url.pathname.split('/')[3];
       response = await handleGetGuildClanWars(guildId, env);
+    } else if (method === 'POST' && /^\/api\/wars\/[^/]+\/finalize$/.test(url.pathname)) {
+      const warId = url.pathname.split('/')[3];
+      response = await handleFinalizeWar(warId, env);
+    } else if (method === 'GET' && /^\/api\/guilds\/[^/]+\/rating$/.test(url.pathname)) {
+      const guildId = url.pathname.split('/')[3];
+      response = await handleGetGuildRating(guildId, env);
+    } else if (method === 'GET' && /^\/api\/guilds\/[^/]+\/wars$/.test(url.pathname)) {
+      const guildId = url.pathname.split('/')[3];
+      response = await handleGetGuildWarHistory(guildId, request, env);
+    } else if (method === 'GET' && url.pathname === '/api/guild-standings') {
+      response = await handleGetGuildStandings(request, env);
+    } else if (method === 'POST' && url.pathname === '/api/season/guild-reset') {
+      response = await handleGuildSeasonReset(request, env);
+    } else if (method === 'GET' && url.pathname === '/api/season/guild-hall-of-fame') {
+      response = await handleGetGuildHallOfFame(env);
+    } else if (method === 'GET' && url.pathname.startsWith('/api/season/guild-hof/')) {
+      const seasonId = url.pathname.replace('/api/season/guild-hof/', '');
+      response = await handleGetGuildHofSeason(seasonId, env);
     } else if (method === 'POST' && url.pathname === '/api/guilds') {
       response = await handlePostGuild(request, env);
     } else if (method === 'GET' && url.pathname === '/api/guilds') {
