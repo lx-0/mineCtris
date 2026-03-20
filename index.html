@@ -119,9 +119,19 @@
             </div>
             <!-- Survival -->
             <div class="mode-card mode-card-survival" id="mode-card-survival" data-mode="survival">
-              <div class="mode-card-icon">&#128165;</div>
+              <div class="mode-card-icon survival-creeper-face" aria-label="Creeper">
+                <svg viewBox="0 0 8 8" width="36" height="36" shape-rendering="crispEdges">
+                  <rect width="8" height="8" fill="#4a8c2c"/>
+                  <rect x="1" y="1" width="2" height="2" fill="#1a1a1a"/>
+                  <rect x="5" y="1" width="2" height="2" fill="#1a1a1a"/>
+                  <rect x="3" y="3" width="2" height="3" fill="#1a1a1a"/>
+                  <rect x="2" y="5" width="1" height="2" fill="#1a1a1a"/>
+                  <rect x="5" y="5" width="1" height="2" fill="#1a1a1a"/>
+                  <rect x="3" y="6" width="2" height="1" fill="#1a1a1a"/>
+                </svg>
+              </div>
               <div class="mode-card-name">Survival</div>
-              <div class="mode-card-desc">One world. Permadeath. Die and it's all gone.</div>
+              <div class="mode-card-desc">Sssss... One world. Permadeath. Die and it's all gone.</div>
               <div class="mode-card-pb" id="mode-pb-survival"></div>
               <div id="survival-world-card" class="survival-world-card"></div>
               <button id="survival-reset-btn" class="survival-reset-btn" style="display:none;">&#128465; Reset World</button>
@@ -223,7 +233,7 @@
       <div id="world-modifier-badge" style="display:none;"></div>
 
       <!-- Survival mode badge (shown during survival runs) -->
-      <div id="survival-badge" style="display:none;">&#128165; Survival</div>
+      <div id="survival-badge" style="display:none;">&#129430; Survival</div>
 
       <!-- Co-op mode badge (shown during co-op runs) + difficulty label -->
       <div id="coop-mode-badge" style="display:none;">&#9760; CO-OP<span id="coop-difficulty-label"></span></div>

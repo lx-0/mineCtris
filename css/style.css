@@ -1532,16 +1532,16 @@ body {
 .survival-world-card {
   margin-top: 6px;
   padding: 6px 8px;
-  background: rgba(255, 100, 0, 0.08);
-  border: 1px solid rgba(255, 100, 0, 0.25);
+  background: rgba(74, 140, 44, 0.1);
+  border: 1px solid rgba(74, 140, 44, 0.3);
   border-radius: 4px;
   font-family: "Press Start 2P", cursive;
   font-size: 0.38em;
   text-align: left;
 }
 .survival-world-card .wc-title {
-  color: #ff6600;
-  text-shadow: 0 0 6px rgba(255, 100, 0, 0.6);
+  color: #55c059;
+  text-shadow: 0 0 6px rgba(74, 140, 44, 0.6);
   margin-bottom: 5px;
   letter-spacing: 1px;
 }
@@ -1553,14 +1553,14 @@ body {
   line-height: 1.5;
 }
 .survival-world-card .wc-label {
-  color: rgba(255, 180, 100, 0.75);
+  color: rgba(130, 200, 130, 0.75);
 }
 .survival-world-card .wc-val {
   color: #fff;
   text-align: right;
 }
 .survival-world-card .wc-new {
-  color: rgba(255, 180, 100, 0.6);
+  color: rgba(130, 200, 130, 0.6);
   text-align: center;
   padding: 2px 0;
 }
@@ -1568,22 +1568,22 @@ body {
 .survival-world-card .wc-day-age {
   font-family: "Press Start 2P", cursive;
   font-size: 1.5em;
-  color: #ff6600;
-  text-shadow: 0 0 10px rgba(255, 100, 0, 0.8), 0 0 20px rgba(255, 100, 0, 0.4);
+  color: #55c059;
+  text-shadow: 0 0 10px rgba(74, 140, 44, 0.8), 0 0 20px rgba(74, 140, 44, 0.4);
   text-align: center;
   margin-bottom: 6px;
   letter-spacing: 1px;
 }
 /* "Begin a new world" CTA inside world card */
 .survival-world-card .wc-cta-title {
-  color: #ff6600;
-  text-shadow: 0 0 6px rgba(255, 100, 0, 0.6);
+  color: #55c059;
+  text-shadow: 0 0 6px rgba(74, 140, 44, 0.6);
   text-align: center;
   margin-bottom: 5px;
   letter-spacing: 1px;
 }
 .survival-world-card .wc-cta-desc {
-  color: rgba(255, 180, 100, 0.7);
+  color: rgba(130, 200, 130, 0.7);
   text-align: center;
   line-height: 1.7;
 }
@@ -1598,32 +1598,42 @@ body {
 }
 .survival-world-card .wc-journal-entry {
   font-size: 0.72em;
-  color: rgba(255, 200, 120, 0.8);
-  background: rgba(255, 150, 50, 0.1);
-  border: 1px solid rgba(255, 150, 50, 0.2);
+  color: rgba(150, 220, 150, 0.8);
+  background: rgba(74, 140, 44, 0.12);
+  border: 1px solid rgba(74, 140, 44, 0.25);
   border-radius: 3px;
   padding: 1px 5px;
 }
 
-/* ── Survival mode card — orange/fire accent ── */
+/* ── Survival mode card — Creeper green accent ── */
 .mode-card-survival {
-  border-color: rgba(255, 100, 0, 0.5);
-  box-shadow: 0 0 14px rgba(255, 100, 0, 0.1);
+  border-color: rgba(74, 140, 44, 0.5);
+  box-shadow: 0 0 14px rgba(74, 140, 44, 0.15);
 }
 .mode-card-survival .mode-card-name {
-  color: #ff6600;
-  text-shadow: 0 0 6px #ff6600;
+  color: #55c059;
+  text-shadow: 0 0 6px #4a8c2c;
 }
 .mode-card-survival .mode-card-desc {
-  color: #ffb380;
+  color: #8fce8f;
 }
 .mode-card-survival:hover {
-  border-color: #ff6600 !important;
-  box-shadow: 0 0 22px rgba(255, 100, 0, 0.4) !important;
+  border-color: #55c059 !important;
+  box-shadow: 0 0 22px rgba(74, 140, 44, 0.45) !important;
 }
 .mode-card-survival.mode-card-highlighted {
-  border-color: #ff6600;
-  box-shadow: 0 0 28px rgba(255, 100, 0, 0.55);
+  border-color: #55c059;
+  box-shadow: 0 0 28px rgba(74, 140, 44, 0.55);
+}
+/* Creeper face icon */
+.survival-creeper-face {
+  font-size: 1em;
+  image-rendering: pixelated;
+}
+.survival-creeper-face svg {
+  display: block;
+  margin: 0 auto;
+  image-rendering: pixelated;
 }
 
 /* ── Co-op mode card ── */
