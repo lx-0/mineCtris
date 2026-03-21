@@ -5241,14 +5241,29 @@ function animate() {
   lastTime = time;
 }
 
+function hideLoadingScreen() {
+  var ls = document.getElementById('loading-screen');
+  if (ls) {
+    ls.style.transition = 'opacity 0.4s ease';
+    ls.style.opacity = '0';
+    setTimeout(function() { ls.remove(); }, 400);
+  }
+  if (window.__minetrisLoadingObserver) {
+    window.__minetrisLoadingObserver.disconnect();
+    delete window.__minetrisLoadingObserver;
+  }
+}
+
 try {
   init();
   window.__MINETRIS_INIT_DONE = true;
   clearTimeout(window.__MINETRIS_INIT_TIMER);
+  hideLoadingScreen();
 } catch (error) {
   console.error("Error during initialization:", error);
   window.__MINETRIS_INIT_DONE = true;
   clearTimeout(window.__MINETRIS_INIT_TIMER);
+  hideLoadingScreen();
   var el = document.createElement('div');
   el.id = 'init-error-screen';
   el.style.cssText = 'position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;background:#111;color:#fff;font-family:monospace,sans-serif;text-align:center;padding:2rem;';
