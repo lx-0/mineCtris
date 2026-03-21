@@ -94,6 +94,16 @@ And the next.
 
 ## Development
 
+### Setup
+
+Install git hooks to automatically run checks before pushing:
+
+```bash
+bash tools/install-hooks.sh
+```
+
+This installs a `pre-push` hook that runs the smoke test and blocks pushes if it fails.
+
 ### Validate JS Syntax
 
 Run the syntax checker before deploying to catch parse errors early:
@@ -103,3 +113,13 @@ node tools/validate.js
 ```
 
 Exits with non-zero if any file in `js/` has a syntax error.
+
+### Smoke Test
+
+Run the full smoke test to verify JS syntax, DOM elements, mode cards, and script references:
+
+```bash
+node tools/smoke-test.js
+```
+
+This runs automatically on `git push` if you've installed the hooks.
