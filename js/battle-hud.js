@@ -22,6 +22,11 @@ const battleHud = (function () {
   let _outgoingTimer = 0;    // seconds remaining for outgoing attack badge
   let _lastCols      = new Array(NUM_COLS).fill(0);
 
+  let _opponentEmblemEl    = null;
+  let _opponentSkinId      = null;  // 'stone_brick' | 'nether_brick' | null
+  let _opponentBannerColor = null;
+  let _opponentIsLegendary = false;
+
   // ── DOM build ─────────────────────────────────────────────────────────────
 
   function _build() {
@@ -31,7 +36,7 @@ const battleHud = (function () {
     _el.id = 'battle-opponent-hud';
     _el.style.display = 'none';
 
-    // Header: label + connection dot
+    // Header: label + connection dot + opponent emblem
     const header = document.createElement('div');
     header.className = 'boh-header';
     const lbl = document.createElement('span');
@@ -39,7 +44,11 @@ const battleHud = (function () {
     lbl.textContent = 'OPPONENT';
     _dotEl = document.createElement('span');
     _dotEl.className = 'boh-dot boh-dot-yellow';
+    _opponentEmblemEl = document.createElement('span');
+    _opponentEmblemEl.className = 'boh-opponent-emblem';
+    _opponentEmblemEl.style.display = 'none';
     header.appendChild(lbl);
+    header.appendChild(_opponentEmblemEl);
     header.appendChild(_dotEl);
     _el.appendChild(header);
 
@@ -140,6 +149,53 @@ const battleHud = (function () {
     _ctx.lineTo(CANVAS_W, threshY);
     _ctx.stroke();
     _ctx.setLineDash([]);
+
+    // Board skin tint overlay on opponent mini-map
+    if (_opponentSkinId && _opponentSkinId !== 'none') {
+      _ctx.save();
+      if (_opponentSkinId === 'stone_brick') {
+        _ctx.fillStyle = 'rgba(136,136,136,0.15)';
+        _ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+        // Brick mortar lines (horizontal)
+        _ctx.strokeStyle = 'rgba(80,80,80,0.18)';
+        _ctx.lineWidth = 1;
+        _ctx.setLineDash([]);
+        for (let row = 0; row < CANVAS_H; row += 8) {
+          _ctx.beginPath();
+          _ctx.moveTo(0, row); _ctx.lineTo(CANVAS_W, row);
+          _ctx.stroke();
+        }
+        // Vertical mortar lines (offset per row)
+        for (let row = 0; row < CANVAS_H; row += 8) {
+          const offset = (Math.floor(row / 8) % 2 === 0) ? 0 : CANVAS_W / 2;
+          for (let col = offset; col < CANVAS_W; col += CANVAS_W / 2) {
+            _ctx.beginPath();
+            _ctx.moveTo(col, row); _ctx.lineTo(col, row + 8);
+            _ctx.stroke();
+          }
+        }
+      } else if (_opponentSkinId === 'nether_brick') {
+        _ctx.fillStyle = 'rgba(58,10,10,0.20)';
+        _ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+        _ctx.strokeStyle = 'rgba(30,5,5,0.22)';
+        _ctx.lineWidth = 1;
+        _ctx.setLineDash([]);
+        for (let row = 0; row < CANVAS_H; row += 6) {
+          _ctx.beginPath();
+          _ctx.moveTo(0, row); _ctx.lineTo(CANVAS_W, row);
+          _ctx.stroke();
+        }
+        for (let row = 0; row < CANVAS_H; row += 6) {
+          const offset = (Math.floor(row / 6) % 2 === 0) ? 0 : CANVAS_W / 3;
+          for (let col = offset; col < CANVAS_W; col += CANVAS_W / 3) {
+            _ctx.beginPath();
+            _ctx.moveTo(col, row); _ctx.lineTo(col, row + 6);
+            _ctx.stroke();
+          }
+        }
+      }
+      _ctx.restore();
+    }
   }
 
   function _setDot(status) {
@@ -163,6 +219,11 @@ const battleHud = (function () {
       _outgoingTimer = 0;
       if (_garbageEl)  _garbageEl.style.display  = 'none';
       if (_outgoingEl) _outgoingEl.style.display = 'none';
+      // Reset opponent guild state
+      _opponentSkinId      = null;
+      _opponentBannerColor = null;
+      _opponentIsLegendary = false;
+      if (_opponentEmblemEl) { _opponentEmblemEl.textContent = ''; _opponentEmblemEl.style.display = 'none'; }
     },
 
     /** Call when battle ends. */
@@ -234,6 +295,32 @@ const battleHud = (function () {
     flashLineClear() {
       _build();
       _flashTimer = 0.20;
+    },
+
+    /**
+     * Set the opponent's guild cosmetics (called once when first battle_board arrives).
+     * @param {string|null} emblem      Guild emblem emoji
+     * @param {string|null} skinId      'stone_brick' | 'nether_brick' | null
+     * @param {string|null} bannerColor CSS hex color
+     * @param {boolean}     isLegendary Whether guild is level 20 (legendary emblem)
+     */
+    setOpponentGuild(emblem, skinId, bannerColor, isLegendary) {
+      _build();
+      _opponentSkinId      = skinId || null;
+      _opponentBannerColor = bannerColor || null;
+      _opponentIsLegendary = !!isLegendary;
+      if (_opponentEmblemEl) {
+        if (emblem) {
+          _opponentEmblemEl.textContent = emblem;
+          _opponentEmblemEl.className = 'boh-opponent-emblem' + (isLegendary ? ' boh-opponent-emblem--legendary' : '');
+          _opponentEmblemEl.style.display = 'inline';
+        } else {
+          _opponentEmblemEl.textContent = '';
+          _opponentEmblemEl.style.display = 'none';
+        }
+      }
+      // Redraw mini-map to apply/remove skin tint
+      if (_flashTimer <= 0) _drawBars(_lastCols, false);
     },
 
     /**

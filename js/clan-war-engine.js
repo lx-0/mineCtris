@@ -428,6 +428,22 @@ const ClanWarEngine = (() => {
           // Award guild XP for war win
           if (isWin && typeof awardGuildXP === 'function') awardGuildXP('clan_war_win');
 
+          // Check if all slots are now resolved; if so finalize + show result screen
+          const slotsRes = await apiGetSlots(warId);
+          if (slotsRes.ok) {
+            const updatedSlots = slotsRes.data.slots || [];
+            const agg = aggregateSlots(updatedSlots, war.challengerGuildId, war.defenderGuildId);
+            if (agg.winner !== null && typeof ClanWarResults !== 'undefined') {
+              // Fire-and-forget: finalize war (triggers ELO update server-side)
+              ClanWarResults.apiFinalizeWar(warId).catch(() => {});
+              // Show post-war result screen for this player
+              const myGuildId = _loadMyGuildId();
+              if (myGuildId) {
+                await ClanWarResults.showResultScreen(war, updatedSlots, myGuildId);
+              }
+            }
+          }
+
           rerender();
         }
       };

@@ -73,6 +73,10 @@ function updateBattleRating(result, oppRating) {
   if (result === 'win') {
     data.wins      = (data.wins || 0) + 1;
     data.winStreak = (data.winStreak || 0) + 1;
+    // Award guild XP for winning a standard battle match
+    if (typeof awardGuildXP === 'function') {
+      awardGuildXP('standard_match_win');
+    }
   } else if (result === 'loss') {
     data.losses    = (data.losses || 0) + 1;
     data.winStreak = 0;
@@ -81,11 +85,22 @@ function updateBattleRating(result, oppRating) {
     data.winStreak = 0;
   }
 
-  if (data.rating > (data.peakRating || 0)) {
+  var _isNewHigh = data.rating > (data.peakRating || 0);
+  if (_isNewHigh) {
     data.peakRating = data.rating;
   }
 
   saveBattleRating(data);
+  if (typeof recordSeasonBattleResult === 'function') recordSeasonBattleResult(result);
+
+  // Season mission hooks
+  if (_isNewHigh && typeof onSeasonMissionRatingHigh === 'function') {
+    onSeasonMissionRatingHigh();
+  }
+  if (data.rating >= 1500 && typeof onSeasonMissionGoldTierReached === 'function') {
+    onSeasonMissionGoldTierReached();
+  }
+
   return { ratingBefore, ratingAfter: data.rating, delta };
 }
 
@@ -109,6 +124,35 @@ function getBattleRankBadgeHtml(rating, showName) {
   const nameStr = (showName !== false) ? ' ' + tier.name : '';
   return '<span class="battle-rank-badge battle-rank-' + tier.cls + '" title="' + tier.name + ' \u2014 ' + (rating || 1000) + ' pts">' +
     tier.icon + nameStr + '</span>';
+}
+
+// ── Tournament win bonus ──────────────────────────────────────────────────────
+
+/**
+ * Apply the +50 rating bonus for winning a tournament.
+ * Returns the new rating value.
+ */
+function applyTournamentWinBonus() {
+  const data = loadBattleRating();
+  data.rating = (data.rating || 1000) + 50;
+  const _isNewHigh = data.rating > (data.peakRating || 0);
+  if (_isNewHigh) {
+    data.peakRating = data.rating;
+  }
+  saveBattleRating(data);
+
+  // Award guild XP for winning a tournament match
+  if (typeof awardGuildXP === 'function') {
+    awardGuildXP('tournament_match_win');
+  }
+
+  if (_isNewHigh && typeof onSeasonMissionRatingHigh === 'function') {
+    onSeasonMissionRatingHigh();
+  }
+  if (data.rating >= 1500 && typeof onSeasonMissionGoldTierReached === 'function') {
+    onSeasonMissionGoldTierReached();
+  }
+  return data.rating;
 }
 
 // ── Rate-limit helpers ────────────────────────────────────────────────────────

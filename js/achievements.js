@@ -48,6 +48,12 @@ const ACHIEVEMENTS = [
   { id: "battle_dominator",   name: "Dominator",      icon: "\u{1F480}",       desc: "Win 3 battle matches in a row",                            category: "battle" },
   { id: "battle_speed_kill",  name: "Speed Killer",   icon: "\u26A1",          desc: "Win a match in under 90 seconds",                          category: "battle" },
   { id: "battle_untouchable", name: "Untouchable",    icon: "\u{1F6E1}\uFE0F", desc: "Win a match without receiving any garbage rows",           category: "battle" },
+  // Tournament achievements
+  { id: "bracket_buster",  name: "Bracket Buster",  icon: "\u{1F94A}",       desc: "Win your first tournament match",                                   category: "tournament" },
+  { id: "finalist",        name: "Finalist",        icon: "\u{1F948}",       desc: "Reach the Final of any tournament",                                 category: "tournament" },
+  { id: "champion",        name: "Champion",        icon: "\u{1F947}",       desc: "Win a full tournament",                                             category: "tournament" },
+  { id: "hat_trick",       name: "Hat Trick",       icon: "\u{1F3A9}",       desc: "Win 3 matches in a single tournament without losing",               category: "tournament" },
+  { id: "crowd_favorite",  name: "Crowd Favorite",  icon: "\u{1F31F}",       desc: "Have 10 or more spectators watch a match you play in a tournament", category: "tournament" },
 ];
 
 // Session counters — reset at the start of each game
@@ -164,7 +170,7 @@ function renderAchievementsPanel() {
       if (gridEl) panel.insertBefore(filterRow, gridEl);
     }
     filterRow.innerHTML = "";
-    [["all", "All"], ["coop", "Co-op"], ["battle", "Battle"]].forEach(function (pair) {
+    [["all", "All"], ["coop", "Co-op"], ["battle", "Battle"], ["tournament", "Tournament"]].forEach(function (pair) {
       const btn = document.createElement("button");
       btn.className = "ach-filter-btn" + (_achPanelFilter === pair[0] ? " active" : "");
       btn.textContent = pair[1];
@@ -179,7 +185,7 @@ function renderAchievementsPanel() {
   const gridEl = document.getElementById("achievements-grid");
   if (!gridEl) return;
 
-  const visible = (_achPanelFilter === "coop" || _achPanelFilter === "battle")
+  const visible = (_achPanelFilter === "coop" || _achPanelFilter === "battle" || _achPanelFilter === "tournament")
     ? ACHIEVEMENTS.filter(function (a) { return a.category === _achPanelFilter; })
     : ACHIEVEMENTS;
 
@@ -213,10 +219,10 @@ function renderAchievementsPanel() {
 
     card.appendChild(iconEl);
     card.appendChild(infoEl);
-    if (ach.category === "coop" || ach.category === "battle") {
+    if (ach.category === "coop" || ach.category === "battle" || ach.category === "tournament") {
       const badgeEl = document.createElement("div");
       badgeEl.className = "ach-coop-badge";
-      badgeEl.textContent = ach.category === "battle" ? "BATTLE" : "CO-OP";
+      badgeEl.textContent = ach.category === "battle" ? "BATTLE" : ach.category === "tournament" ? "TOURN" : "CO-OP";
       card.appendChild(badgeEl);
     }
     card.appendChild(statusEl);
@@ -432,6 +438,35 @@ function achOnCoopPartnerLineClear(ts) {
  */
 function achOnCoopScoreUpdate(totalScore) {
   if (totalScore >= 10000) unlockAchievement("coop_10k");
+}
+
+// ── Tournament achievement triggers ───────────────────────────────────────────
+
+/**
+ * Call when the local player wins a tournament match.
+ * @param {number} winsInTournament  total wins by this player in the current tournament (after this win)
+ */
+function achOnTournamentMatchWin(winsInTournament) {
+  unlockAchievement("bracket_buster");
+  if (winsInTournament >= 3) unlockAchievement("hat_trick");
+}
+
+/** Call when the local player reaches the Final of any tournament (after winning the semi-final). */
+function achOnTournamentFinalReached() {
+  unlockAchievement("finalist");
+}
+
+/** Call when the local player wins a full tournament (wins the Final). */
+function achOnTournamentWon() {
+  unlockAchievement("champion");
+}
+
+/**
+ * Call when the spectator count for the player's current match is updated.
+ * @param {number} count  current spectator count
+ */
+function achOnSpectatorCountUpdate(count) {
+  if (count >= 10) unlockAchievement("crowd_favorite");
 }
 
 // ── Battle achievement triggers ───────────────────────────────────────────────

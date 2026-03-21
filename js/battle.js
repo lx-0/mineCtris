@@ -10,20 +10,23 @@ const BattleState = {
   WAITING_FOR_PARTNER:'waiting_for_partner',
   READY:              'ready',
   IN_GAME:            'in_game',
+  SPECTATING:         'spectating',
   DISCONNECTED:       'disconnected',
 };
 
 const battle = (function () {
-  let _state          = BattleState.IDLE;
-  let _ws             = null;
-  let _roomCode       = null;
-  let _lastWsUrl      = null;
-  let _handlers       = {};
-  let _pingInterval   = null;
-  let _partnerTimeout = null;
-  let _reconnectCount = 0;
-  let _isHost         = false;
-  let _quickMatchPoll = null;
+  let _state           = BattleState.IDLE;
+  let _ws              = null;
+  let _roomCode        = null;
+  let _lastWsUrl       = null;
+  let _handlers        = {};
+  let _pingInterval    = null;
+  let _partnerTimeout  = null;
+  let _reconnectCount  = 0;
+  let _isHost          = false;
+  let _isSpectator     = false;
+  let _spectatorCount  = 0;  // spectators in room (updated from server messages)
+  let _quickMatchPoll  = null;
 
   // ── Internal helpers ────────────────────────────────────────────────────────
 
@@ -80,6 +83,23 @@ const battle = (function () {
 
       if (msg.type === 'pong') return;
 
+      if (msg.type === 'spectator_joined') {
+        _spectatorCount = msg.spectatorCount || 0;
+        _emit('spectator_joined', { spectatorCount: _spectatorCount });
+        return;
+      }
+
+      if (msg.type === 'spectator_count') {
+        _spectatorCount = msg.spectatorCount || 0;
+        _emit('spectator_count', { spectatorCount: _spectatorCount });
+        return;
+      }
+
+      if (msg.type === 'room_privacy_ack') {
+        _emit('room_privacy_ack', msg);
+        return;
+      }
+
       if (msg.type === 'player_joined') {
         if (_partnerTimeout) { clearTimeout(_partnerTimeout); _partnerTimeout = null; }
         _setState(BattleState.READY);
@@ -125,12 +145,56 @@ const battle = (function () {
     });
   }
 
+  function _connectSpectatorWs(wsUrl) {
+    _lastWsUrl = wsUrl;
+    _setState(BattleState.CONNECTING);
+    _emit('state_change', { state: _state, roomCode: _roomCode });
+
+    _ws = new WebSocket(wsUrl);
+
+    _ws.addEventListener('open', function () {
+      _startPing();
+      _setState(BattleState.SPECTATING);
+      _emit('state_change', { state: _state, roomCode: _roomCode });
+    });
+
+    _ws.addEventListener('message', function (event) {
+      let msg;
+      try { msg = JSON.parse(event.data); } catch (_) { return; }
+
+      if (msg.type === 'pong') return;
+
+      if (msg.type === 'spectator_welcome') {
+        _spectatorCount = msg.spectatorCount || 0;
+        _emit('spectator_welcome', msg);
+        return;
+      }
+
+      _emit(msg.type, msg);
+    });
+
+    _ws.addEventListener('close', function (event) {
+      _clearTimers();
+      if (_state !== BattleState.IDLE) {
+        _setState(BattleState.DISCONNECTED);
+        _emit('state_change', { state: _state });
+        _emit('disconnected', { wasClean: event.wasClean });
+      }
+    });
+
+    _ws.addEventListener('error', function () {
+      // close event fires after error
+    });
+  }
+
   // ── Public API ───────────────────────────────────────────────────────────────
 
   const _publicAPI = {
-    get state()    { return _state; },
-    get roomCode() { return _roomCode; },
-    get isHost()   { return _isHost; },
+    get state()          { return _state; },
+    get roomCode()       { return _roomCode; },
+    get isHost()         { return _isHost; },
+    get isSpectator()    { return _isSpectator; },
+    get spectatorCount() { return _spectatorCount; },
 
     /** POST /battle/room/create → connects as host */
     async createRoom() {
@@ -183,6 +247,25 @@ const battle = (function () {
       return data;
     },
 
+    /**
+     * GET /battle/room/{CODE}/spectate → connect as a read-only spectator.
+     * Throws if room is private, full, or has no active match.
+     */
+    async watchRoom(code) {
+      _reconnectCount = 0;
+      _isSpectator = true;
+      _isHost = false;
+      _roomCode = code.toUpperCase().trim();
+      const resp = await fetch(BATTLE_WORKER_URL + '/battle/room/' + _roomCode + '/spectate');
+      if (!resp.ok) {
+        const err = await resp.json().catch(function () { return {}; });
+        throw Object.assign(new Error(err.error || 'Cannot spectate room'), { full: !!err.full });
+      }
+      const data = await resp.json();
+      _spectatorCount = data.spectatorCount || 0;
+      _connectSpectatorWs(data.wsUrl);
+    },
+
     /** Send a JSON message to the opponent */
     send(message) {
       if (_ws && _ws.readyState === WebSocket.OPEN) {
@@ -216,10 +299,12 @@ const battle = (function () {
         try { _ws.close(); } catch (_) {}
         _ws = null;
       }
-      _roomCode     = null;
-      _lastWsUrl    = null;
+      _roomCode       = null;
+      _lastWsUrl      = null;
       _reconnectCount = 0;
-      _isHost       = false;
+      _isHost         = false;
+      _isSpectator    = false;
+      _spectatorCount = 0;
       _setState(BattleState.IDLE);
       _handlers = {};
     },

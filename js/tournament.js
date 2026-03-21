@@ -239,6 +239,7 @@ var tournamentLobby = (function () {
     _tSaveTournaments(_tournaments);
     _tSaveRegistrations(_registrations);
     if (typeof recordSeasonTournamentEntered === 'function') recordSeasonTournamentEntered();
+    if (typeof onSeasonMissionTournamentEntered === 'function') onSeasonMissionTournamentEntered();
 
     return { ok: true, seedPos: seedPos, rating: myRating, count: t.players.length };
   }
@@ -314,6 +315,10 @@ var tournamentLobby = (function () {
             if (mi % 2 === 0) { nextMatch.p1 = winner; }
             else              { nextMatch.p2 = winner; }
           }
+          // If player won the semi-final, they've reached the Final
+          if (won && ri === rounds.length - 2) {
+            if (typeof achOnTournamentFinalReached === 'function') achOnTournamentFinalReached();
+          }
         }
         break;
       }
@@ -321,6 +326,29 @@ var tournamentLobby = (function () {
     }
 
     _tSaveTournaments(_tournaments);
+
+    // Fire tournament achievements
+    if (advanced && won) {
+      // Count how many matches this player has won in this tournament
+      var winsInTournament = 0;
+      var allRounds = [t.bracket.qf, t.bracket.sf, [t.bracket.final]].filter(Boolean);
+      allRounds.forEach(function (round) {
+        round.forEach(function (match) {
+          if (!match || !match.result) return;
+          var isP1 = match.p1 && match.p1.name === myName;
+          var isP2 = match.p2 && match.p2.name === myName;
+          if ((isP1 && match.result === 'p1') || (isP2 && match.result === 'p2')) {
+            winsInTournament++;
+          }
+        });
+      });
+      if (typeof achOnTournamentMatchWin === 'function') achOnTournamentMatchWin(winsInTournament);
+      if (typeof onSeasonMissionTournamentMatchWon === 'function') onSeasonMissionTournamentMatchWon();
+    }
+    if (tournamentWon) {
+      if (typeof achOnTournamentWon === 'function') achOnTournamentWon();
+    }
+
     return { advanced: advanced, tournamentWon: tournamentWon };
   }
 
