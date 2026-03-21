@@ -18,6 +18,15 @@ let editorWinCondition = { mode: "mine_all", n: 10 };
 // ── Puzzle metadata state ─────────────────────────────────────────────────────
 let editorPuzzleMetadata = { name: "", description: "", author: "", difficulty: 0 };
 
+// ── Piece sequence state ──────────────────────────────────────────────────────
+// mode: "random" | "fixed"
+// pieces: array of piece indices (1–7) defining the ordered spawn sequence.
+//         In "random" mode this is ignored. In "fixed" mode the sequence loops.
+let editorPieceSequence = { mode: "random", pieces: [] };
+
+const _SEQ_PIECE_NAMES  = ["", "T", "L", "O", "I", "S", "Z", "J"];
+const _SEQ_PIECE_COLORS = [null, 0x8b4513, 0x808080, 0xffff00, 0x00ffff, 0x008000, 0xff0000, 0x800080];
+
 /** Serialize current editor world (all landed_block children) to localStorage. */
 function saveEditorDraft() {
   try {
@@ -39,6 +48,7 @@ function saveEditorDraft() {
         author: editorPuzzleMetadata.author,
         difficulty: editorPuzzleMetadata.difficulty,
       },
+      pieceSequence: { mode: editorPieceSequence.mode, pieces: editorPieceSequence.pieces.slice() },
       savedAt: Date.now(),
     };
     localStorage.setItem(EDITOR_DRAFT_KEY, JSON.stringify(draft));
@@ -86,6 +96,14 @@ function applyEditorDraft(draft) {
       difficulty:  draft.metadata.difficulty   || 0,
     };
     renderMetadataPanel();
+  }
+  if (draft.pieceSequence) {
+    var seqMode = draft.pieceSequence.mode === "fixed" ? "fixed" : "random";
+    var seqPieces = Array.isArray(draft.pieceSequence.pieces)
+      ? draft.pieceSequence.pieces.filter(function(p) { return p >= 1 && p <= 7; })
+      : [];
+    editorPieceSequence = { mode: seqMode, pieces: seqPieces };
+    renderPieceSequencePanel();
   }
 }
 
@@ -205,6 +223,7 @@ function editorPlaceBlock() {
   registerBlock(block);
 
   if (typeof playPlaceSound === "function") playPlaceSound();
+  if (typeof editorTutorialNotifyBlockPlaced === "function") editorTutorialNotifyBlockPlaced();
 }
 
 /** Instantly remove the targeted block (no mining animation). */
@@ -444,6 +463,113 @@ function _updateShareBtnState() {
   shareBtn.style.opacity = hasName ? "" : "0.45";
 }
 
+// ── Piece sequence panel ──────────────────────────────────────────────────────
+
+/** Build / refresh the piece sequence panel inside #editor-piece-sequence. */
+function renderPieceSequencePanel() {
+  var container = document.getElementById("editor-piece-sequence");
+  if (!container) return;
+
+  var mode = editorPieceSequence.mode;
+  var pieces = editorPieceSequence.pieces;
+  var isFixed = mode === "fixed";
+
+  var html = '<div class="editor-seq-label">PIECE SEQUENCE</div>';
+  html += '<div class="editor-seq-toggle">';
+  html += '<button class="editor-seq-mode-btn' + (mode === "random" ? " editor-seq-mode-active" : "") + '" data-mode="random">Random</button>';
+  html += '<button class="editor-seq-mode-btn' + (mode === "fixed" ? " editor-seq-mode-active" : "") + '" data-mode="fixed">Fixed</button>';
+  html += '</div>';
+
+  if (isFixed) {
+    // Piece type picker buttons
+    html += '<div class="editor-seq-picker">';
+    for (var i = 1; i <= 7; i++) {
+      var hexStr = "#" + _SEQ_PIECE_COLORS[i].toString(16).padStart(6, "0");
+      html += '<button class="editor-seq-piece-btn" data-piece="' + i + '" style="background:' + hexStr + '" title="Add ' + _SEQ_PIECE_NAMES[i] + '-piece">' + _SEQ_PIECE_NAMES[i] + '</button>';
+    }
+    html += '</div>';
+
+    // Sequence items (click to remove)
+    html += '<div class="editor-seq-list">';
+    if (pieces.length === 0) {
+      html += '<span class="editor-seq-empty">Click pieces above to add</span>';
+    } else {
+      for (var j = 0; j < pieces.length; j++) {
+        var p = pieces[j];
+        var pc = "#" + _SEQ_PIECE_COLORS[p].toString(16).padStart(6, "0");
+        html += '<button class="editor-seq-item" data-idx="' + j + '" style="background:' + pc + '" title="Remove">' + _SEQ_PIECE_NAMES[p] + '</button>';
+      }
+    }
+    html += '</div>';
+
+    // Count + clear
+    html += '<div class="editor-seq-footer">';
+    html += '<span class="editor-seq-count">' + pieces.length + ' piece' + (pieces.length === 1 ? "" : "s") + (pieces.length > 0 ? " · loops" : "") + '</span>';
+    if (pieces.length > 0) {
+      html += '<button class="editor-seq-clear-btn">Clear</button>';
+    }
+    html += '</div>';
+
+    // Preview: first 5 pieces
+    if (pieces.length > 0) {
+      html += '<div class="editor-seq-preview">';
+      var previewCount = Math.min(5, pieces.length);
+      for (var k = 0; k < previewCount; k++) {
+        var pi = pieces[k];
+        var pc2 = "#" + _SEQ_PIECE_COLORS[pi].toString(16).padStart(6, "0");
+        html += '<div class="editor-seq-preview-item" style="border-color:' + pc2 + ';color:' + pc2 + '">' + _SEQ_PIECE_NAMES[pi] + '</div>';
+      }
+      if (pieces.length > 5) {
+        html += '<div class="editor-seq-preview-more">+' + (pieces.length - 5) + '</div>';
+      }
+      html += '</div>';
+    }
+  } else {
+    html += '<div class="editor-seq-random-note">Players receive random pieces</div>';
+  }
+
+  container.innerHTML = html;
+
+  // Wire mode toggle buttons
+  container.querySelectorAll(".editor-seq-mode-btn").forEach(function (btn) {
+    btn.addEventListener("click", function (e) {
+      e.stopPropagation();
+      editorPieceSequence.mode = this.getAttribute("data-mode");
+      renderPieceSequencePanel();
+    });
+  });
+
+  // Wire piece-add buttons
+  container.querySelectorAll(".editor-seq-piece-btn").forEach(function (btn) {
+    btn.addEventListener("click", function (e) {
+      e.stopPropagation();
+      var p = parseInt(this.getAttribute("data-piece"), 10);
+      editorPieceSequence.pieces.push(p);
+      renderPieceSequencePanel();
+    });
+  });
+
+  // Wire sequence-item remove buttons
+  container.querySelectorAll(".editor-seq-item").forEach(function (btn) {
+    btn.addEventListener("click", function (e) {
+      e.stopPropagation();
+      var idx = parseInt(this.getAttribute("data-idx"), 10);
+      editorPieceSequence.pieces.splice(idx, 1);
+      renderPieceSequencePanel();
+    });
+  });
+
+  // Wire clear button
+  var clearBtn = container.querySelector(".editor-seq-clear-btn");
+  if (clearBtn) {
+    clearBtn.addEventListener("click", function (e) {
+      e.stopPropagation();
+      editorPieceSequence.pieces = [];
+      renderPieceSequencePanel();
+    });
+  }
+}
+
 /** Encode current editor layout + win condition into a compact URL-safe share code. */
 function encodePuzzleShareCode() {
   if (typeof puzzleCodecEncode !== "function") return null;
@@ -474,6 +600,7 @@ function encodePuzzleShareCode() {
       author:      editorPuzzleMetadata.author,
       difficulty:  editorPuzzleMetadata.difficulty,
     },
+    pieceSequence: { mode: editorPieceSequence.mode, pieces: editorPieceSequence.pieces.slice() },
   });
 }
 
@@ -495,6 +622,7 @@ function initEditorMode() {
   editorSelectedIdx = 0;
   _editorAutosaveTimer = 0;
   editorPuzzleMetadata = { name: "", description: "", author: "", difficulty: 0 };
+  editorPieceSequence = { mode: "random", pieces: [] };
   if (!editorGhostMesh) {
     editorGhostMesh = _createEditorGhost();
   } else {
@@ -504,12 +632,16 @@ function initEditorMode() {
   renderEditorPaletteHUD();
   renderWinConditionBuilder();
   renderMetadataPanel();
+  renderPieceSequencePanel();
 
   // Apply loaded draft if one was queued by the draft prompt
   if (_pendingEditorDraft) {
     applyEditorDraft(_pendingEditorDraft);
     _pendingEditorDraft = null;
   }
+
+  // Start first-time onboarding tutorial (no-op if already seen)
+  if (typeof initEditorTutorial === "function") initEditorTutorial();
 }
 
 /** Call when leaving editor mode (reset / exit). */

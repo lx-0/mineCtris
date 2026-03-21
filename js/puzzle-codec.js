@@ -3,7 +3,7 @@
 // Self-contained — no external dependencies (LZ-string inlined below).
 // Used by editor.js (encode) and main.js (decode).
 
-var PUZZLE_CODEC_VERSION = 1;
+var PUZZLE_CODEC_VERSION = 2;
 
 // ── Inline LZ-string (URL-safe variant) ───────────────────────────────────────
 // Adapted from lz-string by pieroxy.net (MIT license).
@@ -144,14 +144,16 @@ var _PuzzleLZ = (function () {
 /**
  * Encode a puzzle state into a compact URL-safe share code.
  *
- * @param {object} payload  { winCondition, blocks, metadata }
- *   winCondition: { mode, n }
- *   blocks:       array of [x, y, z, paletteIdx]
- *   metadata:     { name, description, author, difficulty }
+ * @param {object} payload  { winCondition, blocks, metadata, pieceSequence }
+ *   winCondition:  { mode, n }
+ *   blocks:        array of [x, y, z, paletteIdx]
+ *   metadata:      { name, description, author, difficulty }
+ *   pieceSequence: { mode: "random"|"fixed", pieces: [1-7, ...] }  (optional)
  * @returns {string|null}  URL-safe code, or null on failure.
  */
 function puzzleCodecEncode(payload) {
   try {
+    var ps = payload.pieceSequence;
     var obj = {
       v:  PUZZLE_CODEC_VERSION,
       wc: { m: payload.winCondition.mode, n: payload.winCondition.n },
@@ -162,6 +164,7 @@ function puzzleCodecEncode(payload) {
         a:  payload.metadata.author,
         df: payload.metadata.difficulty,
       },
+      ps: ps ? { m: ps.mode, p: ps.pieces } : { m: "random", p: [] },
     };
     return _PuzzleLZ.compress(JSON.stringify(obj));
   } catch (_) {
@@ -214,6 +217,11 @@ function puzzleCodecDecode(code) {
     return { ok: false, error: "Share code is missing block data.", versionMismatch: false };
   }
   var meta = obj.meta || {};
+  var psRaw = obj.ps || {};
+  var psMode = psRaw.m === "fixed" ? "fixed" : "random";
+  var psPieces = Array.isArray(psRaw.p)
+    ? psRaw.p.filter(function (x) { return typeof x === "number" && x >= 1 && x <= 7; })
+    : [];
   return {
     ok: true,
     winCondition: { mode: obj.wc.m || "mine_all", n: obj.wc.n || 10 },
@@ -224,5 +232,6 @@ function puzzleCodecDecode(code) {
       author:      String(meta.a  || "").slice(0, 20),
       difficulty:  meta.df  || 0,
     },
+    pieceSequence: { mode: psMode, pieces: psPieces },
   };
 }

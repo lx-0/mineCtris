@@ -222,6 +222,51 @@ function drawPuzzlePiece() {
   return { index: idx, shape: SHAPES[idx] };
 }
 
+// ── Custom puzzle piece sequence queue ────────────────────────────────────────
+
+/** Internal looping cursor for the custom puzzle fixed sequence. */
+let _customPieceSeqIndex = 0;
+
+/**
+ * Initialise the piece queue for a custom puzzle based on customPieceSequence.
+ * In "fixed" mode: seeds pieceQueue from the sequence (looping).
+ * In "random" mode: does nothing — spawnFallingPiece falls through to random logic.
+ */
+function initCustomPuzzlePieceQueue() {
+  _customPieceSeqIndex = 0;
+  if (typeof customPieceSequence === "undefined" || customPieceSequence.mode !== "fixed") return;
+  const seq = customPieceSequence.pieces;
+  if (!seq || seq.length === 0) return;
+  // Seed visible preview queue from beginning of fixed sequence
+  pieceQueue.length = 0;
+  const previewCount = Math.min(NEXT_QUEUE_SIZE, seq.length);
+  for (let i = 0; i < previewCount; i++) {
+    const idx = seq[i % seq.length];
+    pieceQueue.push({ index: idx, shape: SHAPES[idx] });
+  }
+  updateNextPiecesHUD();
+}
+
+/**
+ * Draw the next piece from the custom puzzle fixed sequence (looping).
+ * Returns { index, shape } or null if sequence is empty / mode is random.
+ */
+function drawCustomPuzzlePiece() {
+  if (typeof customPieceSequence === "undefined" || customPieceSequence.mode !== "fixed") return null;
+  const seq = customPieceSequence.pieces;
+  if (!seq || seq.length === 0) return null;
+  const idx = seq[_customPieceSeqIndex % seq.length];
+  _customPieceSeqIndex++;
+  // Rebuild preview: next NEXT_QUEUE_SIZE pieces in the looping sequence
+  pieceQueue.length = 0;
+  for (let i = 0; i < NEXT_QUEUE_SIZE; i++) {
+    const pi = seq[(_customPieceSeqIndex + i) % seq.length];
+    pieceQueue.push({ index: pi, shape: SHAPES[pi] });
+  }
+  updateNextPiecesHUD();
+  return { index: idx, shape: SHAPES[idx] };
+}
+
 // ── Preset block setup ─────────────────────────────────────────────────────────
 
 function getPuzzleById(id) {
@@ -278,6 +323,50 @@ function setupPuzzleLayout() {
   _puzzleIsFirstAttempt = !progress[puzzlePuzzleId];
 }
 
+// ── Custom puzzle layout setup ────────────────────────────────────────────────
+
+/**
+ * Place preset blocks from customPuzzleLayout into the world.
+ * Used when entering a test play of an editor-built puzzle.
+ */
+function setupCustomPuzzleLayout() {
+  _puzzlePresetBlocks = [];
+
+  if (!Array.isArray(customPuzzleLayout)) return;
+
+  customPuzzleLayout.forEach(function (b) {
+    // Determine palette index from color hex for material type lookup
+    var hexInt = 0;
+    if (b.color) {
+      hexInt = parseInt(b.color.replace("#", ""), 16);
+    }
+    var paletteIdx = 1; // default stone
+    if (typeof EDITOR_PALETTE !== "undefined") {
+      for (var i = 0; i < EDITOR_PALETTE.length; i++) {
+        if (EDITOR_PALETTE[i].hex === hexInt) { paletteIdx = i; break; }
+      }
+    }
+    // Map palette idx to COLORS index (EDITOR_PALETTE order matches colorIndex 1-9)
+    var colorIndex = paletteIdx + 1;
+    var color = COLORS[colorIndex] || COLORS[2];
+
+    var block = createBlockMesh(color);
+    block.name = "landed_block";
+    block.userData.isPuzzlePreset = true;
+    var matName = _PUZZLE_COLOR_TO_MAT[colorIndex] || "stone";
+    block.userData.materialType = matName;
+    var matInfo = BLOCK_TYPES[matName];
+    block.userData.miningClicks = matInfo ? matInfo.hits : MINING_CLICKS_NEEDED;
+    block.position.set(b.x, b.y, b.z);
+    worldGroup.add(block);
+    registerBlock(block);
+    _puzzlePresetBlocks.push(block);
+  });
+
+  _puzzleInitialCount = _puzzlePresetBlocks.length;
+  _puzzleIsFirstAttempt = true;
+}
+
 // ── Win / lose detection ───────────────────────────────────────────────────────
 
 /**
@@ -290,16 +379,34 @@ function countRemainingPresetBlocks() {
 
 /**
  * Check win/lose conditions. Call after each piece lands or block is mined.
- * - Win: all preset blocks removed from the world
- * - Lose: piece queue empty and preset blocks remain
+ * Handles both built-in puzzle mode and editor custom puzzle mode.
  */
 function checkPuzzleConditions() {
-  if (!isPuzzleMode || isGameOver) return;
+  if (isGameOver) return;
+
+  // ── Custom puzzle mode ────────────────────────────────────────────────────
+  if (isCustomPuzzleMode && customPuzzleWinCondition) {
+    const wc = customPuzzleWinCondition;
+    let won = false;
+    if (wc.mode === "mine_all") {
+      won = countRemainingPresetBlocks() === 0 && _puzzleInitialCount > 0;
+    } else if (wc.mode === "clear_lines") {
+      won = linesCleared >= wc.n;
+    } else if (wc.mode === "survive_seconds") {
+      won = gameElapsedSeconds >= wc.n;
+    } else if (wc.mode === "score_points") {
+      won = score >= wc.n;
+    }
+    if (won) _triggerCustomPuzzleWin();
+    return;
+  }
+
+  // ── Built-in puzzle mode ──────────────────────────────────────────────────
+  if (!isPuzzleMode) return;
 
   const remaining = countRemainingPresetBlocks();
 
   if (remaining === 0) {
-    // Win!
     _triggerPuzzleWin();
     return;
   }
@@ -459,6 +566,241 @@ function _showPuzzleCompleteOverlay(won, stars, isNewBest, puzzle) {
     }
   }
 
+  // Hide vote area for built-in puzzles
+  const builtinVoteArea = document.getElementById("puzzle-vote-area");
+  if (builtinVoteArea) builtinVoteArea.style.display = "none";
+
+  overlayEl.style.display = "flex";
+}
+
+// ── Custom puzzle win ─────────────────────────────────────────────────────────
+
+function _triggerCustomPuzzleWin() {
+  if (puzzleComplete) return;
+  puzzleComplete = true;
+  isGameOver = true;
+  gameTimerRunning = false;
+
+  // Award XP
+  if (typeof awardXP === "function") {
+    const _cpXpBefore = (typeof loadLifetimeStats === "function" ? loadLifetimeStats().playerXP || 0 : 0);
+    const { xpEarned: _cpXP, streakBonus: _cpStreak } = awardXP(score, "puzzle");
+    const cpXpEl = document.getElementById("puzzle-xp-earned");
+    if (cpXpEl) {
+      cpXpEl.textContent = "+ " + _cpXP + " XP" + (_cpStreak ? "  (Streak Bonus!)" : "");
+      cpXpEl.className = "xp-earned-display" + (_cpStreak ? " xp-streak" : "");
+    }
+    if (typeof checkLevelUp === "function" && typeof loadLifetimeStats === "function") {
+      checkLevelUp(_cpXpBefore, loadLifetimeStats().playerXP || 0);
+    }
+    if (typeof updateStreakHUD === "function") updateStreakHUD();
+  }
+
+  _showCustomPuzzleCompleteOverlay(true);
+
+  if (typeof stopBgMusic === "function") stopBgMusic();
+  if (typeof playGameOverJingle === "function") playGameOverJingle();
+  if (controls && controls.isLocked) controls.unlock();
+}
+
+function _formatPuzzleTime(secs) {
+  var m = Math.floor(secs / 60);
+  var s = Math.floor(secs % 60);
+  return (m < 10 ? "0" : "") + m + ":" + (s < 10 ? "0" : "") + s;
+}
+
+/**
+ * Encode the current custom puzzle state (layout, win condition, metadata, piece sequence)
+ * into a share URL. Works during and after play (uses customPuzzleLayout, not the live world).
+ * Returns a full URL string or null if encoding is unavailable.
+ */
+function encodeCustomPuzzleShareURL() {
+  if (typeof puzzleCodecEncode !== "function") return null;
+  if (!Array.isArray(customPuzzleLayout) || customPuzzleLayout.length === 0) return null;
+  var blocks = customPuzzleLayout.map(function (b) {
+    var hexInt = parseInt((b.color || "#808080").replace("#", ""), 16);
+    var paletteIdx = 1; // default stone
+    if (typeof EDITOR_PALETTE !== "undefined") {
+      for (var i = 0; i < EDITOR_PALETTE.length; i++) {
+        if (EDITOR_PALETTE[i].hex === hexInt) { paletteIdx = i; break; }
+      }
+    }
+    return [b.x, b.y, b.z, paletteIdx];
+  });
+  var code = puzzleCodecEncode({
+    winCondition: customPuzzleWinCondition || { mode: "mine_all", n: 10 },
+    blocks: blocks,
+    metadata: customPuzzleMetadata || { name: "", description: "", author: "", difficulty: 0 },
+    pieceSequence: customPieceSequence || { mode: "random", pieces: [] },
+  });
+  if (!code) return null;
+  return location.origin + location.pathname + "?puzzle=" + encodeURIComponent(code);
+}
+
+function _showCustomPuzzleCompleteOverlay(won) {
+  const overlayEl = document.getElementById("puzzle-complete-screen");
+  if (!overlayEl) return;
+
+  const titleEl = document.getElementById("puzzle-complete-title");
+  if (titleEl) titleEl.textContent = won ? "PUZZLE COMPLETE!" : "GAME OVER";
+
+  const nameEl = document.getElementById("puzzle-complete-name");
+  if (nameEl) {
+    var meta = (typeof customPuzzleMetadata !== "undefined") ? customPuzzleMetadata : null;
+    var displayName = (meta && meta.name) ? meta.name : "Custom Puzzle";
+    nameEl.textContent = displayName;
+  }
+
+  // Show author separately (was previously inline; keep for built-in screen compat)
+  const pbEl = document.getElementById("puzzle-complete-pb");
+  if (pbEl) {
+    var meta2 = (typeof customPuzzleMetadata !== "undefined") ? customPuzzleMetadata : null;
+    var pbParts = [];
+    if (meta2 && meta2.author) pbParts.push("by " + meta2.author);
+    if (meta2 && meta2.difficulty > 0) {
+      pbParts.push("★".repeat(meta2.difficulty) + "☆".repeat(3 - meta2.difficulty));
+    }
+    pbEl.textContent = pbParts.join("  ·  ");
+    pbEl.className = pbParts.length > 0 ? "puzzle-pb-line" : "";
+  }
+
+  const starsEl = document.getElementById("puzzle-complete-stars");
+  if (starsEl) {
+    starsEl.textContent = won ? "★★★" : "☆☆☆";
+    starsEl.className = won ? "puzzle-stars puzzle-stars-3" : "puzzle-stars puzzle-stars-0";
+  }
+
+  const remainEl = document.getElementById("puzzle-complete-remain");
+  if (remainEl && customPuzzleWinCondition) {
+    const wc = customPuzzleWinCondition;
+    if (wc.mode === "mine_all") {
+      remainEl.textContent = won ? "All blocks cleared!" : countRemainingPresetBlocks() + " blocks remaining";
+    } else if (wc.mode === "clear_lines") {
+      remainEl.textContent = "Lines cleared: " + linesCleared + " / " + wc.n;
+    } else if (wc.mode === "survive_seconds") {
+      remainEl.textContent = "Survived: " + Math.floor(gameElapsedSeconds) + "s / " + wc.n + "s";
+    } else if (wc.mode === "score_points") {
+      remainEl.textContent = "Score: " + score.toLocaleString() + " / " + wc.n.toLocaleString();
+    }
+  }
+
+  // Time elapsed
+  const timeEl = document.getElementById("puzzle-complete-time");
+  if (timeEl) {
+    timeEl.textContent = "Time: " + _formatPuzzleTime(gameElapsedSeconds);
+    timeEl.style.display = "";
+  }
+
+  // Score + efficiency (blocks mined / pieces used)
+  const scoreDispEl = document.getElementById("puzzle-complete-score");
+  if (scoreDispEl) {
+    var effText = "";
+    if (_puzzlePiecesUsed > 0) {
+      var eff = Math.round((blocksMined / _puzzlePiecesUsed) * 10) / 10;
+      effText = "  ·  Eff: " + eff.toFixed(1);
+    }
+    scoreDispEl.textContent = "Score: " + score.toLocaleString() + effText;
+    scoreDispEl.style.display = "";
+  }
+
+  const nextBtn = document.getElementById("puzzle-next-btn");
+  if (nextBtn) nextBtn.style.display = "none";
+
+  // Share button: show if puzzle can be encoded (has a layout)
+  const shareBtn = document.getElementById("puzzle-complete-share-btn");
+  if (shareBtn) {
+    var shareUrl = encodeCustomPuzzleShareURL();
+    if (shareUrl) {
+      shareBtn.style.display = "";
+      shareBtn._puzzleShareUrl = shareUrl;
+    } else {
+      shareBtn.style.display = "none";
+      shareBtn._puzzleShareUrl = null;
+    }
+  }
+
+  // Edit button: only show when launched from editor
+  const editBtn = document.getElementById("puzzle-complete-edit-btn");
+  if (editBtn) {
+    editBtn.style.display = (typeof customPlayFromEditor !== "undefined" && customPlayFromEditor) ? "" : "none";
+  }
+
+  // Vote area: only show for community puzzles
+  const voteArea    = document.getElementById("puzzle-vote-area");
+  const voteUpBtn   = document.getElementById("puzzle-vote-up");
+  const voteDownBtn = document.getElementById("puzzle-vote-down");
+  const voteMsg     = document.getElementById("puzzle-vote-msg");
+  const communityId = (typeof window !== "undefined") ? window._communityPuzzleId : null;
+
+  if (voteArea && voteUpBtn && voteDownBtn && communityId) {
+    voteArea.style.display = "";
+    voteUpBtn.disabled   = false;
+    voteDownBtn.disabled = false;
+    voteUpBtn.classList.remove("voted-active");
+    voteDownBtn.classList.remove("voted-active");
+    if (voteMsg) voteMsg.textContent = "";
+
+    // Check if already voted this session
+    var ssKey = "puzzle_voted_" + communityId;
+    var priorVote = (typeof sessionStorage !== "undefined") ? sessionStorage.getItem(ssKey) : null;
+    if (priorVote) {
+      if (voteMsg) voteMsg.textContent = "Already rated!";
+      voteUpBtn.disabled   = true;
+      voteDownBtn.disabled = true;
+      if (priorVote === "up")   voteUpBtn.classList.add("voted-active");
+      if (priorVote === "down") voteDownBtn.classList.add("voted-active");
+    } else {
+      function _doVote(vote) {
+        if (voteUpBtn.disabled) return;
+        voteUpBtn.disabled   = true;
+        voteDownBtn.disabled = true;
+        if (voteMsg) voteMsg.textContent = "Sending\u2026";
+
+        var workerUrl = (typeof window._communityWorkerUrl === "function")
+          ? window._communityWorkerUrl()
+          : "https://minectris-leaderboard.workers.dev";
+
+        fetch(workerUrl + "/api/puzzles/" + communityId + "/vote", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ vote: vote }),
+        })
+          .then(function (r) { return r.json(); })
+          .then(function (data) {
+            if (data.ok) {
+              if (typeof sessionStorage !== "undefined") sessionStorage.setItem(ssKey, vote);
+              if (vote === "up")   voteUpBtn.classList.add("voted-active");
+              if (vote === "down") voteDownBtn.classList.add("voted-active");
+              if (voteMsg) {
+                voteMsg.textContent = "\uD83D\uDC4D " + (data.thumbsUp || 0) +
+                  "  \uD83D\uDC4E " + (data.thumbsDown || 0);
+              }
+            } else {
+              if (voteMsg) voteMsg.textContent = "Error";
+              voteUpBtn.disabled   = false;
+              voteDownBtn.disabled = false;
+            }
+          })
+          .catch(function () {
+            if (voteMsg) voteMsg.textContent = "Error";
+            voteUpBtn.disabled   = false;
+            voteDownBtn.disabled = false;
+          });
+      }
+
+      // Clone buttons to remove any prior listeners
+      var newUp   = voteUpBtn.cloneNode(true);
+      var newDown = voteDownBtn.cloneNode(true);
+      voteUpBtn.parentNode.replaceChild(newUp, voteUpBtn);
+      voteDownBtn.parentNode.replaceChild(newDown, voteDownBtn);
+
+      newUp.addEventListener("click",   function () { _doVote("up");   });
+      newDown.addEventListener("click", function () { _doVote("down"); });
+    }
+  } else if (voteArea) {
+    voteArea.style.display = "none";
+  }
+
   overlayEl.style.display = "flex";
 }
 
@@ -481,6 +823,23 @@ function isThinkModeActive() {
 function updatePuzzleHUD() {
   const badgeEl = document.getElementById("puzzle-badge");
   if (!badgeEl) return;
+
+  if (isCustomPuzzleMode && customPuzzleWinCondition) {
+    const wc = customPuzzleWinCondition;
+    let objective = "";
+    if (wc.mode === "mine_all") {
+      objective = "Blocks: " + countRemainingPresetBlocks() + "/" + _puzzleInitialCount;
+    } else if (wc.mode === "clear_lines") {
+      objective = "Lines: " + linesCleared + "/" + wc.n;
+    } else if (wc.mode === "survive_seconds") {
+      objective = "Survive: " + Math.floor(gameElapsedSeconds) + "/" + wc.n + "s";
+    } else if (wc.mode === "score_points") {
+      objective = "Score: " + score + "/" + wc.n;
+    }
+    badgeEl.textContent = "Custom Puzzle | " + objective;
+    return;
+  }
+
   const puzzle = getPuzzleById(puzzlePuzzleId);
   const blocksLeft = countRemainingPresetBlocks();
   const piecesLeft = puzzleFixedQueue.length + pieceQueue.length + fallingPieces.length;
