@@ -5,7 +5,12 @@ compatibility_date = "2024-01-01"
 [durable_objects]
 bindings = [
   { name = "COOP_ROOMS", class_name = "CoopRoom" },
-  { name = "BATTLE_ROOMS", class_name = "BattleRoom" }
+  { name = "BATTLE_ROOMS", class_name = "BattleRoom" },
+  { name = "TOURNAMENT_ROOMS", class_name = "TournamentEngine" },
+  { name = "GUILD_OBJECTS", class_name = "GuildObject" },
+  { name = "CLAN_WAR_OBJECTS", class_name = "ClanWarObject" },
+  { name = "GUILD_CHAT_OBJECTS", class_name = "GuildChatObject" },
+  { name = "GUILD_EXPEDITION_OBJECTS", class_name = "GuildExpeditionObject" }
 ]
 
 [[migrations]]
@@ -15,6 +20,26 @@ new_classes = ["CoopRoom"]
 [[migrations]]
 tag = "v2"
 new_classes = ["BattleRoom"]
+
+[[migrations]]
+tag = "v3"
+new_classes = ["TournamentEngine"]
+
+[[migrations]]
+tag = "v4"
+new_classes = ["GuildObject"]
+
+[[migrations]]
+tag = "v5"
+new_classes = ["ClanWarObject"]
+
+[[migrations]]
+tag = "v6"
+new_classes = ["GuildChatObject"]
+
+[[migrations]]
+tag = "v7"
+new_classes = ["GuildExpeditionObject"]
 
 [[kv_namespaces]]
 binding = "LEADERBOARD_KV"
@@ -30,6 +55,16 @@ preview_id = "REPLACE_WITH_PUZZLES_KV_PREVIEW_NAMESPACE_ID"
 binding = "COOP_LEADERBOARD"
 id = "REPLACE_WITH_COOP_LEADERBOARD_KV_NAMESPACE_ID"
 preview_id = "REPLACE_WITH_COOP_LEADERBOARD_KV_PREVIEW_NAMESPACE_ID"
+
+[[kv_namespaces]]
+binding = "TOURNAMENTS_KV"
+id = "REPLACE_WITH_TOURNAMENTS_KV_NAMESPACE_ID"
+preview_id = "REPLACE_WITH_TOURNAMENTS_KV_PREVIEW_NAMESPACE_ID"
+
+[[kv_namespaces]]
+binding = "GUILDS_KV"
+id = "REPLACE_WITH_GUILDS_KV_NAMESPACE_ID"
+preview_id = "REPLACE_WITH_GUILDS_KV_PREVIEW_NAMESPACE_ID"
 
 [vars]
 ALLOWED_ORIGIN = "https://minectris.com"
