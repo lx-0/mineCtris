@@ -278,6 +278,213 @@ const LEGENDARY_TRAIL_EMISSIVE = {
   6: 0xff8c00, // gilded amber glow
 };
 
+// Diamond Season palette — icy crystalline blues for the season Diamond-tier full skin.
+// Index maps 1:1 with COLORS. canonicalColor (Classic hex) is always preserved.
+const DIAMOND_SEASON_COLORS = [
+  null,
+  0x4ac8f0, // 1 → crystal blue      (was dirt brown)
+  0x2c7cb5, // 2 → deep sapphire     (was stone grey)
+  0xb8eaff, // 3 → pale crystal      (was gold yellow)
+  0x7fffff, // 4 → bright aqua ice   (was ice cyan)
+  0x1a8fbf, // 5 → teal sapphire     (was moss green)
+  0x00c0ff, // 6 → electric blue     (was lava red)
+  0x5b8fff, // 7 → periwinkle        (was crystal purple)
+  0x00e5ff, // 8 → diamond sparkle   (was diamond deep blue)
+];
+const DIAMOND_SEASON_TRAIL_EMISSIVE = {
+  3: 0xb8eaff, // pale crystal glow
+  4: 0x7fffff, // aqua ice glow
+  6: 0x00c0ff, // electric blue glow
+  8: 0x00e5ff, // diamond sparkle glow
+};
+
+// ── Biome expedition palettes ─────────────────────────────────────────────────
+// Used by biome-themes.js and referenced by world.js / pieces.js / trails.js.
+// Index maps 1:1 with COLORS.
+
+// Stone biome — underground cave, muted grey tones
+const BIOME_STONE_COLORS = [
+  null,
+  0x4a4040, // 1 → cave dirt
+  0x666666, // 2 → stone grey
+  0x998844, // 3 → dim mineral vein
+  0xddeeff, // 4 → quartz
+  0x3a5a3a, // 5 → cave moss
+  0xcc4400, // 6 → cave lava
+  0x667799, // 7 → slate crystal
+  0x3355aa, // 8 → rare ore
+];
+const BIOME_STONE_TRAIL_EMISSIVE = {
+  3: 0x998844,
+  4: 0xaabbcc,
+  6: 0xcc4400,
+};
+
+// Forest biome — earthy greens and browns
+const BIOME_FOREST_COLORS = [
+  null,
+  0x5c3a1a, // 1 → rich forest soil
+  0x4a6640, // 2 → mossy stone
+  0xd4cc22, // 3 → forest gold
+  0x88ccbb, // 4 → forest dew
+  0x2d6b22, // 5 → fern green
+  0xcc6600, // 6 → amber resin
+  0x447744, // 7 → verdite
+  0x1a4a22, // 8 → deep emerald
+];
+const BIOME_FOREST_TRAIL_EMISSIVE = {
+  3: 0xd4cc22,
+  4: 0x88ccbb,
+  6: 0xcc6600,
+};
+
+// Ice biome — light blues, whites, frozen tundra
+const BIOME_ICE_COLORS = [
+  null,
+  0xb8d8f0, // 1 → packed snow-blue
+  0x8aaac8, // 2 → blue ice stone
+  0xaac4e8, // 3 → frozen ore
+  0xbbf0ff, // 4 → clear ice
+  0x99ddff, // 5 → frost
+  0x6699cc, // 6 → ice-over-lava
+  0xddeeff, // 7 → snowflake crystal
+  0x4499dd, // 8 → ice diamond
+];
+const BIOME_ICE_TRAIL_EMISSIVE = {
+  4: 0xaae8ff,
+  6: 0x6699cc,
+  7: 0xddeeff,
+};
+
+// ── Biome-exclusive cosmetic palettes ─────────────────────────────────────────
+// Unlocked via expedition reward tracks (tiers 14 & 15 per biome).
+// Board skins restyle all blocks with architectural / environmental aesthetics.
+// Piece themes restyle all blocks with bold, jewel-bright ore and natural-material tones.
+
+// Stone — "Carved Stone" board skin
+const COSMETIC_CARVED_STONE_COLORS = [
+  null,
+  0x4a4848, // 1 → carved stone dark
+  0x5c5a5a, // 2 → chiseled stone
+  0x88866e, // 3 → stone detail gold
+  0xd8d4c4, // 4 → pale limestone
+  0x5a5848, // 5 → mossy flagstone
+  0x8b2020, // 6 → red sandstone vein
+  0x5c5c7a, // 7 → blue slate
+  0x282840, // 8 → dark ashlar
+];
+const COSMETIC_CARVED_STONE_TRAIL_EMISSIVE = { 3: 0x88866e, 6: 0x8b2020 };
+
+// Stone — "Ore Vein" piece theme
+const COSMETIC_ORE_VEIN_COLORS = [
+  null,
+  0x888888, // 1 → raw stone
+  0x554433, // 2 → dirt pocket
+  0xc8a832, // 3 → gold ore
+  0x22aadd, // 4 → lapis
+  0x44aa44, // 5 → emerald
+  0xcc4422, // 6 → redstone
+  0x8855cc, // 7 → amethyst
+  0x2288ee, // 8 → diamond
+];
+const COSMETIC_ORE_VEIN_TRAIL_EMISSIVE = {
+  3: 0xc8a832, 4: 0x22aadd, 5: 0x44aa44, 6: 0xcc4422, 7: 0x8855cc, 8: 0x2288ee,
+};
+
+// Forest — "Mossy Overgrown" board skin
+const COSMETIC_MOSSY_OVERGROWN_COLORS = [
+  null,
+  0x3a5a2a, // 1 → thick moss
+  0x4a6a3a, // 2 → overgrown stone
+  0x8a8a40, // 3 → lichen gold
+  0x88bbaa, // 4 → dewy moss
+  0x1a4a1a, // 5 → deep verdure
+  0x8a6622, // 6 → amber resin
+  0x336633, // 7 → fern
+  0x1a3a15, // 8 → deep forest
+];
+const COSMETIC_MOSSY_OVERGROWN_TRAIL_EMISSIVE = { 3: 0x8a8a40, 4: 0x88bbaa, 6: 0x8a6622 };
+
+// Forest — "Leaf Block" piece theme
+const COSMETIC_LEAF_BLOCK_COLORS = [
+  null,
+  0x4a7a2a, // 1 → oak leaf
+  0x2a6a1a, // 2 → spruce leaf
+  0xd4c422, // 3 → acacia leaf gold
+  0x88dd88, // 4 → birch leaf
+  0x226622, // 5 → jungle leaf
+  0xcc8833, // 6 → autumn leaf
+  0x447744, // 7 → cherry leaf
+  0x0a3a0a, // 8 → dark canopy
+];
+const COSMETIC_LEAF_BLOCK_TRAIL_EMISSIVE = { 3: 0xd4c422, 4: 0x88dd88, 6: 0xcc8833 };
+
+// Nether — "Obsidian Forge" board skin
+const COSMETIC_OBSIDIAN_FORGE_COLORS = [
+  null,
+  0x1a0a2e, // 1 → obsidian purple
+  0x0a0a15, // 2 → dark obsidian
+  0xff7700, // 3 → forge fire
+  0xff4400, // 4 → molten metal
+  0x550000, // 5 → crimson forge
+  0xff0033, // 6 → superheated steel
+  0x220033, // 7 → obsidian dark
+  0x050515, // 8 → deep obsidian
+];
+const COSMETIC_OBSIDIAN_FORGE_TRAIL_EMISSIVE = { 3: 0xff7700, 4: 0xff4400, 6: 0xff0033 };
+
+// Nether — "Magma" piece theme
+const COSMETIC_MAGMA_COLORS = [
+  null,
+  0x8b2200, // 1 → dark magma
+  0x4a1a00, // 2 → cooled magma
+  0xff6600, // 3 → hot magma glow
+  0xff4400, // 4 → orange flow
+  0x550000, // 5 → dark flow
+  0xff0000, // 6 → lava core
+  0x3a0028, // 7 → deep magma purple
+  0x0a0000, // 8 → black rock
+];
+const COSMETIC_MAGMA_TRAIL_EMISSIVE = { 3: 0xff6600, 4: 0xff4400, 6: 0xff2200 };
+
+// Ice — "Frozen Tundra" board skin
+const COSMETIC_FROZEN_TUNDRA_COLORS = [
+  null,
+  0x9ac8e0, // 1 → packed ice
+  0x6a9ab8, // 2 → blue ice
+  0xbacce8, // 3 → frozen ore
+  0xd8f0ff, // 4 → clear ice sheen
+  0xa0d8ff, // 5 → frost
+  0x708898, // 6 → ice rock
+  0xe8f4ff, // 7 → snowflake
+  0x4a88cc, // 8 → deep ice
+];
+const COSMETIC_FROZEN_TUNDRA_TRAIL_EMISSIVE = { 4: 0xd8f0ff, 7: 0xe8f4ff };
+
+// Ice — "Crystal" piece theme
+const COSMETIC_CRYSTAL_COLORS = [
+  null,
+  0xcc88ff, // 1 → amethyst crystal
+  0x4488ff, // 2 → sapphire crystal
+  0xffee44, // 3 → topaz crystal
+  0x88ffee, // 4 → aquamarine crystal
+  0x44ff88, // 5 → emerald crystal
+  0xff4488, // 6 → ruby crystal
+  0xddaaff, // 7 → lavender crystal
+  0x00bbff, // 8 → ice crystal
+];
+const COSMETIC_CRYSTAL_TRAIL_EMISSIVE = {
+  3: 0xffee44, 4: 0x88ffee, 6: 0xff4488, 7: 0xddaaff, 8: 0x00bbff,
+};
+
+// Border (edge mesh) colors per biome id — overrides the default black.
+const BIOME_BORDER_COLORS = {
+  stone:  0x111111,
+  forest: 0x1a3310,
+  nether: 0x330000,
+  ice:    0x3388aa,
+};
+
 // Reverse lookup: COLORS hex integer → color index (used for live material swapping).
 const COLOR_TO_INDEX = {};
 (function () {

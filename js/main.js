@@ -155,7 +155,11 @@ function init() {
   if (typeof initSeasonBanner === "function") initSeasonBanner();
   if (typeof initSeasonHUD === "function") initSeasonHUD();
   if (typeof initSeasonPassPanel === "function") initSeasonPassPanel();
+  if (typeof initBiomeCosmeticsPanel === "function") initBiomeCosmeticsPanel();
+  if (typeof initBiomeLeaderboard === "function") initBiomeLeaderboard();
   if (typeof initExpeditionMap === "function") initExpeditionMap();
+  if (typeof initExpeditionCodex === "function") initExpeditionCodex();
+  if (typeof initExpeditionSession === "function") initExpeditionSession();
   if (typeof initRecapFromUrl === "function") initRecapFromUrl();
   if (typeof updateLevelBadgeHUD === "function") updateLevelBadgeHUD();
   if (typeof updateStreakHUD === "function") updateStreakHUD();
@@ -3934,6 +3938,22 @@ function init() {
 
   // Restore equipped season cosmetic (scene objects now exist for material swapping).
   if (typeof restoreSeasonCosmetic === "function") restoreSeasonCosmetic();
+  // Restore equipped biome cosmetic — runs after restoreSeasonCosmetic so biome cosmetic takes priority.
+  if (typeof restoreBiomeCosmetic === "function") restoreBiomeCosmetic();
+
+  // ── Expedition launch handler ──────────────────────────────────────────────
+  // Triggered when the player clicks "Enter Biome" in the expedition world map.
+  // Runs inside a user-gesture callchain (the original click), so pointer-lock
+  // requests from the lore overlay's "Enter Biome" button will succeed.
+  document.addEventListener('expeditionLaunch', function (e) {
+    var node = e.detail && e.detail.node;
+    hideModeSelect();
+    if (node && typeof showExpeditionLore === 'function') {
+      showExpeditionLore(node, function () { requestPointerLock(); });
+    } else {
+      requestPointerLock();
+    }
+  });
 
   console.log("Initialization complete. Starting animation loop.");
   animate();

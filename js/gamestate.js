@@ -310,8 +310,9 @@ function triggerGameOver() {
       (_goTitle ? `<span class="go-level-title"> ${_goTitle}</span>` : '');
   }
 
-  // Submit and render high scores (not for survival — it has its own table)
-  if (!isSurvivalMode) {
+  // Submit and render high scores (not for survival or expedition — each has its own screen)
+  const _inExpedition = (typeof activeBiomeId !== 'undefined') && !!activeBiomeId;
+  if (!isSurvivalMode && !_inExpedition) {
     const hsRank = submitHighScore(
       state.score,
       state.elapsedSeconds,
@@ -431,6 +432,18 @@ function triggerGameOver() {
   // Fade out background music, then play game-over jingle
   if (typeof stopBgMusic === "function") stopBgMusic();
   if (typeof playGameOverJingle === "function") playGameOverJingle();
+
+  // Expedition mode: show dedicated results screen instead of generic game-over
+  if (_inExpedition && typeof showExpeditionResults === 'function') {
+    showExpeditionResults({
+      score:        state.score,
+      linesCleared: state.linesCleared,
+      blocksMined:  state.blocksMined,
+      timeSeconds:  state.elapsedSeconds,
+    });
+    if (controls && controls.isLocked) controls.unlock();
+    return;
+  }
 
   // Show Game Over overlay
   const gameOverEl = document.getElementById("game-over-screen");
@@ -760,6 +773,9 @@ function resetGame() {
   const hsTableEl2 = document.getElementById('hs-go-table');
   if (hsTableEl2) hsTableEl2.style.display = '';
 
+  // Clear expedition biome theme (restores user's cosmetic theme)
+  if (typeof clearBiomeTheme === "function") clearBiomeTheme();
+
   // Reset event engine
   if (typeof resetEventEngine === "function") resetEventEngine();
 
@@ -918,6 +934,21 @@ function triggerBattleResult(result) {
   // Fire battle mission hooks
   if (result === 'win' && typeof onMissionBattleWin === 'function') {
     onMissionBattleWin();
+  }
+
+  // Season mission hooks — ranked match
+  if (typeof onSeasonMissionRankedMatchEnd === 'function') {
+    onSeasonMissionRankedMatchEnd(result === 'win');
+  }
+
+  // Apply tournament win bonus (+50 rating) if this was a tournament match
+  if (result === 'win' && typeof isTournamentMatch !== 'undefined' && isTournamentMatch) {
+    if (typeof applyTournamentWinBonus === 'function') {
+      applyTournamentWinBonus();
+    }
+  }
+  if (typeof isTournamentMatch !== 'undefined') {
+    isTournamentMatch = false; // reset for next match
   }
 
   // Submit rating to online leaderboard (non-blocking, rate-limited to 1/day)

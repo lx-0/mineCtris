@@ -50,8 +50,10 @@ function createBlockMesh(color) {
   const geometry = new THREE.BoxGeometry(BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
   addFaceBrightnessColors(geometry);
   const edges = new THREE.EdgesGeometry(geometry);
+  const _activeBiome = (typeof activeBiomeId !== 'undefined') ? activeBiomeId : null;
+  const _borderColor = (_activeBiome && BIOME_BORDER_COLORS[_activeBiome]) ? BIOME_BORDER_COLORS[_activeBiome] : 0x000000;
   const lineMaterial = new THREE.LineBasicMaterial({
-    color: 0x000000,
+    color: _borderColor,
     linewidth: 2,
   });
   const edgesMesh = new THREE.LineSegments(edges, lineMaterial);
@@ -69,7 +71,21 @@ function createBlockMesh(color) {
       material = createBlockMaterial(color);
     }
   } else if (activeTheme !== "classic") {
-    const THEME_PALETTE = { nether: NETHER_COLORS, ocean: OCEAN_COLORS, candy: CANDY_COLORS };
+    const THEME_PALETTE = {
+      nether: NETHER_COLORS, ocean: OCEAN_COLORS, candy: CANDY_COLORS,
+      fossil: FOSSIL_COLORS, storm: STORM_COLORS, void: VOID_COLORS,
+      legendary: LEGENDARY_COLORS,
+      biome_stone: BIOME_STONE_COLORS, biome_forest: BIOME_FOREST_COLORS,
+      biome_nether: NETHER_COLORS, biome_ice: BIOME_ICE_COLORS,
+      cosmetic_carved_stone_board: COSMETIC_CARVED_STONE_COLORS,
+      cosmetic_ore_vein_theme:     COSMETIC_ORE_VEIN_COLORS,
+      cosmetic_mossy_overgrown_board: COSMETIC_MOSSY_OVERGROWN_COLORS,
+      cosmetic_leaf_block_theme:   COSMETIC_LEAF_BLOCK_COLORS,
+      cosmetic_obsidian_forge_board: COSMETIC_OBSIDIAN_FORGE_COLORS,
+      cosmetic_magma_theme:        COSMETIC_MAGMA_COLORS,
+      cosmetic_frozen_tundra_board: COSMETIC_FROZEN_TUNDRA_COLORS,
+      cosmetic_crystal_theme:      COSMETIC_CRYSTAL_COLORS,
+    };
     const palette = THEME_PALETTE[activeTheme];
     const tIdx = palette ? COLOR_TO_INDEX[canonicalHex] : undefined;
     if (palette && tIdx !== undefined && palette[tIdx] !== null) {

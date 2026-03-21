@@ -164,13 +164,22 @@ function applyTheme(themeKey) {
 
   // Resolve theme palette for material swapping.
   const THEME_PALETTE = {
-    nether:    NETHER_COLORS,
-    ocean:     OCEAN_COLORS,
-    candy:     CANDY_COLORS,
-    fossil:    FOSSIL_COLORS,
-    storm:     STORM_COLORS,
-    void:      VOID_COLORS,
-    legendary: LEGENDARY_COLORS,
+    nether:         NETHER_COLORS,
+    ocean:          OCEAN_COLORS,
+    candy:          CANDY_COLORS,
+    fossil:         FOSSIL_COLORS,
+    storm:          STORM_COLORS,
+    void:           VOID_COLORS,
+    legendary:      LEGENDARY_COLORS,
+    diamond_season: (typeof DIAMOND_SEASON_COLORS !== 'undefined' ? DIAMOND_SEASON_COLORS : null),
+    cosmetic_carved_stone_board:   (typeof COSMETIC_CARVED_STONE_COLORS   !== 'undefined' ? COSMETIC_CARVED_STONE_COLORS   : null),
+    cosmetic_ore_vein_theme:       (typeof COSMETIC_ORE_VEIN_COLORS       !== 'undefined' ? COSMETIC_ORE_VEIN_COLORS       : null),
+    cosmetic_mossy_overgrown_board:(typeof COSMETIC_MOSSY_OVERGROWN_COLORS !== 'undefined' ? COSMETIC_MOSSY_OVERGROWN_COLORS : null),
+    cosmetic_leaf_block_theme:     (typeof COSMETIC_LEAF_BLOCK_COLORS     !== 'undefined' ? COSMETIC_LEAF_BLOCK_COLORS     : null),
+    cosmetic_obsidian_forge_board: (typeof COSMETIC_OBSIDIAN_FORGE_COLORS !== 'undefined' ? COSMETIC_OBSIDIAN_FORGE_COLORS : null),
+    cosmetic_magma_theme:          (typeof COSMETIC_MAGMA_COLORS          !== 'undefined' ? COSMETIC_MAGMA_COLORS          : null),
+    cosmetic_frozen_tundra_board:  (typeof COSMETIC_FROZEN_TUNDRA_COLORS  !== 'undefined' ? COSMETIC_FROZEN_TUNDRA_COLORS  : null),
+    cosmetic_crystal_theme:        (typeof COSMETIC_CRYSTAL_COLORS        !== 'undefined' ? COSMETIC_CRYSTAL_COLORS        : null),
   };
   const themePalette = THEME_PALETTE[themeKey] || null;
 

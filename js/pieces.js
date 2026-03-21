@@ -146,7 +146,21 @@ function updateNextPiecesHUD() {
     if (colorblindMode && COLORBLIND_COLORS[index] !== null) {
       palette = COLORBLIND_COLORS[index];
     } else {
-      const THEME_PALETTE = { nether: NETHER_COLORS, ocean: OCEAN_COLORS, candy: CANDY_COLORS };
+      const THEME_PALETTE = {
+        nether: NETHER_COLORS, ocean: OCEAN_COLORS, candy: CANDY_COLORS,
+        fossil: FOSSIL_COLORS, storm: STORM_COLORS, void: VOID_COLORS,
+        legendary: LEGENDARY_COLORS,
+        biome_stone: BIOME_STONE_COLORS, biome_forest: BIOME_FOREST_COLORS,
+        biome_nether: NETHER_COLORS, biome_ice: BIOME_ICE_COLORS,
+        cosmetic_carved_stone_board:    COSMETIC_CARVED_STONE_COLORS,
+        cosmetic_ore_vein_theme:        COSMETIC_ORE_VEIN_COLORS,
+        cosmetic_mossy_overgrown_board: COSMETIC_MOSSY_OVERGROWN_COLORS,
+        cosmetic_leaf_block_theme:      COSMETIC_LEAF_BLOCK_COLORS,
+        cosmetic_obsidian_forge_board:  COSMETIC_OBSIDIAN_FORGE_COLORS,
+        cosmetic_magma_theme:           COSMETIC_MAGMA_COLORS,
+        cosmetic_frozen_tundra_board:   COSMETIC_FROZEN_TUNDRA_COLORS,
+        cosmetic_crystal_theme:         COSMETIC_CRYSTAL_COLORS,
+      };
       const tp = THEME_PALETTE[activeTheme];
       palette = (tp && tp[index] !== null) ? tp[index] : COLORS[index];
     }
@@ -187,7 +201,9 @@ function spawnFallingPiece() {
   const _wmodFallMult = _wmodSpawn ? _wmodSpawn.fallSpeedMult : 1.0;
   // Co-op difficulty baseline multiplier (1.0 casual / 1.5 normal / 2.0 challenge).
   const _coopMult = isCoopMode ? coopFallMultiplier : 1.0;
-  const _fallMult = _wmodFallMult * _coopMult;
+  // Biome fall speed multiplier (Nether biome = 1.5x; others = 1.0).
+  const _biomeFallMult = typeof getBiomeFallSpeedMult === 'function' ? getBiomeFallSpeedMult() : 1.0;
+  const _fallMult = _wmodFallMult * _coopMult * _biomeFallMult;
 
   // Co-op mode: use server-authoritative piece from the shared queue.
   if (isCoopMode) {
@@ -479,8 +495,33 @@ function updateFallingPieces(delta) {
   // Apply fall-speed modifiers: Slow Down power-up (0.5×) or Ice Bridge (0.8×).
   const effectiveDelta = slowDownActive ? delta * 0.5 : iceBridgeSlowActive ? delta * 0.8 : delta;
 
+  // Ice biome: lock delay in seconds (0 = no delay).
+  const _lockDelaySecs = typeof getBiomeLockDelaySecs === 'function' ? getBiomeLockDelaySecs() : 0;
+  const _lockDrift     = typeof getBiomeLockDrift === 'function' ? getBiomeLockDrift() : false;
+
   const landedPieces = [];
   fallingPieces.forEach((piece, i) => {
+    // ── Ice biome: tick active lock delay ─────────────────────────────────────
+    if (piece.userData.lockDelayRemaining !== undefined) {
+      piece.userData.lockDelayRemaining -= effectiveDelta;
+
+      // Apply lateral drift while piece is sliding before lock.
+      if (piece.userData.lockDriftVel) {
+        const nx = piece.position.x + piece.userData.lockDriftVel.x * effectiveDelta;
+        const nz = piece.position.z + piece.userData.lockDriftVel.z * effectiveDelta;
+        if (Math.abs(nx) < WORLD_SIZE / 2 - BLOCK_SIZE) piece.position.x = nx;
+        if (Math.abs(nz) < WORLD_SIZE / 2 - BLOCK_SIZE) piece.position.z = nz;
+      }
+
+      updatePieceShadow(piece);
+
+      if (piece.userData.lockDelayRemaining <= 0) {
+        // Delay expired — lock the piece now.
+        landedPieces.push(i);
+      }
+      return; // Skip normal fall physics for this piece.
+    }
+
     piece.userData.timeSinceRotation += delta;
     if (
       piece.userData.timeSinceRotation >= piece.userData.rotationInterval
@@ -535,11 +576,30 @@ function updateFallingPieces(delta) {
         });
       });
     }
-    if (landed) landedPieces.push(i);
+    if (landed) {
+      if (_lockDelaySecs > 0) {
+        // Ice biome: start lock delay — piece rests at ground but doesn't lock yet.
+        piece.userData.lockDelayRemaining = _lockDelaySecs;
+        if (_lockDrift) {
+          const angle = Math.random() * Math.PI * 2;
+          const speed = 0.5 + Math.random() * 0.5;  // 0.5–1.0 units/s lateral drift
+          piece.userData.lockDriftVel = {
+            x: Math.cos(angle) * speed,
+            z: Math.sin(angle) * speed,
+          };
+        }
+        // Do not add to landedPieces yet — handled in the lock-delay tick above.
+      } else {
+        landedPieces.push(i);
+      }
+    }
   });
   for (let i = landedPieces.length - 1; i >= 0; i--) {
     const index = landedPieces[i];
     const pieceToLand = fallingPieces[index];
+    // Clean up Ice biome lock-delay state (may be set if delay just expired).
+    delete pieceToLand.userData.lockDelayRemaining;
+    delete pieceToLand.userData.lockDriftVel;
     checkAndApplyPlayerPush(pieceToLand);
     playPlaceSound();
     disposePieceTrail(pieceToLand);
@@ -597,12 +657,17 @@ function updateFallingPieces(delta) {
     }
     // Battle: broadcast column heights so opponent can update their mini-map
     if (isBattleMode && typeof battle !== 'undefined' && battle.state === BattleState.IN_GAME) {
+      const _guildCosmetics = (typeof getMyGuildCosmetics === 'function') ? getMyGuildCosmetics() : null;
       battle.send({
         type: 'battle_board',
         cols: _computeBattleColumnHeights(),
         score: score,
         level: lastDifficultyTier + 1,
         linesCleared: linesCleared,
+        guildEmblem:     _guildCosmetics ? _guildCosmetics.emblem : null,
+        guildBoardSkin:  _guildCosmetics ? _guildCosmetics.activeBoardSkin : null,
+        guildBannerColor: _guildCosmetics ? _guildCosmetics.bannerColor : null,
+        guildIsLegendary: _guildCosmetics ? _guildCosmetics.isLegendary : false,
       });
     }
     if (isPuzzleMode || isCustomPuzzleMode) {

@@ -106,7 +106,10 @@ function checkLineClear(newBlocks) {
   const completeLevels = [];
   ySet.forEach((gy) => {
     const layer = gridOccupancy.get(gy);
-    if (layer && layer.size >= LINE_CLEAR_CELLS_NEEDED) completeLevels.push(gy);
+    const _cellsNeeded = typeof getLineClearCellsNeeded === 'function'
+      ? getLineClearCellsNeeded()
+      : LINE_CLEAR_CELLS_NEEDED;
+    if (layer && layer.size >= _cellsNeeded) completeLevels.push(gy);
   });
   if (!completeLevels.length) return;
 

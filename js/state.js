@@ -123,6 +123,9 @@ let playerStandingOnIce = false;
 // Values: "none" | "stone" | "iron" | "diamond"
 let pickaxeTier = "none";
 
+// Whether the current battle match is a tournament match (gates +50 rating bonus on win).
+let isTournamentMatch = false;
+
 // Whether the player has crafted a Crafting Bench (gates advanced recipes).
 let hasCraftingBench = false;
 

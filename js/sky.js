@@ -224,8 +224,15 @@ function updateSky(elapsedSeconds, delta = 0.016) {
   let zenArr = _lerpArr(skyKf.k0.zen, skyKf.k1.zen, skyKf.local);
   let horArr = _lerpArr(skyKf.k0.hor, skyKf.k1.hor, skyKf.local);
 
-  // Season sky override — blend toward season theme colors if active
-  const _activeSeason = typeof getSeasonConfig === 'function' ? getSeasonConfig() : null;
+  // Biome sky override — blend toward biome sky colors if in an expedition biome
+  const _biomeSkyTheme = (typeof getActiveBiomeSkyTheme === 'function') ? getActiveBiomeSkyTheme() : null;
+  if (_biomeSkyTheme) {
+    zenArr = _lerpArr(zenArr, _biomeSkyTheme.zen, _biomeSkyTheme.tint);
+    horArr = _lerpArr(horArr, _biomeSkyTheme.hor, _biomeSkyTheme.tint);
+  }
+
+  // Season sky override — blend toward season theme colors if active (skipped in biome mode)
+  const _activeSeason = (!_biomeSkyTheme && typeof getSeasonConfig === 'function') ? getSeasonConfig() : null;
   const _seasonTheme  = _activeSeason && _SEASON_SKY_THEMES[_activeSeason.theme];
   if (_seasonTheme) {
     zenArr = _lerpArr(zenArr, _seasonTheme.zen, _seasonTheme.tint);
@@ -386,8 +393,15 @@ function updateSky(elapsedSeconds, delta = 0.016) {
       horArr[2] / 255
     );
 
-    // Season fog tint (applied before danger override)
-    if (_seasonTheme && _seasonTheme.fog) {
+    // Biome fog tint (applied first, takes priority over season)
+    if (_biomeSkyTheme && _biomeSkyTheme.fog) {
+      fogColor.lerp(_biomeSkyTheme.fog, _biomeSkyTheme.tint * 0.85);
+      // Stone/nether/forest biomes: denser base fog to feel enclosed
+      if (_biomeSkyTheme.tint > 0.8) fogDensity = Math.max(fogDensity, 0.006);
+    }
+
+    // Season fog tint (applied before danger override, skipped in biome mode)
+    if (!_biomeSkyTheme && _seasonTheme && _seasonTheme.fog) {
       fogColor.lerp(_seasonTheme.fog, _seasonTheme.tint * 0.7);
     }
 
