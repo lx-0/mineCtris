@@ -66,19 +66,42 @@
           </div>
 
           <div class="start-buttons">
-            <div class="click-info" id="start-random-btn">Click to Start</div>
-            <button id="start-resume-btn" style="display:none;">&#9654; Resume Game</button>
-            <button id="start-create-btn">&#128736; Create</button>
-            <button id="start-community-btn">&#127760; Community</button>
-            <button id="daily-challenge-btn">&#127374; Daily Challenge</button>
-            <button id="start-settings-btn">&#9881; Settings</button>
-            <button id="start-profile-btn">&#128100; Profile</button>
-            <button id="start-stats-btn">&#128202; Stats</button>
-            <button id="start-achievements-btn">&#127942; Achievements</button>
-            <button id="start-missions-btn">&#127919; Daily Missions</button>
-            <button id="start-season-missions-btn">&#128336; Season Missions</button>
-            <button id="start-tournament-btn">&#127942; Tournaments</button>
-            <button id="start-guild-btn">&#9876; Guild <span id="guild-btn-badge" style="display:none;background:#ef4444;color:#fff;border-radius:999px;font-size:9px;padding:1px 5px;vertical-align:middle;margin-left:2px;"></span></button>
+            <!-- Play -->
+            <div class="menu-group menu-group-play">
+              <div class="click-info" id="start-random-btn">Click to Start</div>
+              <button id="start-resume-btn" style="display:none;">&#9654; Resume Game</button>
+              <button id="daily-challenge-btn">&#127374; Daily Challenge</button>
+            </div>
+            <!-- Social -->
+            <div class="menu-group">
+              <div class="menu-group-label">SOCIAL</div>
+              <div class="menu-group-row">
+                <button id="start-guild-btn">&#9876; Guild <span id="guild-btn-badge" style="display:none;background:#ef4444;color:#fff;border-radius:999px;font-size:9px;padding:1px 5px;vertical-align:middle;margin-left:2px;"></span></button>
+                <button id="start-community-btn">&#127760; Community</button>
+                <button id="start-tournament-btn">&#127942; Tournaments</button>
+              </div>
+            </div>
+            <!-- Progress -->
+            <div class="menu-group">
+              <div class="menu-group-label">PROGRESS</div>
+              <div class="menu-group-row">
+                <button id="start-profile-btn">&#128100; Profile</button>
+                <button id="start-stats-btn">&#128202; Stats</button>
+                <button id="start-achievements-btn">&#127942; Achievements</button>
+              </div>
+              <div class="menu-group-row">
+                <button id="start-missions-btn">&#127919; Daily Missions</button>
+                <button id="start-season-missions-btn">&#128336; Season Missions</button>
+              </div>
+            </div>
+            <!-- Utility -->
+            <div class="menu-group">
+              <div class="menu-group-label">MORE</div>
+              <div class="menu-group-row">
+                <button id="start-settings-btn">&#9881; Settings</button>
+                <button id="start-create-btn">&#128736; Create</button>
+              </div>
+            </div>
           </div>
           <div id="hs-start-panel"></div>
         </div>
@@ -1696,6 +1719,7 @@
     <script src="js/depths-leaderboard.js"></script>
     <script src="js/depths-upgrades.js"></script>
     <script src="js/depths-tutorial.js"></script>
+    <script src="js/depths-rewards.js"></script>
     <script src="js/depths-transition.js"></script>
     <script src="js/depths-floor-gen.js"></script>
     <script src="js/daily-depths.js"></script>

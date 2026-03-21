@@ -1135,115 +1135,88 @@ body {
 }
 
 /* ── Start screen settings button ── */
-#start-settings-btn {
-  font-family: "Press Start 2P", cursive;
-  font-size: 9px;
-  color: #000;
-  background: #aaa;
-  border: none;
-  padding: 8px 18px;
-  cursor: pointer;
-  border-radius: 4px;
-  transition: background 0.15s;
-}
-#start-settings-btn:hover { background: #fff; }
-
-/* ── Resume game button (start screen) ── */
+/* ── Resume game button — special green CTA in play group ── */
 #start-resume-btn {
-  font-family: "Press Start 2P", cursive;
-  font-size: 10px;
   color: #000;
   background: #4ade80;
-  border: none;
-  padding: 10px 20px;
-  cursor: pointer;
-  border-radius: 4px;
-  transition: background 0.15s;
-}
-#start-resume-btn:hover { background: #6ee7a0; }
-
-/* ── Create button (start screen) ── */
-#start-create-btn {
-  font-family: "Press Start 2P", cursive;
+  border-color: #4ade80;
   font-size: 10px;
-  color: #000;
-  background: #aaa;
-  border: none;
   padding: 10px 20px;
-  cursor: pointer;
-  border-radius: 4px;
-  transition: background 0.15s;
 }
-#start-create-btn:hover { background: #fff; }
+#start-resume-btn:hover { background: #6ee7a0; color: #000; border-color: #6ee7a0; }
 
-/* ── Profile button (start screen) ── */
-#start-profile-btn {
-  font-family: "Press Start 2P", cursive;
-  font-size: 10px;
-  color: #000;
-  background: #aaa;
-  border: none;
-  padding: 10px 20px;
-  cursor: pointer;
-  border-radius: 4px;
-  transition: background 0.15s;
-}
-#start-profile-btn:hover { background: #fff; }
-
-/* ── Season missions button (start screen) ── */
-#start-season-missions-btn {
-  font-family: "Press Start 2P", cursive;
-  font-size: 10px;
-  color: #000;
-  background: #f59e0b;
-  border: none;
-  padding: 10px 20px;
-  cursor: pointer;
-  border-radius: 4px;
-  transition: background 0.15s;
-}
-#start-season-missions-btn:hover { background: #fbbf24; }
-
-/* ── Guild button (start screen) ── */
-#start-guild-btn {
-  font-family: "Press Start 2P", cursive;
-  font-size: 10px;
-  color: #000;
-  background: #8b5cf6;
-  border: none;
-  padding: 10px 20px;
-  cursor: pointer;
-  border-radius: 4px;
-  transition: background 0.15s;
-}
-#start-guild-btn:hover { background: #a78bfa; }
-
-/* ── Daily challenge ── */
+/* ── Main menu button groups ── */
 .start-buttons {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 12px;
+  gap: 6px;
   margin-top: 20px;
+  width: 100%;
+  max-width: 420px;
+  margin-left: auto;
+  margin-right: auto;
 }
+.menu-group {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+.menu-group-play {
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.menu-group-label {
+  font-family: "Press Start 2P", cursive;
+  font-size: 7px;
+  color: rgba(255,255,255,0.25);
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  margin-top: 6px;
+  margin-bottom: 2px;
+  user-select: none;
+}
+.menu-group-row {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+/* Standardized menu button base */
+.menu-group button {
+  font-family: "Press Start 2P", cursive;
+  font-size: 9px;
+  color: rgba(255,255,255,0.7);
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.12);
+  padding: 8px 14px;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.menu-group button:hover {
+  background: rgba(255,255,255,0.14);
+  color: #fff;
+  border-color: rgba(255,255,255,0.3);
+}
+/* Play group — CTA stays prominent */
 #start-random-btn {
+  font-family: "Press Start 2P", cursive;
   font-size: 1em;
   font-weight: bold;
   color: #ff0;
   cursor: pointer;
+  text-shadow: 0 0 12px rgba(255,255,0,0.4);
 }
+/* Daily challenge — accent button in play group */
 #daily-challenge-btn {
-  font-family: "Press Start 2P", cursive;
-  font-size: 10px;
-  color: #000;
-  background: #0cf;
-  border: none;
-  padding: 10px 20px;
-  cursor: pointer;
-  border-radius: 4px;
-  transition: background 0.15s;
+  color: #0cf;
+  background: rgba(0,204,255,0.1);
+  border-color: rgba(0,204,255,0.4);
 }
-#daily-challenge-btn:hover { background: #ff0; }
+#daily-challenge-btn:hover { background: rgba(0,204,255,0.25); color: #fff; border-color: #0cf; }
 
 #daily-challenge-badge {
   position: absolute;
@@ -3337,32 +3310,7 @@ body {
 }
 
 /* ── Stats button (start screen) ── */
-#start-stats-btn {
-  font-family: "Press Start 2P", cursive;
-  font-size: 9px;
-  color: #000;
-  background: #aaa;
-  border: none;
-  padding: 8px 18px;
-  cursor: pointer;
-  border-radius: 4px;
-  transition: background 0.15s;
-}
-#start-stats-btn:hover { background: #fff; }
-
-/* ── Achievements button (start screen) ── */
-#start-achievements-btn {
-  font-family: "Press Start 2P", cursive;
-  font-size: 9px;
-  color: #000;
-  background: #ffd700;
-  border: none;
-  padding: 10px 18px;
-  cursor: pointer;
-  border-radius: 4px;
-  transition: background 0.15s;
-}
-#start-achievements-btn:hover { background: #fff; }
+/* Stats + achievements — use group defaults, no overrides needed */
 
 /* ── Achievements overlay ── */
 #achievements-overlay {
@@ -4909,21 +4857,7 @@ body.theme-legendary #score-display {
 }
 
 /* ── Start screen missions button ────────────────────────────────────────── */
-#start-missions-btn {
-  font-family: "Press Start 2P", cursive;
-  font-size: 12px;
-  color: #4ade80;
-  background: transparent;
-  border: 2px solid #4ade80;
-  border-radius: 4px;
-  padding: 10px 20px;
-  cursor: pointer;
-  transition: background 0.15s, color 0.15s;
-}
-#start-missions-btn:hover {
-  background: #4ade80;
-  color: #000;
-}
+/* Missions — use group defaults, no overrides needed */
 
 /* ── Inline missions panel (main menu) ───────────────────────────────────── */
 #menu-missions-panel {
@@ -6648,18 +6582,7 @@ body.theme-legendary #score-display {
 }
 
 /* ── Community button (main menu) ─────────────────────────────────────────── */
-#start-community-btn {
-  font-family: "Press Start 2P", cursive;
-  font-size: 10px;
-  color: #000;
-  background: #00c8a0;
-  border: none;
-  padding: 10px 20px;
-  cursor: pointer;
-  border-radius: 4px;
-  transition: background 0.15s;
-}
-#start-community-btn:hover { background: #00ffcc; }
+/* Community — use group defaults, no overrides needed */
 
 /* ── Community browser screen ─────────────────────────────────────────────── */
 #community-browser-screen {
@@ -8133,22 +8056,7 @@ body.theme-legendary #score-display {
 }
 
 /* ── Tournament badge in main menu ── */
-#start-tournament-btn {
-  font-family: "Press Start 2P", cursive;
-  font-size: 0.65em;
-  padding: 12px 20px;
-  background: rgba(255, 200, 0, 0.1);
-  border: 2px solid rgba(255, 200, 0, 0.45);
-  color: #ffd700;
-  border-radius: 5px;
-  cursor: pointer;
-  letter-spacing: 1px;
-  transition: background 0.15s, box-shadow 0.15s;
-}
-#start-tournament-btn:hover {
-  background: rgba(255, 200, 0, 0.22);
-  box-shadow: 0 0 14px rgba(255, 200, 0, 0.35);
-}
+/* Tournament — use group defaults, no overrides needed */
 
 /* ── Players count bar ── */
 .tourn-player-count-bar {
@@ -14357,6 +14265,32 @@ body.biome-ice #inventory-hud { border-color: #4499dd; }
   font-style: italic;
 }
 
+.depths-lore-reward {
+  margin-top: 12px;
+  padding: 6px 12px;
+  background: rgba(168, 85, 247, 0.12);
+  border: 1px solid rgba(168, 85, 247, 0.3);
+  border-radius: 6px;
+  font-size: 0.5em;
+  color: #ddd;
+}
+
+.depths-lore-reward-label {
+  color: #a855f7;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.depths-lore-reward-name {
+  color: #fff;
+  font-weight: 600;
+}
+
+.depths-lore-reward-owned {
+  color: #22c55e;
+  font-size: 0.9em;
+}
+
 /* ── Depths Results Overlay ───────────────────────────────────────────────── */
 
 #depths-results-overlay {
@@ -14764,4 +14698,121 @@ body.biome-ice #inventory-hud { border-color: #4499dd; }
   font-size: 0.45em;
   color: #aaa;
   line-height: 1.5;
+}
+
+.dt-reward-duplicate {
+  opacity: 0.7;
+}
+
+.dt-reward-owned {
+  color: #22c55e;
+  font-size: 0.8em;
+}
+
+/* ── Depths Reward Preview (Mode Card) ──────────────────────────────────── */
+
+.depths-reward-preview {
+  margin-top: 8px;
+  padding: 6px 8px;
+  background: rgba(168, 85, 247, 0.1);
+  border: 1px solid rgba(168, 85, 247, 0.3);
+  border-radius: 6px;
+  font-size: 0.75em;
+  position: relative;
+}
+
+.depths-reward-preview-label {
+  color: #a855f7;
+  font-size: 0.85em;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  margin-bottom: 3px;
+}
+
+.depths-reward-preview-item {
+  color: #e0e0e0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.depths-reward-preview-icon {
+  font-size: 1.2em;
+}
+
+.depths-reward-preview-name {
+  font-weight: 600;
+}
+
+.depths-reward-preview-owned {
+  color: #22c55e;
+  font-size: 0.85em;
+  margin-left: 4px;
+}
+
+.depths-reward-calendar-btn {
+  background: none;
+  border: 1px solid rgba(168, 85, 247, 0.4);
+  color: #a855f7;
+  font-size: 0.85em;
+  padding: 2px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  margin-top: 4px;
+}
+
+.depths-reward-calendar-btn:hover {
+  background: rgba(168, 85, 247, 0.15);
+}
+
+/* ── Depths Reward Calendar ─────────────────────────────────────────────── */
+
+.depths-reward-calendar {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  right: 0;
+  margin-bottom: 4px;
+  background: #1a1a2e;
+  border: 1px solid rgba(168, 85, 247, 0.4);
+  border-radius: 6px;
+  padding: 10px;
+  z-index: 100;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+}
+
+.depths-reward-calendar-title {
+  color: #a855f7;
+  font-size: 0.8em;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+  text-align: center;
+}
+
+.depths-reward-calendar-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 0;
+  color: #ccc;
+  font-size: 0.9em;
+}
+
+.depths-reward-calendar-row + .depths-reward-calendar-row {
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.depths-reward-calendar-date {
+  color: #888;
+  min-width: 48px;
+  font-size: 0.85em;
+}
+
+.depths-reward-calendar-icon {
+  font-size: 1.1em;
+}
+
+.depths-reward-calendar-name {
+  flex: 1;
 }

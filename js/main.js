@@ -284,19 +284,10 @@ function init() {
     scene.add(controls.getObject());
 
     blocker.addEventListener("click", function (e) {
-      // Daily challenge, settings, stats, achievements, and resume buttons handle their own events — skip here
-      if (e.target.id === "daily-challenge-btn") return;
-      if (e.target.id === "start-settings-btn") return;
-      if (e.target.id === "start-profile-btn") return;
-      if (e.target.id === "start-stats-btn") return;
-      if (e.target.id === "start-achievements-btn") return;
-      if (e.target.id === "start-missions-btn") return;
-      if (e.target.id === "start-resume-btn") return;
-      if (e.target.id === "start-create-btn") return;
-      if (e.target.id === "start-community-btn") return;
-      if (e.target.id === "start-season-missions-btn") return;
-      if (e.target.id === "start-tournament-btn") return;
-      if (e.target.id === "start-guild-btn") return;
+      // Only the CTA "Click to Start" triggers mode select; all other buttons inside .start-buttons handle their own events
+      if (e.target.closest('.start-buttons') && e.target.id !== 'start-random-btn' && !e.target.closest('#start-random-btn')) return;
+      // Also skip clicks on menu group labels/separators
+      if (e.target.closest('.menu-group-label')) return;
       // If ?editor=1 URL param preset editor mode, go straight into editor
       if (isEditorMode) { requestPointerLock(); return; }
       // Show mode select screen instead of jumping straight into the game
@@ -731,6 +722,9 @@ function init() {
         document.dispatchEvent(new CustomEvent('depthsLaunch'));
       });
     }
+
+    // Render weekly depths reward preview on the mode card
+    if (typeof renderDepthsRewardPreview === 'function') renderDepthsRewardPreview();
 
     // Daily Depths mode card
     const dailyDepthsCardEl = document.getElementById("mode-card-daily-depths");
