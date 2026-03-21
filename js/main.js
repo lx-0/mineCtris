@@ -283,11 +283,25 @@ function init() {
     controls = new THREE.PointerLockControls(camera, renderer.domElement);
     scene.add(controls.getObject());
 
+    // ── "More" toggle for secondary menu ──
+    var menuMoreToggle = document.getElementById("menu-more-toggle");
+    var menuSecondary = document.getElementById("menu-secondary");
+    if (menuMoreToggle && menuSecondary) {
+      menuMoreToggle.addEventListener("click", function (e) {
+        e.stopPropagation();
+        var isOpen = menuSecondary.classList.toggle("open");
+        menuMoreToggle.classList.toggle("open", isOpen);
+        menuMoreToggle.textContent = isOpen ? "\u2716 Less" : "\u2630 More";
+      });
+    }
+
     blocker.addEventListener("click", function (e) {
       // Only the CTA "Click to Start" triggers mode select; all other buttons inside .start-buttons handle their own events
       if (e.target.closest('.start-buttons') && e.target.id !== 'start-random-btn' && !e.target.closest('#start-random-btn')) return;
       // Also skip clicks on menu group labels/separators
       if (e.target.closest('.menu-group-label')) return;
+      // Skip clicks on the more toggle
+      if (e.target.closest('#menu-more-toggle')) return;
       // If ?editor=1 URL param preset editor mode, go straight into editor
       if (isEditorMode) { requestPointerLock(); return; }
       // Show mode select screen instead of jumping straight into the game
