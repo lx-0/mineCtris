@@ -152,6 +152,8 @@ function checkLineClear(newBlocks) {
 
   // Tutorial: notify first line clear
   if (typeof tutorialNotify === "function") tutorialNotify("lineClear");
+  // Contextual game tooltip: first line clear
+  if (typeof gameTooltip === 'function') gameTooltip('lineClear');
 
   // Achievement: first line clear, Tetramino
   if (typeof achOnLineClear === "function") achOnLineClear(completeLevels.length);
@@ -169,8 +171,17 @@ function checkLineClear(newBlocks) {
     triggerSprintComplete();
   }
 
+  // Depths: track floor lines and check exit condition
+  if (isDepthsMode) {
+    depthsFloorLinesCleared += completeLevels.length;
+    if (typeof checkDepthsFloorExit === 'function') checkDepthsFloorExit();
+  }
+
   const now = clock.getElapsedTime();
-  if (lastClearTime >= 0 && (now - lastClearTime) <= 3.0) {
+  // Depths Chain Reaction upgrade: 50% wider combo window (4.5s instead of 3s)
+  var _comboWindow = 3.0;
+  if (isDepthsMode && typeof isDepthsComboBoost === 'function' && isDepthsComboBoost()) _comboWindow = 4.5;
+  if (lastClearTime >= 0 && (now - lastClearTime) <= _comboWindow) {
     comboCount++;
   } else {
     comboCount = 1;

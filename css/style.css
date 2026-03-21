@@ -1148,6 +1148,76 @@ body {
 }
 #start-settings-btn:hover { background: #fff; }
 
+/* ── Resume game button (start screen) ── */
+#start-resume-btn {
+  font-family: "Press Start 2P", cursive;
+  font-size: 10px;
+  color: #000;
+  background: #4ade80;
+  border: none;
+  padding: 10px 20px;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background 0.15s;
+}
+#start-resume-btn:hover { background: #6ee7a0; }
+
+/* ── Create button (start screen) ── */
+#start-create-btn {
+  font-family: "Press Start 2P", cursive;
+  font-size: 10px;
+  color: #000;
+  background: #aaa;
+  border: none;
+  padding: 10px 20px;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background 0.15s;
+}
+#start-create-btn:hover { background: #fff; }
+
+/* ── Profile button (start screen) ── */
+#start-profile-btn {
+  font-family: "Press Start 2P", cursive;
+  font-size: 10px;
+  color: #000;
+  background: #aaa;
+  border: none;
+  padding: 10px 20px;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background 0.15s;
+}
+#start-profile-btn:hover { background: #fff; }
+
+/* ── Season missions button (start screen) ── */
+#start-season-missions-btn {
+  font-family: "Press Start 2P", cursive;
+  font-size: 10px;
+  color: #000;
+  background: #f59e0b;
+  border: none;
+  padding: 10px 20px;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background 0.15s;
+}
+#start-season-missions-btn:hover { background: #fbbf24; }
+
+/* ── Guild button (start screen) ── */
+#start-guild-btn {
+  font-family: "Press Start 2P", cursive;
+  font-size: 10px;
+  color: #000;
+  background: #8b5cf6;
+  border: none;
+  padding: 10px 20px;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background 0.15s;
+}
+#start-guild-btn:hover { background: #a78bfa; }
+
 /* ── Daily challenge ── */
 .start-buttons {
   display: flex;
@@ -1316,6 +1386,41 @@ body {
   animation: ckey-pulse 1s ease-in-out infinite;
 }
 
+/* Tutorial arrow indicators */
+@keyframes tutorial-bounce {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(12px); }
+}
+@keyframes tutorial-pulse-left {
+  0%, 100% { transform: translateX(0); opacity: 1; }
+  50%      { transform: translateX(-6px); opacity: 0.7; }
+}
+#tutorial-arrow-down {
+  position: absolute;
+  top: 25%;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 48px;
+  color: #0f0;
+  text-shadow: 0 0 12px #0f0, 0 0 24px #0f08;
+  animation: tutorial-bounce 1s ease-in-out infinite;
+  pointer-events: none;
+  z-index: 196;
+}
+#tutorial-arrow-crosshair {
+  position: absolute;
+  top: 50%;
+  left: calc(50% + 30px);
+  transform: translateY(-50%);
+  font-family: "Press Start 2P", cursive;
+  font-size: 12px;
+  color: #ff0;
+  text-shadow: 0 0 8px #ff0, 0 0 16px #ff08;
+  animation: tutorial-pulse-left 0.8s ease-in-out infinite;
+  pointer-events: none;
+  z-index: 196;
+}
+
 /* Context-sensitive crafting hint toast */
 #craft-hint-toast {
   display: none;
@@ -1334,6 +1439,121 @@ body {
   z-index: 194;
   white-space: nowrap;
   pointer-events: none;
+}
+
+/* ── Contextual game tooltips (first Classic game) ─────────────────────────── */
+#game-tooltip {
+  display: none;
+  position: absolute;
+  top: 70px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.88);
+  border: 2px solid #ffd700;
+  border-radius: 8px;
+  padding: 10px 20px;
+  font-family: "Press Start 2P", cursive;
+  font-size: 9px;
+  color: #ffd700;
+  text-shadow: 0 0 6px rgba(255, 215, 0, 0.6);
+  z-index: 195;
+  white-space: nowrap;
+  pointer-events: none;
+  max-width: 90vw;
+  text-align: center;
+}
+
+@keyframes gt-pulse-anim {
+  0%, 100% { border-color: #ffd700; box-shadow: 0 0 8px rgba(255, 215, 0, 0.3); }
+  50% { border-color: #fff8dc; box-shadow: 0 0 16px rgba(255, 215, 0, 0.6); }
+}
+
+#game-tooltip.gt-pulse {
+  animation: gt-pulse-anim 1.2s ease-in-out infinite;
+}
+
+/* ── Depths tutorial tooltips (first dungeon run) ──────────────────────────── */
+#depths-tutorial-tooltip {
+  display: none;
+  position: fixed;
+  top: 60px;
+  left: 50%;
+  transform: translateX(-50%);
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  background: rgba(10, 5, 20, 0.92);
+  border: 2px solid #a855f7;
+  border-radius: 10px;
+  padding: 14px 24px 10px;
+  font-family: "Press Start 2P", cursive;
+  z-index: 250;
+  max-width: 520px;
+  width: max-content;
+  text-align: center;
+  pointer-events: auto;
+  cursor: pointer;
+  animation: dtt-fade-in 0.4s ease-out;
+  box-shadow: 0 0 20px rgba(168, 85, 247, 0.4);
+}
+
+@keyframes dtt-fade-in {
+  from { opacity: 0; transform: translateX(-50%) translateY(-10px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+@keyframes dtt-glow {
+  0%, 100% { border-color: #a855f7; box-shadow: 0 0 12px rgba(168, 85, 247, 0.3); }
+  50%      { border-color: #c084fc; box-shadow: 0 0 24px rgba(168, 85, 247, 0.6); }
+}
+
+#depths-tutorial-tooltip {
+  animation: dtt-fade-in 0.4s ease-out, dtt-glow 2.5s ease-in-out infinite 0.4s;
+}
+
+.dtt-text {
+  font-size: 10px;
+  color: #e9d5ff;
+  line-height: 1.6;
+  text-shadow: 0 0 6px rgba(168, 85, 247, 0.5);
+}
+
+.dtt-subtext {
+  font-size: 7px;
+  color: #a78bfa;
+  line-height: 1.5;
+  margin-top: 2px;
+}
+
+.dtt-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  margin-top: 6px;
+  gap: 12px;
+}
+
+.dtt-step-count {
+  font-size: 6px;
+  color: #7c3aed;
+}
+
+#depths-tutorial-skip {
+  font-family: "Press Start 2P", cursive;
+  font-size: 6px;
+  color: #9ca3af;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid #4b5563;
+  border-radius: 4px;
+  padding: 4px 10px;
+  cursor: pointer;
+  transition: color 0.2s, border-color 0.2s;
+}
+
+#depths-tutorial-skip:hover {
+  color: #e5e7eb;
+  border-color: #9ca3af;
 }
 
 #daily-go-section {
@@ -3362,6 +3582,282 @@ body {
 }
 #stats-close-btn:hover { background: #ff0; }
 
+/* ── Profile page overlay ── */
+#profile-overlay {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0, 0, 0, 0.88);
+  display: none;
+  justify-content: center;
+  align-items: center;
+  z-index: 300;
+  pointer-events: all;
+}
+#profile-panel {
+  background: #111;
+  border: 2px solid #0f0;
+  border-radius: 6px;
+  padding: 28px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 400px;
+  max-width: 540px;
+  max-height: 85vh;
+  overflow-y: auto;
+  box-shadow: 0 0 30px rgba(0, 255, 0, 0.2);
+}
+#profile-page-title {
+  font-family: "Press Start 2P", cursive;
+  font-size: 1.3em;
+  color: #0f0;
+  text-shadow: 0 0 10px #0f0;
+  letter-spacing: 0.1em;
+  text-align: center;
+  margin-bottom: 4px;
+}
+#profile-page-body {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.profile-header {
+  text-align: center;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(0, 255, 0, 0.15);
+}
+.profile-header-border-animated {
+  border: 2px solid #ffd740;
+  border-radius: 6px;
+  padding: 12px;
+  animation: profileBorderGlow 2s ease-in-out infinite alternate;
+}
+@keyframes profileBorderGlow {
+  from { border-color: #ffd740; box-shadow: 0 0 8px rgba(255, 215, 64, 0.3); }
+  to   { border-color: #ff6f00; box-shadow: 0 0 18px rgba(255, 111, 0, 0.5); }
+}
+.profile-name-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+.profile-player-name {
+  font-family: "Press Start 2P", cursive;
+  font-size: 16px;
+  color: #0f0;
+  text-shadow: 0 0 8px #0f0;
+}
+.profile-prestige-stars {
+  font-size: 14px;
+}
+.profile-title {
+  font-family: "Press Start 2P", cursive;
+  font-size: 9px;
+  color: #ffd740;
+  margin-top: 4px;
+}
+.profile-stats-row {
+  display: flex;
+  justify-content: space-around;
+  gap: 8px;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(0, 255, 0, 0.1);
+}
+.profile-stat-item {
+  text-align: center;
+  flex: 1;
+}
+.profile-stat-label {
+  font-family: "Press Start 2P", cursive;
+  font-size: 6px;
+  color: rgba(0, 255, 0, 0.5);
+  margin-bottom: 4px;
+}
+.profile-stat-value {
+  font-family: "Press Start 2P", cursive;
+  font-size: 9px;
+  color: #ff0;
+}
+.profile-xp-bar-wrap {
+  padding: 4px 0 8px;
+}
+.profile-xp-bar-label {
+  font-family: "Press Start 2P", cursive;
+  font-size: 7px;
+  color: rgba(0, 255, 0, 0.6);
+  margin-bottom: 4px;
+}
+.profile-xp-bar-track {
+  width: 100%;
+  height: 10px;
+  background: #222;
+  border: 1px solid rgba(0, 255, 0, 0.3);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.profile-xp-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #0f0, #0c0);
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+.profile-xp-bar-text {
+  font-family: "Press Start 2P", cursive;
+  font-size: 6px;
+  color: rgba(0, 255, 0, 0.5);
+  margin-top: 3px;
+  text-align: right;
+}
+.profile-section-title {
+  font-family: "Press Start 2P", cursive;
+  font-size: 9px;
+  color: #0f0;
+  text-shadow: 0 0 6px rgba(0, 255, 0, 0.3);
+  margin-top: 4px;
+}
+.profile-equipped-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  padding: 6px 0;
+}
+.profile-equipped-item {
+  text-align: center;
+  padding: 8px 4px;
+  background: rgba(0, 255, 0, 0.04);
+  border: 1px solid rgba(0, 255, 0, 0.1);
+  border-radius: 4px;
+}
+.profile-equipped-icon { font-size: 18px; margin-bottom: 4px; }
+.profile-equipped-name {
+  font-family: "Press Start 2P", cursive;
+  font-size: 7px;
+  margin-bottom: 2px;
+}
+.profile-equipped-cat {
+  font-family: "Press Start 2P", cursive;
+  font-size: 5px;
+  color: rgba(255, 255, 255, 0.3);
+}
+.profile-mastery-placeholder {
+  text-align: center;
+  padding: 14px;
+  border: 1px dashed rgba(0, 255, 0, 0.2);
+  border-radius: 4px;
+  color: rgba(0, 255, 0, 0.4);
+}
+.profile-mastery-icon { font-size: 24px; margin-bottom: 6px; }
+.profile-mastery-text {
+  font-family: "Press Start 2P", cursive;
+  font-size: 8px;
+  color: rgba(0, 255, 0, 0.5);
+}
+.profile-mastery-sub {
+  font-family: "Press Start 2P", cursive;
+  font-size: 6px;
+  color: rgba(0, 255, 0, 0.3);
+  margin-top: 4px;
+}
+.profile-wardrobe-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 6px 0;
+}
+.profile-tab-btn {
+  font-family: "Press Start 2P", cursive;
+  font-size: 6px;
+  color: rgba(0, 255, 0, 0.5);
+  background: transparent;
+  border: 1px solid rgba(0, 255, 0, 0.2);
+  padding: 5px 8px;
+  cursor: pointer;
+  border-radius: 3px;
+  transition: all 0.15s;
+}
+.profile-tab-btn:hover { border-color: #0f0; color: #0f0; }
+.profile-tab-active {
+  background: rgba(0, 255, 0, 0.1);
+  border-color: #0f0;
+  color: #0f0;
+}
+.profile-wardrobe-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  padding: 4px 0;
+}
+.profile-wardrobe-card {
+  background: rgba(0, 255, 0, 0.04);
+  border: 1px solid rgba(0, 255, 0, 0.15);
+  border-radius: 4px;
+  padding: 8px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.profile-wardrobe-card:hover { border-color: #0f0; background: rgba(0, 255, 0, 0.08); }
+.profile-wardrobe-locked {
+  opacity: 0.4;
+  cursor: default;
+}
+.profile-wardrobe-locked:hover { border-color: rgba(0, 255, 0, 0.15); background: rgba(0, 255, 0, 0.04); }
+.profile-wardrobe-equipped {
+  border-color: #ffd740;
+  background: rgba(255, 215, 64, 0.08);
+}
+.profile-wardrobe-equipped:hover { border-color: #ffd740; }
+.profile-wardrobe-card-name {
+  font-family: "Press Start 2P", cursive;
+  font-size: 7px;
+  margin-bottom: 3px;
+}
+.profile-wardrobe-card-rarity {
+  font-family: "Press Start 2P", cursive;
+  font-size: 5px;
+  color: rgba(255, 255, 255, 0.3);
+  margin-bottom: 4px;
+}
+.profile-wardrobe-card-lock {
+  font-family: "Press Start 2P", cursive;
+  font-size: 5px;
+  color: rgba(255, 255, 255, 0.3);
+}
+.profile-wardrobe-card-badge {
+  font-family: "Press Start 2P", cursive;
+  font-size: 6px;
+  color: #ffd740;
+}
+.profile-wardrobe-card-equip {
+  font-family: "Press Start 2P", cursive;
+  font-size: 5px;
+  color: rgba(0, 255, 0, 0.5);
+}
+.profile-wardrobe-empty {
+  font-family: "Press Start 2P", cursive;
+  font-size: 7px;
+  color: rgba(0, 255, 0, 0.3);
+  text-align: center;
+  padding: 16px;
+  grid-column: 1 / -1;
+}
+#profile-close-btn {
+  font-family: "Press Start 2P", cursive;
+  font-size: 11px;
+  color: #000;
+  background: #0f0;
+  border: none;
+  padding: 12px 36px;
+  cursor: pointer;
+  border-radius: 4px;
+  margin-top: 4px;
+  transition: background 0.15s;
+  align-self: center;
+}
+#profile-close-btn:hover { background: #ff0; }
+
 /* ── Lifetime stats on game-over screen ── */
 #go-lifetime-stats {
   font-family: "Press Start 2P", cursive;
@@ -3464,21 +3960,27 @@ body {
   .craft-name     { font-size: 8px; }
   .craft-desc     { font-size: 6px; }
 
-  /* Stats / Achievements / Settings overlays — full screen friendly */
+  /* Stats / Achievements / Settings / Profile overlays — full screen friendly */
   #stats-overlay,
   #achievements-overlay,
-  #settings-overlay {
+  #settings-overlay,
+  #profile-overlay {
     padding: 12px 8px;
   }
   #stats-panel,
   #achievements-panel,
-  #settings-panel {
+  #settings-panel,
+  #profile-panel {
     width: calc(100vw - 24px);
     max-width: unset;
     max-height: 85vh;
     overflow-y: auto;
     padding: 12px 14px;
   }
+
+  .profile-equipped-grid { grid-template-columns: repeat(2, 1fr); }
+  .profile-wardrobe-grid { grid-template-columns: repeat(2, 1fr); }
+  .profile-stats-row { flex-wrap: wrap; }
 
   /* Game-over screen — tighter spacing */
   #go-lifetime-stats {
@@ -4821,6 +5323,107 @@ body.theme-legendary #score-display {
 @keyframes storm-hud-pulse {
   0%, 100% { opacity: 0.85; }
   50%       { opacity: 1.00; }
+}
+
+/* ── Boss Floor: Piece Storm HUD ───────────────────────────────────────────── */
+
+#boss-piece-hud {
+  position: absolute;
+  top: 100px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: "Press Start 2P", cursive;
+  font-size: 11px;
+  color: #4da6ff;
+  text-shadow: 0 0 8px rgba(77,166,255,0.6), 1px 1px 2px #000;
+  pointer-events: none;
+  white-space: nowrap;
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  z-index: 185;
+  animation: boss-hud-pulse 1.2s ease-in-out infinite;
+}
+#boss-piece-hud .boss-piece-label {
+  color: #ff4444;
+  text-shadow: 0 0 10px #ff0000;
+  font-size: 13px;
+}
+#boss-piece-hud .boss-piece-active {
+  color: #4da6ff;
+}
+#boss-piece-hud .boss-piece-hint {
+  color: #888;
+  font-size: 9px;
+}
+@keyframes boss-hud-pulse {
+  0%, 100% { opacity: 0.85; }
+  50%       { opacity: 1.00; }
+}
+
+.depths-boss-floor {
+  color: #ff4444 !important;
+  text-shadow: 0 0 8px rgba(255,0,0,0.5);
+  animation: boss-label-pulse 1.0s ease-in-out infinite;
+}
+@keyframes boss-label-pulse {
+  0%, 100% { opacity: 0.8; }
+  50%       { opacity: 1.0; }
+}
+
+/* ── The Core (Floor 7 Boss) Overlay ────────────────────────────────────── */
+
+.core-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 184;
+  display: none;
+}
+
+.core-lava-glow {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 50% 100%, rgba(255,60,0,0.35) 0%, rgba(200,0,0,0.15) 40%, transparent 70%);
+  box-shadow: inset 0 0 120px rgba(255,80,0,0.3);
+  animation: core-lava-pulse 2.0s ease-in-out infinite;
+}
+@keyframes core-lava-pulse {
+  0%, 100% { opacity: 0.7; }
+  50%       { opacity: 1.0; }
+}
+
+.core-heat-haze {
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent 0px,
+    rgba(255,100,0,0.04) 2px,
+    transparent 4px
+  );
+  animation: core-haze-scroll 3.0s linear infinite;
+}
+@keyframes core-haze-scroll {
+  0%   { background-position: 0 0; }
+  100% { background-position: 0 -40px; }
+}
+
+.core-boss-label {
+  position: absolute;
+  top: 60px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: "Press Start 2P", cursive;
+  font-size: 14px;
+  color: #ff4400;
+  text-shadow: 0 0 15px rgba(255,60,0,0.8), 0 0 30px rgba(255,0,0,0.4), 1px 1px 3px #000;
+  white-space: nowrap;
+  animation: core-label-pulse 1.5s ease-in-out infinite;
+}
+@keyframes core-label-pulse {
+  0%, 100% { opacity: 0.7; transform: translateX(-50%) scale(1.0); }
+  50%       { opacity: 1.0; transform: translateX(-50%) scale(1.04); }
 }
 
 /* ── Golden Hour World Event ─────────────────────────────────────────────── */
@@ -12107,6 +12710,149 @@ body.biome-ice #inventory-hud { border-color: #4499dd; }
   color: #e2e8f0;
 }
 
+/* ── Depths Dungeon Leaderboard ───────────────────────────────────────────── */
+
+#depths-lb-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.92);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 10000;
+}
+
+#depths-lb-panel {
+  background: #0d1117;
+  border: 2px solid #a855f7;
+  border-radius: 6px;
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 560px;
+  max-width: 95vw;
+  max-height: 88vh;
+  overflow-y: auto;
+  box-shadow: 0 0 28px rgba(168, 85, 247, 0.3);
+}
+
+#depths-lb-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  width: 100%;
+}
+
+#depths-lb-title {
+  font-family: "Press Start 2P", cursive;
+  font-size: 10px;
+  color: #a855f7;
+  letter-spacing: 2px;
+  text-shadow: 0 0 10px #a855f7;
+}
+
+#depths-lb-refresh-btn {
+  font-size: 15px;
+  background: transparent;
+  border: 1px solid rgba(168, 85, 247, 0.35);
+  border-radius: 4px;
+  color: #a855f7;
+  cursor: pointer;
+  padding: 2px 7px;
+  line-height: 1;
+  transition: background 0.15s;
+}
+#depths-lb-refresh-btn:hover { background: rgba(168, 85, 247, 0.15); }
+
+#depths-lb-tabs {
+  display: flex;
+  gap: 6px;
+}
+
+.depths-lb-tab {
+  font-family: "Press Start 2P", cursive;
+  font-size: 9px;
+  background: transparent;
+  border: 1px solid rgba(168, 85, 247, 0.3);
+  border-radius: 4px;
+  color: rgba(168, 85, 247, 0.5);
+  padding: 8px 16px;
+  cursor: pointer;
+  transition: all 0.15s;
+  flex: 1;
+}
+.depths-lb-tab:hover { color: #a855f7; border-color: #a855f7; }
+.depths-lb-tab-active {
+  color: #fff !important;
+  background: rgba(168, 85, 247, 0.2);
+  border-color: #a855f7 !important;
+}
+
+.depths-lb-label {
+  font-family: "Press Start 2P", cursive;
+  font-size: 9px;
+  color: #c084fc;
+  text-align: center;
+  margin-bottom: 4px;
+}
+
+.depths-lb-loading,
+.depths-lb-error,
+.depths-lb-empty {
+  font-family: "Press Start 2P", cursive;
+  font-size: 9px;
+  color: #888;
+  text-align: center;
+  padding: 20px;
+}
+
+.depths-lb-table th { color: #c084fc; }
+
+.depths-lb-upgrades-cell {
+  font-size: 0.8em;
+  color: #9ca3af;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#depths-lb-close-btn {
+  font-family: "Press Start 2P", cursive;
+  font-size: 9px;
+  background: transparent;
+  border: 1px solid rgba(168, 85, 247, 0.3);
+  border-radius: 4px;
+  color: #a855f7;
+  padding: 8px 16px;
+  cursor: pointer;
+  transition: all 0.15s;
+  align-self: center;
+}
+#depths-lb-close-btn:hover {
+  background: rgba(168, 85, 247, 0.15);
+  border-color: #a855f7;
+}
+
+/* Depths results leaderboard button */
+.depths-results-leaderboard {
+  font-family: "Press Start 2P", cursive;
+  font-size: 10px;
+  background: rgba(168, 85, 247, 0.15);
+  border: 2px solid #a855f7;
+  border-radius: 6px;
+  color: #c084fc;
+  padding: 10px 18px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.depths-results-leaderboard:hover {
+  background: rgba(168, 85, 247, 0.3);
+  color: #fff;
+}
+
 /* ── Biome Weekly Leaderboard ─────────────────────────────────────────────── */
 
 #biome-lb-overlay {
@@ -12972,4 +13718,1050 @@ body.biome-ice #inventory-hud { border-color: #4499dd; }
   color: #64748b;
   text-align: center;
   padding: 10px 0;
+}
+
+/* ── Progressive Mode Unlock ─────────────────────────────────────────────── */
+
+/* Lock overlay on mode cards */
+.mode-lock-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.55);
+  border-radius: 6px;
+  gap: 6px;
+  z-index: 2;
+  pointer-events: none;
+}
+.mode-lock-icon {
+  font-size: 1.8em;
+  opacity: 0.9;
+  filter: grayscale(0.3);
+}
+.mode-lock-text {
+  font-family: "Press Start 2P", cursive;
+  font-size: 0.5em;
+  color: #aaa;
+  letter-spacing: 1px;
+  text-shadow: 0 0 4px rgba(0, 0, 0, 0.8);
+}
+/* Locked mode card overrides */
+.mode-card.mode-card-locked {
+  opacity: 0.5;
+  cursor: not-allowed;
+  border-color: rgba(120, 120, 120, 0.25) !important;
+  box-shadow: none !important;
+  filter: grayscale(0.6);
+}
+.mode-card.mode-card-locked:hover {
+  transform: none;
+  border-color: rgba(120, 120, 120, 0.25) !important;
+  box-shadow: none !important;
+}
+/* Locked button (e.g. Expeditions) */
+.mode-btn-locked {
+  opacity: 0.4;
+  cursor: not-allowed;
+  filter: grayscale(0.6);
+}
+/* Shake animation on locked click */
+@keyframes mode-lock-shake {
+  0%, 100% { transform: translateX(0); }
+  15% { transform: translateX(-6px); }
+  30% { transform: translateX(6px); }
+  45% { transform: translateX(-4px); }
+  60% { transform: translateX(4px); }
+  75% { transform: translateX(-2px); }
+  90% { transform: translateX(2px); }
+}
+.mode-lock-shake {
+  animation: mode-lock-shake 0.4s ease-in-out;
+}
+/* Mode unlock toast variant */
+.lu-toast-mode-unlock .lu-toast-icon {
+  font-size: 1.8em;
+}
+.lu-toast-mode-unlock .lu-toast-title {
+  color: #00ff88;
+  text-shadow: 0 0 8px #00ff88;
+}
+
+/* ── Prestige system ──────────────────────────────────────────────────────── */
+
+/* Prestige button in stats panel */
+.stats-prestige-section {
+  margin-top: 16px;
+  text-align: center;
+  padding: 12px 0;
+  border-top: 1px solid rgba(255, 215, 0, 0.3);
+}
+.prestige-btn {
+  font-family: "Press Start 2P", cursive;
+  font-size: 12px;
+  padding: 10px 24px;
+  background: linear-gradient(135deg, #ffd700, #ff8c00);
+  color: #1a1a2e;
+  border: 2px solid #ffd700;
+  border-radius: 6px;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  transition: all 0.2s ease;
+  box-shadow: 0 0 12px rgba(255, 215, 0, 0.4);
+}
+.prestige-btn:hover {
+  background: linear-gradient(135deg, #ffed4a, #ffa500);
+  box-shadow: 0 0 20px rgba(255, 215, 0, 0.7);
+  transform: scale(1.05);
+}
+.prestige-reward-preview {
+  font-size: 9px;
+  color: #aaa;
+  margin-top: 8px;
+  line-height: 1.4;
+}
+
+/* Prestige confirmation dialog */
+#prestige-confirm-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  background: rgba(0, 0, 0, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+#prestige-confirm-panel {
+  background: #1a1a2e;
+  border: 2px solid #ffd700;
+  border-radius: 10px;
+  padding: 24px 32px;
+  max-width: 380px;
+  text-align: center;
+  box-shadow: 0 0 30px rgba(255, 215, 0, 0.3);
+}
+#prestige-confirm-title {
+  font-family: "Press Start 2P", cursive;
+  font-size: 16px;
+  color: #ffd700;
+  margin-bottom: 16px;
+  text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+}
+#prestige-confirm-body {
+  font-size: 13px;
+  color: #ccc;
+  line-height: 1.6;
+  margin-bottom: 20px;
+}
+#prestige-confirm-body p {
+  margin: 8px 0;
+}
+.prestige-confirm-reward {
+  background: rgba(255, 215, 0, 0.1);
+  border: 1px solid rgba(255, 215, 0, 0.3);
+  border-radius: 6px;
+  padding: 10px;
+  margin: 12px 0;
+  color: #ffd700;
+  font-size: 12px;
+}
+.prestige-confirm-warning {
+  color: #ff6b6b;
+  font-size: 11px;
+  font-weight: bold;
+}
+.prestige-confirm-buttons {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+.prestige-confirm-yes {
+  font-family: "Press Start 2P", cursive;
+  font-size: 11px;
+  padding: 8px 20px;
+  background: linear-gradient(135deg, #ffd700, #ff8c00);
+  color: #1a1a2e;
+  border: 2px solid #ffd700;
+  border-radius: 5px;
+  cursor: pointer;
+}
+.prestige-confirm-yes:hover {
+  box-shadow: 0 0 15px rgba(255, 215, 0, 0.6);
+}
+.prestige-confirm-no {
+  font-family: "Press Start 2P", cursive;
+  font-size: 11px;
+  padding: 8px 20px;
+  background: transparent;
+  color: #888;
+  border: 1px solid #555;
+  border-radius: 5px;
+  cursor: pointer;
+}
+.prestige-confirm-no:hover {
+  color: #fff;
+  border-color: #aaa;
+}
+
+/* Leaderboard prestige indicators */
+.lb-prestige-stars {
+  font-size: 10px;
+  vertical-align: middle;
+}
+.lb-prestige-crown {
+  font-size: 12px;
+  vertical-align: middle;
+}
+
+/* ── Metrics Dashboard ──────────────────────────────────────────────────── */
+#metrics-overlay {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0, 0, 0, 0.9);
+  display: none;
+  justify-content: center;
+  align-items: center;
+  z-index: 310;
+  pointer-events: all;
+}
+#metrics-panel {
+  background: #111;
+  border: 2px solid #0f0;
+  border-radius: 6px;
+  padding: 28px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 380px;
+  max-width: 520px;
+  max-height: 85vh;
+  overflow-y: auto;
+  box-shadow: 0 0 30px rgba(0, 255, 0, 0.2);
+}
+#metrics-title {
+  font-family: "Press Start 2P", cursive;
+  font-size: 1.2em;
+  color: #0f0;
+  text-align: center;
+  margin-bottom: 4px;
+}
+.metrics-section {
+  margin-bottom: 8px;
+}
+.metrics-section-title {
+  font-family: "Press Start 2P", cursive;
+  font-size: 0.65em;
+  color: #0a0;
+  margin-bottom: 8px;
+  letter-spacing: 1px;
+}
+.metrics-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.metrics-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: #1a1a1a;
+  border-radius: 4px;
+  padding: 10px 8px;
+}
+.metrics-val {
+  font-family: "Press Start 2P", cursive;
+  font-size: 1em;
+  color: #0f0;
+}
+.metrics-label {
+  font-size: 0.65em;
+  color: #888;
+  margin-top: 4px;
+  text-align: center;
+}
+.metrics-table {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.metrics-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 5px 8px;
+  background: #1a1a1a;
+  border-radius: 2px;
+  font-size: 0.8em;
+  color: #ccc;
+}
+.metrics-row.metrics-header {
+  color: #0a0;
+  font-weight: bold;
+  background: #0a0a0a;
+  font-size: 0.7em;
+}
+.metrics-row span {
+  flex: 1;
+  text-align: center;
+}
+.metrics-row span:first-child {
+  text-align: left;
+}
+.metrics-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.metrics-list-item {
+  padding: 5px 8px;
+  background: #1a1a1a;
+  border-radius: 2px;
+  font-size: 0.8em;
+  color: #ccc;
+}
+.metrics-empty {
+  color: #555;
+  font-size: 0.75em;
+  padding: 8px;
+  text-align: center;
+}
+#metrics-actions {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 8px;
+}
+#metrics-close-btn, #metrics-clear-btn {
+  font-family: "Press Start 2P", cursive;
+  font-size: 0.75em;
+  padding: 10px 24px;
+  border: 1px solid #0f0;
+  background: transparent;
+  color: #0f0;
+  cursor: pointer;
+  border-radius: 4px;
+}
+#metrics-close-btn:hover { background: #0f02; }
+#metrics-clear-btn {
+  border-color: #a00;
+  color: #a00;
+}
+#metrics-clear-btn:hover { background: #a001; }
+.settings-link-btn {
+  font-family: "Press Start 2P", cursive;
+  font-size: 0.7em;
+  padding: 8px 16px;
+  border: 1px solid #0a0;
+  background: transparent;
+  color: #0a0;
+  cursor: pointer;
+  border-radius: 4px;
+  width: 100%;
+}
+.settings-link-btn:hover { background: #0a01; }
+
+/* ── Daily Depths ───────────────────────────────────────────────────────── */
+
+.mode-card-daily-depths {
+  position: relative;
+}
+.mode-card-badge-daily {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  font-family: "Press Start 2P", cursive;
+  font-size: 0.5em;
+  background: #e74c3c;
+  color: #fff;
+  padding: 2px 6px;
+  border-radius: 3px;
+  letter-spacing: 1px;
+}
+
+#daily-depths-badge {
+  font-family: "Press Start 2P", cursive;
+  font-size: 0.65em;
+  color: #e74c3c;
+  text-align: center;
+  padding: 2px 8px;
+}
+
+.daily-depths-practice-tag {
+  display: inline-block;
+  font-family: "Press Start 2P", cursive;
+  font-size: 0.7em;
+  color: #f39c12;
+  border: 1px solid #f39c12;
+  padding: 4px 10px;
+  margin: 8px 0;
+  border-radius: 3px;
+}
+.daily-depths-best-tag {
+  display: inline-block;
+  font-family: "Press Start 2P", cursive;
+  font-size: 0.7em;
+  color: #2ecc71;
+  border: 1px solid #2ecc71;
+  padding: 4px 10px;
+  margin: 8px 0;
+  border-radius: 3px;
+}
+
+.daily-depths-hist-btn {
+  font-family: "Press Start 2P", cursive;
+  font-size: 0.65em;
+  padding: 8px 16px;
+  border: 1px solid #888;
+  background: transparent;
+  color: #ccc;
+  cursor: pointer;
+  border-radius: 4px;
+  margin-right: 8px;
+}
+.daily-depths-hist-btn:hover { background: #fff1; }
+
+/* Daily Depths history overlay */
+#daily-depths-history-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0, 0, 0, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1200;
+}
+.daily-depths-history-panel {
+  background: #111;
+  border: 1px solid #444;
+  border-radius: 8px;
+  padding: 20px;
+  min-width: 320px;
+  max-width: 480px;
+  max-height: 70vh;
+  overflow-y: auto;
+}
+.daily-depths-history-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+.daily-depths-history-title {
+  font-family: "Press Start 2P", cursive;
+  font-size: 0.85em;
+  color: #e74c3c;
+}
+.daily-depths-history-close {
+  background: transparent;
+  border: 1px solid #666;
+  color: #ccc;
+  font-size: 1em;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+.daily-depths-history-close:hover { background: #fff1; }
+
+.daily-depths-history-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 0;
+  border-bottom: 1px solid #222;
+  font-family: "Press Start 2P", cursive;
+  font-size: 0.6em;
+  color: #ccc;
+}
+.daily-depths-history-date { color: #888; min-width: 70px; }
+.daily-depths-history-status { color: #aaa; flex: 1; text-align: center; }
+.daily-depths-history-score { color: #0f0; min-width: 80px; text-align: right; }
+
+.daily-depths-history-empty {
+  font-family: "Press Start 2P", cursive;
+  font-size: 0.6em;
+  color: #666;
+  text-align: center;
+  padding: 20px 0;
+}
+
+/* Daily Depths PB on mode card */
+#mode-pb-daily-depths {
+  font-family: "Press Start 2P", cursive;
+  font-size: 0.55em;
+  color: #888;
+  margin-top: 4px;
+}
+
+/* ── Depths Upgrade Selection Overlay ─────────────────────────────────────── */
+
+.depths-upgrade-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.85);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  z-index: 9999;
+  font-family: "Press Start 2P", cursive;
+  color: #fff;
+  animation: depths-fade-in 0.3s ease-out;
+}
+
+@keyframes depths-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.depths-upgrade-title {
+  font-size: 1.4em;
+  letter-spacing: 2px;
+  margin-bottom: 6px;
+  color: #fbbf24;
+  text-shadow: 0 0 12px rgba(251,191,36,0.5);
+}
+
+.depths-upgrade-subtitle {
+  font-size: 0.65em;
+  color: #888;
+  margin-bottom: 24px;
+}
+
+.depths-upgrade-cards {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.depths-upgrade-card {
+  width: 220px;
+  background: #1a1a2e;
+  border: 2px solid #444;
+  border-radius: 8px;
+  padding: 18px 14px;
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s;
+  display: flex; flex-direction: column;
+  gap: 8px;
+  outline: none;
+}
+
+.depths-upgrade-card:hover,
+.depths-upgrade-card:focus {
+  transform: translateY(-4px) scale(1.03);
+  box-shadow: 0 6px 24px rgba(0,0,0,0.6);
+}
+
+.depths-upgrade-card.depths-upgrade-selected {
+  transform: scale(1.06);
+  box-shadow: 0 0 20px rgba(251,191,36,0.5);
+  border-color: #fbbf24 !important;
+}
+
+.depths-upgrade-rarity {
+  font-size: 0.5em;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+
+.depths-upgrade-name {
+  font-size: 0.75em;
+  color: #fff;
+}
+
+.depths-upgrade-desc {
+  font-size: 0.5em;
+  color: #aaa;
+  line-height: 1.6;
+}
+
+.depths-upgrade-category {
+  font-size: 0.45em;
+  color: #666;
+  text-transform: uppercase;
+  margin-top: auto;
+  padding-top: 6px;
+  border-top: 1px solid #333;
+}
+
+.depths-upgrade-hint {
+  font-size: 0.5em;
+  color: #555;
+  margin-top: 18px;
+}
+
+/* ── Depths Results: Upgrade Summary ──────────────────────────────────────── */
+
+.depths-results-upgrades {
+  display: flex; flex-wrap: wrap;
+  gap: 6px;
+  justify-content: center;
+  margin: 10px 0;
+}
+
+.depths-upgrades-title {
+  width: 100%;
+  font-family: "Press Start 2P", cursive;
+  font-size: 0.55em;
+  color: #888;
+  text-align: center;
+  margin-bottom: 4px;
+}
+
+.depths-results-upgrade {
+  font-family: "Press Start 2P", cursive;
+  font-size: 0.5em;
+  padding: 3px 8px;
+  background: #1a1a2e;
+  border-radius: 4px;
+  border: 1px solid #333;
+}
+
+/* ── Depths Floor Lore Overlay ────────────────────────────────────────────── */
+
+#depths-floor-lore-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.9);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  z-index: 9998;
+  font-family: "Press Start 2P", cursive;
+  color: #fff;
+  animation: depths-fade-in 0.3s ease-out;
+  cursor: pointer;
+}
+
+.depths-lore-panel {
+  text-align: center;
+  max-width: 500px;
+  padding: 32px;
+}
+
+.depths-lore-title {
+  font-size: 1.6em;
+  color: #fbbf24;
+  text-shadow: 0 0 16px rgba(251,191,36,0.6);
+  margin-bottom: 12px;
+}
+
+.depths-lore-biome {
+  font-size: 0.65em;
+  color: #a78bfa;
+  letter-spacing: 2px;
+  margin-bottom: 20px;
+}
+
+.depths-lore-body {
+  font-size: 0.6em;
+  color: #bbb;
+  line-height: 1.8;
+  font-style: italic;
+}
+
+/* ── Depths Results Overlay ───────────────────────────────────────────────── */
+
+#depths-results-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.92);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  z-index: 9999;
+  font-family: "Press Start 2P", cursive;
+  color: #fff;
+  animation: depths-fade-in 0.4s ease-out;
+}
+
+.depths-results-panel {
+  text-align: center;
+  max-width: 600px;
+  padding: 24px;
+}
+
+.depths-results-title {
+  font-size: 1.3em;
+  color: #ef4444;
+  text-shadow: 0 0 12px rgba(239,68,68,0.5);
+  margin-bottom: 16px;
+}
+
+.depths-results-stats {
+  display: flex; flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.depths-stat {
+  display: flex; justify-content: space-between;
+  font-size: 0.6em;
+  padding: 4px 0;
+  border-bottom: 1px solid #222;
+}
+
+.depths-stat span:first-child { color: #888; }
+.depths-stat span:last-child { color: #fff; }
+
+.depths-results-map {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  margin: 12px 0;
+}
+
+.depths-map-floor {
+  display: flex; flex-direction: column;
+  align-items: center;
+  padding: 6px 8px;
+  background: #1a1a2e;
+  border-radius: 4px;
+  border: 1px solid #333;
+  font-size: 0.45em;
+  gap: 2px;
+}
+
+.depths-map-floor.cleared { border-color: #22c55e; color: #22c55e; }
+.depths-map-floor.failed  { border-color: #ef4444; color: #ef4444; }
+
+.depths-map-num { font-weight: bold; }
+.depths-map-biome { color: #888; font-size: 0.9em; }
+
+.depths-results-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  margin-top: 16px;
+}
+
+.depths-results-retry,
+.depths-results-lobby {
+  font-family: "Press Start 2P", cursive;
+  font-size: 0.6em;
+  padding: 10px 18px;
+  background: #1a1a2e;
+  color: #fff;
+  border: 2px solid #444;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.depths-results-retry:hover { border-color: #22c55e; background: #1a2e1a; }
+.depths-results-lobby:hover { border-color: #3b82f6; background: #1a1a2e; }
+
+.key-hint {
+  color: #555;
+  font-size: 0.8em;
+}
+
+/* ── Depths Transition Overlay (score summary + upgrade + descent) ────────── */
+
+.depths-transition-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.92);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  z-index: 10000;
+  font-family: "Press Start 2P", cursive;
+  color: #fff;
+  animation: depths-fade-in 0.3s ease-out;
+}
+
+.dt-panel {
+  text-align: center;
+  max-width: 640px;
+  padding: 24px;
+  animation: dt-slide-up 0.4s ease-out;
+}
+
+@keyframes dt-slide-up {
+  from { opacity: 0; transform: translateY(30px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.dt-header {
+  font-size: 1.4em;
+  color: #22c55e;
+  text-shadow: 0 0 16px rgba(34,197,94,0.5);
+  margin-bottom: 8px;
+  letter-spacing: 2px;
+}
+
+.dt-biome {
+  font-size: 0.6em;
+  color: #a78bfa;
+  letter-spacing: 2px;
+  margin-bottom: 20px;
+}
+
+.dt-subtitle {
+  font-size: 0.6em;
+  color: #888;
+  margin-bottom: 20px;
+}
+
+/* Score summary stats */
+.dt-stats {
+  display: flex; flex-direction: column;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.dt-stat {
+  display: flex; justify-content: space-between;
+  font-size: 0.65em;
+  padding: 6px 16px;
+  background: #111827;
+  border-radius: 4px;
+  border-left: 3px solid #22c55e;
+  animation: dt-stat-in 0.3s ease-out both;
+}
+
+@keyframes dt-stat-in {
+  from { opacity: 0; transform: translateX(-20px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+.dt-stat-label { color: #888; }
+.dt-stat-value { color: #fff; font-weight: bold; }
+
+.dt-continue-hint {
+  font-size: 0.45em;
+  color: #444;
+  margin-top: 16px;
+  animation: dt-blink 2s ease-in-out infinite;
+}
+
+@keyframes dt-blink {
+  0%, 100% { opacity: 0.3; }
+  50%      { opacity: 1; }
+}
+
+/* Upgrade cards (transition version) */
+.dt-upgrade-cards {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+
+.dt-upgrade-card {
+  width: 200px;
+  background: #111827;
+  border: 2px solid #444;
+  border-radius: 8px;
+  padding: 16px 12px;
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s;
+  display: flex; flex-direction: column;
+  gap: 6px;
+  outline: none;
+  text-align: left;
+}
+
+.dt-upgrade-card:hover,
+.dt-upgrade-card:focus {
+  transform: translateY(-4px) scale(1.03);
+  box-shadow: 0 6px 24px rgba(0,0,0,0.6);
+}
+
+.dt-upgrade-card.dt-upgrade-selected {
+  transform: scale(1.06);
+  box-shadow: 0 0 20px rgba(251,191,36,0.5);
+  border-color: #fbbf24 !important;
+}
+
+.dt-upgrade-rarity {
+  font-size: 0.45em;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+
+.dt-upgrade-name {
+  font-size: 0.7em;
+  color: #fff;
+}
+
+.dt-upgrade-desc {
+  font-size: 0.45em;
+  color: #aaa;
+  line-height: 1.6;
+}
+
+.dt-upgrade-cat {
+  font-size: 0.4em;
+  color: #555;
+  text-transform: uppercase;
+  margin-top: auto;
+  padding-top: 4px;
+  border-top: 1px solid #222;
+}
+
+.dt-upgrade-hints {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  margin-top: 12px;
+}
+
+.dt-hint {
+  font-size: 0.45em;
+  color: #555;
+}
+
+.dt-skip-btn {
+  font-family: "Press Start 2P", cursive;
+  font-size: 0.45em;
+  padding: 6px 12px;
+  background: transparent;
+  color: #666;
+  border: 1px solid #333;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.dt-skip-btn:hover {
+  color: #fbbf24;
+  border-color: #fbbf24;
+}
+
+/* Descent animation */
+.dt-descent-panel {
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dt-descent-shaft {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column;
+  animation: dt-scroll-down 1.8s linear;
+  pointer-events: none;
+}
+
+@keyframes dt-scroll-down {
+  from { transform: translateY(0); }
+  to   { transform: translateY(-50%); }
+}
+
+.dt-rock-layer {
+  flex: 0 0 120px;
+  border-bottom: 2px solid #333;
+  background: linear-gradient(
+    180deg,
+    #0d0d0d 0%, #1a1a2e 30%, #111 60%, #0a0a14 100%
+  );
+  position: relative;
+}
+
+.dt-rock-layer::before {
+  content: '';
+  position: absolute;
+  left: 10%; top: 30%;
+  width: 20px; height: 8px;
+  background: #2a2a3e;
+  border-radius: 3px;
+  box-shadow:
+    60px 20px 0 #1e1e30,
+    120px -10px 0 #252538,
+    200px 15px 0 #1a1a28,
+    280px -5px 0 #222236;
+}
+
+.dt-rock-layer:nth-child(odd)::before {
+  left: 30%; top: 50%;
+  box-shadow:
+    40px -15px 0 #2a2a3e,
+    90px 10px 0 #1e1e30,
+    170px -8px 0 #252538,
+    250px 20px 0 #1a1a28;
+}
+
+.dt-descent-text {
+  position: relative;
+  z-index: 1;
+  text-align: center;
+  text-shadow: 0 0 20px rgba(0,0,0,0.9);
+}
+
+.dt-descent-from {
+  font-size: 0.8em;
+  color: #666;
+  margin-bottom: 12px;
+}
+
+.dt-descent-arrow {
+  font-size: 1.4em;
+  color: #fbbf24;
+  margin: 16px 0;
+  animation: dt-arrow-pulse 0.6s ease-in-out infinite;
+}
+
+@keyframes dt-arrow-pulse {
+  0%, 100% { opacity: 0.4; transform: translateY(0); }
+  50%      { opacity: 1; transform: translateY(8px); }
+}
+
+.dt-descent-to {
+  font-size: 1.2em;
+  color: #fff;
+  text-shadow: 0 0 16px rgba(251,191,36,0.5);
+}
+
+/* ── Victory Screen Enhancements ──────────────────────────────────────────── */
+
+.dt-victory-title {
+  color: #fbbf24 !important;
+  text-shadow: 0 0 20px rgba(251,191,36,0.6) !important;
+  font-size: 1.5em !important;
+  animation: dt-victory-glow 2s ease-in-out infinite;
+}
+
+@keyframes dt-victory-glow {
+  0%, 100% { text-shadow: 0 0 20px rgba(251,191,36,0.4); }
+  50%      { text-shadow: 0 0 40px rgba(251,191,36,0.8), 0 0 60px rgba(251,191,36,0.3); }
+}
+
+.dt-victory-subtitle {
+  font-size: 0.6em;
+  color: #a78bfa;
+  margin-bottom: 16px;
+  letter-spacing: 1px;
+}
+
+.dt-victory-reward {
+  margin: 16px 0;
+  padding: 16px;
+  background: linear-gradient(135deg, #1a1a2e, #1e1530);
+  border: 2px solid #a855f7;
+  border-radius: 8px;
+  animation: dt-reward-glow 2s ease-in-out infinite;
+}
+
+@keyframes dt-reward-glow {
+  0%, 100% { box-shadow: 0 0 8px rgba(168,85,247,0.3); }
+  50%      { box-shadow: 0 0 20px rgba(168,85,247,0.6); }
+}
+
+.dt-reward-label {
+  font-size: 0.5em;
+  color: #a855f7;
+  letter-spacing: 2px;
+  margin-bottom: 8px;
+}
+
+.dt-reward-item {
+  font-size: 0.8em;
+  color: #fff;
+  margin-bottom: 6px;
+}
+
+.dt-reward-desc {
+  font-size: 0.45em;
+  color: #aaa;
+  line-height: 1.5;
 }

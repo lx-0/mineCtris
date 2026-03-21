@@ -1,4 +1,4 @@
-// Achievement system — 39 unlockable achievements with toast notifications.
+// Achievement system — 49 unlockable achievements with toast notifications.
 // Requires: state.js (isSprintMode, isBlitzMode, linesCleared),
 //           stats.js (loadLifetimeStats)
 
@@ -54,6 +54,17 @@ const ACHIEVEMENTS = [
   { id: "champion",        name: "Champion",        icon: "\u{1F947}",       desc: "Win a full tournament",                                             category: "tournament" },
   { id: "hat_trick",       name: "Hat Trick",       icon: "\u{1F3A9}",       desc: "Win 3 matches in a single tournament without losing",               category: "tournament" },
   { id: "crowd_favorite",  name: "Crowd Favorite",  icon: "\u{1F31F}",       desc: "Have 10 or more spectators watch a match you play in a tournament", category: "tournament" },
+  // Depths (dungeon) achievements
+  { id: "depths_first_descent",    name: "First Descent",     icon: "\u{1F573}\uFE0F", desc: "Complete Floor 1 in The Depths",                                   category: "depths", xp: 25  },
+  { id: "depths_storm_survivor",   name: "Storm Survivor",    icon: "\u26C8\uFE0F",    desc: "Clear the Piece Storm (Floor 4)",                                  category: "depths", xp: 50  },
+  { id: "depths_core_breaker",     name: "Core Breaker",      icon: "\u{1F525}",       desc: "Conquer The Core and complete a full 7-floor run",                  category: "depths", xp: 100 },
+  { id: "depths_speed_runner",     name: "Speed Runner",      icon: "\u23F1\uFE0F",    desc: "Complete a full 7-floor run in under 15 minutes",                   category: "depths", xp: 100 },
+  { id: "depths_no_upgrades",      name: "No Upgrades",       icon: "\u{1F6AB}",       desc: "Reach Floor 5 without picking any upgrades",                        category: "depths", xp: 75  },
+  { id: "depths_risk_taker",       name: "Risk Taker",        icon: "\u{1F3B2}",       desc: "Have 3 or more Risk/Reward upgrades active in a single run",        category: "depths", xp: 75  },
+  { id: "depths_diver",            name: "Depth Diver",       icon: "\u{1F30A}",       desc: "Complete 10 total Depths runs (any outcome)",                       category: "depths", xp: 50  },
+  { id: "depths_daily_devotee",    name: "Daily Devotee",     icon: "\u{1F4C5}",       desc: "Complete 7 Daily Dungeon Seeds",                                   category: "depths", xp: 75  },
+  { id: "depths_flawless_core",    name: "Flawless Core",     icon: "\u{1F48E}",       desc: "Complete Floor 7 (The Core) without the shield activating",         category: "depths", xp: 100 },
+  { id: "depths_upgrade_collector",name: "Upgrade Collector",  icon: "\u{1F9F0}",       desc: "Pick at least one upgrade from every category in a single run",    category: "depths", xp: 75  },
 ];
 
 // Session counters — reset at the start of each game
@@ -62,6 +73,8 @@ let _achSessionRocks  = 0;
 // Co-op sync line-clear tracking (ms timestamps; -1 = none this session)
 let _achCoopLineClearTs    = -1;
 let _achPartnerLineClearTs = -1;
+// Depths: track whether shield was consumed on the current floor (for Flawless Core)
+let _achDepthsShieldUsedOnFloor = false;
 
 /** Reset session-specific achievement counters. Call from resetGame(). */
 function achResetSession() {
@@ -69,6 +82,7 @@ function achResetSession() {
   _achSessionRocks  = 0;
   _achCoopLineClearTs    = -1;
   _achPartnerLineClearTs = -1;
+  _achDepthsShieldUsedOnFloor = false;
 }
 
 /** Load achievement state from localStorage. Returns { [id]: { date } }. */
@@ -99,7 +113,15 @@ function unlockAchievement(id) {
   try { localStorage.setItem(ACH_STORAGE_KEY, JSON.stringify(state)); } catch (_) {}
 
   const ach = ACHIEVEMENTS.find(a => a.id === id);
-  if (ach) _showAchievementToast(ach);
+  if (ach) {
+    _showAchievementToast(ach);
+    // Grant XP reward if the achievement defines one
+    if (ach.xp && ach.xp > 0 && typeof loadLifetimeStats === 'function' && typeof saveLifetimeStats === 'function') {
+      var stats = loadLifetimeStats();
+      stats.playerXP = (stats.playerXP || 0) + ach.xp;
+      saveLifetimeStats(stats);
+    }
+  }
 
   // Completionist check (unlocking 10 others — don't count itself)
   const total = Object.keys(state).length;
@@ -170,7 +192,7 @@ function renderAchievementsPanel() {
       if (gridEl) panel.insertBefore(filterRow, gridEl);
     }
     filterRow.innerHTML = "";
-    [["all", "All"], ["coop", "Co-op"], ["battle", "Battle"], ["tournament", "Tournament"]].forEach(function (pair) {
+    [["all", "All"], ["depths", "Depths"], ["coop", "Co-op"], ["battle", "Battle"], ["tournament", "Tournament"]].forEach(function (pair) {
       const btn = document.createElement("button");
       btn.className = "ach-filter-btn" + (_achPanelFilter === pair[0] ? " active" : "");
       btn.textContent = pair[1];
@@ -185,7 +207,7 @@ function renderAchievementsPanel() {
   const gridEl = document.getElementById("achievements-grid");
   if (!gridEl) return;
 
-  const visible = (_achPanelFilter === "coop" || _achPanelFilter === "battle" || _achPanelFilter === "tournament")
+  const visible = (_achPanelFilter === "coop" || _achPanelFilter === "battle" || _achPanelFilter === "tournament" || _achPanelFilter === "depths")
     ? ACHIEVEMENTS.filter(function (a) { return a.category === _achPanelFilter; })
     : ACHIEVEMENTS;
 
@@ -219,10 +241,10 @@ function renderAchievementsPanel() {
 
     card.appendChild(iconEl);
     card.appendChild(infoEl);
-    if (ach.category === "coop" || ach.category === "battle" || ach.category === "tournament") {
+    if (ach.category === "coop" || ach.category === "battle" || ach.category === "tournament" || ach.category === "depths") {
       const badgeEl = document.createElement("div");
       badgeEl.className = "ach-coop-badge";
-      badgeEl.textContent = ach.category === "battle" ? "BATTLE" : ach.category === "tournament" ? "TOURN" : "CO-OP";
+      badgeEl.textContent = ach.category === "depths" ? "DEPTHS" : ach.category === "battle" ? "BATTLE" : ach.category === "tournament" ? "TOURN" : "CO-OP";
       card.appendChild(badgeEl);
     }
     card.appendChild(statusEl);
@@ -491,4 +513,131 @@ function achOnBattleResult(result, garbageReceived, durationSeconds) {
   if (durationSeconds < 90) unlockAchievement("battle_speed_kill");
 
   if (garbageReceived === 0) unlockAchievement("battle_untouchable");
+}
+
+// ── Depths (dungeon) achievement triggers ────────────────────────────────────
+
+var ACH_DEPTHS_RUNS_KEY = "mineCtris_depthsTotalRuns";
+
+/**
+ * Increment and return the total depths runs counter (persisted in localStorage).
+ */
+function _achIncrementDepthsRuns() {
+  var count = 0;
+  try { count = parseInt(localStorage.getItem(ACH_DEPTHS_RUNS_KEY) || '0', 10) || 0; } catch (_) {}
+  count++;
+  try { localStorage.setItem(ACH_DEPTHS_RUNS_KEY, String(count)); } catch (_) {}
+  return count;
+}
+
+/**
+ * Call when a depths floor is completed (player cleared the exit condition).
+ * @param {number} completedFloor  The floor number just cleared (1–7)
+ */
+function achOnDepthsFloorComplete(completedFloor) {
+  if (completedFloor >= 1) unlockAchievement("depths_first_descent");
+  if (completedFloor >= 4) unlockAchievement("depths_storm_survivor");
+
+  // No Upgrades: reached floor 5 without picking any upgrades
+  if (completedFloor >= 4) {
+    var upgrades = (typeof getDepthsChosenUpgrades === 'function') ? getDepthsChosenUpgrades() : [];
+    if (upgrades.length === 0) unlockAchievement("depths_no_upgrades");
+  }
+
+  // Reset floor-level shield tracking for the next floor
+  _achDepthsShieldUsedOnFloor = false;
+}
+
+/**
+ * Call when a full depths run is completed (all 7 floors cleared).
+ * @param {object} data  { score, linesCleared, blocksMined, timeSeconds, floorReached, runComplete }
+ */
+function achOnDepthsRunComplete(data) {
+  if (!data.runComplete) return;
+
+  unlockAchievement("depths_core_breaker");
+
+  // Speed Runner: under 15 minutes (900 seconds)
+  if (data.timeSeconds > 0 && data.timeSeconds < 900) {
+    unlockAchievement("depths_speed_runner");
+  }
+
+  // Flawless Core: completed Floor 7 without shield activating
+  if (!_achDepthsShieldUsedOnFloor) {
+    unlockAchievement("depths_flawless_core");
+  }
+
+  // Upgrade Collector: at least one upgrade from every category
+  _achCheckUpgradeCollector();
+}
+
+/**
+ * Call at the end of every depths run (win or lose) for run-count tracking.
+ */
+function achOnDepthsRunEnd() {
+  var totalRuns = _achIncrementDepthsRuns();
+  if (totalRuns >= 10) unlockAchievement("depths_diver");
+
+  // Daily Devotee: 7 unique daily seeds completed
+  if (typeof loadDailyDepthsHistory === 'function') {
+    var history = loadDailyDepthsHistory();
+    if (history.length >= 7) unlockAchievement("depths_daily_devotee");
+  }
+}
+
+/**
+ * Call after a depths upgrade is selected to check category-based achievements.
+ */
+function achOnDepthsUpgradeSelected() {
+  // Risk Taker: 3+ Risk/Reward upgrades active
+  if (typeof getDepthsChosenUpgrades === 'function' && typeof DEPTHS_UPGRADE_DEFS !== 'undefined') {
+    var chosen = getDepthsChosenUpgrades();
+    var riskCount = 0;
+    for (var i = 0; i < chosen.length; i++) {
+      for (var j = 0; j < DEPTHS_UPGRADE_DEFS.length; j++) {
+        if (DEPTHS_UPGRADE_DEFS[j].id === chosen[i] && DEPTHS_UPGRADE_DEFS[j].category === 'risk_reward') {
+          riskCount++;
+          break;
+        }
+      }
+    }
+    if (riskCount >= 3) unlockAchievement("depths_risk_taker");
+  }
+
+  _achCheckUpgradeCollector();
+}
+
+/**
+ * Check if the player has collected upgrades from all 5 categories.
+ */
+function _achCheckUpgradeCollector() {
+  if (typeof getDepthsChosenUpgrades !== 'function' || typeof DEPTHS_UPGRADE_DEFS === 'undefined') return;
+  var chosen = getDepthsChosenUpgrades();
+  var categories = {};
+  for (var i = 0; i < chosen.length; i++) {
+    for (var j = 0; j < DEPTHS_UPGRADE_DEFS.length; j++) {
+      if (DEPTHS_UPGRADE_DEFS[j].id === chosen[i]) {
+        categories[DEPTHS_UPGRADE_DEFS[j].category] = true;
+        break;
+      }
+    }
+  }
+  // All 5 categories: tool, powerup, crafting, stat, risk_reward
+  if (categories.tool && categories.powerup && categories.crafting && categories.stat && categories.risk_reward) {
+    unlockAchievement("depths_upgrade_collector");
+  }
+}
+
+/**
+ * Call when the shield absorbs a hit during a depths run.
+ * Used to track Flawless Core achievement (Floor 7 without shield activation).
+ */
+function achOnDepthsShieldConsumed() {
+  _achDepthsShieldUsedOnFloor = true;
+}
+
+/** Count how many depths achievements are unlocked. */
+function countDepthsAchievementsUnlocked() {
+  var unlocked = loadAchievements();
+  return ACHIEVEMENTS.filter(function (a) { return a.category === "depths" && unlocked[a.id]; }).length;
 }

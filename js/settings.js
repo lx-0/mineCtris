@@ -183,8 +183,9 @@ function applyTheme(themeKey) {
   };
   const themePalette = THEME_PALETTE[themeKey] || null;
 
-  // Swap materials on all existing block meshes (unless colorblind mode overrides).
-  if (!colorblindMode) {
+  // Swap materials on all existing block meshes (unless colorblind mode or block skin overrides).
+  // When a block skin is active, the skin owns all material colors — skip theme swaps.
+  if (!colorblindMode && !(activeBlockSkin && typeof BLOCK_SKIN_PALETTES !== 'undefined' && BLOCK_SKIN_PALETTES[activeBlockSkin])) {
     [worldGroup, fallingPiecesGroup].forEach(function(group) {
       if (!group) return;
       group.traverse(function(obj) {
@@ -285,11 +286,41 @@ function initSettings() {
   const closeBtn = document.getElementById("settings-close-btn");
   if (closeBtn) closeBtn.addEventListener("click", closeSettings);
 
+  // Wire up metrics dashboard button
+  const metricsBtn = document.getElementById("settings-metrics-btn");
+  if (metricsBtn) {
+    metricsBtn.addEventListener("click", function () {
+      if (typeof openMetricsDashboard === 'function') openMetricsDashboard();
+    });
+  }
+  var metricsCloseBtn = document.getElementById("metrics-close-btn");
+  if (metricsCloseBtn) {
+    metricsCloseBtn.addEventListener("click", function () {
+      if (typeof closeMetricsDashboard === 'function') closeMetricsDashboard();
+    });
+  }
+  var metricsClearBtn = document.getElementById("metrics-clear-btn");
+  if (metricsClearBtn) {
+    metricsClearBtn.addEventListener("click", function () {
+      if (typeof metricsClearAll === 'function') metricsClearAll();
+      if (typeof openMetricsDashboard === 'function') openMetricsDashboard();
+    });
+  }
+
   const cbToggle = document.getElementById("cb-toggle");
   if (cbToggle) {
     cbToggle.checked = colorblindMode;
     cbToggle.addEventListener("change", function() {
       applyColorblindMode(this.checked);
+    });
+  }
+
+  // Wire up "Show all modes" toggle.
+  const samToggle = document.getElementById("show-all-modes-toggle");
+  if (samToggle) {
+    samToggle.checked = (typeof isShowAllModesEnabled === "function") && isShowAllModesEnabled();
+    samToggle.addEventListener("change", function() {
+      if (typeof setShowAllModes === "function") setShowAllModes(this.checked);
     });
   }
 
@@ -335,6 +366,8 @@ function openSettings(onClose) {
   _syncSliders();
   const cbToggle = document.getElementById("cb-toggle");
   if (cbToggle) cbToggle.checked = colorblindMode;
+  const samToggleSync = document.getElementById("show-all-modes-toggle");
+  if (samToggleSync) samToggleSync.checked = (typeof isShowAllModesEnabled === "function") && isShowAllModesEnabled();
   _syncThemeButtons();
   _syncDisplayNameField();
   const overlay = document.getElementById("settings-overlay");

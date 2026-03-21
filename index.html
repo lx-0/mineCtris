@@ -72,6 +72,7 @@
             <button id="start-community-btn">&#127760; Community</button>
             <button id="daily-challenge-btn">&#127374; Daily Challenge</button>
             <button id="start-settings-btn">&#9881; Settings</button>
+            <button id="start-profile-btn">&#128100; Profile</button>
             <button id="start-stats-btn">&#128202; Stats</button>
             <button id="start-achievements-btn">&#127942; Achievements</button>
             <button id="start-missions-btn">&#127919; Daily Missions</button>
@@ -175,6 +176,19 @@
               <div class="mode-card-name">Puzzle</div>
               <div class="mode-card-desc">10 curated mining puzzles. Solve them all.</div>
               <div class="mode-card-pb" id="mode-pb-puzzle"></div>
+            </div>
+            <div class="mode-card mode-card-depths" id="mode-card-depths" data-mode="depths">
+              <div class="mode-card-icon">&#9760;</div>
+              <div class="mode-card-name">The Depths</div>
+              <div class="mode-card-desc">7-floor dungeon. Permadeath. No mercy.</div>
+              <div class="mode-card-pb" id="mode-pb-depths"></div>
+            </div>
+            <div class="mode-card mode-card-daily-depths" id="mode-card-daily-depths" data-mode="daily-depths">
+              <div class="mode-card-icon">&#9760;</div>
+              <div class="mode-card-badge-daily">DAILY</div>
+              <div class="mode-card-name">Daily Dungeon</div>
+              <div class="mode-card-desc">Today's shared seed. One shot at the leaderboard.</div>
+              <div class="mode-card-pb" id="mode-pb-daily-depths"></div>
             </div>
           </div>
           <!-- World modifier selector -->
@@ -573,6 +587,27 @@
         </div>
       </div>
 
+      <!-- Profile page overlay -->
+      <div id="profile-overlay">
+        <div id="profile-panel">
+          <div id="profile-page-title">PROFILE</div>
+          <div id="profile-page-body"></div>
+          <button id="profile-close-btn">Close</button>
+        </div>
+      </div>
+
+      <!-- Prestige confirmation dialog -->
+      <div id="prestige-confirm-overlay" style="display:none;">
+        <div id="prestige-confirm-panel">
+          <div id="prestige-confirm-title">⭐ PRESTIGE ⭐</div>
+          <div id="prestige-confirm-body"></div>
+          <div class="prestige-confirm-buttons">
+            <button class="prestige-confirm-yes" onclick="_confirmPrestige()">PRESTIGE</button>
+            <button class="prestige-confirm-no" onclick="_closePrestigeConfirm()">Cancel</button>
+          </div>
+        </div>
+      </div>
+
       <!-- Audio settings overlay -->
       <div id="settings-overlay">
         <div id="settings-panel">
@@ -601,6 +636,15 @@
             </label>
           </div>
           <div class="settings-hint">Deuteranopia-safe palette + surface patterns</div>
+          <div class="settings-section-divider"></div>
+          <div class="settings-row settings-row-toggle">
+            <label class="settings-label settings-label-toggle" for="show-all-modes-toggle">Show All Modes</label>
+            <label class="cb-toggle-switch">
+              <input type="checkbox" id="show-all-modes-toggle">
+              <span class="cb-toggle-slider"></span>
+            </label>
+          </div>
+          <div class="settings-hint">Bypass level requirements — all modes playable</div>
           <div class="settings-section-divider"></div>
           <div class="settings-label settings-label-section">Leaderboard Name</div>
           <div id="settings-displayname-row" class="settings-row">
@@ -652,7 +696,21 @@
               <span class="theme-btn-sub theme-btn-hint" id="theme-hint-legendary">&#x1F512; Reach Level 50</span>
             </button>
           </div>
+          <div class="settings-section-divider"></div>
+          <button id="settings-metrics-btn" class="settings-link-btn">&#128202; Player Metrics</button>
           <button id="settings-close-btn">Close</button>
+        </div>
+      </div>
+
+      <!-- Metrics dashboard overlay -->
+      <div id="metrics-overlay">
+        <div id="metrics-panel">
+          <div id="metrics-title">PLAYER METRICS</div>
+          <div id="metrics-content"></div>
+          <div id="metrics-actions">
+            <button id="metrics-clear-btn">Clear Data</button>
+            <button id="metrics-close-btn">Close</button>
+          </div>
         </div>
       </div>
 
@@ -781,6 +839,23 @@
         </div>
       </div>
 
+      <!-- Tutorial arrow indicators (positioned absolutely over game view) -->
+      <div id="tutorial-arrow-down" style="display:none">&#x25BC;</div>
+      <div id="tutorial-arrow-crosshair" style="display:none">&#x25C0; mine here</div>
+
+      <!-- Contextual game tooltips (first Classic game) -->
+      <div id="game-tooltip" style="display:none;"></div>
+
+      <!-- Depths dungeon tutorial tooltip (first dungeon run) -->
+      <div id="depths-tutorial-tooltip" style="display:none;">
+        <div class="dtt-text"></div>
+        <div class="dtt-subtext"></div>
+        <div class="dtt-footer">
+          <span class="dtt-step-count"></span>
+          <button id="depths-tutorial-skip">SKIP TUTORIAL</button>
+        </div>
+      </div>
+
       <!-- Context-sensitive crafting hint toast -->
       <div id="craft-hint-toast">Tip: Press C to craft with your materials!</div>
 
@@ -815,6 +890,7 @@
             <button id="lb-tab-coop" class="lb-tab">&#9760; Co-op</button>
             <button id="lb-tab-dailycoop" class="lb-tab">&#9760; Daily Co-op</button>
             <button id="lb-tab-battle" class="lb-tab">&#9876; Battle</button>
+            <button id="lb-tab-depths" class="lb-tab">&#9876; Depths</button>
           </div>
           <div id="lb-panel-body"></div>
           <button id="lb-panel-close-btn">Close</button>
@@ -985,6 +1061,77 @@
             <button id="exp-results-play-again-btn">&#9654; Play Again <span class="key-hint">[Enter]</span></button>
             <button id="exp-results-map-btn">&#8592; Return to Map <span class="key-hint">[Esc]</span></button>
           </div>
+        </div>
+      </div>
+
+      <!-- Depths mode badge (in-game) -->
+      <div id="depths-mode-badge" class="mode-badge" style="display:none;">THE DEPTHS</div>
+      <div id="daily-depths-badge" class="mode-badge" style="display:none;"></div>
+
+      <!-- Depths floor HUD — shows current floor, biome, modifiers, goal, timer -->
+      <div id="depths-floor-hud" style="display:none;">
+        <span class="depths-floor-num"></span>
+        <span class="depths-biome"></span>
+        <span class="depths-modifiers"></span>
+        <span class="depths-goal"></span>
+        <span class="depths-timer"></span>
+      </div>
+
+      <!-- Boss floor: active piece indicator + cycle hint -->
+      <div id="boss-piece-hud" style="display:none;">
+        <span class="boss-piece-label">PIECE STORM</span>
+        <span class="boss-piece-active">Piece 1/3</span>
+        <span class="boss-piece-hint">Tab = cycle</span>
+      </div>
+
+      <!-- Depths floor lore overlay — shown between floors -->
+      <div id="depths-floor-lore-overlay" style="display:none;" role="dialog" aria-label="Floor Transition">
+        <div class="depths-lore-panel">
+          <div class="depths-lore-title"></div>
+          <div class="depths-lore-biome"></div>
+          <div class="depths-lore-body"></div>
+        </div>
+      </div>
+
+      <!-- Depths results overlay — shown on run end (permadeath or victory) -->
+      <div id="depths-results-overlay" style="display:none;" role="dialog" aria-label="Depths Results">
+        <div class="depths-results-panel">
+          <div class="depths-results-title"></div>
+          <div class="depths-results-stats"></div>
+          <div class="depths-results-map"></div>
+          <div class="depths-results-upgrades"></div>
+          <div class="depths-results-actions">
+            <button class="depths-results-retry">&#9654; Try Again <span class="key-hint">[Enter]</span></button>
+            <button class="depths-results-leaderboard">&#127942; Leaderboard <span class="key-hint">[L]</span></button>
+            <button class="depths-results-lobby">&#8592; Return to Lobby <span class="key-hint">[Esc]</span></button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Depths Dungeon Leaderboard overlay -->
+      <div id="depths-lb-overlay" style="display:none;" role="dialog" aria-label="Depths Leaderboard">
+        <div id="depths-lb-panel">
+          <div id="depths-lb-header">
+            <span id="depths-lb-title">&#9876; THE DEPTHS — LEADERBOARD</span>
+            <button id="depths-lb-refresh-btn" title="Refresh">&#8635;</button>
+          </div>
+          <div id="depths-lb-tabs">
+            <button id="depths-lb-tab-allruns" class="depths-lb-tab depths-lb-tab-active">All Runs</button>
+            <button id="depths-lb-tab-daily" class="depths-lb-tab">Daily Seed</button>
+          </div>
+          <div id="depths-lb-body"></div>
+          <button id="depths-lb-close-btn">Close</button>
+        </div>
+      </div>
+
+      <!-- Daily Depths history overlay -->
+      <div id="daily-depths-history-overlay" style="display:none;" role="dialog" aria-label="Daily Depths History">
+        <div class="daily-depths-history-panel">
+          <div class="daily-depths-history-header">
+            <span class="daily-depths-history-title">&#128197; SEED HISTORY</span>
+            <button class="daily-depths-history-close" aria-label="Close">&#10005;</button>
+          </div>
+          <div class="daily-depths-history-list"></div>
         </div>
       </div>
 
@@ -1492,13 +1639,16 @@
     <script src="js/highscores.js"></script>
     <script src="js/stats.js"></script>
     <script src="js/leveling.js"></script>
+    <script src="js/mode-unlock.js"></script>
     <script src="js/sprint.js"></script>
     <script src="js/blitz.js"></script>
     <script src="js/puzzle.js"></script>
     <script src="js/achievements.js"></script>
     <script src="js/aura.js"></script>
     <script src="js/tutorial.js"></script>
+    <script src="js/game-tooltips.js"></script>
     <script src="js/settings.js"></script>
+    <script src="js/metrics.js"></script>
     <script src="js/season.js"></script>
     <script src="js/season-recap.js"></script>
     <script src="js/season-pass.js"></script>
@@ -1535,12 +1685,20 @@
     <script src="js/clan-war-standings.js"></script>
     <script src="js/biome-themes.js"></script>
     <script src="js/expedition-reward-tracks.js"></script>
+    <script src="js/cosmetics.js"></script>
+    <script src="js/profile-page.js"></script>
     <script src="js/biome-cosmetics.js"></script>
     <script src="js/expedition-map.js"></script>
     <script src="js/story-fragments.js"></script>
     <script src="js/expedition-codex.js"></script>
     <script src="js/expedition-session.js"></script>
     <script src="js/expedition-leaderboard.js"></script>
+    <script src="js/depths-leaderboard.js"></script>
+    <script src="js/depths-upgrades.js"></script>
+    <script src="js/depths-tutorial.js"></script>
+    <script src="js/depths-transition.js"></script>
+    <script src="js/depths-floor-gen.js"></script>
+    <script src="js/daily-depths.js"></script>
     <script src="js/main.js"></script>
   </body>
 </html>

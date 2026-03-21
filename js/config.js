@@ -744,3 +744,51 @@ const RECIPES = [
     outputCount: 1,
   },
 ];
+
+// ── Block Skin Palettes ────────────────────────────────────────────────────────
+// Each skin defines a color palette override (index-matched to COLORS) plus
+// per-block material property overrides.  Used by the block skin cosmetic system.
+// 'default' means no override — use standard colors and materials.
+
+const BLOCK_SKIN_PALETTES = {
+  neon: {
+    colors: [
+      null,
+      0x00ff88, // 1 → neon green      (was dirt brown)
+      0x00ccff, // 2 → neon cyan       (was stone grey)
+      0xffff00, // 3 → neon yellow     (was gold)
+      0x00ffff, // 4 → neon aqua       (was ice cyan)
+      0x88ff00, // 5 → neon lime       (was moss green)
+      0xff0066, // 6 → neon pink       (was lava red)
+      0xcc00ff, // 7 → neon violet     (was crystal purple)
+      0x3366ff, // 8 → neon blue       (was diamond)
+    ],
+    edgeColor: 0x222222,
+    material: {
+      emissive: 0x222222,
+      emissiveIntensity: 0.6,
+      roughness: 0.15,
+      metalness: 0.1,
+    },
+  },
+  lava: {
+    colors: [
+      null,
+      0xcc3300, // 1 → dark ember      (was dirt brown)
+      0xff6600, // 2 → bright orange   (was stone grey)
+      0xffcc00, // 3 → molten gold     (was gold)
+      0xff4400, // 4 → hot orange      (was ice cyan)
+      0xcc2200, // 5 → deep red        (was moss green)
+      0xff0000, // 6 → lava red        (same)
+      0xff8800, // 7 → amber           (was crystal purple)
+      0xffaa00, // 8 → bright amber    (was diamond)
+    ],
+    edgeColor: 0x330000,
+    material: {
+      emissive: 0x220800,
+      emissiveIntensity: 0.35,
+      roughness: 0.7,
+      metalness: 0.0,
+    },
+  },
+};

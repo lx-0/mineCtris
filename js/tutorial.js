@@ -1,5 +1,6 @@
-// tutorial.js — First-run tutorial overlay.
-// Shows a 7-step guided intro on the player's very first visit.
+// tutorial.js — First-run interactive tutorial (v2.0).
+// Shows a ~30-second guided intro on the player's very first visit.
+// Teaches mining in context with slowed piece speed and arrow indicators.
 // Each step advances on a specific player action; a Skip button is always visible.
 // Requires: state.js loaded first (for global flags).
 
@@ -9,51 +10,57 @@ const CRAFT_HINT_KEY    = 'mineCtris_craftHintShown';
 // Step definitions — trigger values matched by tutorialNotify(event).
 // Steps with autoDelay auto-advance after that many seconds regardless of trigger.
 // 'dismiss' steps show a "Got it!" button.
+// slowPieces: true → pieces fall at 50% speed during this step.
+// suppressSpawn: true → no new pieces spawn during this step.
+// arrow: 'down' | 'crosshair' | null → which arrow indicator to show.
 const TUTORIAL_STEPS = [
   {
-    id: 'look',
-    text: 'Move your mouse to look around.',
-    subtext: null,
-    trigger: 'cameraMove',
-  },
-  {
-    id: 'piece',
-    text: 'A piece is falling — it will land here.',
-    subtext: 'The shadow shows the landing spot.',
+    id: 'falling',
+    text: 'A piece is falling!',
+    subtext: 'Watch it descend slowly.',
     trigger: 'pieceLand',
+    autoDelay: 8,
+    slowPieces: true,
+    suppressSpawn: true,
+    arrow: 'down',
   },
   {
     id: 'mine',
-    text: 'Mine blocks with left-click.',
-    subtext: 'Aim at any block and click to break it.',
+    text: 'Mine this block before it lands!',
+    subtext: 'Aim at any block and left-click to break it.',
     trigger: 'blockMine',
+    slowPieces: true,
+    suppressSpawn: true,
+    arrow: 'crosshair',
   },
   {
-    id: 'place',
-    text: 'Place blocks with right-click.',
-    subtext: 'Use collected blocks to fill gaps.',
-    trigger: 'blockPlace',
+    id: 'mined',
+    text: 'Nice! Mining clears space and gives you resources.',
+    subtext: 'Mined blocks go into your inventory.',
+    trigger: null,
+    autoDelay: 3,
+    slowPieces: true,
+    suppressSpawn: true,
+    arrow: null,
   },
   {
     id: 'lines',
-    text: 'Fill rows to clear lines and score points!',
-    subtext: null,
+    text: 'Fill gaps to trigger line clears!',
+    subtext: 'Place blocks with right-click to complete rows.',
     trigger: 'lineClear',
-    autoDelay: 4,
-  },
-  {
-    id: 'craft',
-    text: 'Press C to open the Crafting Panel. Combine materials to build better tools!',
-    subtext: null,
-    trigger: 'craftingOpen',
-    autoDelay: 8,
-    showCKey: true,
+    autoDelay: 5,
+    slowPieces: true,
+    suppressSpawn: false,
+    arrow: null,
   },
   {
     id: 'done',
-    text: 'Survive as long as you can.',
-    subtext: 'Good luck!',
+    text: 'You are ready. Survive as long as you can!',
+    subtext: null,
     trigger: 'dismiss',
+    slowPieces: false,
+    suppressSpawn: false,
+    arrow: null,
   },
 ];
 
@@ -74,7 +81,7 @@ function initTutorial() {
 
 /**
  * Notify the tutorial that a player action occurred.
- * @param {string} event  One of: 'cameraMove', 'pieceLand', 'blockMine', 'blockPlace'
+ * @param {string} event  One of: 'pieceLand', 'blockMine', 'blockPlace', 'lineClear', 'cameraMove', 'craftingOpen'
  */
 function tutorialNotify(event) {
   if (!_tutorialActive) return;
@@ -93,10 +100,6 @@ function updateTutorial(delta) {
   _tutorialStepAge += delta;
   const step = TUTORIAL_STEPS[_tutorialStep];
   if (step && step.autoDelay && _tutorialStepAge >= step.autoDelay) {
-    if (step.id === 'craft') {
-      // Auto-advance with a note that the player can try crafting later
-      _showAutoAdvanceNote();
-    }
     _advanceStep();
   }
 }
@@ -104,6 +107,25 @@ function updateTutorial(delta) {
 /** Skip the tutorial immediately. */
 function skipTutorial() {
   _endTutorial();
+}
+
+/** Returns true when tutorial wants pieces to fall at 50% speed. */
+function isTutorialSlowActive() {
+  if (!_tutorialActive) return false;
+  const step = TUTORIAL_STEPS[_tutorialStep];
+  return step && step.slowPieces === true;
+}
+
+/** Returns true when tutorial wants to suppress new piece spawns. */
+function isTutorialSpawnSuppressed() {
+  if (!_tutorialActive) return false;
+  const step = TUTORIAL_STEPS[_tutorialStep];
+  return step && step.suppressSpawn === true;
+}
+
+/** Returns true when the tutorial is actively running. */
+function isTutorialActive() {
+  return _tutorialActive;
 }
 
 // ── Public API (context-sensitive crafting hint) ───────────────────────────────
@@ -158,14 +180,6 @@ function _showCraftHintToast() {
   setTimeout(() => { toast.style.display = 'none'; }, 4000);
 }
 
-function _showAutoAdvanceNote() {
-  const subtextEl = document.getElementById('tutorial-subtext');
-  if (subtextEl) {
-    subtextEl.textContent = "Try pressing C later!";
-    subtextEl.style.display = 'block';
-  }
-}
-
 function _showStep(idx) {
   if (idx >= TUTORIAL_STEPS.length) { _endTutorial(); return; }
 
@@ -175,6 +189,8 @@ function _showStep(idx) {
   const dismissBtn  = document.getElementById('tutorial-dismiss-btn');
   const stepCountEl = document.getElementById('tutorial-step-count');
   const ckeyEl      = document.getElementById('tutorial-ckey-icon');
+  const arrowDown   = document.getElementById('tutorial-arrow-down');
+  const arrowCross  = document.getElementById('tutorial-arrow-crosshair');
 
   if (!overlayEl || !textEl) return;
 
@@ -192,12 +208,20 @@ function _showStep(idx) {
     dismissBtn.style.display = step.trigger === 'dismiss' ? 'inline-block' : 'none';
   }
 
-  // Show pulsing C-key icon on crafting step
+  // Hide C-key icon (not used in v2.0 steps but element may still exist)
   if (ckeyEl) {
     ckeyEl.style.display = step.showCKey ? 'flex' : 'none';
   }
 
-  // Step counter e.g. "3 / 7"
+  // Arrow indicators
+  if (arrowDown) {
+    arrowDown.style.display = step.arrow === 'down' ? 'block' : 'none';
+  }
+  if (arrowCross) {
+    arrowCross.style.display = step.arrow === 'crosshair' ? 'block' : 'none';
+  }
+
+  // Step counter e.g. "2 / 5"
   if (stepCountEl) {
     stepCountEl.textContent = (idx + 1) + ' / ' + TUTORIAL_STEPS.length;
   }
@@ -212,8 +236,22 @@ function _advanceStep() {
 }
 
 function _endTutorial() {
+  // Metrics: distinguish between completing all steps vs skipping early
+  var reachedFinalStep = _tutorialStep >= TUTORIAL_STEPS.length - 1;
+  if (reachedFinalStep) {
+    if (typeof metricsTutorialComplete === 'function') metricsTutorialComplete();
+  } else {
+    if (typeof metricsTutorialSkip === 'function') metricsTutorialSkip();
+  }
   _tutorialActive = false;
   _markTutorialDone();
+  // Award one-time tutorial completion XP
+  if (typeof awardTutorialXP === 'function') awardTutorialXP();
   const overlayEl = document.getElementById('tutorial-overlay');
   if (overlayEl) overlayEl.style.display = 'none';
+  // Hide arrows
+  const arrowDown = document.getElementById('tutorial-arrow-down');
+  const arrowCross = document.getElementById('tutorial-arrow-crosshair');
+  if (arrowDown) arrowDown.style.display = 'none';
+  if (arrowCross) arrowCross.style.display = 'none';
 }

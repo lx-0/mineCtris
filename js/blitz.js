@@ -64,6 +64,11 @@ function triggerBlitzComplete() {
     isDailyChallenge:      false,
   });
 
+  // Metrics: log session end
+  if (typeof metricsSessionEnd === 'function') {
+    metricsSessionEnd({ score: score, linesCleared: linesCleared, blocksMined: blocksMined });
+  }
+
   // Award XP
   const _blitzXpBefore = (loadLifetimeStats().playerXP || 0);
   const { xpEarned: _blitzXP, streakBonus: _blitzStreak } = awardXP(score, 'blitz');

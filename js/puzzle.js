@@ -461,6 +461,11 @@ function _triggerPuzzleWin() {
     });
   }
 
+  // Metrics: log session end
+  if (typeof metricsSessionEnd === 'function') {
+    metricsSessionEnd({ score: score, linesCleared: linesCleared, blocksMined: blocksMined });
+  }
+
   // Award XP (puzzle win)
   if (typeof awardXP === "function") {
     const _pzXpBefore = (typeof loadLifetimeStats === 'function' ? loadLifetimeStats().playerXP || 0 : 0);

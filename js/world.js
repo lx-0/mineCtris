@@ -61,14 +61,29 @@ function createBlockMesh(color) {
   // Resolve the canonical game color (always the standard palette hex).
   const canonicalHex = (color instanceof THREE.Color) ? color.getHex() : new THREE.Color(color).getHex();
 
-  // Choose material: colorblind-safe takes priority, then theme, then standard.
+  // Choose material: colorblind-safe takes priority, then block skin, then theme, then standard.
   let material;
+  let _skinOverrides = null; // block skin material overrides (if any)
   if (colorblindMode) {
     const cbIdx = COLOR_TO_INDEX[canonicalHex];
     if (cbIdx !== undefined && COLORBLIND_COLORS[cbIdx] !== null) {
       material = createBlockMaterialColorblind(COLORBLIND_COLORS[cbIdx], COLORBLIND_PATTERNS[cbIdx]);
     } else {
       material = createBlockMaterial(color);
+    }
+  } else if (activeBlockSkin && BLOCK_SKIN_PALETTES[activeBlockSkin]) {
+    // Block skin overrides both theme and default colors.
+    const skinDef = BLOCK_SKIN_PALETTES[activeBlockSkin];
+    const sIdx = COLOR_TO_INDEX[canonicalHex];
+    if (sIdx !== undefined && skinDef.colors[sIdx] !== null) {
+      material = createBlockMaterial(skinDef.colors[sIdx]);
+    } else {
+      material = createBlockMaterial(color);
+    }
+    _skinOverrides = skinDef.material;
+    // Override edge color for this skin
+    if (skinDef.edgeColor !== undefined) {
+      lineMaterial.color.setHex(skinDef.edgeColor);
     }
   } else if (activeTheme !== "classic") {
     const THEME_PALETTE = {
@@ -115,6 +130,24 @@ function createBlockMesh(color) {
       cube.material.emissive = lavaEmissive;
       cube.material.needsUpdate = true;
       cube.userData.defaultEmissive = lavaEmissive.clone();
+    }
+  }
+
+  // Apply block skin material overrides (emissive, roughness, metalness).
+  if (_skinOverrides) {
+    if (_skinOverrides.roughness !== undefined) cube.material.roughness = _skinOverrides.roughness;
+    if (_skinOverrides.metalness !== undefined) cube.material.metalness = _skinOverrides.metalness;
+    if (_skinOverrides.emissive !== undefined) {
+      // For neon skin, use the block's own color as emissive for per-block glow.
+      const useOwnColor = (activeBlockSkin === 'neon');
+      const skinEmissive = useOwnColor
+        ? cube.material.color.clone().multiplyScalar(0.4)
+        : new THREE.Color(_skinOverrides.emissive);
+      const intensity = _skinOverrides.emissiveIntensity || 1.0;
+      cube.material.emissive = skinEmissive;
+      cube.material.emissiveIntensity = intensity;
+      cube.material.needsUpdate = true;
+      cube.userData.defaultEmissive = skinEmissive.clone();
     }
   }
 

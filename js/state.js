@@ -275,6 +275,11 @@ let colorblindMode = false;
 // "nether"  = dark stone/lava palette (unlocked via "Iron Will" achievement).
 let activeTheme = "classic";
 
+// ── Active block skin ─────────────────────────────────────────────────────────
+// Resolved once at game start from cosmetics.js getEquipped("block_skin").
+// null or 'default' means no skin override; otherwise holds the themeKey string.
+let activeBlockSkin = null;
+
 // ── Power-up bank (persistent across runs via localStorage) ──────────────────
 const POWERUP_BANK_KEY = "mineCtris_powerups";
 
@@ -389,3 +394,32 @@ let customPieceSequence      = { mode: "random", pieces: [] };
 // true when the current custom puzzle session was launched from the editor Play button.
 // Used to show "Edit Puzzle" on the completion overlay.
 let customPlayFromEditor     = false;
+
+// ── The Depths (dungeon roguelike) mode state ────────────────────────────────
+// isDepthsMode: true while a Depths dungeon run is active.
+// depthsFloorLinesCleared: lines cleared on the current floor (resets each floor).
+// depthsFloorElapsedMs: milliseconds elapsed on the current floor (counts up).
+// depthsFloorTimerActive: true after first piece spawns on the current floor.
+// depthsRunComplete: true when the player has cleared all 7 floors.
+let isDepthsMode          = false;
+let depthsFloorLinesCleared = 0;
+let depthsFloorElapsedMs  = 0;
+let depthsFloorTimerActive = false;
+let depthsRunComplete     = false;
+
+// ── Depths boss floor state ──────────────────────────────────────────────────
+// depthsBossActive: true while a boss floor encounter is running.
+// depthsBossConfig: the boss descriptor from DEPTHS_BOSS_FLOORS (or null).
+// depthsActivePieceIndex: index into fallingPieces[] of the player-controlled piece.
+//   -1 = no active piece (normal mode).
+// depthsBossStormOverlay: true while the Piece Storm atmospheric overlay is shown.
+let depthsBossActive       = false;
+let depthsBossConfig       = null;
+let depthsActivePieceIndex = -1;
+let depthsBossStormOverlay = false;
+
+// ── Daily Depths state ───────────────────────────────────────────────────────
+// isDailyDepths: true when the current Depths run uses today's daily seed.
+// dailyDepthsPrng: seeded PRNG function for deterministic floor generation.
+let isDailyDepths     = false;
+let dailyDepthsPrng   = null;

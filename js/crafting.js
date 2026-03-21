@@ -19,6 +19,10 @@ function _effectiveIngredientCount(count) {
   if (typeof isCoopMode !== 'undefined' && isCoopMode && count >= 4) {
     return Math.ceil(count * COOP_CRAFT_DISCOUNT);
   }
+  // Depths Efficient Crafting upgrade: -1 ingredient (min 1)
+  if (typeof isDepthsReducedCost === 'function' && isDepthsReducedCost()) {
+    return Math.max(1, count - 1);
+  }
   return count;
 }
 
@@ -307,11 +311,15 @@ function craftRecipe(recipe) {
   } else if (recipe.outputType === "bench") {
     hasCraftingBench = true;
   } else if (recipe.outputType === "consumable") {
-    consumables[recipe.consumableType] = (consumables[recipe.consumableType] || 0) + recipe.outputCount;
+    var _cYield = recipe.outputCount;
+    if (typeof isDepthsDoubleYield === 'function' && isDepthsDoubleYield()) _cYield *= 2;
+    consumables[recipe.consumableType] = (consumables[recipe.consumableType] || 0) + _cYield;
     sessionConsumableCrafts++;
     if (typeof achOnConsumableCraft === "function") achOnConsumableCraft(sessionConsumableCrafts);
   } else if (recipe.outputType === "powerup") {
-    powerUps[recipe.powerUpType] = (powerUps[recipe.powerUpType] || 0) + recipe.outputCount;
+    var _pYield = recipe.outputCount;
+    if (typeof isDepthsDoubleYield === 'function' && isDepthsDoubleYield()) _pYield *= 2;
+    powerUps[recipe.powerUpType] = (powerUps[recipe.powerUpType] || 0) + _pYield;
     // Also persist to the cross-run power-up bank
     const _puBank = loadPowerUpBank();
     _puBank[recipe.powerUpType] = (_puBank[recipe.powerUpType] || 0) + recipe.outputCount;

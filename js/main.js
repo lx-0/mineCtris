@@ -150,6 +150,7 @@ function init() {
 
   initAudio();
   initSettings();
+  if (typeof detectReturningPlayer === "function") detectReturningPlayer();
   if (typeof initLeaderboard === "function") initLeaderboard();
   if (typeof initGuild === "function") initGuild();
   if (typeof initSeasonBanner === "function") initSeasonBanner();
@@ -157,6 +158,7 @@ function init() {
   if (typeof initSeasonPassPanel === "function") initSeasonPassPanel();
   if (typeof initBiomeCosmeticsPanel === "function") initBiomeCosmeticsPanel();
   if (typeof initBiomeLeaderboard === "function") initBiomeLeaderboard();
+  if (typeof initDepthsLeaderboard === "function") initDepthsLeaderboard();
   if (typeof initExpeditionMap === "function") initExpeditionMap();
   if (typeof initExpeditionCodex === "function") initExpeditionCodex();
   if (typeof initExpeditionSession === "function") initExpeditionSession();
@@ -285,12 +287,16 @@ function init() {
       // Daily challenge, settings, stats, achievements, and resume buttons handle their own events — skip here
       if (e.target.id === "daily-challenge-btn") return;
       if (e.target.id === "start-settings-btn") return;
+      if (e.target.id === "start-profile-btn") return;
       if (e.target.id === "start-stats-btn") return;
       if (e.target.id === "start-achievements-btn") return;
       if (e.target.id === "start-missions-btn") return;
       if (e.target.id === "start-resume-btn") return;
       if (e.target.id === "start-create-btn") return;
       if (e.target.id === "start-community-btn") return;
+      if (e.target.id === "start-season-missions-btn") return;
+      if (e.target.id === "start-tournament-btn") return;
+      if (e.target.id === "start-guild-btn") return;
       // If ?editor=1 URL param preset editor mode, go straight into editor
       if (isEditorMode) { requestPointerLock(); return; }
       // Show mode select screen instead of jumping straight into the game
@@ -488,6 +494,9 @@ function init() {
         });
       }
 
+      // Apply progressive mode unlock gates
+      if (typeof applyModeUnlockState === 'function') applyModeUnlockState();
+
       blocker.style.display = "none";
       modeSelectEl.style.display = "flex";
     }
@@ -574,6 +583,7 @@ function init() {
         gameRng = null;
         applyWorldModifierHUD();
         try { localStorage.setItem("mineCtris_lastMode", "classic"); } catch (_) {}
+        if (typeof metricsModePlayed === 'function') metricsModePlayed('classic');
         hideModeSelect();
         requestPointerLock();
       });
@@ -590,6 +600,7 @@ function init() {
         lastDifficultyTier   = 4; // Level 5 display
         applyWorldModifierHUD();
         try { localStorage.setItem("mineCtris_lastMode", "sprint"); } catch (_) {}
+        if (typeof metricsModePlayed === 'function') metricsModePlayed('sprint');
         hideModeSelect();
         requestPointerLock();
       });
@@ -606,6 +617,7 @@ function init() {
         blitzRemainingMs     = BLITZ_DURATION_MS;
         applyWorldModifierHUD();
         try { localStorage.setItem("mineCtris_lastMode", "blitz"); } catch (_) {}
+        if (typeof metricsModePlayed === 'function') metricsModePlayed('blitz');
         hideModeSelect();
         requestPointerLock();
       });
@@ -642,6 +654,7 @@ function init() {
         }
         applyWorldModifierHUD();
         try { localStorage.setItem("mineCtris_lastMode", "daily"); } catch (_) {}
+        if (typeof metricsModePlayed === 'function') metricsModePlayed('daily');
         hideModeSelect();
         requestPointerLock();
       });
@@ -666,6 +679,7 @@ function init() {
         }
         applyWorldModifierHUD();
         try { localStorage.setItem("mineCtris_lastMode", "weekly"); } catch (_) {}
+        if (typeof metricsModePlayed === 'function') metricsModePlayed('weekly');
         hideModeSelect();
         requestPointerLock();
       });
@@ -679,6 +693,7 @@ function init() {
         // Fixed slow speed for puzzle mode (half normal)
         difficultyMultiplier = 0.5;
         lastDifficultyTier = 0;
+        if (typeof metricsModePlayed === 'function') metricsModePlayed('puzzle');
         hideModeSelect();
         if (typeof showPuzzleSelect === "function") showPuzzleSelect();
       });
@@ -691,6 +706,7 @@ function init() {
         isSurvivalMode = true;
         isDailyChallenge = false;
         gameRng = null;
+        if (typeof metricsModePlayed === 'function') metricsModePlayed('survival');
         // If a survival world is saved, restore it; otherwise start fresh
         if (typeof hasSurvivalWorld === "function" && hasSurvivalWorld()) {
           if (typeof restoreSurvivalWorld === "function") restoreSurvivalWorld();
@@ -705,6 +721,33 @@ function init() {
         hideModeSelect();
         requestPointerLock();
       });
+    }
+
+    // Depths (dungeon) mode card
+    const depthsCardEl = document.getElementById("mode-card-depths");
+    if (depthsCardEl) {
+      depthsCardEl.addEventListener("click", function () {
+        if (typeof metricsModePlayed === 'function') metricsModePlayed('depths');
+        document.dispatchEvent(new CustomEvent('depthsLaunch'));
+      });
+    }
+
+    // Daily Depths mode card
+    const dailyDepthsCardEl = document.getElementById("mode-card-daily-depths");
+    if (dailyDepthsCardEl) {
+      dailyDepthsCardEl.addEventListener("click", function () {
+        if (typeof metricsModePlayed === 'function') metricsModePlayed('daily_depths');
+        document.dispatchEvent(new CustomEvent('dailyDepthsLaunch'));
+      });
+      // Show today's best on the card
+      if (typeof loadDailyDepthsBest === 'function') {
+        var pb = loadDailyDepthsBest();
+        var pbEl = document.getElementById('mode-pb-daily-depths');
+        if (pbEl && pb) {
+          pbEl.textContent = 'Best: ' + pb.score.toLocaleString() +
+            ' (Floor ' + pb.floorReached + '/7)';
+        }
+      }
     }
 
     // ── Co-op mode card + lobby overlay ──────────────────────────────────────
@@ -996,6 +1039,7 @@ function init() {
       function _startCoopGame() {
         isCoopMode = true;
         isDailyChallenge = false;
+        if (typeof metricsModePlayed === 'function') metricsModePlayed('coop');
         // isDailyCoopChallenge is set BEFORE calling _startCoopGame; preserve it here
         gameRng = isDailyCoopChallenge ? getDailyPrng() : null;
         coopPieceQueue.length = 0;
@@ -1876,6 +1920,7 @@ function init() {
         // Reset world and set battle mode flags before the countdown
         resetGame();
         isBattleMode = true;
+        if (typeof metricsModePlayed === 'function') metricsModePlayed('battle');
         battleMatchMode = _mode; // restore after resetGame reset it to 'survival'
         battleScoreRaceRemainingMs = 180000;
         battleOpponentScore = 0;
@@ -3355,15 +3400,9 @@ function init() {
         instructions.style.display = "none";
         blocker.style.display = "none";
         if (typeof startBgMusic === "function") startBgMusic();
-        // First-run tutorial
+        // First-run tutorial (v2.0 — starts immediately with falling piece)
         if (typeof initTutorial === "function") {
           initTutorial();
-          // One-shot mousemove listener to detect first camera movement
-          const _onFirstMove = function () {
-            if (typeof tutorialNotify === "function") tutorialNotify("cameraMove");
-            document.removeEventListener("mousemove", _onFirstMove);
-          };
-          document.addEventListener("mousemove", _onFirstMove);
           // Wire skip / dismiss buttons
           const skipBtn = document.getElementById("tutorial-skip-btn");
           if (skipBtn && !skipBtn._tutorialBound) {
@@ -3385,6 +3424,8 @@ function init() {
       if (scoreEl) scoreEl.style.display = "block";
       if (nextPiecesEl) nextPiecesEl.style.display = "block";
       gameTimerRunning = true;
+      // Metrics: log session start
+      if (typeof metricsSessionStart === 'function') metricsSessionStart();
       // Restore inventory HUD if non-empty
       if (inventoryTotal() > 0) updateInventoryHUD();
 
@@ -3562,6 +3603,18 @@ function init() {
   if (startSettingsBtn) startSettingsBtn.addEventListener("click", function (e) {
     e.stopPropagation();
     openSettings();
+  });
+
+  // Profile page button
+  const startProfileBtn = document.getElementById("start-profile-btn");
+  if (startProfileBtn) startProfileBtn.addEventListener("click", function (e) {
+    e.stopPropagation();
+    if (typeof openProfilePage === "function") openProfilePage();
+  });
+
+  const profileCloseBtn = document.getElementById("profile-close-btn");
+  if (profileCloseBtn) profileCloseBtn.addEventListener("click", function () {
+    if (typeof closeProfilePage === "function") closeProfilePage();
   });
 
   const startStatsBtn = document.getElementById("start-stats-btn");
@@ -3955,6 +4008,108 @@ function init() {
     }
   });
 
+  // ── Depths (dungeon) launch handler ──────────────────────────────────────
+  document.addEventListener('depthsLaunch', function () {
+    hideModeSelect();
+    if (typeof resetGame === 'function') resetGame();
+
+    // Generate and start the dungeon run
+    isDepthsMode = true;
+    var firstFloor = typeof startDepthsRun === 'function' ? startDepthsRun() : null;
+    if (firstFloor && typeof applyDepthsFloor === 'function') {
+      applyDepthsFloor(firstFloor);
+    }
+
+    // Show mode badge
+    var badge = document.getElementById('depths-mode-badge');
+    if (badge) badge.style.display = 'inline-block';
+
+    // Show floor HUD
+    if (firstFloor && typeof _updateDepthsFloorHUD === 'function') {
+      _updateDepthsFloorHUD(firstFloor);
+    }
+
+    // Snapshot starting score for per-floor tracking
+    if (typeof snapshotDepthsFloorStart === 'function') snapshotDepthsFloorStart();
+
+    // Init depths tutorial on first dungeon entry
+    if (typeof initDepthsTutorial === 'function') initDepthsTutorial();
+
+    // Show floor 1 lore, then start play
+    if (firstFloor && typeof _showDepthsFloorLore === 'function') {
+      _showDepthsFloorLore(firstFloor, function () {
+        depthsFloorTimerActive = true;
+        // Notify depths tutorial: first floor gameplay starting
+        if (typeof depthsTutorialNotify === 'function') depthsTutorialNotify('floorStart');
+        requestPointerLock();
+      });
+    } else {
+      requestPointerLock();
+    }
+  });
+
+  // ── Daily Depths launch handler ───────────────────────────────────────────
+  document.addEventListener('dailyDepthsLaunch', function () {
+    hideModeSelect();
+    if (typeof resetGame === 'function') resetGame();
+
+    // Set up daily depths state — two separate PRNG streams from the same date:
+    // 1. dailyDepthsPrng for floor generation (biomes, modifiers)
+    // 2. gameRng for piece spawning (so all players get identical piece sequences)
+    isDailyDepths = true;
+    dailyDepthsPrng = typeof getDailyDepthsPrng === 'function' ? getDailyDepthsPrng() : null;
+    // Seed piece RNG with a different namespace to avoid cross-stream correlation
+    gameRng = typeof mulberry32 === 'function' && typeof _hashDate === 'function'
+      ? mulberry32(_hashDate('depths-pieces-' + getDailyDateString()))
+      : null;
+    if (typeof initPieceQueue === 'function') initPieceQueue();
+
+    // Determine if this is a practice run (not first attempt today)
+    var isPractice = typeof isDailyDepthsPractice === 'function' && isDailyDepthsPractice();
+
+    // Generate and start the dungeon run (uses dailyDepthsPrng via _depthsRng)
+    isDepthsMode = true;
+    var firstFloor = typeof startDepthsRun === 'function' ? startDepthsRun() : null;
+    if (firstFloor && typeof applyDepthsFloor === 'function') {
+      applyDepthsFloor(firstFloor);
+    }
+
+    // Show mode badges
+    var depthsBadge = document.getElementById('depths-mode-badge');
+    if (depthsBadge) depthsBadge.style.display = 'inline-block';
+    var dailyBadge = document.getElementById('daily-depths-badge');
+    if (dailyBadge) {
+      dailyBadge.textContent = 'Daily: ' + (typeof getTodayLabel === 'function' ? getTodayLabel() : '') +
+        (isPractice ? ' (Practice)' : '');
+      dailyBadge.style.display = 'block';
+    }
+
+    // Show floor HUD
+    if (firstFloor && typeof _updateDepthsFloorHUD === 'function') {
+      _updateDepthsFloorHUD(firstFloor);
+    }
+
+    // Snapshot starting score for per-floor tracking
+    if (typeof snapshotDepthsFloorStart === 'function') snapshotDepthsFloorStart();
+
+    // Init depths tutorial on first dungeon entry (daily depths too)
+    if (typeof initDepthsTutorial === 'function') initDepthsTutorial();
+
+    // Show floor 1 lore, then start play
+    if (firstFloor && typeof _showDepthsFloorLore === 'function') {
+      _showDepthsFloorLore(firstFloor, function () {
+        depthsFloorTimerActive = true;
+        // Notify depths tutorial: first floor gameplay starting
+        if (typeof depthsTutorialNotify === 'function') depthsTutorialNotify('floorStart');
+        requestPointerLock();
+      });
+    } else {
+      requestPointerLock();
+    }
+
+    try { localStorage.setItem('mineCtris_lastMode', 'daily_depths'); } catch (_) {}
+  });
+
   console.log("Initialization complete. Starting animation loop.");
   animate();
 }
@@ -4095,6 +4250,7 @@ function placeBlock() {
   // Placement sound
   playPlaceSound();
   if (typeof tutorialNotify === "function") tutorialNotify("blockPlace");
+  if (typeof gameTooltipDismiss === 'function') gameTooltipDismiss();
 }
 
 function onMouseDown(event) {
@@ -4171,6 +4327,7 @@ function onMouseDown(event) {
     if (isBreak) {
       console.log("Block broken!");
       if (typeof tutorialNotify === "function") tutorialNotify("blockMine");
+      if (typeof gameTooltipDismiss === 'function') gameTooltipDismiss();
 
       const _isRubble = targetedBlock.userData.isRubble;
 
@@ -4220,6 +4377,11 @@ function onMouseDown(event) {
           const collected = addToInventory(_invColor);
           if (!collected) {
             console.log("Inventory full — block discarded.");
+          }
+          // Depths upgrade: Deep Pockets grants bonus block(s) per mine
+          if (isDepthsMode && typeof getDepthsInventoryBonus === 'function') {
+            var _depthsBonus = getDepthsInventoryBonus();
+            for (var _bi = 0; _bi < _depthsBonus; _bi++) addToInventory(_invColor);
           }
         }
       }
@@ -4424,6 +4586,38 @@ function triggerLightningFlash() {
 }
 
 /**
+ * Update the boss floor piece HUD (shows active piece number and total).
+ */
+function _updateBossPieceHud() {
+  var hudEl = document.getElementById('boss-piece-hud');
+  if (!hudEl) return;
+  if (!depthsBossActive) {
+    hudEl.style.display = 'none';
+    return;
+  }
+  hudEl.style.display = 'flex';
+
+  // Count boss pieces still in the air
+  var bossCount = 0;
+  var activePos = 0;
+  for (var i = 0; i < fallingPieces.length; i++) {
+    if (fallingPieces[i].userData.isBossPiece) {
+      bossCount++;
+      if (i === depthsActivePieceIndex) activePos = bossCount;
+    }
+  }
+
+  var activeEl = hudEl.querySelector('.boss-piece-active');
+  if (activeEl) {
+    if (bossCount > 0) {
+      activeEl.textContent = 'Piece ' + activePos + '/' + bossCount;
+    } else {
+      activeEl.textContent = 'Waiting...';
+    }
+  }
+}
+
+/**
  * Apply or remove blue-white emissive glow on all currently falling pieces.
  * Called when Time Freeze activates or expires.
  * @param {boolean} on  true = apply glow, false = restore default emissive
@@ -4607,6 +4801,7 @@ function activateEquippedPowerup() {
       _triggerPowerupFlash("fortress");
       break;
     }
+  }
 
   // Notify spectators of power-up activation in battle mode
   if (isBattleMode && typeof battle !== 'undefined' && battle.state === BattleState.IN_GAME) {
@@ -4650,6 +4845,12 @@ function animate() {
         }
         updateScoreHUD();
       }
+    }
+
+    // Tick Depths floor timer
+    if (isDepthsMode && depthsFloorTimerActive && typeof updateDepthsFloorTimer === 'function') {
+      updateDepthsFloorTimer(delta * 1000);
+      if (typeof updateDepthsGoalHUD === 'function') updateDepthsGoalHUD();
     }
 
     // Tick ice bridge slow timer
@@ -4734,20 +4935,34 @@ function animate() {
       }
     }
 
-    // Suppress piece spawning in editor mode
+    // Suppress piece spawning in editor mode or during tutorial spawn-suppressed steps
+    const _tutSpawnSuppressed = typeof isTutorialSpawnSuppressed === 'function' && isTutorialSpawnSuppressed() && fallingPieces.length > 0;
     if (!isEditorMode) {
       const _stormSpawnInterval = pieceStormActive ? SPAWN_INTERVAL * 0.5 : SPAWN_INTERVAL;
       spawnTimer += delta;
-      if (spawnTimer > _stormSpawnInterval) {
-        spawnFallingPiece();
-        if (pieceStormActive) {
+      if (spawnTimer > _stormSpawnInterval && !_tutSpawnSuppressed) {
+        // Boss floor: spawn wave of simultaneous pieces instead of one
+        if (depthsBossActive && typeof spawnBossFloorPieces === 'function') {
+          spawnBossFloorPieces();
           triggerLightningFlash();
-          if (typeof playStormSwoosh === "function") playStormSwoosh();
+          if (typeof playStormSwoosh === 'function') playStormSwoosh();
+          _updateBossPieceHud();
+          // Screen shake on each wave spawn for intensity
+          screenShakeActive = true;
+          screenShakeStart = clock.getElapsedTime();
+        } else {
+          spawnFallingPiece();
+          if (pieceStormActive) {
+            triggerLightningFlash();
+            if (typeof playStormSwoosh === "function") playStormSwoosh();
+          }
         }
         spawnTimer = 0;
         // Update puzzle HUD after each spawn
         if ((isPuzzleMode || isCustomPuzzleMode) && typeof updatePuzzleHUD === "function") updatePuzzleHUD();
       }
+      // Boss floor: update piece HUD each frame (tracks active piece changes from landing)
+      if (depthsBossActive) _updateBossPieceHud();
       updateLineClear(delta);
       updateFallingPieces(delta);
       if (isBattleMode && typeof battleHud !== 'undefined') battleHud.tick(delta);

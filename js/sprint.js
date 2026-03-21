@@ -80,6 +80,11 @@ function triggerSprintComplete() {
     isDailyChallenge:      false,
   });
 
+  // Metrics: log session end
+  if (typeof metricsSessionEnd === 'function') {
+    metricsSessionEnd({ score: score, linesCleared: linesCleared, blocksMined: blocksMined });
+  }
+
   // Award XP
   const _sprintXpBefore = (loadLifetimeStats().playerXP || 0);
   const { xpEarned: _sprintXP, streakBonus: _sprintStreak } = awardXP(score, 'sprint');

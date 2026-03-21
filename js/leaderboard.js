@@ -193,6 +193,7 @@ function _syncLbTabs() {
   const coopBtn         = document.getElementById('lb-tab-coop');
   const dailyCoopBtn    = document.getElementById('lb-tab-dailycoop');
   const battleBtn       = document.getElementById('lb-tab-battle');
+  const depthsBtn       = document.getElementById('lb-tab-depths');
   if (todayBtn)        todayBtn.classList.toggle('lb-tab-active',        _lbActiveTab === 'today');
   if (yestBtn)         yestBtn.classList.toggle('lb-tab-active',         _lbActiveTab === 'yesterday');
   if (thisWeekBtn)     thisWeekBtn.classList.toggle('lb-tab-active',     _lbActiveTab === 'thisweek');
@@ -202,6 +203,7 @@ function _syncLbTabs() {
   if (coopBtn)         coopBtn.classList.toggle('lb-tab-active',         _lbActiveTab === 'coop');
   if (dailyCoopBtn)    dailyCoopBtn.classList.toggle('lb-tab-active',    _lbActiveTab === 'dailycoop');
   if (battleBtn)       battleBtn.classList.toggle('lb-tab-active',       _lbActiveTab === 'battle');
+  if (depthsBtn)       depthsBtn.classList.toggle('lb-tab-active',       _lbActiveTab === 'depths');
 }
 
 function _getYesterdayString() {
@@ -283,6 +285,14 @@ async function _loadLbTab(tab) {
       const data = await apiFetchBattleLeaderboard();
       if (!data || !data.entries) throw new Error('bad response');
       _renderBattleLeaderboard(body, data.entries);
+    } else if (tab === 'depths') {
+      // Open the dedicated depths leaderboard panel instead
+      if (typeof openDepthsLeaderboard === 'function') {
+        openDepthsLeaderboard('allruns');
+        body.innerHTML = '<div class="lb-empty">Opened Depths leaderboard panel.</div>';
+      } else {
+        body.innerHTML = '<div class="lb-error">Depths leaderboard not available.</div>';
+      }
     } else {
       const date = tab === 'today' ? getDailyDateString() : _getYesterdayString();
       const data = await apiFetchLeaderboard(date);
@@ -332,6 +342,9 @@ function _renderLeaderboard(container, entries, date, labelOverride, isSeason) {
     }
 
     if (isMe) {
+      // Prestige stars/crown next to name
+      const _prestigeHtml = typeof getPrestigeStarsHtml === 'function' ? getPrestigeStarsHtml() : '';
+      if (_prestigeHtml) nameCell = _prestigeHtml + ' ' + nameCell;
       const badgeLabel = typeof getLevelBadgeLabel === 'function' ? getLevelBadgeLabel(_myLevel) : 'L' + _myLevel;
       nameCell += ' <span class="lb-level-badge">' + badgeLabel + '</span>';
       if (_myTitle) nameCell += ' <span class="lb-level-title">' + _myTitle + '</span>';
@@ -676,6 +689,15 @@ function initLeaderboard() {
       _lbActiveTab = 'battle';
       _syncLbTabs();
       _loadLbTab('battle');
+    });
+  }
+
+  const depthsTabBtn = document.getElementById('lb-tab-depths');
+  if (depthsTabBtn) {
+    depthsTabBtn.addEventListener('click', function() {
+      _lbActiveTab = 'depths';
+      _syncLbTabs();
+      _loadLbTab('depths');
     });
   }
 

@@ -177,6 +177,13 @@ function onKeyDown(event) {
     case "KeyG":
       if (typeof activateIceBridge === "function") activateIceBridge();
       break;
+    case "Tab":
+      // Boss floor: cycle active piece
+      if (depthsBossActive && typeof cycleBossActivePiece === 'function') {
+        event.preventDefault();
+        cycleBossActivePiece();
+      }
+      break;
   }
 }
 

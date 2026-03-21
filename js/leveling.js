@@ -1,16 +1,157 @@
-// Player leveling system — 50 levels, milestone skin unlocks, level badge.
+// Player leveling system — 50 levels, milestone skin unlocks, level badge, prestige.
 // Requires: stats.js (loadLifetimeStats, saveLifetimeStats)
 
 // ── Level curve ───────────────────────────────────────────────────────────────
-// L1 requires 100 XP; each subsequent level requires ~15% more than the previous.
-// Cumulative XP to reach level N is stored in LEVEL_XP_TABLE[N-1] (0-indexed).
-// LEVEL_XP_TABLE[0] = 0 (starting XP for level 1), LEVEL_XP_TABLE[1] = 100 (reach L2), etc.
+// Early curve (L1–L6): flat 50–75 XP per level for fast first-session unlocks.
+// Target: a new player reaches L6-7 within ~15 minutes of play.
+// Late curve (L7+): each level requires ~15% more than the previous, starting
+// from a 100 XP base at L7.
+//
+// ── XP sources (first session, ~15 min) ──────────────────────────────────────
+// Tutorial completion:       50 XP  (one-time, via awardTutorialXP)
+// First game completion:    100 XP  (one-time, via awardXP first-game bonus)
+// Classic game completion:   50–100 XP per game (score / 50)
+// Lines cleared:             variable (included in score)
+// Daily mission:             50 XP (if completed)
+// Streak bonus:              +10% after 2+ consecutive days
+//
+// Cumulative XP to reach level N is stored in CUMULATIVE_XP[N-1] (0-indexed).
+// CUMULATIVE_XP[0] = 0 (starting XP for level 1).
 
 const MAX_LEVEL = 50;
 
-/** XP required to go from level N to level N+1 (1-indexed, so index 0 = L1→L2). */
+// ── Prestige system ──────────────────────────────────────────────────────────
+// At level 50, players can prestige: reset XP/level to 0 for permanent bonuses.
+
+const PRESTIGE_KEY = 'mineCtris_prestige';
+const PRESTIGE_TOTAL_XP_KEY = 'mineCtris_prestigeTotalXP';
+
+/** Prestige reward table — each entry defines what a prestige tier grants. */
+const PRESTIGE_REWARDS = [
+  { prestige: 1,  xpBonus: 0.05, cosmetic: 'Gold name color',                         cosmeticId: 'title_prestige_1' },
+  { prestige: 2,  xpBonus: 0.10, cosmetic: 'Diamond name color + unique pickaxe trail', cosmeticId: 'trail_prestige_2' },
+  { prestige: 3,  xpBonus: 0.15, cosmetic: '"Grandmaster" title + exclusive block skin', cosmeticId: 'block_skin_prestige_3' },
+  { prestige: 5,  xpBonus: 0.25, cosmetic: 'Animated profile border + "Legend" title',  cosmeticId: 'border_prestige_5' },
+  { prestige: 10, xpBonus: 0.50, cosmetic: 'Crown leaderboard icon',                   cosmeticId: 'title_prestige_10' },
+];
+
+/** Load prestige level from localStorage (0 = never prestiged). */
+function getPrestigeLevel() {
+  try {
+    var v = parseInt(localStorage.getItem(PRESTIGE_KEY), 10);
+    return isNaN(v) ? 0 : v;
+  } catch (_) { return 0; }
+}
+
+/** Save prestige level to localStorage. */
+function _savePrestigeLevel(level) {
+  try { localStorage.setItem(PRESTIGE_KEY, String(level)); } catch (_) {}
+}
+
+/** Load total lifetime XP earned across all prestiges. */
+function getPrestigeTotalXP() {
+  try {
+    var v = parseInt(localStorage.getItem(PRESTIGE_TOTAL_XP_KEY), 10);
+    return isNaN(v) ? 0 : v;
+  } catch (_) { return 0; }
+}
+
+function _savePrestigeTotalXP(xp) {
+  try { localStorage.setItem(PRESTIGE_TOTAL_XP_KEY, String(xp)); } catch (_) {}
+}
+
+/**
+ * Get the XP bonus multiplier from prestige (e.g. 0.05 for prestige 1).
+ * Returns the highest applicable bonus from the rewards table.
+ */
+function getPrestigeXPBonus() {
+  var pLevel = getPrestigeLevel();
+  if (pLevel <= 0) return 0;
+  var bonus = 0;
+  for (var i = 0; i < PRESTIGE_REWARDS.length; i++) {
+    if (pLevel >= PRESTIGE_REWARDS[i].prestige) {
+      bonus = PRESTIGE_REWARDS[i].xpBonus;
+    }
+  }
+  return bonus;
+}
+
+/**
+ * Get the reward info for the next prestige tier (what you'll earn).
+ * Returns null if at max prestige or not eligible.
+ */
+function getNextPrestigeReward() {
+  var pLevel = getPrestigeLevel();
+  for (var i = 0; i < PRESTIGE_REWARDS.length; i++) {
+    if (PRESTIGE_REWARDS[i].prestige > pLevel) {
+      return PRESTIGE_REWARDS[i];
+    }
+  }
+  return null; // at or beyond max reward tier
+}
+
+/**
+ * Execute prestige: reset XP to 0, increment prestige counter.
+ * Mode unlocks are NOT reset. Returns new prestige level.
+ */
+function performPrestige() {
+  if (typeof loadLifetimeStats !== 'function') return 0;
+  var stats = loadLifetimeStats();
+  var currentLevel = getLevelFromXP(stats.playerXP || 0);
+  if (currentLevel < MAX_LEVEL) return getPrestigeLevel(); // not eligible
+
+  // Track total XP across all prestiges
+  var totalXP = getPrestigeTotalXP() + (stats.playerXP || 0);
+  _savePrestigeTotalXP(totalXP);
+
+  // Reset XP to 0
+  stats.playerXP = 0;
+  saveLifetimeStats(stats);
+
+  // Increment prestige counter
+  var newPrestige = getPrestigeLevel() + 1;
+  _savePrestigeLevel(newPrestige);
+
+  // Process cosmetic unlocks for new prestige level
+  if (typeof processUnlocks === 'function') {
+    processUnlocks();
+  }
+
+  // Update HUD
+  updateLevelBadgeHUD();
+  if (typeof applyModeUnlockState === 'function') {
+    // Mode unlocks persist — showAllModes is enabled at prestige
+    try { localStorage.setItem('mineCtris_showAllModes', 'true'); } catch (_) {}
+  }
+
+  // Show prestige toast
+  _showPrestigeToast(newPrestige);
+
+  // Metrics: log prestige
+  if (typeof metricsPrestige === 'function') metricsPrestige(newPrestige);
+
+  return newPrestige;
+}
+
+/** Check if the player can prestige right now. */
+function canPrestige() {
+  return getPlayerLevel() >= MAX_LEVEL;
+}
+
+function _showPrestigeToast(prestigeLevel) {
+  _levelUpToastQueue.push({ type: 'prestige', prestigeLevel: prestigeLevel });
+  if (!_levelUpToastRunning) _drainLevelUpQueue();
+}
+
+// Early-level XP requirements (L1→L2 through L6→L7): flat, low values.
+// These ensure levels 1-6 are achievable in ~15 minutes of first-session play.
+const EARLY_LEVEL_XP = [50, 50, 60, 60, 75, 75]; // indices 0-5 → levels 1→2 through 6→7
+
+/** XP required to go from level N to level N+1 (1-indexed, so level 1 = L1→L2). */
 function _xpForLevelUp(level) {
-  return Math.round(100 * Math.pow(1.15, level - 1));
+  if (level <= EARLY_LEVEL_XP.length) return EARLY_LEVEL_XP[level - 1];
+  // L7+ uses 15% exponential growth from a 100 XP base
+  return Math.round(100 * Math.pow(1.15, level - 7));
 }
 
 /** Build cumulative XP thresholds. CUMULATIVE_XP[n] = total XP needed to reach level n+1. */
@@ -79,6 +220,9 @@ function getPlayerLevel() {
  * Used on leaderboard entries.
  */
 function getLevelTitle(level) {
+  var pLevel = getPrestigeLevel();
+  if (pLevel >= 5) return 'Legend';
+  if (pLevel >= 3) return 'Grandmaster';
   if (level >= MAX_LEVEL) return 'Master';
   if (level >= 25)         return 'Veteran';
   return '';
@@ -87,6 +231,15 @@ function getLevelTitle(level) {
 /** Return a short badge label, e.g. "L12" or "L50". */
 function getLevelBadgeLabel(level) {
   return 'L' + level;
+}
+
+/** Return prestige star indicators for display (empty string if no prestige). */
+function getPrestigeStarsHtml() {
+  var pLevel = getPrestigeLevel();
+  if (pLevel <= 0) return '';
+  if (pLevel >= 10) return '<span class="lb-prestige-crown" title="Prestige ' + pLevel + '">\uD83D\uDC51</span>';
+  return '<span class="lb-prestige-stars" title="Prestige ' + pLevel + '">' +
+    '\u2B50'.repeat(pLevel) + '</span>';
 }
 
 // ── Milestone skins ───────────────────────────────────────────────────────────
@@ -128,6 +281,8 @@ function checkLevelUp(oldXP, newXP) {
   // Fire a toast for each level gained (usually just one)
   for (let lvl = oldLevel + 1; lvl <= newLevel; lvl++) {
     _showLevelUpToast(lvl);
+    // Metrics: log each level-up
+    if (typeof metricsLevelUp === 'function') metricsLevelUp(lvl);
   }
 
   // Check milestone skin unlocks
@@ -135,6 +290,11 @@ function checkLevelUp(oldXP, newXP) {
     if (m.level > oldLevel && m.level <= newLevel) {
       _showSkinUnlockToast(m);
     }
+  }
+
+  // Show mode unlock notifications for newly available modes
+  if (typeof showModeUnlockToasts === 'function') {
+    showModeUnlockToasts(oldLevel, newLevel);
   }
 
   // Update HUD badge
@@ -185,19 +345,43 @@ function _displayLevelUpToast(item, done) {
   const bodyEl  = el.querySelector('.lu-toast-body');
 
   if (item.type === 'levelup') {
-    el.classList.remove('streak-toast');
+    el.classList.remove('streak-toast', 'lu-toast-mode-unlock');
     const title = getLevelTitle(item.level);
     if (iconEl)  iconEl.textContent  = item.level >= MAX_LEVEL ? '\u{1F947}' : '\u2B06';
     if (titleEl) titleEl.textContent = 'LEVEL UP!  ' + getLevelBadgeLabel(item.level);
     if (bodyEl)  bodyEl.textContent  = title ? 'Title unlocked: ' + title : '';
   } else if (item.type === 'streak') {
+    el.classList.remove('lu-toast-mode-unlock');
     el.classList.add('streak-toast');
     if (iconEl)  iconEl.textContent  = '\uD83D\uDD25';
     if (titleEl) titleEl.textContent = item.streak + '-DAY STREAK!';
     if (bodyEl)  bodyEl.textContent  = '+10% XP bonus active!';
+  } else if (item.type === 'mode_unlock') {
+    el.classList.remove('streak-toast');
+    el.classList.add('lu-toast-mode-unlock');
+    if (iconEl)  iconEl.textContent  = '\uD83D\uDD13';
+    if (titleEl) titleEl.textContent = 'MODE UNLOCKED!';
+    if (bodyEl)  bodyEl.textContent  = item.modeName + ' is now available!';
+  } else if (item.type === 'prestige') {
+    el.classList.remove('streak-toast', 'lu-toast-mode-unlock');
+    if (iconEl)  iconEl.textContent  = '\u2B50';
+    if (titleEl) titleEl.textContent = 'PRESTIGE ' + item.prestigeLevel + '!';
+    var nextReward = getNextPrestigeReward();
+    var rewardText = nextReward ? nextReward.cosmetic : 'Max prestige reached!';
+    // Show current tier reward
+    var currentReward = null;
+    for (var ri = 0; ri < PRESTIGE_REWARDS.length; ri++) {
+      if (PRESTIGE_REWARDS[ri].prestige === item.prestigeLevel) {
+        currentReward = PRESTIGE_REWARDS[ri];
+        break;
+      }
+    }
+    if (bodyEl) bodyEl.textContent = currentReward
+      ? '+' + Math.round(currentReward.xpBonus * 100) + '% XP bonus unlocked!'
+      : 'Prestige ' + item.prestigeLevel + ' achieved!';
   } else {
     // skin unlock
-    el.classList.remove('streak-toast');
+    el.classList.remove('streak-toast', 'lu-toast-mode-unlock');
     const m = item.milestone;
     if (iconEl)  iconEl.textContent  = m.icon;
     if (titleEl) titleEl.textContent = 'SKIN UNLOCKED';
@@ -242,4 +426,39 @@ function updateLevelBadgeHUD() {
   el.textContent = getLevelBadgeLabel(level);
   // Give the badge a special class at milestone levels
   el.className = 'level-badge' + (level >= MAX_LEVEL ? ' level-badge-legendary' : level >= 30 ? ' level-badge-void' : level >= 15 ? ' level-badge-storm' : level >= 5 ? ' level-badge-fossil' : '');
+}
+
+// ── Tutorial & first-game XP bonuses ─────────────────────────────────────────
+
+const TUTORIAL_XP_KEY = 'mineCtris_tutorialXPAwarded';
+const FIRST_GAME_XP_KEY = 'mineCtris_firstGameXPAwarded';
+const TUTORIAL_XP_AMOUNT = 50;
+const FIRST_GAME_XP_AMOUNT = 100;
+
+/**
+ * Award one-time XP for completing the tutorial (50 XP).
+ * Safe to call multiple times — only awards once.
+ */
+function awardTutorialXP() {
+  try { if (localStorage.getItem(TUTORIAL_XP_KEY)) return 0; } catch (_) {}
+  if (typeof loadLifetimeStats !== 'function') return 0;
+  const stats = loadLifetimeStats();
+  const oldXP = stats.playerXP || 0;
+  stats.playerXP = oldXP + TUTORIAL_XP_AMOUNT;
+  saveLifetimeStats(stats);
+  try { localStorage.setItem(TUTORIAL_XP_KEY, '1'); } catch (_) {}
+  if (typeof checkLevelUp === 'function') checkLevelUp(oldXP, stats.playerXP);
+  return TUTORIAL_XP_AMOUNT;
+}
+
+/**
+ * Award one-time first-game completion bonus (100 XP).
+ * Called from awardXP on the player's very first completed game.
+ * Safe to call multiple times — only awards once.
+ * @returns {number} bonus XP awarded (0 if already claimed)
+ */
+function _awardFirstGameBonus() {
+  try { if (localStorage.getItem(FIRST_GAME_XP_KEY)) return 0; } catch (_) {}
+  try { localStorage.setItem(FIRST_GAME_XP_KEY, '1'); } catch (_) {}
+  return FIRST_GAME_XP_AMOUNT;
 }

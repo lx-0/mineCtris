@@ -120,6 +120,16 @@ function awardXP(finalScore, modeKey) {
   const baseXP = Math.floor(finalScore / 50);
   let xpEarned = Math.floor(baseXP * multiplier);
   if (streakBonus) xpEarned = Math.floor(xpEarned * 1.1);
+  // Prestige XP bonus (multiplicative)
+  if (typeof getPrestigeXPBonus === 'function') {
+    const prestigeBonus = getPrestigeXPBonus();
+    if (prestigeBonus > 0) xpEarned = Math.floor(xpEarned * (1 + prestigeBonus));
+  }
+
+  // First-game completion bonus (one-time 100 XP)
+  if (typeof _awardFirstGameBonus === 'function') {
+    xpEarned += _awardFirstGameBonus();
+  }
 
   stats.playerXP = (stats.playerXP || 0) + xpEarned;
   saveLifetimeStats(stats);
@@ -160,12 +170,36 @@ function renderStatsPanel() {
     ['PLAYER LEVEL',      typeof getLevelFromXP === 'function' ? getLevelFromXP(stats.playerXP || 0) : 1],
     ['CURRENT STREAK',    (stats.currentStreak || 0) + ' day' + ((stats.currentStreak || 0) === 1 ? '' : 's')],
   ];
+  // Prestige stats
+  if (typeof getPrestigeLevel === 'function') {
+    var pLevel = getPrestigeLevel();
+    if (pLevel > 0) {
+      rows.push(['PRESTIGE', '\u2B50'.repeat(Math.min(pLevel, 10)) + ' (' + pLevel + ')']);
+      rows.push(['XP BONUS', '+' + Math.round(getPrestigeXPBonus() * 100) + '%']);
+      rows.push(['LIFETIME XP', getPrestigeTotalXP() + (stats.playerXP || 0)]);
+    }
+  }
   el.innerHTML = rows.map(([label, val]) =>
     `<div class="stats-row">` +
     `<span class="stats-label">${label}</span>` +
     `<span class="stats-value">${val}</span>` +
     `</div>`
   ).join('');
+
+  // Prestige button (only visible at level 50)
+  if (typeof canPrestige === 'function' && canPrestige()) {
+    var nextReward = typeof getNextPrestigeReward === 'function' ? getNextPrestigeReward() : null;
+    var rewardPreview = nextReward
+      ? 'Next reward: +' + Math.round(nextReward.xpBonus * 100) + '% XP, ' + nextReward.cosmetic
+      : 'Max prestige rewards reached — prestige for glory!';
+    el.innerHTML +=
+      '<div class="stats-prestige-section">' +
+        '<button id="prestige-btn" class="prestige-btn" onclick="_openPrestigeConfirm()">' +
+          '\u2B50 PRESTIGE \u2B50' +
+        '</button>' +
+        '<div class="prestige-reward-preview">' + rewardPreview + '</div>' +
+      '</div>';
+  }
 
   // Tournament history section
   if (typeof tournamentLobby !== 'undefined' &&
@@ -225,4 +259,44 @@ function openStatsPanel() {
 function closeStatsPanel() {
   const el = document.getElementById('stats-overlay');
   if (el) el.style.display = 'none';
+}
+
+// ── Prestige confirmation dialog ─────────────────────────────────────────────
+
+function _openPrestigeConfirm() {
+  var overlay = document.getElementById('prestige-confirm-overlay');
+  if (!overlay) return;
+  var nextPrestige = (typeof getPrestigeLevel === 'function' ? getPrestigeLevel() : 0) + 1;
+  var nextReward = typeof getNextPrestigeReward === 'function' ? getNextPrestigeReward() : null;
+  var rewardHtml = '';
+  if (nextReward) {
+    rewardHtml = '<div class="prestige-confirm-reward">' +
+      '<strong>You will earn:</strong><br>' +
+      '+' + Math.round(nextReward.xpBonus * 100) + '% XP gain<br>' +
+      nextReward.cosmetic +
+    '</div>';
+  }
+  var body = document.getElementById('prestige-confirm-body');
+  if (body) {
+    body.innerHTML =
+      '<p>Reset to <strong>Level 1</strong>?</p>' +
+      '<p>Your XP will be reset to 0, but all mode unlocks and cosmetics remain.</p>' +
+      rewardHtml +
+      '<p class="prestige-confirm-warning">This cannot be undone!</p>';
+  }
+  overlay.style.display = 'flex';
+}
+
+function _closePrestigeConfirm() {
+  var overlay = document.getElementById('prestige-confirm-overlay');
+  if (overlay) overlay.style.display = 'none';
+}
+
+function _confirmPrestige() {
+  if (typeof performPrestige === 'function') {
+    performPrestige();
+  }
+  _closePrestigeConfirm();
+  // Refresh stats panel to show new state
+  renderStatsPanel();
 }

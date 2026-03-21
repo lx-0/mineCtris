@@ -15,6 +15,8 @@ function addToInventory(cssColor) {
   // Auto-select first block type collected
   if (!selectedBlockColor) selectedBlockColor = cssColor;
   updateInventoryHUD();
+  // Contextual game tooltip: first inventory pickup
+  if (typeof gameTooltip === 'function') gameTooltip('inventoryPickup');
   // Context-sensitive crafting hint (fires once when player first gets Wood)
   // Suppress in Sprint/Blitz modes where crafting is disabled.
   if (cssColor === '#8b4513' && typeof craftHintCheck === 'function' &&

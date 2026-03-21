@@ -6,6 +6,8 @@ function addScore(pts) {
   const _wmod = typeof getWorldModifier === 'function' ? getWorldModifier() : null;
   let _mult = _wmod ? _wmod.scoreMultiplier : 1.0;
   if (isCoopMode) _mult *= coopScoreMultiplier;
+  // Depths upgrade score multiplier (Adrenaline Rush, Glass Cannon)
+  if (isDepthsMode && typeof getDepthsScoreMultiplier === 'function') _mult *= getDepthsScoreMultiplier();
   const _actual = (_mult !== 1.0) ? Math.round(pts * _mult) : pts;
   score += _actual;
   if (isCoopMode) {
@@ -128,6 +130,8 @@ function updateDangerWarning() {
     authHeight >= DANGER_ZONE_HEIGHT;
   dangerEl.style.display = inDanger ? "block" : "none";
   dangerTextEl.style.display = inDanger ? "block" : "none";
+  // Contextual game tooltip: first danger warning
+  if (inDanger && typeof gameTooltip === 'function') gameTooltip('dangerWarning');
 }
 
 /** Check if any landed block has reached the game-over height. */
@@ -137,7 +141,12 @@ function checkGameOver() {
   if (isGameOver) return;
   const localMaxY = getMaxBlockHeight();
   const authHeight = isCoopMode ? Math.max(localMaxY, coopPartnerMaxY) : localMaxY;
-  if (authHeight >= GAME_OVER_HEIGHT) {
+  // Depths Fragile Miner upgrade: reduces effective game-over height by N rows
+  var _effectiveGoHeight = GAME_OVER_HEIGHT;
+  if (isDepthsMode && typeof getDepthsHeightPenalty === 'function') {
+    _effectiveGoHeight = Math.max(8, GAME_OVER_HEIGHT - getDepthsHeightPenalty() * BLOCK_SIZE);
+  }
+  if (authHeight >= _effectiveGoHeight) {
     // Battle mode: trigger battle loss, not regular game-over
     if (isBattleMode) {
       triggerBattleResult('loss');
@@ -146,6 +155,8 @@ function checkGameOver() {
     // Shield power-up: absorb the first game-over trigger (solo only)
     if (shieldActive && !isCoopMode) {
       shieldActive = false;
+      // Track shield consumption for Depths Flawless Core achievement
+      if (isDepthsMode && typeof achOnDepthsShieldConsumed === 'function') achOnDepthsShieldConsumed();
       showCraftedBanner("Shield absorbed the blow! Keep going.");
       if (typeof updatePowerupHUD === "function") updatePowerupHUD();
       // Visual: absorption burst flash + chromatic hit
@@ -176,6 +187,9 @@ function triggerGameOver() {
   isGameOver = true;
   gameTimerRunning = false;
   if (typeof clearSaveState === "function") clearSaveState();
+  // Contextual game tooltip: first game over (dismiss any active tooltip first)
+  if (typeof gameTooltipDismiss === 'function') gameTooltipDismiss();
+  if (typeof gameTooltip === 'function') gameTooltip('gameOver', { score: score });
 
   // Co-op game over: show co-op summary and bail out
   if (isCoopMode) {
@@ -265,6 +279,11 @@ function triggerGameOver() {
     highestDifficultyTier: lastDifficultyTier,
     isDailyChallenge,
   });
+
+  // Metrics: log session end
+  if (typeof metricsSessionEnd === 'function') {
+    metricsSessionEnd({ score: state.score, linesCleared: state.linesCleared, blocksMined: state.blocksMined });
+  }
 
   // Daily missions: classic survival time (only in pure classic mode)
   if (!isDailyChallenge && !isWeeklyChallenge) {
@@ -432,6 +451,26 @@ function triggerGameOver() {
   // Fade out background music, then play game-over jingle
   if (typeof stopBgMusic === "function") stopBgMusic();
   if (typeof playGameOverJingle === "function") playGameOverJingle();
+
+  // Depths mode: permadeath — run ends immediately, show depths results
+  if (isDepthsMode && typeof showDepthsResults === 'function') {
+    var _depthsData = {
+      score:        state.score,
+      linesCleared: state.linesCleared,
+      blocksMined:  state.blocksMined,
+      timeSeconds:  state.elapsedSeconds,
+      floorReached: typeof getDepthsFloorNum === 'function' ? getDepthsFloorNum() : 0,
+      runComplete:  depthsRunComplete,
+    };
+    // Victory screen for completing all 7 floors
+    if (depthsRunComplete && typeof showDepthsVictoryScreen === 'function') {
+      showDepthsVictoryScreen(_depthsData);
+    } else {
+      showDepthsResults(_depthsData);
+    }
+    if (controls && controls.isLocked) controls.unlock();
+    return;
+  }
 
   // Expedition mode: show dedicated results screen instead of generic game-over
   if (_inExpedition && typeof showExpeditionResults === 'function') {
@@ -773,6 +812,32 @@ function resetGame() {
   const hsTableEl2 = document.getElementById('hs-go-table');
   if (hsTableEl2) hsTableEl2.style.display = '';
 
+  // Reset Depths (dungeon) mode state
+  isDepthsMode = false;
+  depthsFloorLinesCleared = 0;
+  depthsFloorElapsedMs = 0;
+  depthsFloorTimerActive = false;
+  depthsRunComplete = false;
+  isDailyDepths = false;
+  dailyDepthsPrng = null;
+  if (typeof clearDepthsRun === 'function') clearDepthsRun();
+  const depthsBadgeEl = document.getElementById('depths-mode-badge');
+  if (depthsBadgeEl) depthsBadgeEl.style.display = 'none';
+  const dailyDepthsBadgeEl = document.getElementById('daily-depths-badge');
+  if (dailyDepthsBadgeEl) dailyDepthsBadgeEl.style.display = 'none';
+  const depthsFloorHudEl = document.getElementById('depths-floor-hud');
+  if (depthsFloorHudEl) depthsFloorHudEl.style.display = 'none';
+  const depthsResultsEl = document.getElementById('depths-results-overlay');
+  if (depthsResultsEl) depthsResultsEl.style.display = 'none';
+  const depthsTransitionEl = document.getElementById('depths-transition-overlay');
+  if (depthsTransitionEl) depthsTransitionEl.style.display = 'none';
+  const depthsUpgradeEl = document.getElementById('depths-upgrade-overlay');
+  if (depthsUpgradeEl) depthsUpgradeEl.style.display = 'none';
+  // Reset boss floor state
+  if (typeof resetBossFloorState === 'function') resetBossFloorState();
+  const bossPieceHudEl = document.getElementById('boss-piece-hud');
+  if (bossPieceHudEl) bossPieceHudEl.style.display = 'none';
+
   // Clear expedition biome theme (restores user's cosmetic theme)
   if (typeof clearBiomeTheme === "function") clearBiomeTheme();
 
@@ -800,6 +865,16 @@ function resetGame() {
   if (puzzleCompleteEl) puzzleCompleteEl.style.display = "none";
   const puzzleBadgeEl2 = document.getElementById("puzzle-badge");
   if (puzzleBadgeEl2) puzzleBadgeEl2.style.display = "none";
+
+  // Resolve equipped block skin for this session (skin changes take effect on game start).
+  if (typeof getEquipped === 'function') {
+    const skinCosmetic = getEquipped('block_skin');
+    activeBlockSkin = (skinCosmetic && skinCosmetic.assets && skinCosmetic.assets.themeKey !== 'default')
+      ? skinCosmetic.assets.themeKey
+      : null;
+  } else {
+    activeBlockSkin = null;
+  }
 
   // Reset next-piece queue
   initPieceQueue();

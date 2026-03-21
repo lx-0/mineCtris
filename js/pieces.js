@@ -145,6 +145,9 @@ function updateNextPiecesHUD() {
     let palette;
     if (colorblindMode && COLORBLIND_COLORS[index] !== null) {
       palette = COLORBLIND_COLORS[index];
+    } else if (activeBlockSkin && BLOCK_SKIN_PALETTES[activeBlockSkin]) {
+      const skinDef = BLOCK_SKIN_PALETTES[activeBlockSkin];
+      palette = (skinDef.colors[index] !== null) ? skinDef.colors[index] : COLORS[index];
     } else {
       const THEME_PALETTE = {
         nether: NETHER_COLORS, ocean: OCEAN_COLORS, candy: CANDY_COLORS,
@@ -165,12 +168,13 @@ function updateNextPiecesHUD() {
       palette = (tp && tp[index] !== null) ? tp[index] : COLORS[index];
     }
     const hex = '#' + palette.toString(16).padStart(6, '0');
+    const glowSize = (activeBlockSkin === 'neon') ? 8 : 3;
     html += '<div class="np-piece">';
     shape.forEach(row => {
       html += '<div class="np-row">';
       row.forEach(v => {
         html += v
-          ? `<div class="np-cell" style="background:${hex};box-shadow:0 0 3px ${hex};"></div>`
+          ? `<div class="np-cell" style="background:${hex};box-shadow:0 0 ${glowSize}px ${hex};"></div>`
           : '<div class="np-cell np-empty"></div>';
       });
       html += '</div>';
@@ -190,6 +194,10 @@ function spawnFallingPiece() {
   if (isBlitzMode && !blitzTimerActive && !blitzComplete) {
     blitzTimerActive = true;
   }
+  // In Depths mode, start the floor timer on the very first piece drop
+  if (isDepthsMode && !depthsFloorTimerActive) {
+    depthsFloorTimerActive = true;
+  }
 
   // Battle: deliver one queued garbage row before this piece spawns.
   if (isBattleMode && typeof deliverPendingGarbage === 'function') {
@@ -203,7 +211,9 @@ function spawnFallingPiece() {
   const _coopMult = isCoopMode ? coopFallMultiplier : 1.0;
   // Biome fall speed multiplier (Nether biome = 1.5x; others = 1.0).
   const _biomeFallMult = typeof getBiomeFallSpeedMult === 'function' ? getBiomeFallSpeedMult() : 1.0;
-  const _fallMult = _wmodFallMult * _coopMult * _biomeFallMult;
+  // Depths upgrade fall speed multiplier (reduction from Featherfall, increase from Adrenaline Rush).
+  const _depthsFallMult = (isDepthsMode && typeof getDepthsFallSpeedMult === 'function') ? getDepthsFallSpeedMult() : 1.0;
+  const _fallMult = _wmodFallMult * _coopMult * _biomeFallMult * _depthsFallMult;
 
   // Co-op mode: use server-authoritative piece from the shared queue.
   if (isCoopMode) {
@@ -303,8 +313,12 @@ function spawnFallingPiece() {
   pieceQueue.push({ index: newIdx, shape: SHAPES[newIdx] });
   updateNextPiecesHUD();
   const piece3D = createPiece3D(shape, index);
-  const spawnX = (_rng() - 0.5) * (WORLD_SIZE * 0.8);
-  const spawnZ = (_rng() - 0.5) * (WORLD_SIZE * 0.8);
+  // Depths mode: constrain spawn to 8-wide play area (±4 blocks from center)
+  const _spawnRange = isDepthsMode && typeof getDepthsSpawnRange === 'function'
+    ? getDepthsSpawnRange() * 2
+    : WORLD_SIZE * 0.8;
+  const spawnX = (_rng() - 0.5) * _spawnRange;
+  const spawnZ = (_rng() - 0.5) * _spawnRange;
   const spawnY = WORLD_SIZE * 0.6;
   piece3D.position.set(spawnX, spawnY, spawnZ);
   piece3D.userData.velocity = new THREE.Vector3(0, -(GRAVITY / 4) * difficultyMultiplier * _fallMult, 0);
@@ -385,6 +399,12 @@ function checkAndApplyPlayerPush(piece) {
 
 /** Returns the falling piece with the lowest point, if it's within the nudge activation zone. */
 function getNudgeTargetPiece() {
+  // Boss floor override: always target the active (player-controlled) piece
+  if (depthsBossActive && typeof getBossActivePiece === 'function') {
+    var bossPiece = getBossActivePiece();
+    if (bossPiece) return bossPiece;
+  }
+
   let closestPiece = null;
   let closestLowest = Infinity;
   const _tv = new THREE.Vector3();
@@ -492,8 +512,9 @@ function updateFallingPieces(delta) {
   // Time Freeze: all pieces stop falling (player can mine/reposition freely).
   if (timeFreezeActive) return;
 
-  // Apply fall-speed modifiers: Slow Down power-up (0.5×) or Ice Bridge (0.8×).
-  const effectiveDelta = slowDownActive ? delta * 0.5 : iceBridgeSlowActive ? delta * 0.8 : delta;
+  // Apply fall-speed modifiers: Slow Down power-up (0.5×), Ice Bridge (0.8×), or tutorial (0.5×).
+  const _tutSlow = typeof isTutorialSlowActive === 'function' && isTutorialSlowActive();
+  const effectiveDelta = _tutSlow ? delta * 0.5 : slowDownActive ? delta * 0.5 : iceBridgeSlowActive ? delta * 0.8 : delta;
 
   // Ice biome: lock delay in seconds (0 = no delay).
   const _lockDelaySecs = typeof getBiomeLockDelaySecs === 'function' ? getBiomeLockDelaySecs() : 0;
@@ -600,6 +621,7 @@ function updateFallingPieces(delta) {
     // Clean up Ice biome lock-delay state (may be set if delay just expired).
     delete pieceToLand.userData.lockDelayRemaining;
     delete pieceToLand.userData.lockDriftVel;
+
     checkAndApplyPlayerPush(pieceToLand);
     playPlaceSound();
     disposePieceTrail(pieceToLand);
@@ -646,6 +668,11 @@ function updateFallingPieces(delta) {
     removePieceShadow(pieceToLand);
     fallingPiecesGroup.remove(pieceToLand);
     fallingPieces.splice(index, 1);
+    // Boss floor: update active piece tracking after splice
+    if (depthsBossActive && pieceToLand.userData.isBossPiece &&
+        typeof onBossPieceLanded === 'function') {
+      onBossPieceLanded(index);
+    }
     checkLineClear(newBlocks);
     // Co-op: broadcast landed blocks for reconciliation on partner's client
     if (isCoopMode && typeof coop !== 'undefined' && coop.state === CoopState.IN_GAME) {
@@ -679,6 +706,8 @@ function updateFallingPieces(delta) {
     if (typeof saveGameState === "function") saveGameState();
     if (isSurvivalMode && typeof saveSurvivalWorld === "function") saveSurvivalWorld();
     if (typeof tutorialNotify === "function") tutorialNotify("pieceLand");
+    // Contextual game tooltip: check for nearly-complete rows
+    if (typeof gameTooltipCheckNearlyFull === 'function') gameTooltipCheckNearlyFull();
   }
 
   // Tick nudge cooldown
@@ -690,6 +719,227 @@ function updateFallingPieces(delta) {
     const showHint = controls && controls.isLocked && !isGameOver && getNudgeTargetPiece() !== null;
     nudgeHintEl.style.display = showHint ? "block" : "none";
   }
+}
+
+// ── Depths boss floor: multi-piece system ────────────────────────────────────
+
+/**
+ * Spawn a wave of simultaneous pieces for boss floor encounters.
+ * Called instead of single spawnFallingPiece() on boss floors.
+ * Spawns N pieces at once; the first is marked as active (player-controlled).
+ */
+function spawnBossFloorPieces() {
+  if (!depthsBossConfig) return;
+  var count = depthsBossConfig.simultaneousPieces || 3;
+
+  // Compute fall speed multipliers (same as spawnFallingPiece)
+  var _wmod = typeof getWorldModifier === 'function' ? getWorldModifier() : null;
+  var _wmodFallMult = _wmod ? _wmod.fallSpeedMult : 1.0;
+  var _biomeFallMult = typeof getBiomeFallSpeedMult === 'function' ? getBiomeFallSpeedMult() : 1.0;
+  var _depthsFallMult = typeof getDepthsFallSpeedMult === 'function' ? getDepthsFallSpeedMult() : 1.0;
+  // Boss floor fall speed override (e.g., The Core = 2×) replaces the biome/modifier stack
+  var _fallMult = depthsBossConfig.fallSpeedOverride
+    ? depthsBossConfig.fallSpeedOverride
+    : _wmodFallMult * _biomeFallMult * _depthsFallMult;
+  var _spawnRange = typeof getDepthsSpawnRange === 'function'
+    ? getDepthsSpawnRange() * 2 : WORLD_SIZE * 0.8;
+
+  // Start floor timer on first boss spawn
+  if (isDepthsMode && !depthsFloorTimerActive) {
+    depthsFloorTimerActive = true;
+  }
+
+  for (var i = 0; i < count; i++) {
+    // Draw from queue
+    if (pieceQueue.length === 0) initPieceQueue();
+    var entry = pieceQueue.shift();
+    var newIdx = _randomShapeIndex();
+    pieceQueue.push({ index: newIdx, shape: SHAPES[newIdx] });
+
+    var piece3D = createPiece3D(entry.shape, entry.index);
+
+    // Spread pieces across the board so they don't overlap
+    var angle = (i / count) * Math.PI * 2 + (_rng() * 0.5);
+    var radius = _spawnRange * 0.3;
+    var spawnX = Math.cos(angle) * radius;
+    var spawnZ = Math.sin(angle) * radius;
+    var spawnY = WORLD_SIZE * 0.6;
+
+    piece3D.position.set(spawnX, spawnY, spawnZ);
+    piece3D.userData.velocity = new THREE.Vector3(
+      0, -(GRAVITY / 4) * difficultyMultiplier * _fallMult, 0
+    );
+    piece3D.userData.colorIndex = entry.index;
+    piece3D.userData.timeSinceRotation = 0;
+    piece3D.userData.rotationInterval =
+      _rng() * (MAX_ROTATION_INTERVAL - MIN_ROTATION_INTERVAL) + MIN_ROTATION_INTERVAL;
+    piece3D.userData.nudgeOffsetX = 0;
+    piece3D.userData.nudgeOffsetZ = 0;
+    piece3D.userData.nudgePulseEnd = -1;
+    piece3D.userData.isBossPiece = true;
+
+    fallingPiecesGroup.add(piece3D);
+    fallingPieces.push(piece3D);
+    createPieceShadow(piece3D);
+    createPieceTrail(piece3D);
+  }
+
+  updateNextPiecesHUD();
+
+  // Mark the first spawned piece as the active (controllable) one
+  depthsActivePieceIndex = Math.max(0, fallingPieces.length - count);
+  _updateBossPieceVisuals();
+}
+
+/**
+ * Cycle the active (player-controlled) piece on a boss floor.
+ * Called when player presses Tab.
+ */
+function cycleBossActivePiece() {
+  if (!depthsBossActive || fallingPieces.length === 0) return;
+
+  // Find only boss pieces that are still falling
+  var bossPieceIndices = [];
+  for (var i = 0; i < fallingPieces.length; i++) {
+    if (fallingPieces[i].userData.isBossPiece) {
+      bossPieceIndices.push(i);
+    }
+  }
+  if (bossPieceIndices.length <= 1) return;
+
+  // Find current position in boss piece list and advance
+  var currentPos = bossPieceIndices.indexOf(depthsActivePieceIndex);
+  var nextPos = (currentPos + 1) % bossPieceIndices.length;
+  depthsActivePieceIndex = bossPieceIndices[nextPos];
+
+  _updateBossPieceVisuals();
+
+  // Audio cue
+  if (typeof playStormSwoosh === 'function') playStormSwoosh();
+}
+
+/**
+ * Update visual appearance of boss pieces: active piece glows bright,
+ * non-active pieces are dimmed with a ghostly tint.
+ */
+function _updateBossPieceVisuals() {
+  var ACTIVE_EMISSIVE_R = 0.15, ACTIVE_EMISSIVE_G = 0.4, ACTIVE_EMISSIVE_B = 0.9;
+  var INACTIVE_OPACITY = 0.55;
+
+  for (var i = 0; i < fallingPieces.length; i++) {
+    var piece = fallingPieces[i];
+    if (!piece.userData.isBossPiece) continue;
+
+    var isActive = (i === depthsActivePieceIndex);
+    piece.children.forEach(function (block) {
+      if (!block.material) return;
+      if (isActive) {
+        // Active piece: bright emissive glow, full opacity
+        block.material.emissive.setRGB(ACTIVE_EMISSIVE_R, ACTIVE_EMISSIVE_G, ACTIVE_EMISSIVE_B);
+        block.material.opacity = 1.0;
+        block.material.transparent = false;
+      } else {
+        // Inactive piece: dimmed, slightly transparent
+        block.material.emissive.setRGB(0.05, 0.05, 0.1);
+        block.material.opacity = INACTIVE_OPACITY;
+        block.material.transparent = true;
+      }
+      block.material.needsUpdate = true;
+    });
+  }
+}
+
+/**
+ * Returns the active boss piece for nudge targeting (overrides getNudgeTargetPiece
+ * behavior on boss floors).
+ */
+function getBossActivePiece() {
+  if (!depthsBossActive || depthsActivePieceIndex < 0) return null;
+  if (depthsActivePieceIndex >= fallingPieces.length) return null;
+  var piece = fallingPieces[depthsActivePieceIndex];
+  return (piece && piece.userData.isBossPiece) ? piece : null;
+}
+
+/**
+ * Called when a boss piece lands — update active index and refresh visuals.
+ * If the active piece landed, auto-switch to next available boss piece.
+ */
+function onBossPieceLanded(landedIndex) {
+  if (!depthsBossActive) return;
+
+  // Adjust active index if needed
+  if (landedIndex === depthsActivePieceIndex) {
+    // Active piece landed — switch to the next available boss piece
+    depthsActivePieceIndex = -1;
+    for (var i = 0; i < fallingPieces.length; i++) {
+      if (fallingPieces[i].userData.isBossPiece) {
+        depthsActivePieceIndex = i;
+        break;
+      }
+    }
+  } else if (landedIndex < depthsActivePieceIndex) {
+    // A piece before the active one was removed; shift index down
+    depthsActivePieceIndex--;
+  }
+
+  _updateBossPieceVisuals();
+}
+
+/**
+ * Activate boss floor storm visual overlay.
+ */
+function activateBossStormOverlay() {
+  depthsBossStormOverlay = true;
+  var overlay = document.getElementById('storm-overlay');
+  if (overlay) overlay.style.display = 'block';
+  if (typeof playStormRumble === 'function') playStormRumble();
+}
+
+/**
+ * Deactivate boss floor storm visual overlay.
+ */
+function deactivateBossStormOverlay() {
+  depthsBossStormOverlay = false;
+  var overlay = document.getElementById('storm-overlay');
+  if (overlay) overlay.style.display = 'none';
+}
+
+/**
+ * Activate The Core's Nether atmosphere overlay — lava glow + heat haze.
+ */
+function activateCoreOverlay() {
+  var overlay = document.getElementById('core-overlay');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.id = 'core-overlay';
+    overlay.className = 'core-overlay';
+    overlay.innerHTML =
+      '<div class="core-lava-glow"></div>' +
+      '<div class="core-heat-haze"></div>' +
+      '<div class="core-boss-label">⚡ THE CORE ⚡</div>';
+    document.body.appendChild(overlay);
+  }
+  overlay.style.display = 'block';
+  if (typeof playCoreRumble === 'function') playCoreRumble();
+}
+
+/**
+ * Deactivate The Core atmosphere overlay.
+ */
+function deactivateCoreOverlay() {
+  var overlay = document.getElementById('core-overlay');
+  if (overlay) overlay.style.display = 'none';
+}
+
+/**
+ * Reset all boss floor state (called on floor transition or run end).
+ */
+function resetBossFloorState() {
+  depthsBossActive = false;
+  depthsBossConfig = null;
+  depthsActivePieceIndex = -1;
+  deactivateBossStormOverlay();
+  deactivateCoreOverlay();
 }
 
 // ── Battle: compute column heights ───────────────────────────────────────────

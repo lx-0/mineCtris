@@ -343,6 +343,28 @@ function playStormSwoosh() {
   stormSwooshSynth.triggerAttackRelease("E4", "32n", Tone.now());
 }
 
+// ── The Core (Floor 7 Boss) sounds ────────────────────────────────────────────
+
+/** Deep menacing rumble when The Core activates — lower and more intense than storm. */
+function playCoreRumble() {
+  if (!audioReady || !rumbleSynth) return;
+  const now = Tone.now();
+  rumbleSynth.triggerAttackRelease("E1", "2n", now);
+  rumbleSynth.triggerAttackRelease("A0", "2n", now + 0.4);
+  rumbleSynth.triggerAttackRelease("D1", "2n", now + 0.8);
+  rumbleSynth.triggerAttackRelease("A0", "4n", now + 1.3);
+}
+
+/** Victory fanfare when The Core is defeated — ascending triumphant notes. */
+function playCoreVictoryFanfare() {
+  if (!audioReady || !clearSynth) return;
+  const now = Tone.now();
+  var fanfare = ["C4", "E4", "G4", "C5", "E5", "G5", "C6"];
+  for (var i = 0; i < fanfare.length; i++) {
+    clearSynth.triggerAttackRelease(fanfare[i], "8n", now + i * 0.12);
+  }
+}
+
 // ── Golden Hour sounds ────────────────────────────────────────────────────────
 
 /** Ascending angelic chime arpeggio played when Golden Hour begins. */
