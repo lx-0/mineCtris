@@ -89,3 +89,17 @@ And the next.
 <br>
 
 </div>
+
+---
+
+## Development
+
+### Validate JS Syntax
+
+Run the syntax checker before deploying to catch parse errors early:
+
+```bash
+node tools/validate.js
+```
+
+Exits with non-zero if any file in `js/` has a syntax error.
