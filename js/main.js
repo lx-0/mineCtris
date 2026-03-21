@@ -285,6 +285,7 @@ function init() {
 
     // ── First-launch minimal menu ──
     var _isFirstLaunch = false;
+    var _firstLaunchGameActive = false;
     try { _isFirstLaunch = !localStorage.getItem('mineCtris_tutorialDone'); } catch (_) {}
     if (_isFirstLaunch) {
       var instrEl = document.getElementById("instructions");
@@ -299,6 +300,19 @@ function init() {
         if (typeof openSettings === 'function') openSettings();
       });
     }
+
+    // ── First-game-over teaser (globally accessible callback) ──
+    window.onFirstGameOver = function () {
+      var teaserEl = document.getElementById("first-game-teaser");
+      if (_firstLaunchGameActive && teaserEl) {
+        teaserEl.style.display = "block";
+        // Flip first-launch off so subsequent plays use mode select
+        _isFirstLaunch = false;
+        _firstLaunchGameActive = false;
+      } else if (teaserEl) {
+        teaserEl.style.display = "none";
+      }
+    };
 
     // ── "More" toggle for secondary menu ──
     var menuMoreToggle = document.getElementById("menu-more-toggle");
@@ -323,6 +337,7 @@ function init() {
       if (isEditorMode) { requestPointerLock(); return; }
       // First-launch: skip mode select, launch Classic directly
       if (_isFirstLaunch) {
+        _firstLaunchGameActive = true;
         isDailyChallenge = false;
         gameRng = null;
         try { localStorage.setItem("mineCtris_lastMode", "classic"); } catch (_) {}
@@ -3580,6 +3595,15 @@ function init() {
 
   const goMainMenuBtn = document.getElementById("go-main-menu-btn");
   if (goMainMenuBtn) goMainMenuBtn.addEventListener("click", resetGame);
+
+  // First-game teaser: "Explore Modes" button on game-over screen
+  var firstGameExploreBtn = document.getElementById("first-game-explore-btn");
+  if (firstGameExploreBtn) {
+    firstGameExploreBtn.addEventListener("click", function () {
+      resetGame();
+      showModeSelect();
+    });
+  }
 
   const sprintPlayAgainBtn = document.getElementById("sprint-play-again-btn");
   if (sprintPlayAgainBtn) sprintPlayAgainBtn.addEventListener("click", resetGame);

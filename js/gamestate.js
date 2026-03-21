@@ -484,6 +484,9 @@ function triggerGameOver() {
     return;
   }
 
+  // First-game teaser: show "more ways to play" after first game
+  if (typeof onFirstGameOver === 'function') onFirstGameOver();
+
   // Show Game Over overlay
   const gameOverEl = document.getElementById("game-over-screen");
   if (gameOverEl) gameOverEl.style.display = "flex";

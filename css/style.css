@@ -464,6 +464,33 @@ body {
   transition: background 0.15s;
 }
 #go-main-menu-btn:hover { background: #c0f; color: #fff; }
+#first-game-teaser {
+  margin: 12px 0 4px;
+  padding: 10px 16px;
+  background: rgba(0, 200, 255, 0.15);
+  border: 1px solid rgba(0, 200, 255, 0.4);
+  border-radius: 6px;
+  text-align: center;
+}
+.first-game-teaser-text {
+  font-family: "Press Start 2P", cursive;
+  font-size: 10px;
+  color: #0cf;
+  line-height: 1.6;
+  margin-bottom: 10px;
+}
+#first-game-explore-btn {
+  font-family: "Press Start 2P", cursive;
+  font-size: 12px;
+  color: #000;
+  background: #0cf;
+  border: none;
+  padding: 12px 24px;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background 0.15s;
+}
+#first-game-explore-btn:hover { background: #ff0; }
 #go-share-btn {
   font-family: "Press Start 2P", cursive;
   font-size: 12px;
