@@ -250,6 +250,11 @@ function _awardMissionXP(amount, missionText, difficulty) {
   if (typeof checkLevelUp === 'function') checkLevelUp(oldXP, stats.playerXP);
   if (typeof updateLevelBadgeHUD === 'function') updateLevelBadgeHUD();
   _showMissionCompleteToast(missionText, amount, difficulty);
+
+  // Award guild XP for completing a daily mission
+  if (typeof awardGuildXP === 'function') {
+    awardGuildXP('daily_mission');
+  }
 }
 
 // ── Mission complete toast ────────────────────────────────────────────────────

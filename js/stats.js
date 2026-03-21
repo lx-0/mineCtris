@@ -214,6 +214,9 @@ function _escStatsHtml(str) {
 function openStatsPanel() {
   renderStatsPanel();
   renderSeasonRankSection();
+  if (typeof renderSeasonRecapSection === 'function') {
+    renderSeasonRecapSection('stats-season-cards');
+  }
   const el = document.getElementById('stats-overlay');
   if (el) el.style.display = 'flex';
 }

@@ -290,6 +290,8 @@ function closeGuildPanel() {
   guildPanelOpen = false;
   const panel = document.getElementById('guild-panel');
   if (panel) panel.style.display = 'none';
+  // Disconnect chat WebSocket to save resources
+  if (typeof guildChatDisconnect === 'function') guildChatDisconnect();
   if (typeof controls !== 'undefined' && controls && !controls.isLocked &&
       typeof isGameOver !== 'undefined' && !isGameOver) {
     controls.lock();
@@ -426,6 +428,112 @@ function initGuildBoardSkin() {
   });
 }
 
+// ── Expedition tab ─────────────────────────────────────────────────────────────
+
+const _BIOME_DISPLAY = {
+  stone:  { icon: '⛏', name: 'Stone Caverns' },
+  forest: { icon: '🌳', name: 'Verdant Grove' },
+  nether: { icon: '🔥', name: 'Nether Depths' },
+  ice:    { icon: '❄', name: 'Frozen Tundra' },
+};
+
+async function _renderExpeditionTab(container, isOfficer, guildId) {
+  container.innerHTML = '<div class="guild-loading">Loading…</div>';
+
+  const history = (typeof apiGetGuildExpeditionHistory === 'function')
+    ? await apiGetGuildExpeditionHistory(guildId)
+    : [];
+
+  let html = '';
+
+  if (typeof guildExpedition !== 'undefined' && guildExpedition.isActive()) {
+    html += `<div class="gexp-active-banner">⚔️ Guild Expedition in progress!</div>`;
+  }
+
+  html += `<div class="guild-section-title">GUILD EXPEDITION</div>`;
+  html += `<div class="gexp-rules">
+    <div>▸ <strong>2–5 guild members</strong> play the same biome simultaneously</div>
+    <div>▸ Collective target: <strong>50,000 pts × participants</strong></div>
+    <div>▸ Success: <strong>+50% XP bonus</strong> + Guild Expedition Badge</div>
+    <div>▸ One expedition per biome per day · Officer+ can start</div>
+  </div>`;
+
+  if (isOfficer) {
+    html += `<div class="gexp-start-section">
+      <div class="gexp-biome-row">
+        <label class="gexp-biome-label">Biome:</label>
+        <select id="gexp-biome-select" class="gexp-biome-select">
+          <option value="stone">⛏ Stone Caverns</option>
+          <option value="forest">🌳 Verdant Grove</option>
+          <option value="nether">🔥 Nether Depths</option>
+          <option value="ice">❄ Frozen Tundra</option>
+        </select>
+      </div>
+      <button id="gexp-start-btn" class="guild-primary-btn gexp-start-btn">⚔️ Start Guild Expedition</button>
+      <div id="gexp-start-error" class="gexp-start-error" style="display:none"></div>
+    </div>`;
+  } else {
+    html += `<div class="guild-empty">Officers can start a guild expedition from this tab.</div>`;
+  }
+
+  html += `<div class="guild-section-title" style="margin-top:14px">EXPEDITION HISTORY <span class="gexp-hist-sub">(last 7 days)</span></div>`;
+  if (history.length === 0) {
+    html += `<div class="guild-empty">No guild expeditions completed yet this week.</div>`;
+  } else {
+    html += history.map(r => _renderExpeditionHistoryCard(r)).join('');
+  }
+
+  container.innerHTML = html;
+
+  if (isOfficer) {
+    const startBtn = document.getElementById('gexp-start-btn');
+    const errEl    = document.getElementById('gexp-start-error');
+    if (startBtn) {
+      startBtn.addEventListener('click', async () => {
+        const biomeId = document.getElementById('gexp-biome-select')?.value || 'stone';
+        startBtn.disabled = true;
+        startBtn.textContent = 'Starting…';
+        if (errEl) errEl.style.display = 'none';
+        try {
+          await guildExpedition.startExpedition(guildId, biomeId);
+        } catch (err) {
+          if (errEl) {
+            errEl.textContent = err.message || 'Failed to start expedition.';
+            errEl.style.display = 'block';
+          }
+          startBtn.disabled = false;
+          startBtn.textContent = '⚔️ Start Guild Expedition';
+        }
+      });
+    }
+  }
+}
+
+function _renderExpeditionHistoryCard(r) {
+  const biome   = _BIOME_DISPLAY[r.biomeId] || { icon: '🌍', name: r.biomeId || 'Unknown' };
+  const date    = _fmtDate(r.completedAt);
+  const success = r.success;
+  const pct     = r.collectiveTarget > 0
+    ? Math.min(100, Math.round(r.collectiveScore / r.collectiveTarget * 100))
+    : 0;
+  const players = (r.players || []).map(p =>
+    `<span class="gexp-hist-player gexp-hist-player--${_esc(p.status || 'done')}">${_esc((p.userId || '').slice(0, 12))}: ${(p.score || 0).toLocaleString()}</span>`
+  ).join('');
+  return `<div class="gexp-hist-card gexp-hist-card--${success ? 'success' : 'fail'}">
+    <div class="gexp-hist-header">
+      <span class="gexp-hist-biome">${biome.icon} ${_esc(biome.name)}</span>
+      <span class="gexp-hist-result">${success ? '🏆 SUCCESS' : '💀 FAILED'}</span>
+      <span class="gexp-hist-date">${date}</span>
+    </div>
+    <div class="gexp-hist-score">
+      ${(r.collectiveScore || 0).toLocaleString()} / ${(r.collectiveTarget || 0).toLocaleString()} pts
+      <span class="gexp-hist-pct">(${pct}%)</span>
+    </div>
+    <div class="gexp-hist-bar-wrap"><div class="gexp-hist-bar-fill" style="width:${pct}%"></div></div>
+    <div class="gexp-hist-players">${players}</div>
+  </div>`;
+}
+
 // ── Home view (my guild) ──────────────────────────────────────────────────────
 function _renderHomeView(content) {
   _guildView = 'home';
@@ -488,6 +596,7 @@ function _renderHomeView(content) {
   const cosmeticsBtn = isOfficer
     ? `<button id="guild-cosmetics-btn" class="guild-secondary-btn">🎨 Cosmetics</button>`
     : '';
+  const shareBtn = `<button id="guild-share-btn" class="guild-secondary-btn">🔗 Share Profile</button>`;
 
   // Description: editable inline for owner/officer
   const descHtml = isOfficer
@@ -524,6 +633,9 @@ function _renderHomeView(content) {
         <button class="guild-tab-btn guild-tab-btn--active" id="guild-tab-roster">👥 Roster</button>
         <button class="guild-tab-btn" id="guild-tab-leaderboard">🏆 Leaderboard</button>
         <button class="guild-tab-btn" id="guild-tab-wars">⚔️ Wars</button>
+        <button class="guild-tab-btn guild-tab-btn--chat" id="guild-tab-chat">💬 Chat</button>
+        <button class="guild-tab-btn" id="guild-tab-feed">📣 Feed</button>
+        <button class="guild-tab-btn" id="guild-tab-expedition">🌍 Expedition</button>
       </div>
       <div id="guild-tab-panel-roster">
         <div class="guild-section-title">MEMBERS (${guild.memberCount}/30)</div>
@@ -536,6 +648,15 @@ function _renderHomeView(content) {
       <div id="guild-tab-panel-wars" style="display:none">
         <div id="guild-wars-content"><div class="guild-loading">Loading…</div></div>
       </div>
+      <div id="guild-tab-panel-chat" style="display:none">
+        <div id="guild-chat-panel-content"><div class="guild-loading">Connecting to chat…</div></div>
+      </div>
+      <div id="guild-tab-panel-feed" style="display:none">
+        <div id="guild-feed-panel-content"><div class="guild-loading">Loading…</div></div>
+      </div>
+      <div id="guild-tab-panel-expedition" style="display:none">
+        <div id="guild-expedition-panel-content"><div class="guild-loading">Loading…</div></div>
+      </div>
       <div class="guild-section-title">INVITE</div>
       <div class="guild-invite-row">
         <input id="guild-invite-input" type="text" placeholder="Invite player by name..." maxlength="32">
@@ -546,22 +667,29 @@ function _renderHomeView(content) {
         ${manageBtn}
         ${requestsBtn}
         ${cosmeticsBtn}
+        ${shareBtn}
         <button id="guild-leave-btn" class="guild-danger-btn">🚪 Leave</button>
       </div>
     </div>
     <div id="guild-member-card-overlay" class="guild-member-card-overlay" style="display:none"></div>`;
 
   // ── Tab switching
-  const rosterTab = document.getElementById('guild-tab-roster');
-  const lbTab     = document.getElementById('guild-tab-leaderboard');
-  const warsTab   = document.getElementById('guild-tab-wars');
-  const rosterPanel = document.getElementById('guild-tab-panel-roster');
-  const lbPanel     = document.getElementById('guild-tab-panel-leaderboard');
-  const warsPanel   = document.getElementById('guild-tab-panel-wars');
+  const rosterTab      = document.getElementById('guild-tab-roster');
+  const lbTab          = document.getElementById('guild-tab-leaderboard');
+  const warsTab        = document.getElementById('guild-tab-wars');
+  const chatTab        = document.getElementById('guild-tab-chat');
+  const feedTab        = document.getElementById('guild-tab-feed');
+  const expeditionTab  = document.getElementById('guild-tab-expedition');
+  const rosterPanel    = document.getElementById('guild-tab-panel-roster');
+  const lbPanel        = document.getElementById('guild-tab-panel-leaderboard');
+  const warsPanel      = document.getElementById('guild-tab-panel-wars');
+  const chatPanel      = document.getElementById('guild-tab-panel-chat');
+  const feedPanel      = document.getElementById('guild-tab-panel-feed');
+  const expeditionPanel = document.getElementById('guild-tab-panel-expedition');
 
   function _switchToTab(tab) {
-    [rosterTab, lbTab, warsTab].forEach(t => t && t.classList.remove('guild-tab-btn--active'));
-    [rosterPanel, lbPanel, warsPanel].forEach(p => { if (p) p.style.display = 'none'; });
+    [rosterTab, lbTab, warsTab, chatTab, feedTab, expeditionTab].forEach(t => t && t.classList.remove('guild-tab-btn--active'));
+    [rosterPanel, lbPanel, warsPanel, chatPanel, feedPanel, expeditionPanel].forEach(p => { if (p) p.style.display = 'none'; });
     if (tab === 'leaderboard') {
       lbTab.classList.add('guild-tab-btn--active');
       lbPanel.style.display = '';
@@ -570,6 +698,25 @@ function _renderHomeView(content) {
       warsTab.classList.add('guild-tab-btn--active');
       warsPanel.style.display = '';
       _loadWarsTab();
+    } else if (tab === 'chat') {
+      chatTab.classList.add('guild-tab-btn--active');
+      chatPanel.style.display = '';
+      const chatContent = document.getElementById('guild-chat-panel-content');
+      if (chatContent && typeof renderGuildChatPanel === 'function') {
+        renderGuildChatPanel(chatContent, isOfficer ? (isOwner ? 'owner' : 'officer') : 'member');
+      }
+    } else if (tab === 'feed') {
+      feedTab.classList.add('guild-tab-btn--active');
+      feedPanel.style.display = '';
+      const feedContent = document.getElementById('guild-feed-panel-content');
+      if (feedContent && typeof renderGuildFeedPanel === 'function') {
+        renderGuildFeedPanel(feedContent, _loadMyGuildId());
+      }
+    } else if (tab === 'expedition') {
+      expeditionTab.classList.add('guild-tab-btn--active');
+      expeditionPanel.style.display = '';
+      const expContent = document.getElementById('guild-expedition-panel-content');
+      if (expContent) _renderExpeditionTab(expContent, isOfficer, _loadMyGuildId());
     } else {
       rosterTab.classList.add('guild-tab-btn--active');
       rosterPanel.style.display = '';
@@ -579,6 +726,15 @@ function _renderHomeView(content) {
   rosterTab.addEventListener('click', () => _switchToTab('roster'));
   lbTab.addEventListener('click',     () => _switchToTab('leaderboard'));
   warsTab.addEventListener('click',   () => _switchToTab('wars'));
+  if (chatTab)       chatTab.addEventListener('click',       () => _switchToTab('chat'));
+  if (feedTab)       feedTab.addEventListener('click',       () => _switchToTab('feed'));
+  if (expeditionTab) expeditionTab.addEventListener('click', () => _switchToTab('expedition'));
+
+  // Start guild chat WebSocket connection when the home panel loads
+  const guildId = _loadMyGuildId();
+  if (guildId && typeof guildChatConnect === 'function') {
+    guildChatConnect(guildId, guildUserId(), isOfficer ? (isOwner ? 'owner' : 'officer') : 'member');
+  }
 
   async function _loadGuildLeaderboard() {
     const lbContent = document.getElementById('guild-leaderboard-content');
@@ -1339,6 +1495,22 @@ function _renderHomeView(content) {
         _renderRequestsView(content);
       });
     }
+  }
+
+  // ── Share profile
+  const shareEl = document.getElementById('guild-share-btn');
+  if (shareEl) {
+    shareEl.addEventListener('click', () => {
+      const url = 'https://minectris-leaderboard.workers.dev/guilds/' + guild.tag;
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(url).then(() => {
+          shareEl.textContent = '✓ Link Copied!';
+          setTimeout(() => { shareEl.textContent = '🔗 Share Profile'; }, 2000);
+        }).catch(() => { prompt('Share this guild profile:', url); });
+      } else {
+        prompt('Share this guild profile:', url);
+      }
+    });
   }
 
   // ── Leave

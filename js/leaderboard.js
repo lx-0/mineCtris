@@ -68,6 +68,23 @@ async function apiFetchPlayerBadges(displayName) {
   } catch (_) { return []; }
 }
 
+async function apiFetchSeasonRatings(displayName) {
+  const url = LEADERBOARD_WORKER_URL + '/api/season/ratings' +
+    (displayName ? '?displayName=' + encodeURIComponent(displayName) : '');
+  const resp = await fetch(url);
+  return resp.json();
+}
+
+async function apiFetchHallOfFame() {
+  const resp = await fetch(LEADERBOARD_WORKER_URL + '/api/season/hall-of-fame');
+  return resp.json();
+}
+
+async function apiFetchSeasonRatingSnapshot(seasonId) {
+  const resp = await fetch(LEADERBOARD_WORKER_URL + '/api/season/rating-snapshot/' + encodeURIComponent(seasonId));
+  return resp.json();
+}
+
 async function apiFetchCoopLeaderboard(date, isDaily) {
   const path = isDaily
     ? '/api/leaderboard/coop/daily/' + date
@@ -150,7 +167,7 @@ function openDisplayNameModal(onConfirm) {
 
 // ── Leaderboard Panel ─────────────────────────────────────────────────────────
 
-let _lbActiveTab = 'today'; // 'today' | 'yesterday' | 'thisweek' | 'lastweek' | 'season' | 'coop' | 'dailycoop' | 'battle'
+let _lbActiveTab = 'today'; // 'today' | 'yesterday' | 'thisweek' | 'lastweek' | 'season' | 'seasonrating' | 'coop' | 'dailycoop' | 'battle'
 
 function openLeaderboardPanel(defaultTab) {
   const overlay = document.getElementById('lb-panel-overlay');
@@ -171,18 +188,20 @@ function _syncLbTabs() {
   const yestBtn      = document.getElementById('lb-tab-yesterday');
   const thisWeekBtn  = document.getElementById('lb-tab-thisweek');
   const lastWeekBtn  = document.getElementById('lb-tab-lastweek');
-  const seasonBtn    = document.getElementById('lb-tab-season');
-  const coopBtn      = document.getElementById('lb-tab-coop');
-  const dailyCoopBtn = document.getElementById('lb-tab-dailycoop');
-  const battleBtn    = document.getElementById('lb-tab-battle');
-  if (todayBtn)     todayBtn.classList.toggle('lb-tab-active',     _lbActiveTab === 'today');
-  if (yestBtn)      yestBtn.classList.toggle('lb-tab-active',      _lbActiveTab === 'yesterday');
-  if (thisWeekBtn)  thisWeekBtn.classList.toggle('lb-tab-active',  _lbActiveTab === 'thisweek');
-  if (lastWeekBtn)  lastWeekBtn.classList.toggle('lb-tab-active',  _lbActiveTab === 'lastweek');
-  if (seasonBtn)    seasonBtn.classList.toggle('lb-tab-active',    _lbActiveTab === 'season');
-  if (coopBtn)      coopBtn.classList.toggle('lb-tab-active',      _lbActiveTab === 'coop');
-  if (dailyCoopBtn) dailyCoopBtn.classList.toggle('lb-tab-active', _lbActiveTab === 'dailycoop');
-  if (battleBtn)    battleBtn.classList.toggle('lb-tab-active',    _lbActiveTab === 'battle');
+  const seasonBtn       = document.getElementById('lb-tab-season');
+  const seasonRatingBtn = document.getElementById('lb-tab-seasonrating');
+  const coopBtn         = document.getElementById('lb-tab-coop');
+  const dailyCoopBtn    = document.getElementById('lb-tab-dailycoop');
+  const battleBtn       = document.getElementById('lb-tab-battle');
+  if (todayBtn)        todayBtn.classList.toggle('lb-tab-active',        _lbActiveTab === 'today');
+  if (yestBtn)         yestBtn.classList.toggle('lb-tab-active',         _lbActiveTab === 'yesterday');
+  if (thisWeekBtn)     thisWeekBtn.classList.toggle('lb-tab-active',     _lbActiveTab === 'thisweek');
+  if (lastWeekBtn)     lastWeekBtn.classList.toggle('lb-tab-active',     _lbActiveTab === 'lastweek');
+  if (seasonBtn)       seasonBtn.classList.toggle('lb-tab-active',       _lbActiveTab === 'season');
+  if (seasonRatingBtn) seasonRatingBtn.classList.toggle('lb-tab-active', _lbActiveTab === 'seasonrating');
+  if (coopBtn)         coopBtn.classList.toggle('lb-tab-active',         _lbActiveTab === 'coop');
+  if (dailyCoopBtn)    dailyCoopBtn.classList.toggle('lb-tab-active',    _lbActiveTab === 'dailycoop');
+  if (battleBtn)       battleBtn.classList.toggle('lb-tab-active',       _lbActiveTab === 'battle');
 }
 
 function _getYesterdayString() {
@@ -255,6 +274,11 @@ async function _loadLbTab(tab) {
       if (!data || !data.entries) throw new Error('bad response');
       const label = (isDaily ? 'Daily Co-op \u2014 ' : 'Co-op \u2014 ') + formatDailyLabel(date);
       _renderCoopLeaderboard(body, data.entries, label);
+    } else if (tab === 'seasonrating') {
+      const myName = loadDisplayName();
+      const data = await apiFetchSeasonRatings(myName);
+      if (!data || !data.entries) throw new Error('bad response');
+      _renderSeasonRatingLeaderboard(body, data);
     } else if (tab === 'battle') {
       const data = await apiFetchBattleLeaderboard();
       if (!data || !data.entries) throw new Error('bad response');
@@ -311,6 +335,12 @@ function _renderLeaderboard(container, entries, date, labelOverride, isSeason) {
       const badgeLabel = typeof getLevelBadgeLabel === 'function' ? getLevelBadgeLabel(_myLevel) : 'L' + _myLevel;
       nameCell += ' <span class="lb-level-badge">' + badgeLabel + '</span>';
       if (_myTitle) nameCell += ' <span class="lb-level-title">' + _myTitle + '</span>';
+      // Show guild emblem if in a guild
+      const _guildCosmetics = (typeof getMyGuildCosmetics === 'function') ? getMyGuildCosmetics() : null;
+      if (_guildCosmetics && _guildCosmetics.emblem) {
+        const _legendaryClass = _guildCosmetics.isLegendary ? ' lb-guild-emblem--legendary' : '';
+        nameCell += ' <span class="lb-guild-emblem' + _legendaryClass + '" title="Guild Emblem">' + _guildCosmetics.emblem + '</span>';
+      }
       nameCell += ' ◀';
     }
     const scoreVal = (e[scoreKey] || 0).toLocaleString();
@@ -355,6 +385,76 @@ function _renderBattleLeaderboard(container, entries) {
       '<td class="lb-wld">' + wld + '</td>' +
       '</tr>';
   });
+
+  html += '</tbody></table>';
+  container.innerHTML = html;
+}
+
+/**
+ * Render the season battle-rating leaderboard.
+ * data: { seasonName, entries: [{rank, displayName, rating, wins, losses, draws}],
+ *         playerEntry: {rank, displayName, rating, wins, losses, draws} | null }
+ */
+function _renderSeasonRatingLeaderboard(container, data) {
+  const myName = loadDisplayName().toLowerCase();
+  const entries = data.entries || [];
+  const seasonName = data.seasonName || 'Current Season';
+  const playerEntry = data.playerEntry || null;
+
+  if (!entries.length) {
+    container.innerHTML = '<div class="lb-empty">No season rating entries yet for ' + _escHtml(seasonName) + '.</div>';
+    return;
+  }
+
+  let html = '<div class="lb-season-rating-header">' + _escHtml(seasonName) + ' — Rating Standings</div>';
+  html += '<table class="lb-table"><thead><tr>' +
+    '<th>#</th><th>Name</th><th>Rating</th><th>W/L/D</th><th>Win%</th>' +
+    '</tr></thead><tbody>';
+
+  // Check if player is in the top-100 list
+  let myRankInList = -1;
+  entries.forEach(function(e, i) {
+    if (myName && e.displayName.toLowerCase() === myName) myRankInList = i;
+  });
+
+  entries.forEach(function(e) {
+    const isMe = myName && e.displayName.toLowerCase() === myName;
+    const cls  = isMe ? ' class="lb-row-me"' : '';
+    const tier = (typeof getSeasonRankTier === 'function') ? getSeasonRankTier(e.rating || 0) : null;
+    const tierBadge = tier
+      ? '<span class="season-rank-badge ' + tier.cls + '" title="' + tier.name + '">' + tier.name + '</span> '
+      : '';
+    const total = (e.wins || 0) + (e.losses || 0) + (e.draws || 0);
+    const winPct = total > 0 ? Math.round((e.wins || 0) / total * 100) + '%' : '-';
+    const wld = (e.wins || 0) + 'W/' + (e.losses || 0) + 'L/' + (e.draws || 0) + 'D';
+    let nameCell = tierBadge + _escHtml(e.displayName) + (isMe ? ' &#9668;' : '');
+    html += '<tr' + cls + '>' +
+      '<td>' + e.rank + '</td>' +
+      '<td>' + nameCell + '</td>' +
+      '<td>' + (e.rating || 0) + '</td>' +
+      '<td class="lb-wld">' + wld + '</td>' +
+      '<td>' + winPct + '</td>' +
+      '</tr>';
+  });
+
+  // If player is outside top-100, pin their row at the bottom
+  if (myName && myRankInList < 0 && playerEntry && playerEntry.rank != null) {
+    const e = playerEntry;
+    const tier = (typeof getSeasonRankTier === 'function') ? getSeasonRankTier(e.rating || 0) : null;
+    const tierBadge = tier
+      ? '<span class="season-rank-badge ' + tier.cls + '" title="' + tier.name + '">' + tier.name + '</span> '
+      : '';
+    const total = (e.wins || 0) + (e.losses || 0) + (e.draws || 0);
+    const winPct = total > 0 ? Math.round((e.wins || 0) / total * 100) + '%' : '-';
+    const wld = (e.wins || 0) + 'W/' + (e.losses || 0) + 'L/' + (e.draws || 0) + 'D';
+    html += '<tr class="lb-row-me lb-row-me-pinned">' +
+      '<td>' + e.rank + '</td>' +
+      '<td>' + tierBadge + _escHtml(e.displayName || loadDisplayName()) + ' &#9668;</td>' +
+      '<td>' + (e.rating || 0) + '</td>' +
+      '<td class="lb-wld">' + wld + '</td>' +
+      '<td>' + winPct + '</td>' +
+      '</tr>';
+  }
 
   html += '</tbody></table>';
   container.innerHTML = html;
@@ -543,6 +643,15 @@ function initLeaderboard() {
     });
   }
 
+  const seasonRatingTabBtn = document.getElementById('lb-tab-seasonrating');
+  if (seasonRatingTabBtn) {
+    seasonRatingTabBtn.addEventListener('click', function() {
+      _lbActiveTab = 'seasonrating';
+      _syncLbTabs();
+      _loadLbTab('seasonrating');
+    });
+  }
+
   const coopTabBtn = document.getElementById('lb-tab-coop');
   if (coopTabBtn) {
     coopTabBtn.addEventListener('click', function() {
@@ -602,4 +711,116 @@ function initLeaderboard() {
 
   // Hide submit btn by default (shown only by initLeaderboardSubmitBtn)
   hideLeaderboardSubmitBtn();
+
+  // Hall of Fame button (opens the HoF overlay)
+  const hofBtn = document.getElementById('hof-open-btn');
+  if (hofBtn) {
+    hofBtn.addEventListener('click', openHallOfFamePanel);
+  }
+
+  // Hall of Fame close button
+  const hofCloseBtn = document.getElementById('hof-close-btn');
+  if (hofCloseBtn) {
+    hofCloseBtn.addEventListener('click', closeHallOfFamePanel);
+  }
+}
+
+// ── Hall of Fame ──────────────────────────────────────────────────────────────
+
+let _hofSeasons = null; // cached season list from hall-of-fame endpoint
+
+async function openHallOfFamePanel() {
+  const overlay = document.getElementById('hof-overlay');
+  if (!overlay) return;
+  overlay.style.display = 'flex';
+
+  const body    = document.getElementById('hof-body');
+  const select  = document.getElementById('hof-season-select');
+  if (body) body.innerHTML = '<div class="lb-loading">Loading...</div>';
+
+  try {
+    if (!_hofSeasons) {
+      const data = await apiFetchHallOfFame();
+      _hofSeasons = (data && data.seasons) ? data.seasons : [];
+    }
+
+    if (!_hofSeasons.length) {
+      if (body) body.innerHTML = '<div class="lb-empty">No past seasons yet.</div>';
+      if (select) select.style.display = 'none';
+      return;
+    }
+
+    // Populate dropdown
+    if (select) {
+      select.innerHTML = '';
+      _hofSeasons.forEach(function(s) {
+        const opt = document.createElement('option');
+        opt.value = s.seasonId;
+        opt.textContent = s.name + ' (' + (s.endDate || '') + ')';
+        select.appendChild(opt);
+      });
+      select.style.display = 'block';
+      select.onchange = function() {
+        _loadHofSeason(select.value, body);
+      };
+    }
+
+    // Load the first (most recent) season by default
+    _loadHofSeason(_hofSeasons[0].seasonId, body);
+  } catch (_) {
+    if (body) body.innerHTML = '<div class="lb-error">Could not load Hall of Fame.</div>';
+  }
+}
+
+async function _loadHofSeason(seasonId, body) {
+  if (!body) return;
+  body.innerHTML = '<div class="lb-loading">Loading...</div>';
+  try {
+    const snapshot = await apiFetchSeasonRatingSnapshot(seasonId);
+    if (!snapshot || !snapshot.top100) {
+      body.innerHTML = '<div class="lb-empty">No data for this season.</div>';
+      return;
+    }
+
+    const myName = loadDisplayName().toLowerCase();
+    const entries = snapshot.top100.slice(0, 10); // Top 10 for Hall of Fame display
+    const accent = { overworld: '#4A90D9', nether: '#CC3300', end: '#7B2FBE', deep_dark: '#00CED1' };
+    const borderColor = accent[snapshot.theme] || '#00ff88';
+
+    let html = '<div class="hof-season-title" style="--hof-accent:' + borderColor + '">' +
+      _escHtml(snapshot.name || '') +
+      '<span class="hof-season-date"> — ' + _escHtml(snapshot.endDate || '') + '</span>' +
+      '</div>';
+    html += '<table class="lb-table"><thead><tr>' +
+      '<th>#</th><th>Champion</th><th>Rating</th><th>W/L/D</th>' +
+      '</tr></thead><tbody>';
+
+    entries.forEach(function(e) {
+      const isMe = myName && e.displayName.toLowerCase() === myName;
+      const cls  = isMe ? ' class="lb-row-me"' : '';
+      const tier = (typeof getSeasonRankTier === 'function') ? getSeasonRankTier(e.rating || 0) : null;
+      const tierBadge = tier
+        ? '<span class="season-rank-badge ' + tier.cls + '" title="' + tier.name + '">' + tier.name + '</span> '
+        : '';
+      const championIcon = e.rank === 1 ? '<span class="hof-champion-icon" title="Season Champion">&#127942;</span> ' : '';
+      const wld = (e.wins || 0) + 'W/' + (e.losses || 0) + 'L/' + (e.draws || 0) + 'D';
+      let nameCell = championIcon + tierBadge + _escHtml(e.displayName) + (isMe ? ' &#9668;' : '');
+      html += '<tr' + cls + '>' +
+        '<td>' + e.rank + '</td>' +
+        '<td>' + nameCell + '</td>' +
+        '<td>' + (e.rating || 0) + '</td>' +
+        '<td class="lb-wld">' + wld + '</td>' +
+        '</tr>';
+    });
+
+    html += '</tbody></table>';
+    body.innerHTML = html;
+  } catch (_) {
+    body.innerHTML = '<div class="lb-error">Could not load season data.</div>';
+  }
+}
+
+function closeHallOfFamePanel() {
+  const overlay = document.getElementById('hof-overlay');
+  if (overlay) overlay.style.display = 'none';
 }

@@ -12,6 +12,7 @@
   var _allLoaded = false;
   var _loading = false;
   var _searchDebounce = null;
+  var _featuredLoaded = false;
 
   function _workerUrl() {
     return (typeof LEADERBOARD_WORKER_URL !== 'undefined')
@@ -84,6 +85,64 @@
     buttons.forEach(function (b) {
       b.classList.toggle('cb-filter-active', b.dataset.diff === (active || ''));
     });
+  }
+
+  // ── Featured section ─────────────────────────────────────────────────────────
+
+  function _renderFeaturedCard(puzzle) {
+    var card = document.createElement('div');
+    card.className = 'cb-card cb-card-featured';
+
+    var stars = _renderStars(puzzle.difficulty);
+    var plays = typeof puzzle.plays === 'number' ? puzzle.plays : 0;
+    var thumbsUp   = typeof puzzle.thumbsUp   === 'number' ? puzzle.thumbsUp   : 0;
+    var thumbsDown = typeof puzzle.thumbsDown === 'number' ? puzzle.thumbsDown : 0;
+    var ratingHtml = (thumbsUp > 0 || thumbsDown > 0)
+      ? '<span class="cb-card-rating">&#128077; ' + thumbsUp + ' &#128078; ' + thumbsDown + '</span>'
+      : '';
+
+    card.innerHTML =
+      '<div class="cb-card-left">' +
+        '<div class="cb-card-title">' +
+          '<span class="cb-card-badge">&#11088; OFFICIAL</span> ' +
+          _esc(puzzle.title || 'Untitled') +
+        '</div>' +
+        '<div class="cb-card-meta">' +
+          '<span class="cb-card-author">by ' + _esc(puzzle.author || 'Official') + '</span>' +
+          (stars ? '<span class="cb-card-stars">' + stars + '</span>' : '') +
+          '<span class="cb-card-plays">&#9654; ' + plays + '</span>' +
+          ratingHtml +
+        '</div>' +
+      '</div>' +
+      '<button class="cb-card-play" data-id="' + _esc(puzzle.id) + '">&#9654; Play</button>';
+
+    var playBtn = card.querySelector('.cb-card-play');
+    playBtn.addEventListener('click', function () {
+      _playPuzzle(puzzle.id, puzzle.title, puzzle.author, puzzle.difficulty, playBtn);
+    });
+
+    return card;
+  }
+
+  async function _fetchFeatured() {
+    var section = _el('cb-featured-section');
+    var list = _el('cb-featured-list');
+    if (!section || !list) return;
+
+    try {
+      var resp = await fetch(_workerUrl() + '/api/puzzles/featured');
+      if (!resp.ok) return; // silently skip featured on error
+      var data = await resp.json();
+      var puzzles = Array.isArray(data.puzzles) ? data.puzzles : [];
+      if (puzzles.length === 0) return;
+
+      list.innerHTML = '';
+      puzzles.forEach(function (p) { list.appendChild(_renderFeaturedCard(p)); });
+      section.style.display = '';
+      _featuredLoaded = true;
+    } catch (_) {
+      // Featured section is best-effort; silently skip on network error
+    }
   }
 
   // ── Render puzzle card ───────────────────────────────────────────────────────
@@ -230,6 +289,7 @@
     _currentSearch = '';
     _allLoaded = false;
     _loading = false;
+    _featuredLoaded = false;
 
     var searchInput = _el('cb-search');
     if (searchInput) searchInput.value = '';
@@ -237,6 +297,10 @@
 
     var list = _el('cb-list');
     if (list) list.innerHTML = '';
+    var featuredSection = _el('cb-featured-section');
+    if (featuredSection) featuredSection.style.display = 'none';
+    var featuredList = _el('cb-featured-list');
+    if (featuredList) featuredList.innerHTML = '';
     var empty = _el('cb-empty');
     if (empty) empty.style.display = 'none';
     var err = _el('cb-error');
@@ -244,6 +308,7 @@
     _updateLoadMore();
 
     screen.style.display = 'flex';
+    _fetchFeatured();
     _fetchPage();
   }
 

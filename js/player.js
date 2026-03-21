@@ -52,11 +52,21 @@ function checkPlayerCollision(deltaY) {
   return false;
 }
 
+// Hold-C detection for co-op thumbs-up emote
+var _cKeyHoldTimeout = null;
+
 function onKeyDown(event) {
   // When crafting panel is open the pointer is unlocked; still allow C/Escape to close it
   if (craftingPanelOpen) {
     if (event.code === "KeyC" || event.code === "Escape") {
       closeCraftingPanel();
+    }
+    return;
+  }
+  // When co-op trade panel is open; Escape cancels
+  if (typeof coopTradePanelOpen !== 'undefined' && coopTradePanelOpen) {
+    if (event.code === "Escape") {
+      if (typeof coopTrade !== 'undefined') coopTrade.closePanel();
     }
     return;
   }
@@ -108,22 +118,54 @@ function onKeyDown(event) {
       break;
     }
     case "KeyC":
-      // Crafting is disabled in Sprint, Blitz, and No Iron Week
+      if (isCoopMode && typeof coopEmote !== 'undefined') {
+        // In co-op: hold C for thumbs-up; quick tap still opens crafting (handled on keyup)
+        if (!_cKeyHoldTimeout) {
+          _cKeyHoldTimeout = setTimeout(function () {
+            _cKeyHoldTimeout = null;
+            coopEmote.sendEmote('thumbsup');
+          }, 400);
+        }
+        break;
+      }
+      // Non-coop: crafting is disabled in Sprint, Blitz, and No Iron Week
       if (!isSprintMode && !isBlitzMode && !weeklyNoIron) toggleCraftingPanel();
       break;
     case "KeyQ":
       applyNudge(-1, 0);
       break;
     case "KeyE":
+      // Accept incoming trade offer if one is pending
+      if (isCoopMode && typeof coopTrade !== 'undefined' && coopTrade.hasPendingIncomingOffer()) {
+        coopTrade.acceptIncomingOffer();
+        break;
+      }
       applyNudge(1, 0);
       break;
     case "KeyZ":
+      if (isCoopMode && typeof coopEmote !== 'undefined') {
+        coopEmote.sendEmote('wave');
+        break;
+      }
       applyNudge(0, -1);
       break;
     case "KeyX":
+      if (isCoopMode && typeof coopEmote !== 'undefined') {
+        coopEmote.sendEmote('point');
+        break;
+      }
       applyNudge(0, 1);
       break;
+    case "KeyV":
+      if (isCoopMode && typeof coopEmote !== 'undefined') {
+        coopEmote.sendEmote('alert');
+      }
+      break;
     case "KeyF":
+      // Co-op trade takes priority (not in puzzle mode)
+      if (isCoopMode && !isPuzzleMode && typeof coopTrade !== 'undefined') {
+        if (coopTrade.tryOpenPanel()) break;
+      }
       if (isPuzzleMode) {
         if (typeof setThinkMode === "function") setThinkMode(true);
       } else if (equippedPowerUpType) {
@@ -140,6 +182,14 @@ function onKeyDown(event) {
 
 function onKeyUp(event) {
   switch (event.code) {
+    case "KeyC":
+      // Co-op: if hold timer is still pending it was a quick tap → open crafting
+      if (isCoopMode && _cKeyHoldTimeout) {
+        clearTimeout(_cKeyHoldTimeout);
+        _cKeyHoldTimeout = null;
+        if (!isSprintMode && !isBlitzMode && !weeklyNoIron) toggleCraftingPanel();
+      }
+      break;
     case "KeyW":
       moveForward = false;
       break;
