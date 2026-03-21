@@ -5229,10 +5229,15 @@ function animate() {
 
 try {
   init();
+  window.__MINETRIS_INIT_DONE = true;
+  clearTimeout(window.__MINETRIS_INIT_TIMER);
 } catch (error) {
   console.error("Error during initialization:", error);
-  const instructionsEl = document.getElementById("instructions");
-  if (instructionsEl) {
-    instructionsEl.innerHTML = `<h1>Error</h1><p>An error occurred during initialization: ${error.message}</p>`;
-  }
+  window.__MINETRIS_INIT_DONE = true;
+  clearTimeout(window.__MINETRIS_INIT_TIMER);
+  var el = document.createElement('div');
+  el.id = 'init-error-screen';
+  el.style.cssText = 'position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;background:#111;color:#fff;font-family:monospace,sans-serif;text-align:center;padding:2rem;';
+  el.innerHTML = '<div><h1 style="font-size:1.5rem;margin-bottom:1rem;">Something went wrong</h1><p style="margin-bottom:1.5rem;">An error occurred during initialization. Please reload the page.</p><button onclick="location.reload()" style="padding:0.75rem 2rem;font-size:1rem;background:#e74c3c;color:#fff;border:none;cursor:pointer;font-family:inherit;">Reload</button></div>';
+  document.body.appendChild(el);
 }
