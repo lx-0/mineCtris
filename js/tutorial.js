@@ -245,6 +245,9 @@ function _endTutorial() {
   }
   _tutorialActive = false;
   _markTutorialDone();
+  // Transition from minimal to full menu for next visit
+  var instrEl = document.getElementById('instructions');
+  if (instrEl) instrEl.classList.remove('first-launch');
   // Award one-time tutorial completion XP
   if (typeof awardTutorialXP === 'function') awardTutorialXP();
   const overlayEl = document.getElementById('tutorial-overlay');

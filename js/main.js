@@ -283,6 +283,23 @@ function init() {
     controls = new THREE.PointerLockControls(camera, renderer.domElement);
     scene.add(controls.getObject());
 
+    // ── First-launch minimal menu ──
+    var _isFirstLaunch = false;
+    try { _isFirstLaunch = !localStorage.getItem('mineCtris_tutorialDone'); } catch (_) {}
+    if (_isFirstLaunch) {
+      var instrEl = document.getElementById("instructions");
+      if (instrEl) instrEl.classList.add("first-launch");
+    }
+
+    // First-launch Settings button opens settings panel
+    var flSettingsBtn = document.getElementById("first-launch-settings-btn");
+    if (flSettingsBtn) {
+      flSettingsBtn.addEventListener("click", function (e) {
+        e.stopPropagation();
+        if (typeof openSettings === 'function') openSettings();
+      });
+    }
+
     // ── "More" toggle for secondary menu ──
     var menuMoreToggle = document.getElementById("menu-more-toggle");
     var menuSecondary = document.getElementById("menu-secondary");
@@ -304,6 +321,15 @@ function init() {
       if (e.target.closest('#menu-more-toggle')) return;
       // If ?editor=1 URL param preset editor mode, go straight into editor
       if (isEditorMode) { requestPointerLock(); return; }
+      // First-launch: skip mode select, launch Classic directly
+      if (_isFirstLaunch) {
+        isDailyChallenge = false;
+        gameRng = null;
+        try { localStorage.setItem("mineCtris_lastMode", "classic"); } catch (_) {}
+        if (typeof metricsModePlayed === 'function') metricsModePlayed('classic');
+        requestPointerLock();
+        return;
+      }
       // Show mode select screen instead of jumping straight into the game
       showModeSelect();
     });

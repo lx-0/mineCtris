@@ -14847,3 +14847,33 @@ body.biome-ice #inventory-hud { border-color: #4499dd; }
 .depths-reward-calendar-name {
   flex: 1;
 }
+
+/* ── First-launch minimal menu ──────────────────────────────────── */
+.first-launch-settings {
+  display: none !important;
+}
+#instructions.first-launch .controls-grid,
+#instructions.first-launch #menu-missions-panel,
+#instructions.first-launch #menu-more-toggle,
+#instructions.first-launch #menu-secondary,
+#instructions.first-launch #daily-challenge-btn,
+#instructions.first-launch #start-resume-btn,
+#instructions.first-launch #hs-start-panel {
+  display: none !important;
+}
+
+#instructions.first-launch .first-launch-settings {
+  display: inline-block !important;
+  margin-top: 10px;
+  background: none;
+  border: none;
+  color: #aaa;
+  font-family: "Press Start 2P", cursive;
+  font-size: 10px;
+  cursor: pointer;
+  letter-spacing: 1px;
+}
+
+#instructions.first-launch .first-launch-settings:hover {
+  color: #0f0;
+}
