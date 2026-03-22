@@ -23,11 +23,19 @@ var depthsHud = (function () {
   var _extractBtn = null;
   var _extractBtnWrap = null;
 
+  // Boss health bar elements
+  var _bossBarWrap = null;
+  var _bossNameEl = null;
+  var _bossBarFill = null;
+  var _bossBarText = null;
+  var _bossPhaseEl = null;
+
   // State
   var _visible = false;
   var _extractEnabled = false;
   var _extractPulse = false;
   var _descentAnimTimer = 0;     // animate floor number on descent
+  var _bossActive = false;
 
   // ── DOM build ─────────────────────────────────────────────────────────────
 
@@ -79,6 +87,37 @@ var depthsHud = (function () {
     goalSection.appendChild(_goalTextEl);
     goalSection.appendChild(goalBarOuter);
     _el.appendChild(goalSection);
+
+    // — Boss health bar (top, full width) —
+    _bossBarWrap = document.createElement('div');
+    _bossBarWrap.className = 'dhud-boss-bar-wrap';
+    _bossBarWrap.style.display = 'none';
+
+    _bossNameEl = document.createElement('div');
+    _bossNameEl.className = 'dhud-boss-name';
+    _bossNameEl.textContent = '';
+
+    _bossPhaseEl = document.createElement('span');
+    _bossPhaseEl.className = 'dhud-boss-phase';
+    _bossPhaseEl.textContent = '';
+    _bossNameEl.appendChild(_bossPhaseEl);
+
+    var bossBarOuter = document.createElement('div');
+    bossBarOuter.className = 'dhud-boss-bar';
+
+    _bossBarFill = document.createElement('div');
+    _bossBarFill.className = 'dhud-boss-bar-fill';
+    _bossBarFill.style.width = '100%';
+
+    _bossBarText = document.createElement('div');
+    _bossBarText.className = 'dhud-boss-bar-text';
+    _bossBarText.textContent = '';
+
+    bossBarOuter.appendChild(_bossBarFill);
+    bossBarOuter.appendChild(_bossBarText);
+    _bossBarWrap.appendChild(_bossNameEl);
+    _bossBarWrap.appendChild(bossBarOuter);
+    _el.appendChild(_bossBarWrap);
 
     // — Loot inventory preview (left sidebar) —
     var lootSection = document.createElement('div');
@@ -404,6 +443,65 @@ var depthsHud = (function () {
      */
     setOpacity: function (opacity) {
       if (_el) _el.style.opacity = opacity;
+    },
+
+    /**
+     * Update the boss health bar display.
+     * @param {number} currentHP  Current boss HP
+     * @param {number} maxHP      Maximum boss HP
+     * @param {number} phaseIdx   Current phase index (0-based)
+     * @param {object} bossDef    Boss definition from BOSS_DEFINITIONS
+     */
+    updateBossHealth: function (currentHP, maxHP, phaseIdx, bossDef) {
+      _build();
+
+      if (!bossDef || maxHP <= 0) {
+        // No boss — hide the bar
+        _bossActive = false;
+        if (_bossBarWrap) _bossBarWrap.style.display = 'none';
+        return;
+      }
+
+      _bossActive = true;
+      if (_bossBarWrap) _bossBarWrap.style.display = 'block';
+
+      // Boss name
+      if (_bossNameEl) {
+        _bossNameEl.firstChild.textContent = bossDef.name + ' ';
+      }
+
+      // Phase indicator
+      if (_bossPhaseEl && bossDef.phases) {
+        var phase = bossDef.phases[phaseIdx];
+        _bossPhaseEl.textContent = phase ? '— ' + phase.name : '';
+      }
+
+      // Health bar fill
+      var pct = Math.max(0, Math.min(100, Math.round((currentHP / maxHP) * 100)));
+      if (_bossBarFill) {
+        _bossBarFill.style.width = pct + '%';
+        // Color: green > 60%, yellow > 30%, red <= 30%
+        if (pct > 60) {
+          _bossBarFill.style.background = '#22c55e';
+        } else if (pct > 30) {
+          _bossBarFill.style.background = '#fbbf24';
+        } else {
+          _bossBarFill.style.background = '#ef4444';
+        }
+      }
+
+      // Health text
+      if (_bossBarText) {
+        _bossBarText.textContent = Math.ceil(currentHP) + ' / ' + maxHP;
+      }
+    },
+
+    /**
+     * Hide the boss health bar. Call when boss encounter ends.
+     */
+    hideBossHealth: function () {
+      _bossActive = false;
+      if (_bossBarWrap) _bossBarWrap.style.display = 'none';
     },
   };
 })();

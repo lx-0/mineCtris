@@ -104,18 +104,38 @@ function _applyDungeonFloor(floor) {
     _dungeonHazardWeights = null;
   }
 
-  // Boss floor setup
+  // Boss floor setup — use the boss encounter framework if available
   var session = getDungeonSession();
   if (session && isDungeonBossFloor()) {
     var bossConfig = getDungeonBossConfig();
     if (bossConfig) {
-      startBossEncounter();
       depthsBossActive = true;
       depthsBossConfig = { id: bossConfig.bossId, name: bossConfig.bossId };
+
+      // Initialize the boss state machine (depths-boss.js)
+      if (typeof initBossEncounter === 'function') {
+        var bossDef = (typeof getBossDef === 'function') ? getBossDef(bossConfig.bossId) : null;
+        if (bossDef) {
+          depthsBossConfig.name = bossDef.name;
+          depthsBossConfig.simultaneousPieces = 3;
+          depthsBossConfig.fallSpeedOverride = bossDef.phases[0].pieceSpeedMult || null;
+        }
+        initBossEncounter(bossConfig.bossId, {
+          onPause:  function () { dungeonFloorTimerActive = false; },
+          onResume: function () { dungeonFloorTimerActive = true; },
+          onDefeat: function () { _onDungeonFloorCleared(); },
+          onDeath:  function () { _handleDungeonDeath(); },
+        });
+      } else {
+        // Fallback: legacy boss encounter
+        startBossEncounter();
+      }
     }
   } else {
     depthsBossActive = false;
     depthsBossConfig = null;
+    // Clean up any lingering boss state
+    if (typeof cleanupBossEncounter === 'function') cleanupBossEncounter();
   }
 }
 
@@ -548,6 +568,14 @@ function _handleDungeonDescend(nextFloor) {
 // ── Death handling ───────────────────────────────────────────────────────────
 
 /**
+ * Internal death handler for boss encounter callback.
+ * Wraps handleDungeonDeath for use as a callback from the boss state machine.
+ */
+function _handleDungeonDeath() {
+  handleDungeonDeath();
+}
+
+/**
  * Handle dungeon death. Called from triggerGameOver when isDungeonMode is true.
  * Un-extracted loot is lost. XP and first-clear bonuses are kept.
  */
@@ -618,6 +646,12 @@ function onDungeonLinesClear(lineCount) {
   if (!isDungeonMode) return;
   dungeonFloorLinesCleared += lineCount;
   depthsFloorLinesCleared = dungeonFloorLinesCleared; // sync legacy var
+
+  // Deal line-clear damage to boss if active
+  if (depthsBossActive && typeof dealBossLineDamage === 'function') {
+    dealBossLineDamage(lineCount);
+  }
+
   checkDungeonFloorClear('line_clear');
 }
 
@@ -630,6 +664,12 @@ function onDungeonLinesClear(lineCount) {
 function onDungeonBlockMined() {
   if (!isDungeonMode) return;
   dungeonFloorBlocksMined++;
+
+  // Deal mine damage to boss if active
+  if (depthsBossActive && typeof dealBossMineDamage === 'function') {
+    dealBossMineDamage(1);
+  }
+
   checkDungeonFloorClear('mine');
 }
 

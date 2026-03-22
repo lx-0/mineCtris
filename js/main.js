@@ -5035,6 +5035,11 @@ function animate() {
       if (typeof depthsHud !== 'undefined' && depthsHud) { depthsHud.tick(delta); depthsHud.updateGoal(); }
     }
 
+    // Tick boss encounter state machine (runs even when floor timer paused for intro/transition)
+    if (isDungeonMode && typeof tickBossEncounter === 'function') {
+      tickBossEncounter(delta);
+    }
+
     // Tick ice bridge slow timer
     if (iceBridgeSlowActive) {
       iceBridgeSlowTimer -= delta;
