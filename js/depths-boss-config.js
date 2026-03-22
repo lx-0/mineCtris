@@ -52,6 +52,8 @@ var BOSS_MECHANIC_TYPES = {
   column_lock:       'column_lock',        // lock columns temporarily
   moss_spawn:        'moss_spawn',         // spawn soft moss on empty cells
   vine_spread:       'vine_spread',        // spread vine from existing moss/vine
+  magma_rise:        'magma_rise',         // magma blocks rise from the bottom
+  lava_pool:         'lava_pool',          // lava pools form after line-clears (passive, triggered by clear)
 };
 
 // ── Boss definitions ─────────────────────────────────────────────────────────
@@ -138,6 +140,45 @@ var BOSS_DEFINITIONS = {
         gravityMult:   1.2,
         pieceSpeedMult: 1.2,
         visualShift:   'shake',
+      },
+    ],
+  },
+
+  // ── Deep boss: The Furnace ──────────────────────────────────────────────────
+  the_furnace: {
+    id:              'the_furnace',
+    name:            'The Furnace',
+    tier:            BOSS_TIER_DEEP,
+    hp:              40,
+    introText:       'The walls glow red-hot as magma surges from below...',
+    defeatText:      'The Furnace cools and cracks. The heat fades to silence.',
+    visualTheme:     'the_furnace',
+    lootTable:       'deep_loot',
+    firstKillReward: null,
+    phases: [
+      {
+        id:            'phase_1',
+        name:          'Rising Heat',
+        trigger:       { type: BOSS_PHASE_TRIGGER_HEALTH, value: 1.0 },  // starts at 100%
+        mechanics: [
+          { type: BOSS_MECHANIC_TYPES.magma_rise, interval: 12, count: 3 },
+          { type: BOSS_MECHANIC_TYPES.speed_ramp, rampPerSec: 0.006, maxMult: 2.0 },
+        ],
+        gravityMult:   1.5,
+        pieceSpeedMult: 1.0,
+        visualShift:   null,
+      },
+      {
+        id:            'phase_2',
+        name:          'Meltdown',
+        trigger:       { type: BOSS_PHASE_TRIGGER_HEALTH, value: 0.6 },  // at 60% HP
+        mechanics: [
+          { type: BOSS_MECHANIC_TYPES.magma_rise, interval: 8, count: 4 },
+          { type: BOSS_MECHANIC_TYPES.speed_ramp, rampPerSec: 0.008, maxMult: 2.5 },
+        ],
+        gravityMult:   2.0,
+        pieceSpeedMult: 1.3,
+        visualShift:   'furnace_intensify',
       },
     ],
   },

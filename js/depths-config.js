@@ -261,7 +261,7 @@ var DUNGEON_DEFINITIONS = {
     floors:           ['deep_1', 'deep_2', 'deep_3', 'deep_4'],
     allowedModifiers: ['narrow_corridor', 'fog_of_war', 'piece_drought', 'gravity_flux', 'obsidian_veins', 'mirror_world'],
     lootTable:        'deep_loot',
-    bossSlot:         { floor: 4, bossId: 'piece_storm' },
+    bossSlot:         { floor: 4, bossId: 'the_furnace' },
   },
   abyssal_rift: {
     id:               'abyssal_rift',

@@ -246,8 +246,9 @@ function cleanupBossEncounter() {
   _hideBossIntro();
   _hideBossTransition();
 
-  // Clean up boss-specific block tracking (The Creep moss/vine)
+  // Clean up boss-specific block tracking
   if (typeof cleanupCreepBlocks === 'function') cleanupCreepBlocks();
+  if (typeof cleanupFurnaceBlocks === 'function') cleanupFurnaceBlocks();
 }
 
 // ── State tick handlers ──────────────────────────────────────────────────────
@@ -447,6 +448,13 @@ function _fireMechanic(mechanic) {
       // Spread vine from existing moss/vine blocks (The Creep)
       if (typeof spreadCreepVines === 'function') {
         spreadCreepVines(mechanic.count || 1);
+      }
+      break;
+
+    case 'magma_rise':
+      // Spawn magma blocks from the bottom (The Furnace)
+      if (typeof spawnFurnaceMagma === 'function') {
+        spawnFurnaceMagma(mechanic.count || 3);
       }
       break;
   }

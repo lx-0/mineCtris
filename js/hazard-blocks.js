@@ -37,6 +37,19 @@ function registerHazardBlock(block) {
   } else if (mat === 'vine') {
     block.userData.isHazard = true;
     block.userData.hazardType = 'vine';
+  } else if (mat === 'furnace_magma') {
+    block.userData.isHazard = true;
+    block.userData.hazardType = 'furnace_magma';
+  } else if (mat === 'furnace_obsidian') {
+    block.userData.isHazard = true;
+    block.userData.hazardType = 'furnace_obsidian';
+  } else if (mat === 'furnace_lava') {
+    block.userData.isHazard = true;
+    block.userData.hazardType = 'furnace_lava';
+    block.userData.isLavaDanger = true;
+  } else if (mat === 'furnace_ice') {
+    block.userData.isHazard = true;
+    block.userData.hazardType = 'furnace_ice';
   }
 }
 
@@ -64,6 +77,7 @@ function clearHazardBlocks() {
   _crumbleBlocks.length = 0;
   _magmaBlocks.length = 0;
   if (typeof cleanupCreepBlocks === 'function') cleanupCreepBlocks();
+  if (typeof cleanupFurnaceBlocks === 'function') cleanupFurnaceBlocks();
 }
 
 // ── Per-frame update ──────────────────────────────────────────────────────────
@@ -79,6 +93,8 @@ function updateHazardBlocks(delta) {
   _updateMagmaBlocks(delta);
   // Tick The Creep moss/vine mechanics (hardening timers, vine visuals)
   if (typeof updateCreepBlocks === 'function') updateCreepBlocks(delta);
+  // Tick The Furnace magma/obsidian/lava/ice mechanics
+  if (typeof updateFurnaceBlocks === 'function') updateFurnaceBlocks(delta);
 }
 
 // ── Crumble ──────────────────────────────────────────────────────────────────
