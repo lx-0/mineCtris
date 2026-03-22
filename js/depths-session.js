@@ -305,21 +305,49 @@ function _onDungeonFloorCleared() {
     defeatBoss();
   }
 
-  // Roll loot using the rarity system (loot-tables.js) if available,
-  // otherwise fall back to the simple loot table roll.
+  // Roll loot using the depths loot system (depths-loot.js) if available,
+  // then fall back to base rarity system (loot-tables.js), then simple roll.
   var floorLoot = [];
   var rarityDrops = null;
-  if (typeof rollFloorLoot === 'function') {
-    var tier = session.tier || 'shallow';
+  var tier = session.tier || 'shallow';
+
+  if (typeof rollDepthsFloorLoot === 'function') {
+    // Preferred path: full depths loot system with tier-scoped pools
+    rarityDrops = rollDepthsFloorLoot(tier, floorNum, isBoss);
+    for (var i = 0; i < rarityDrops.length; i++) {
+      var rd = rarityDrops[i];
+      addDungeonLoot(rd.item.id, 1);
+      floorLoot.push({ item: rd.item.id, amount: 1, rarity: rd.rarity, lootDrop: rd });
+    }
+    if (typeof saveDepthsLootDrops === 'function') saveDepthsLootDrops(rarityDrops);
+    // Also save to base inventory for backward compat
+    if (typeof saveLootDrops === 'function') saveLootDrops(rarityDrops);
+    // Check boss first-kill reward (depths version first, then base)
+    if (isBoss) {
+      var bossConfig = getDungeonBossConfig();
+      if (bossConfig) {
+        var bossReward = null;
+        if (typeof checkDepthsBossFirstKill === 'function') {
+          bossReward = checkDepthsBossFirstKill(bossConfig.bossId);
+        }
+        if (!bossReward && typeof checkBossFirstKillReward === 'function') {
+          bossReward = checkBossFirstKillReward(bossConfig.bossId);
+        }
+        if (bossReward) {
+          addDungeonLoot(bossReward.id, 1);
+          floorLoot.push({ item: bossReward.id, amount: 1, rarity: bossReward.rarity, isBossReward: true, lootDrop: { item: bossReward, rarity: bossReward.rarity, isDuplicate: false, bonusXP: 0 } });
+        }
+      }
+    }
+  } else if (typeof rollFloorLoot === 'function') {
+    // Fallback: base rarity system
     rarityDrops = rollFloorLoot(tier, floorNum, isBoss);
     for (var i = 0; i < rarityDrops.length; i++) {
       var rd = rarityDrops[i];
       addDungeonLoot(rd.item.id, 1);
       floorLoot.push({ item: rd.item.id, amount: 1, rarity: rd.rarity, lootDrop: rd });
     }
-    // Save loot drops to persistent inventory
     if (typeof saveLootDrops === 'function') saveLootDrops(rarityDrops);
-    // Check boss first-kill reward
     if (isBoss && typeof checkBossFirstKillReward === 'function') {
       var bossConfig = getDungeonBossConfig();
       if (bossConfig) {
@@ -447,6 +475,40 @@ function _showDungeonExtractionScreen(clearedFloorNum, floorLoot, isComplete, ne
     html += '</div>';
   }
 
+  // Consumables (usable at extraction screen)
+  if (typeof getDepthsConsumableCount === 'function' && !isComplete) {
+    var hasConsumables = false;
+    var consumableHtml = '<div class="dt-consumables">';
+    consumableHtml += '<div class="dt-consumables-title">USE CONSUMABLE</div>';
+
+    // Extra Life
+    var extraLifeCount = getDepthsConsumableCount('depths_consumable_extra_life');
+    if (extraLifeCount > 0) {
+      hasConsumables = true;
+      consumableHtml += '<button class="dt-consumable-btn" id="dungeon-use-extra-life" title="Revive once on death">' +
+        '\u2764\uFE0F Extra Life <span class="dt-consumable-count">x' + extraLifeCount + '</span></button>';
+    }
+
+    // Loot Magnet
+    var lootMagnetCount = getDepthsConsumableCount('depths_consumable_loot_magnet');
+    if (lootMagnetCount > 0) {
+      hasConsumables = true;
+      consumableHtml += '<button class="dt-consumable-btn" id="dungeon-use-loot-magnet" title="Double loot on next floor">' +
+        '\uD83E\uDDF2 Loot Magnet <span class="dt-consumable-count">x' + lootMagnetCount + '</span></button>';
+    }
+
+    // Floor Skip
+    var floorSkipCount = getDepthsConsumableCount('depths_consumable_floor_skip');
+    if (floorSkipCount > 0) {
+      hasConsumables = true;
+      consumableHtml += '<button class="dt-consumable-btn" id="dungeon-use-floor-skip" title="Skip the next floor">' +
+        '\u23ED\uFE0F Floor Skip <span class="dt-consumable-count">x' + floorSkipCount + '</span></button>';
+    }
+
+    consumableHtml += '</div>';
+    if (hasConsumables) html += consumableHtml;
+  }
+
   // Choice buttons
   html += '<div class="dt-extract-choices">';
   html += '<button class="dt-extract-btn dt-extract-keep" id="dungeon-extract-btn">' +
@@ -470,6 +532,48 @@ function _showDungeonExtractionScreen(clearedFloorNum, floorLoot, isComplete, ne
   overlay.style.display = 'flex';
   overlay.setAttribute('tabindex', '-1');
   overlay.focus();
+
+  // Wire consumable buttons
+  var extraLifeBtn = document.getElementById('dungeon-use-extra-life');
+  if (extraLifeBtn) {
+    extraLifeBtn.onclick = function () {
+      if (typeof activateExtraLife === 'function' && activateExtraLife()) {
+        extraLifeBtn.disabled = true;
+        extraLifeBtn.textContent = '\u2764\uFE0F Extra Life ACTIVE';
+        extraLifeBtn.classList.add('dt-consumable-used');
+      }
+    };
+  }
+
+  var lootMagnetBtn = document.getElementById('dungeon-use-loot-magnet');
+  if (lootMagnetBtn) {
+    lootMagnetBtn.onclick = function () {
+      if (typeof activateLootMagnet === 'function' && activateLootMagnet()) {
+        lootMagnetBtn.disabled = true;
+        lootMagnetBtn.textContent = '\uD83E\uDDF2 Loot Magnet ACTIVE';
+        lootMagnetBtn.classList.add('dt-consumable-used');
+      }
+    };
+  }
+
+  var floorSkipBtn = document.getElementById('dungeon-use-floor-skip');
+  if (floorSkipBtn && nextFloor) {
+    floorSkipBtn.onclick = function () {
+      if (typeof useDepthsConsumable === 'function' && useDepthsConsumable('depths_consumable_floor_skip')) {
+        floorSkipBtn.disabled = true;
+        floorSkipBtn.textContent = '\u23ED\uFE0F Skipping...';
+        floorSkipBtn.classList.add('dt-consumable-used');
+        // Skip the next floor: advance again and descend to the one after
+        var skippedFloor = advanceDungeonFloor();
+        if (skippedFloor) {
+          setTimeout(function () {
+            overlay.style.display = 'none';
+            _handleDungeonDescend(skippedFloor);
+          }, 500);
+        }
+      }
+    };
+  }
 
   // Wire extract button
   var extractBtn = document.getElementById('dungeon-extract-btn');
@@ -577,9 +681,28 @@ function _handleDungeonDeath() {
 
 /**
  * Handle dungeon death. Called from triggerGameOver when isDungeonMode is true.
- * Un-extracted loot is lost. XP and first-clear bonuses are kept.
+ * If Extra Life is active, revive instead of dying. Otherwise,
+ * un-extracted loot is lost. XP and first-clear bonuses are kept.
  */
 function handleDungeonDeath() {
+  // Check for Extra Life consumable
+  if (typeof consumeExtraLife === 'function' && consumeExtraLife()) {
+    // Revive: reset the board but keep session state and loot
+    if (typeof resetGame === 'function') resetGame();
+    isDungeonMode = true;
+    isDepthsMode  = true;
+    var floor = getDungeonCurrentFloor();
+    if (floor) {
+      _applyDungeonFloor(floor);
+      _updateDungeonFloorHUD(floor);
+    }
+    if (typeof depthsHud !== 'undefined' && depthsHud) depthsHud.show();
+    if (typeof snapshotDepthsFloorStart === 'function') snapshotDepthsFloorStart();
+    dungeonFloorTimerActive = true;
+    depthsFloorTimerActive  = true;
+    return;
+  }
+
   dungeonDeath();
 
   // Hide dungeon HUD overlay

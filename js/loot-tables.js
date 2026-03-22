@@ -89,9 +89,15 @@ var LOOT_CATALOG = [
 ];
 
 // Boss-exclusive first-kill cosmetics (one-time per boss)
+// Extended rewards are defined in depths-loot-config.js (DEPTHS_BOSS_FIRST_KILL_REWARDS).
+// This table covers the base catalog bosses; the depths system adds the rest.
 var LOOT_BOSS_FIRST_KILL_REWARDS = {
-  piece_storm: { id: 'loot_boss_piece_storm_trophy', type: 'cosmetic', category: 'title', name: 'Storm Breaker',  rarity: 'epic',      icon: '\u26A1', assets: { displayText: 'Storm Breaker', nameColor: '#fbbf24' } },
-  the_core:    { id: 'loot_boss_core_trophy',        type: 'cosmetic', category: 'title', name: 'Core Conqueror', rarity: 'legendary', icon: '\uD83C\uDF0B', assets: { displayText: 'Core Conqueror', nameColor: '#ef4444' } },
+  the_creep:        { id: 'loot_boss_creep_trophy',       type: 'cosmetic', category: 'pickaxe_skin', name: 'Vine-Wrapped Pickaxe', rarity: 'rare',      icon: '\u26CF',       assets: { meshKey: 'pickaxe_creep' } },
+  cave_crawler:     { id: 'loot_boss_cave_crawler_trophy', type: 'cosmetic', category: 'title',        name: 'Tunnel Rat',           rarity: 'rare',      icon: '\uD83D\uDC00', assets: { displayText: 'Tunnel Rat', nameColor: '#a3a3a3' } },
+  the_furnace:      { id: 'loot_boss_furnace_trophy',      type: 'cosmetic', category: 'pickaxe_skin', name: 'Molten Pickaxe',       rarity: 'epic',      icon: '\u26CF',       assets: { meshKey: 'pickaxe_furnace' } },
+  piece_storm:      { id: 'loot_boss_piece_storm_trophy',  type: 'cosmetic', category: 'title',        name: 'Storm Breaker',        rarity: 'epic',      icon: '\u26A1',       assets: { displayText: 'Storm Breaker', nameColor: '#fbbf24' } },
+  the_wither_storm: { id: 'loot_boss_wither_storm_trophy', type: 'cosmetic', category: 'pickaxe_skin', name: 'Void Reaver',          rarity: 'legendary', icon: '\u26CF',       assets: { meshKey: 'pickaxe_wither' } },
+  the_core:         { id: 'loot_boss_core_trophy',         type: 'cosmetic', category: 'title',        name: 'Core Conqueror',       rarity: 'legendary', icon: '\uD83C\uDF0B', assets: { displayText: 'Core Conqueror', nameColor: '#ef4444' } },
 };
 
 // ── Register loot cosmetics in the main cosmetic system ──────────────────────

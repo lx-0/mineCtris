@@ -81,7 +81,7 @@ var BOSS_DEFINITIONS = {
     defeatText:      'The overgrowth withers and crumbles away!',
     visualTheme:     'the_creep',
     lootTable:       'shallow_loot',
-    firstKillReward: null,
+    firstKillReward: 'loot_boss_creep_trophy',
     phases: [
       {
         id:            'phase_1',
@@ -120,7 +120,7 @@ var BOSS_DEFINITIONS = {
     defeatText:      'The Cave Crawler collapses into rubble!',
     visualTheme:     'cave_crawler',
     lootTable:       'shallow_loot',
-    firstKillReward: null,
+    firstKillReward: 'loot_boss_cave_crawler_trophy',
     phases: [
       {
         id:            'phase_1',
@@ -158,7 +158,7 @@ var BOSS_DEFINITIONS = {
     defeatText:      'The Furnace cools and cracks. The heat fades to silence.',
     visualTheme:     'the_furnace',
     lootTable:       'deep_loot',
-    firstKillReward: null,
+    firstKillReward: 'loot_boss_furnace_trophy',
     phases: [
       {
         id:            'phase_1',
@@ -197,7 +197,7 @@ var BOSS_DEFINITIONS = {
     defeatText:      'The storm subsides... silence returns.',
     visualTheme:     'piece_storm',
     lootTable:       'deep_loot',
-    firstKillReward: null,
+    firstKillReward: 'loot_boss_piece_storm_trophy',
     phases: [
       {
         id:            'phase_1',
@@ -235,7 +235,7 @@ var BOSS_DEFINITIONS = {
     defeatText:      'The Wither Storm collapses inward — the void seals shut.',
     visualTheme:     'the_wither_storm',
     lootTable:       'abyssal_loot',
-    firstKillReward: 'depths_border_storm_slayer',
+    firstKillReward: 'loot_boss_wither_storm_trophy',
     phases: [
       {
         id:            'phase_1',
@@ -290,7 +290,7 @@ var BOSS_DEFINITIONS = {
     defeatText:      'The Core fractures and goes dark. The abyss is conquered.',
     visualTheme:     'the_core',
     lootTable:       'abyssal_loot',
-    firstKillReward: 'depths_border_conqueror',
+    firstKillReward: 'loot_boss_core_trophy',
     phases: [
       {
         id:            'phase_1',
