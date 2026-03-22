@@ -382,42 +382,6 @@ function saveLootDrops(drops) {
   _saveLootInventory(inv);
 }
 
-/**
- * Load the loot inventory from localStorage.
- */
-function loadLootInventory() {
-  return _loadLootInventory();
-}
-
-/**
- * Get the count of a consumable in inventory.
- */
-function getConsumableCount(consumableId) {
-  var inv = _loadLootInventory();
-  return (inv.consumables && inv.consumables[consumableId]) || 0;
-}
-
-/**
- * Use a consumable (decrement count). Returns true if consumed.
- */
-function useConsumable(consumableId) {
-  var inv = _loadLootInventory();
-  if (!inv.consumables || !inv.consumables[consumableId] || inv.consumables[consumableId] <= 0) {
-    return false;
-  }
-  inv.consumables[consumableId]--;
-  _saveLootInventory(inv);
-  return true;
-}
-
-/**
- * Get fragment count for a given fragment id.
- */
-function getFragmentCount(fragmentId) {
-  var inv = _loadLootInventory();
-  return (inv.fragments && inv.fragments[fragmentId]) || 0;
-}
-
 // ── Internal persistence ─────────────────────────────────────────────────────
 
 function _loadLootInventory() {

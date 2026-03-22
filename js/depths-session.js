@@ -1271,15 +1271,6 @@ function _saveDungeonLootToInventory(loot) {
   } catch (_) {}
 }
 
-/**
- * Load the player's dungeon inventory.
- */
-function loadDungeonInventory() {
-  try {
-    return JSON.parse(localStorage.getItem(DUNGEON_INVENTORY_KEY) || '{}');
-  } catch (_) { return {}; }
-}
-
 // ── Run stats persistence ────────────────────────────────────────────────────
 
 /**
@@ -1334,15 +1325,6 @@ function _persistDungeonRunStats(summary) {
 
     localStorage.setItem(DUNGEON_STATS_KEY, JSON.stringify(stats));
   } catch (_) {}
-}
-
-/**
- * Load dungeon run stats.
- */
-function loadDungeonStats() {
-  try {
-    return JSON.parse(localStorage.getItem(DUNGEON_STATS_KEY) || '{}');
-  } catch (_) { return {}; }
 }
 
 // ── Loot icon helper ─────────────────────────────────────────────────────────

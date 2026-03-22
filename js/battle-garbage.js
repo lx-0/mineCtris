@@ -66,14 +66,6 @@ function queueGarbage(lines, gapSeed) {
 }
 
 /**
- * Return the total number of queued incoming garbage rows (all entries, including
- * those not yet ready). Used by the HUD for the incoming-garbage counter.
- */
-function pendingGarbageRows() {
-  return _garbageQueue.reduce(function (sum, e) { return sum + e.lines; }, 0);
-}
-
-/**
  * Deliver one queued garbage entry (called each time a piece spawns in battle mode).
  * Skips silently while a line-clear animation is running or the delay hasn't elapsed.
  * If Fortress is active, incoming garbage is discarded instead of injected.
@@ -106,14 +98,6 @@ function cancelOnePendingGarbage() {
 }
 
 // ── Internal helpers ──────────────────────────────────────────────────────────
-
-/**
- * LCG step: advances a 32-bit seed and returns a gap column index in [0, _GG_COLS).
- * Using the same multiplier / increment as Numerical Recipes.
- */
-function _nextGapCol(seed) {
-  return (((seed * 1664525) + 1013904223) >>> 0) % _GG_COLS;
-}
 
 /**
  * Shifts all landed blocks up by `count` Y levels, then injects `count` rows of
