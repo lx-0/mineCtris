@@ -1,4 +1,4 @@
-// Achievement system — 49 unlockable achievements with toast notifications.
+// Achievement system — 58 unlockable achievements with toast notifications.
 // Requires: state.js (isSprintMode, isBlitzMode, linesCleared),
 //           stats.js (loadLifetimeStats)
 
@@ -65,6 +65,15 @@ const ACHIEVEMENTS = [
   { id: "depths_daily_devotee",    name: "Daily Devotee",     icon: "\u{1F4C5}",       desc: "Complete 7 Daily Dungeon Seeds",                                   category: "depths", xp: 75  },
   { id: "depths_flawless_core",    name: "Flawless Core",     icon: "\u{1F48E}",       desc: "Complete Floor 7 (The Core) without the shield activating",         category: "depths", xp: 100 },
   { id: "depths_upgrade_collector",name: "Upgrade Collector",  icon: "\u{1F9F0}",       desc: "Pick at least one upgrade from every category in a single run",    category: "depths", xp: 75  },
+  { id: "depths_rock_bottom",     name: "Rock Bottom",        icon: "\u{1FAA8}",       desc: "Complete 10 total dungeon floors across all runs",                  category: "depths", xp: 50  },
+  { id: "depths_creep_killer",    name: "Creep Killer",       icon: "\u{1F33F}",       desc: "Defeat The Creep",                                                 category: "depths", xp: 75  },
+  { id: "depths_furnace_forged",  name: "Furnace Forged",     icon: "\u{1F525}",       desc: "Defeat The Furnace",                                               category: "depths", xp: 75  },
+  { id: "depths_wither_slayer",   name: "Storm Survivor",     icon: "\u{1F300}",       desc: "Defeat The Wither Storm",                                          category: "depths", xp: 100 },
+  { id: "depths_full_extract",    name: "Full Extract",       icon: "\u{1F4E6}",       desc: "Extract from a dungeon with 3 or more loot items",                 category: "depths", xp: 50  },
+  { id: "depths_speedrunner",     name: "Speedrunner",        icon: "\u26A1",          desc: "Clear a full dungeon in under 5 minutes",                          category: "depths", xp: 100 },
+  { id: "depths_flawless_floor",  name: "Flawless",           icon: "\u2728",          desc: "Complete a floor without the shield activating",                    category: "depths", xp: 75  },
+  { id: "depths_hoarder",         name: "Hoarder",            icon: "\u{1F4B0}",       desc: "Collect 100 total loot items across all runs",                      category: "depths", xp: 75  },
+  { id: "depths_vault_complete",  name: "Completionist",      icon: "\u{1F3C6}",       desc: "Discover all loot items in the vault",                             category: "depths", xp: 100 },
 ];
 
 // Session counters — reset at the start of each game
@@ -518,6 +527,8 @@ function achOnBattleResult(result, garbageReceived, durationSeconds) {
 // ── Depths (dungeon) achievement triggers ────────────────────────────────────
 
 var ACH_DEPTHS_RUNS_KEY = "mineCtris_depthsTotalRuns";
+var ACH_DEPTHS_FLOORS_KEY = "mineCtris_depthsTotalFloors";
+var ACH_DEPTHS_LOOT_KEY = "mineCtris_depthsTotalLoot";
 
 /**
  * Increment and return the total depths runs counter (persisted in localStorage).
@@ -544,6 +555,15 @@ function achOnDepthsFloorComplete(completedFloor) {
     if (upgrades.length === 0) unlockAchievement("depths_no_upgrades");
   }
 
+  // Flawless: completed this floor without shield activating
+  if (!_achDepthsShieldUsedOnFloor) {
+    unlockAchievement("depths_flawless_floor");
+  }
+
+  // Rock Bottom: track total floors cleared across all runs
+  var totalFloors = _achIncrementDepthsFloors();
+  if (totalFloors >= 10) unlockAchievement("depths_rock_bottom");
+
   // Reset floor-level shield tracking for the next floor
   _achDepthsShieldUsedOnFloor = false;
 }
@@ -560,6 +580,11 @@ function achOnDepthsRunComplete(data) {
   // Speed Runner: under 15 minutes (900 seconds)
   if (data.timeSeconds > 0 && data.timeSeconds < 900) {
     unlockAchievement("depths_speed_runner");
+  }
+
+  // Speedrunner: under 5 minutes (300 seconds)
+  if (data.timeSeconds > 0 && data.timeSeconds < 300) {
+    unlockAchievement("depths_speedrunner");
   }
 
   // Flawless Core: completed Floor 7 without shield activating
@@ -634,6 +659,67 @@ function _achCheckUpgradeCollector() {
  */
 function achOnDepthsShieldConsumed() {
   _achDepthsShieldUsedOnFloor = true;
+}
+
+/**
+ * Increment and return the total depths floors cleared counter (persisted in localStorage).
+ */
+function _achIncrementDepthsFloors() {
+  var count = 0;
+  try { count = parseInt(localStorage.getItem(ACH_DEPTHS_FLOORS_KEY) || '0', 10) || 0; } catch (_) {}
+  count++;
+  try { localStorage.setItem(ACH_DEPTHS_FLOORS_KEY, String(count)); } catch (_) {}
+  return count;
+}
+
+/**
+ * Increment the total depths loot counter by the given amount and return the new total.
+ */
+function _achIncrementDepthsLoot(amount) {
+  var count = 0;
+  try { count = parseInt(localStorage.getItem(ACH_DEPTHS_LOOT_KEY) || '0', 10) || 0; } catch (_) {}
+  count += (amount || 1);
+  try { localStorage.setItem(ACH_DEPTHS_LOOT_KEY, String(count)); } catch (_) {}
+  return count;
+}
+
+/**
+ * Call when a dungeon boss is defeated.
+ * @param {string} bossId  The boss identifier (e.g. 'the_creep', 'the_furnace', 'the_wither_storm')
+ */
+function achOnDepthsBossDefeated(bossId) {
+  if (bossId === 'the_creep')         unlockAchievement("depths_creep_killer");
+  if (bossId === 'the_furnace')       unlockAchievement("depths_furnace_forged");
+  if (bossId === 'the_wither_storm')  unlockAchievement("depths_wither_slayer");
+}
+
+/**
+ * Call when the player extracts from a dungeon.
+ * @param {number} lootCount  Number of loot items the player is extracting with
+ */
+function achOnDepthsExtract(lootCount) {
+  if (lootCount >= 3) unlockAchievement("depths_full_extract");
+}
+
+/**
+ * Call when loot items are collected (each floor clear).
+ * @param {number} itemCount  Number of items dropped this floor
+ */
+function achOnDepthsLootCollected(itemCount) {
+  var total = _achIncrementDepthsLoot(itemCount);
+  if (total >= 100) unlockAchievement("depths_hoarder");
+}
+
+/**
+ * Call after loot changes to check vault completion.
+ * Uses getVaultCompletionStats() from depths-vault-data.js.
+ */
+function achCheckVaultCompletion() {
+  if (typeof getVaultCompletionStats !== 'function') return;
+  var stats = getVaultCompletionStats();
+  if (stats.total > 0 && stats.discovered >= stats.total) {
+    unlockAchievement("depths_vault_complete");
+  }
 }
 
 /** Count how many depths achievements are unlocked. */

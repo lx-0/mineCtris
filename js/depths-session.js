@@ -303,6 +303,11 @@ function _onDungeonFloorCleared() {
   // Check if boss floor was defeated
   if (isBoss) {
     defeatBoss();
+    // Track boss-specific achievements
+    var bossConfig = getDungeonBossConfig();
+    if (bossConfig && typeof achOnDepthsBossDefeated === 'function') {
+      achOnDepthsBossDefeated(bossConfig.bossId);
+    }
   }
 
   // Roll loot using the depths loot system (depths-loot.js) if available,
@@ -369,6 +374,13 @@ function _onDungeonFloorCleared() {
       }
     }
   }
+
+  // Track loot collection for achievements
+  if (floorLoot.length > 0 && typeof achOnDepthsLootCollected === 'function') {
+    achOnDepthsLootCollected(floorLoot.length);
+  }
+  // Check vault completion after new loot is saved
+  if (typeof achCheckVaultCompletion === 'function') achCheckVaultCompletion();
 
   // Pause gameplay
   dungeonFloorTimerActive = false;
@@ -624,6 +636,9 @@ function _handleDungeonExtract() {
 
   // Save loot to inventory
   var loot = getDungeonLoot();
+
+  // Full Extract achievement: extract with 3+ loot items
+  if (typeof achOnDepthsExtract === 'function') achOnDepthsExtract(loot.length);
   _saveDungeonLootToInventory(loot);
 
   // Persist run stats
