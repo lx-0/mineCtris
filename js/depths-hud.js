@@ -16,6 +16,7 @@ var depthsHud = (function () {
   var _floorNumEl = null;
   var _floorTierEl = null;
   var _modifiersEl = null;
+  var _scalingEl = null;    // Infinite Depths difficulty indicator
   var _goalBarFill = null;
   var _goalTextEl = null;
   var _lootListEl = null;
@@ -63,9 +64,14 @@ var depthsHud = (function () {
     _modifiersEl = document.createElement('div');
     _modifiersEl.className = 'dhud-modifiers';
 
+    _scalingEl = document.createElement('div');
+    _scalingEl.className = 'dhud-infinite-scaling';
+    _scalingEl.style.display = 'none';
+
     floorSection.appendChild(_floorNumEl);
     floorSection.appendChild(_floorTierEl);
     floorSection.appendChild(_modifiersEl);
+    floorSection.appendChild(_scalingEl);
     _el.appendChild(floorSection);
 
     // — Objective progress (top-center) —
@@ -312,6 +318,26 @@ var depthsHud = (function () {
     } else if (_modifiersEl) {
       _modifiersEl.textContent = '';
       _modifiersEl.style.display = 'none';
+    }
+
+    // Infinite Depths scaling indicator
+    if (_scalingEl) {
+      var infRunS = (typeof getInfiniteRun === 'function') ? getInfiniteRun() : null;
+      if (infRunS && typeof getInfiniteScaling === 'function') {
+        var sc = getInfiniteScaling(infRunS.descentNum);
+        var speedPct = Math.round((sc.speedMultiplier - 1.0) * 100);
+        var icons = '';
+        // One skull per 2 descents of difficulty, capped at 5
+        var skulls = Math.min(5, Math.ceil(infRunS.descentNum / 2));
+        for (var s = 0; s < skulls; s++) icons += '\u2620';
+        _scalingEl.textContent = icons + ' +' + speedPct + '% SPD';
+        _scalingEl.style.display = 'block';
+        _scalingEl.style.color = sc.speedMultiplier >= 2.5 ? '#ef4444'
+                               : sc.speedMultiplier >= 1.75 ? '#fbbf24'
+                               : '#a855f7';
+      } else {
+        _scalingEl.style.display = 'none';
+      }
     }
   }
 

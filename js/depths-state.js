@@ -36,11 +36,39 @@ function startDungeonSession(dungeonId, seed) {
 
   // Fallback: template-based generation (non-seeded)
   if (!floors) {
+    // Pre-compute Infinite Depths scaling for this session
+    var infScaling = null;
+    if (typeof isInfiniteMode === 'function' && isInfiniteMode() &&
+        typeof getInfiniteScaling === 'function') {
+      var infRun = (typeof getInfiniteRun === 'function') ? getInfiniteRun() : null;
+      if (infRun) infScaling = getInfiniteScaling(infRun.descentNum);
+    }
+
     floors = [];
     for (var i = 0; i < def.floors.length; i++) {
       var tmpl = getDungeonFloorTemplate(def.floors[i]);
       if (!tmpl) continue;
-      var rolledMods = pickDungeonModifiers(tmpl.modifierPool, tmpl.modifierCount);
+
+      // Determine effective modifier pool and count
+      var effectivePool  = tmpl.modifierPool;
+      var effectiveCount = tmpl.modifierCount;
+      if (infScaling && tmpl.modifierCount > 0) {
+        // At higher Descents, use the full dungeon-level modifier pool so more
+        // varied modifiers can appear, then cap at the scaling-derived count.
+        var allowedPool = def.allowedModifiers || tmpl.modifierPool;
+        effectivePool  = allowedPool;
+        effectiveCount = Math.min(allowedPool.length, infScaling.modifierCount);
+      }
+      var rolledMods = pickDungeonModifiers(effectivePool, effectiveCount);
+
+      // Scale clear conditions by Descent number
+      var clearCond = tmpl.clearCondition;
+      if (infScaling && infScaling.clearConditionBonus > 0 && clearCond) {
+        if (clearCond.type === 'clear_lines' || clearCond.type === 'mine_blocks') {
+          clearCond = { type: clearCond.type, count: clearCond.count + infScaling.clearConditionBonus };
+        }
+      }
+
       floors.push({
         templateId:           tmpl.id,
         floorNumber:          tmpl.floorNumber,
@@ -49,7 +77,7 @@ function startDungeonSession(dungeonId, seed) {
         piecePaletteOverride: tmpl.piecePaletteOverride,
         gravityMultiplier:    tmpl.gravityMultiplier,
         hazardBlockWeights:   tmpl.hazardBlockWeights,
-        clearCondition:       tmpl.clearCondition,
+        clearCondition:       clearCond,
         timeLimitSecs:        tmpl.timeLimitSecs,
         cleared:              false,
       });

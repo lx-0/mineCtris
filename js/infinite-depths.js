@@ -109,10 +109,11 @@ function advanceInfiniteDescend() {
 }
 
 /**
- * Speed multiplier grows +5% per Descent, capped at 2.0x after ~20 Descents.
+ * Speed multiplier: Base speed × (1 + 0.15 × N), capped at 3.0x.
+ * Descent 1 = 1.15x, Descent 5 = 1.75x, Descent 10 = 2.5x.
  */
 function _calcSpeedMult(descentNum) {
-  return Math.min(2.0, 1.0 + (descentNum - 1) * 0.05);
+  return Math.min(3.0, 1.0 + descentNum * 0.15);
 }
 
 /**
@@ -121,6 +122,30 @@ function _calcSpeedMult(descentNum) {
  */
 function getInfiniteSpeedMult() {
   return _infiniteRun ? _infiniteRun.speedMultiplier : 1.0;
+}
+
+/**
+ * Returns the complete difficulty scaling parameters for a given Descent number.
+ * All Infinite Depths scaling rules are consolidated here.
+ *
+ * @param {number} descentNum  1-based Descent number
+ * @returns {object} {
+ *   speedMultiplier,      — gravity mult on top of floor base (1.15x at D1, cap 3.0x)
+ *   modifierCount,        — number of modifiers to roll per non-boss floor (2 at D1, cap 7)
+ *   hazardDensityBonus,   — fractional bonus on hazard weights (0.05 at D1, cap 1.0 = +100%)
+ *   bossPhaseBonus,       — extra phases added to boss beyond default (0 at D1, cap 2)
+ *   clearConditionBonus,  — extra lines/blocks added to clear conditions (0 at D1, +1/descent)
+ * }
+ */
+function getInfiniteScaling(descentNum) {
+  var n = Math.max(1, descentNum | 0);
+  return {
+    speedMultiplier:     Math.min(3.0, 1.0 + n * 0.15),
+    modifierCount:       Math.min(7, n + 1),
+    hazardDensityBonus:  Math.min(1.0, n * 0.05),
+    bossPhaseBonus:      Math.min(2, n - 1),
+    clearConditionBonus: n - 1,
+  };
 }
 
 // ── Extraction ────────────────────────────────────────────────────────────────

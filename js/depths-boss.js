@@ -53,12 +53,13 @@ var _bossDeathCallback  = null;
  * Initialize a boss encounter. Call when a boss floor begins.
  * Sets up the state machine at the INTRO state.
  *
- * @param {string}   bossId    Boss id from BOSS_DEFINITIONS
- * @param {object}   callbacks { onPause, onResume, onDefeat, onDeath }
+ * @param {string}        bossId       Boss id from BOSS_DEFINITIONS
+ * @param {object}        callbacks    { onPause, onResume, onDefeat, onDeath }
+ * @param {object|null}   overrideDef  Optional pre-built boss def (e.g. with extra Infinite Depths phases)
  * @returns {boolean} true if boss initialized successfully
  */
-function initBossEncounter(bossId, callbacks) {
-  var def = getBossDef(bossId);
+function initBossEncounter(bossId, callbacks, overrideDef) {
+  var def = overrideDef || getBossDef(bossId);
   if (!def || !def.phases || def.phases.length === 0) return false;
 
   _bossDef       = def;

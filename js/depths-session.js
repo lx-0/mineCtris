@@ -95,9 +95,26 @@ function _applyDungeonFloor(floor) {
     }
   }
 
-  // Apply hazard block weights
+  // Apply hazard block weights, with Infinite Depths density bonus
   if (floor.hazardBlockWeights) {
-    _dungeonHazardWeights = floor.hazardBlockWeights;
+    var hazardWeights = floor.hazardBlockWeights;
+    if (typeof isInfiniteMode === 'function' && isInfiniteMode() &&
+        typeof getInfiniteScaling === 'function') {
+      var _infRunH = (typeof getInfiniteRun === 'function') ? getInfiniteRun() : null;
+      if (_infRunH) {
+        var _hScaling = getInfiniteScaling(_infRunH.descentNum);
+        if (_hScaling.hazardDensityBonus > 0) {
+          var _hMult = 1.0 + _hScaling.hazardDensityBonus;
+          var _scaledWeights = {};
+          var _hKeys = Object.keys(hazardWeights);
+          for (var _hi = 0; _hi < _hKeys.length; _hi++) {
+            _scaledWeights[_hKeys[_hi]] = hazardWeights[_hKeys[_hi]] * _hMult;
+          }
+          hazardWeights = _scaledWeights;
+        }
+      }
+    }
+    _dungeonHazardWeights = hazardWeights;
   } else {
     _dungeonHazardWeights = null;
   }
@@ -118,12 +135,26 @@ function _applyDungeonFloor(floor) {
           depthsBossConfig.simultaneousPieces = 3;
           depthsBossConfig.fallSpeedOverride = bossDef.phases[0].pieceSpeedMult || null;
         }
+
+        // Apply Infinite Depths boss phase escalation
+        var initBossDef = bossDef;
+        if (bossDef && typeof isInfiniteMode === 'function' && isInfiniteMode() &&
+            typeof getInfiniteScaling === 'function') {
+          var _infRunB = (typeof getInfiniteRun === 'function') ? getInfiniteRun() : null;
+          if (_infRunB) {
+            var _bScaling = getInfiniteScaling(_infRunB.descentNum);
+            if (_bScaling.bossPhaseBonus > 0) {
+              initBossDef = _buildInfiniteBossDef(bossDef, _bScaling.bossPhaseBonus);
+            }
+          }
+        }
+
         initBossEncounter(bossConfig.bossId, {
           onPause:  function () { dungeonFloorTimerActive = false; },
           onResume: function () { dungeonFloorTimerActive = true; },
           onDefeat: function () { _onDungeonFloorCleared(); },
           onDeath:  function () { _handleDungeonDeath(); },
-        });
+        }, initBossDef);
       } else {
         // Fallback: legacy boss encounter
         startBossEncounter();
@@ -141,6 +172,64 @@ function _applyDungeonFloor(floor) {
 var _dungeonGravityMult = 1.0;
 // Internal: hazard block weights for the current dungeon floor
 var _dungeonHazardWeights = null;
+
+/**
+ * Build an escalated boss definition for Infinite Depths by appending extra
+ * phases beyond the default set. Extra phases represent "Oblivion" (phase 4)
+ * and "Void Collapse" (phase 5), triggering at very low HP thresholds with
+ * intensified mechanics.
+ *
+ * @param {object} baseDef     Original boss definition from BOSS_DEFINITIONS
+ * @param {number} extraPhases Number of extra phases to append (1 or 2)
+ * @returns {object}  Shallow-cloned boss def with escalated phases array
+ */
+function _buildInfiniteBossDef(baseDef, extraPhases) {
+  // Shallow clone
+  var def = {};
+  var k;
+  for (k in baseDef) {
+    if (Object.prototype.hasOwnProperty.call(baseDef, k)) def[k] = baseDef[k];
+  }
+
+  var escalated = [
+    {
+      id:            'phase_4',
+      name:          'Oblivion',
+      trigger:       { type: BOSS_PHASE_TRIGGER_HEALTH, value: 0.1 },
+      mechanics: [
+        { type: BOSS_MECHANIC_TYPES.gravity_inversion, interval: 7, duration: 10 },
+        { type: BOSS_MECHANIC_TYPES.void_spawn,        interval: 5, count: 5 },
+        { type: BOSS_MECHANIC_TYPES.board_shrink,      interval: 30 },
+        { type: BOSS_MECHANIC_TYPES.corruption_wave,   interval: 12 },
+      ],
+      gravityMult:    2.2,
+      pieceSpeedMult: 2.3,
+      visualShift:    'wither_annihilation',
+    },
+    {
+      id:            'phase_5',
+      name:          'Void Collapse',
+      trigger:       { type: BOSS_PHASE_TRIGGER_HEALTH, value: 0.03 },
+      mechanics: [
+        { type: BOSS_MECHANIC_TYPES.gravity_inversion, interval: 5, duration: 12 },
+        { type: BOSS_MECHANIC_TYPES.void_spawn,        interval: 4, count: 6 },
+        { type: BOSS_MECHANIC_TYPES.board_shrink,      interval: 20 },
+        { type: BOSS_MECHANIC_TYPES.corruption_wave,   interval: 8 },
+      ],
+      gravityMult:    2.5,
+      pieceSpeedMult: 2.5,
+      visualShift:    'wither_annihilation',
+    },
+  ];
+
+  var phases = baseDef.phases.slice();
+  var toAdd = Math.min(extraPhases, escalated.length);
+  for (var i = 0; i < toAdd; i++) {
+    phases.push(escalated[i]);
+  }
+  def.phases = phases;
+  return def;
+}
 
 /**
  * Returns the gravity multiplier for the current dungeon floor.
