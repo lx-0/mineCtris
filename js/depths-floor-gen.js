@@ -379,7 +379,7 @@ function getDepthsLineClearCells() {
  * If met, either advances to the next floor or completes the run.
  */
 function checkDepthsFloorExit() {
-  if (!isDepthsMode) return;
+  if (gameDepthsMode !== 'depths') return;
   var floor = getDepthsCurrentFloor();
   if (!floor) return;
 
@@ -406,7 +406,7 @@ function checkDepthsFloorExit() {
  * @param {number} dtMs  Delta time in milliseconds
  */
 function updateDepthsFloorTimer(dtMs) {
-  if (!isDepthsMode || !depthsFloorTimerActive) return;
+  if (gameDepthsMode !== 'depths' || !depthsFloorTimerActive) return;
   var floor = getDepthsCurrentFloor();
   if (!floor) return;
 
@@ -464,13 +464,13 @@ function _executeFloorTransition(nextFloor) {
   var savedDailyPrng   = dailyDepthsPrng;
   var savedGameRng     = gameRng;
 
-  // Soft reset: clear the board but keep depths mode flag
+  // Soft reset: clear the board but keep depths mode
   if (typeof resetGame === 'function') resetGame();
 
-  // Restore depths state
+  // Restore depths state (resetGame clears gameDepthsMode)
   _depthsRun      = savedRun;
   _depthsFloorNum = savedFloorNum;
-  isDepthsMode    = true;
+  gameDepthsMode  = 'depths';
   isDailyDepths   = savedDailyDepths;
   dailyDepthsPrng = savedDailyPrng;
   gameRng         = savedGameRng;
@@ -542,7 +542,7 @@ function _updateDepthsFloorHUD(floor) {
 }
 
 function updateDepthsGoalHUD() {
-  if (!isDepthsMode) return;
+  if (gameDepthsMode !== 'depths') return;
   var floor = getDepthsCurrentFloor();
   if (!floor) return;
   var goalEl = document.querySelector('.depths-goal');

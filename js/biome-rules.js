@@ -83,8 +83,8 @@ function getActiveBiomeRules() {
  * Uses the biome override when set, otherwise the global constant.
  */
 function getLineClearCellsNeeded() {
-  // Depths mode: 8-wide board overrides all biome cell counts
-  if (typeof isDepthsMode !== 'undefined' && isDepthsMode &&
+  // Depths/Dungeon mode: 8-wide board overrides all biome cell counts
+  if (typeof gameDepthsMode !== 'undefined' && gameDepthsMode !== null &&
       typeof getDepthsLineClearCells === 'function') {
     return getDepthsLineClearCells();
   }

@@ -4164,7 +4164,7 @@ function init() {
     if (typeof resetGame === 'function') resetGame();
 
     // Generate and start the dungeon run
-    isDepthsMode = true;
+    gameDepthsMode = 'depths';
     var firstFloor = typeof startDepthsRun === 'function' ? startDepthsRun() : null;
     if (firstFloor && typeof applyDepthsFloor === 'function') {
       applyDepthsFloor(firstFloor);
@@ -4218,7 +4218,7 @@ function init() {
     var isPractice = typeof isDailyDepthsPractice === 'function' && isDailyDepthsPractice();
 
     // Generate and start the dungeon run (uses dailyDepthsPrng via _depthsRng)
-    isDepthsMode = true;
+    gameDepthsMode = 'depths';
     var firstFloor = typeof startDepthsRun === 'function' ? startDepthsRun() : null;
     if (firstFloor && typeof applyDepthsFloor === 'function') {
       applyDepthsFloor(firstFloor);
@@ -4519,7 +4519,7 @@ function onMouseDown(event) {
       // Break burst particles (rubble gets orange crack burst)
       spawnDustParticles(targetedBlock, { breakBurst: true });
       blocksMined++;
-      if (typeof isDungeonMode !== 'undefined' && isDungeonMode && typeof onDungeonBlockMined === 'function') onDungeonBlockMined();
+      if (gameDepthsMode === 'dungeon' && typeof onDungeonBlockMined === 'function') onDungeonBlockMined();
       if (isCoopMode) coopMyBlocksMined++;
       if (isBattleMode && _isRubble) {
         battleRubbleMined++;
@@ -4559,7 +4559,7 @@ function onMouseDown(event) {
             console.log("Inventory full — block discarded.");
           }
           // Depths upgrade: Deep Pockets grants bonus block(s) per mine
-          if (isDepthsMode && typeof getDepthsInventoryBonus === 'function') {
+          if (gameDepthsMode !== null && typeof getDepthsInventoryBonus === 'function') {
             var _depthsBonus = getDepthsInventoryBonus();
             for (var _bi = 0; _bi < _depthsBonus; _bi++) addToInventory(_invColor);
           }
@@ -5030,20 +5030,20 @@ function animate() {
     }
 
     // Tick Depths floor timer (legacy 7-floor mode)
-    if (isDepthsMode && !isDungeonMode && depthsFloorTimerActive && typeof updateDepthsFloorTimer === 'function') {
+    if (gameDepthsMode === 'depths' && depthsFloorTimerActive && typeof updateDepthsFloorTimer === 'function') {
       updateDepthsFloorTimer(delta * 1000);
       if (typeof updateDepthsGoalHUD === 'function') updateDepthsGoalHUD();
     }
 
     // Tick Dungeon (Expeditions) floor timer
-    if (isDungeonMode && dungeonFloorTimerActive && typeof updateDungeonFloorTimer === 'function') {
+    if (gameDepthsMode === 'dungeon' && dungeonFloorTimerActive && typeof updateDungeonFloorTimer === 'function') {
       updateDungeonFloorTimer(delta * 1000);
       if (typeof updateDungeonGoalHUD === 'function') updateDungeonGoalHUD();
       if (typeof depthsHud !== 'undefined' && depthsHud) { depthsHud.tick(delta); depthsHud.updateGoal(); }
     }
 
     // Tick boss encounter state machine (runs even when floor timer paused for intro/transition)
-    if (isDungeonMode && typeof tickBossEncounter === 'function') {
+    if (gameDepthsMode === 'dungeon' && typeof tickBossEncounter === 'function') {
       tickBossEncounter(delta);
     }
 

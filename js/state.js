@@ -417,13 +417,16 @@ let customPieceSequence      = { mode: "random", pieces: [] };
 // Used to show "Edit Puzzle" on the completion overlay.
 let customPlayFromEditor     = false;
 
-// ── The Depths (dungeon roguelike) mode state ────────────────────────────────
-// isDepthsMode: true while a Depths dungeon run is active.
+// ── The Depths / Dungeon (roguelike) mode state ───────────────────────────────
+// gameDepthsMode: single source of truth for which depths-like system is active.
+//   null      – not in any depths/dungeon mode
+//   'depths'  – legacy 7-floor Depths run
+//   'dungeon' – tiered Dungeon/Expeditions run (Shallow / Deep / Abyssal)
 // depthsFloorLinesCleared: lines cleared on the current floor (resets each floor).
 // depthsFloorElapsedMs: milliseconds elapsed on the current floor (counts up).
 // depthsFloorTimerActive: true after first piece spawns on the current floor.
 // depthsRunComplete: true when the player has cleared all 7 floors.
-let isDepthsMode          = false;
+let gameDepthsMode        = null; // null | 'depths' | 'dungeon'
 let depthsFloorLinesCleared = 0;
 let depthsFloorElapsedMs  = 0;
 let depthsFloorTimerActive = false;

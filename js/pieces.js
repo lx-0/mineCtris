@@ -113,16 +113,16 @@ function _randomShapeIndex() {
     const weights = Object.assign({}, _wmod.blockWeights);
     // Exclude diamond unless eligible.
     if (!diamondEligible) delete weights[8];
-    // Depths mode: inject hazard block weights based on floor depth
-    if (isDepthsMode && typeof getDepthsHazardWeights === 'function') {
+    // Depths/Dungeon mode: inject hazard block weights based on floor depth
+    if (gameDepthsMode !== null && typeof getDepthsHazardWeights === 'function') {
       var hw = getDepthsHazardWeights();
       if (hw) { for (var hk in hw) weights[hk] = hw[hk]; }
     }
     return worldModifierWeightedIndex(weights, _rng);
   }
 
-  // Depths mode without world modifier: still allow hazard blocks
-  if (isDepthsMode && typeof getDepthsHazardWeights === 'function') {
+  // Depths/Dungeon mode without world modifier: still allow hazard blocks
+  if (gameDepthsMode !== null && typeof getDepthsHazardWeights === 'function') {
     var _hw = getDepthsHazardWeights();
     if (_hw) {
       var _dWeights = { 1: 1, 2: 1, 3: 1, 4: 1, 5: 1, 6: 1, 7: 1 };
@@ -211,8 +211,8 @@ function spawnFallingPiece() {
   if (isBlitzMode && !blitzTimerActive && !blitzComplete) {
     blitzTimerActive = true;
   }
-  // In Depths mode, start the floor timer on the very first piece drop
-  if (isDepthsMode && !depthsFloorTimerActive) {
+  // In legacy Depths mode, start the floor timer on the very first piece drop
+  if (gameDepthsMode === 'depths' && !depthsFloorTimerActive) {
     depthsFloorTimerActive = true;
   }
 
@@ -229,7 +229,7 @@ function spawnFallingPiece() {
   // Biome fall speed multiplier (Nether biome = 1.5x; others = 1.0).
   const _biomeFallMult = typeof getBiomeFallSpeedMult === 'function' ? getBiomeFallSpeedMult() : 1.0;
   // Depths upgrade fall speed multiplier (reduction from Featherfall, increase from Adrenaline Rush).
-  const _depthsFallMult = (isDepthsMode && typeof getDepthsFallSpeedMult === 'function') ? getDepthsFallSpeedMult() : 1.0;
+  const _depthsFallMult = (gameDepthsMode !== null && typeof getDepthsFallSpeedMult === 'function') ? getDepthsFallSpeedMult() : 1.0;
   const _fallMult = _wmodFallMult * _coopMult * _biomeFallMult * _depthsFallMult;
 
   // Co-op mode: use server-authoritative piece from the shared queue.
@@ -330,8 +330,8 @@ function spawnFallingPiece() {
   pieceQueue.push({ index: newIdx, shape: SHAPES[newIdx] });
   updateNextPiecesHUD();
   const piece3D = createPiece3D(shape, index);
-  // Depths mode: constrain spawn to 8-wide play area (±4 blocks from center)
-  const _spawnRange = isDepthsMode && typeof getDepthsSpawnRange === 'function'
+  // Depths/Dungeon mode: constrain spawn to 8-wide play area (±4 blocks from center)
+  const _spawnRange = gameDepthsMode !== null && typeof getDepthsSpawnRange === 'function'
     ? getDepthsSpawnRange() * 2
     : WORLD_SIZE * 0.8;
   const spawnX = (_rng() - 0.5) * _spawnRange;
@@ -761,8 +761,8 @@ function spawnBossFloorPieces() {
   var _spawnRange = typeof getDepthsSpawnRange === 'function'
     ? getDepthsSpawnRange() * 2 : WORLD_SIZE * 0.8;
 
-  // Start floor timer on first boss spawn
-  if (isDepthsMode && !depthsFloorTimerActive) {
+  // Start floor timer on first boss spawn (legacy Depths mode)
+  if (gameDepthsMode === 'depths' && !depthsFloorTimerActive) {
     depthsFloorTimerActive = true;
   }
 

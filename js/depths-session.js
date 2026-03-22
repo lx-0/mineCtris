@@ -8,11 +8,8 @@
 //           depths-floor-gen.js (applyDepthsFloor, helpers), state.js, gamestate.js
 // Used by:  main.js (dungeon launch), gamestate.js (game over)
 
-// ── Dungeon mode flag ────────────────────────────────────────────────────────
-// Distinct from isDepthsMode (legacy 7-floor). Both share the depths game
-// loop hooks, but isDungeonMode uses the Expeditions config/state system.
-
-var isDungeonMode = false;
+// gameDepthsMode is declared in state.js and serves as the single source of truth
+// for which depths-like system is active ('depths' | 'dungeon' | null).
 
 // ── Per-floor tracking (parallels legacy depthsFloor* vars) ──────────────────
 var dungeonFloorLinesCleared = 0;
@@ -39,8 +36,7 @@ function launchDungeonSession(dungeonId, seed) {
   var session = startDungeonSession(dungeonId, seed);
   if (!session) return false;
 
-  isDungeonMode = true;
-  isDepthsMode  = true; // enable shared depths hooks (spawn range, line clear cells, etc.)
+  gameDepthsMode = 'dungeon';
 
   var floor = getDungeonCurrentFloor();
   if (!floor) return false;
@@ -146,18 +142,18 @@ var _dungeonHazardWeights = null;
 
 /**
  * Returns the gravity multiplier for the current dungeon floor.
- * Called by piece physics when isDungeonMode is true.
+ * Called by piece physics when gameDepthsMode is 'dungeon'.
  */
 function getDungeonGravityMult() {
-  return isDungeonMode ? _dungeonGravityMult : 1.0;
+  return gameDepthsMode === 'dungeon' ? _dungeonGravityMult : 1.0;
 }
 
 /**
  * Returns the hazard block weights for the current dungeon floor.
- * Called by piece spawning when isDungeonMode is true.
+ * Called by piece spawning when gameDepthsMode is 'dungeon'.
  */
 function getDungeonHazardWeights() {
-  return isDungeonMode ? _dungeonHazardWeights : null;
+  return gameDepthsMode === 'dungeon' ? _dungeonHazardWeights : null;
 }
 
 /**
@@ -215,7 +211,7 @@ var _dungeonMirrorControls  = false;
  * Returns true if horizontal controls should be inverted (Mirror World modifier).
  */
 function isDungeonMirrorControls() {
-  return isDungeonMode && _dungeonMirrorControls;
+  return gameDepthsMode === 'dungeon' && _dungeonMirrorControls;
 }
 
 /**
@@ -223,7 +219,7 @@ function isDungeonMirrorControls() {
  * Oscillates sinusoidally if the gravity_flux modifier is active.
  */
 function getDungeonGravityFluxMult() {
-  if (!isDungeonMode || !_dungeonGravityFlux) return 1.0;
+  if (!gameDepthsMode === 'dungeon' || !_dungeonGravityFlux) return 1.0;
   var t = dungeonFloorElapsedMs / 1000;
   var period = _dungeonGravityFlux.periodSecs || 8;
   var min = _dungeonGravityFlux.min || 0.5;
@@ -237,14 +233,14 @@ function getDungeonGravityFluxMult() {
  * Returns the drought piece index (-1 if none), for piece queue filtering.
  */
 function getDungeonDroughtPiece() {
-  return isDungeonMode ? _dungeonDroughtPiece : -1;
+  return gameDepthsMode === 'dungeon' ? _dungeonDroughtPiece : -1;
 }
 
 /**
  * Returns the obsidian vein replacement config, or null.
  */
 function getDungeonBlockReplace() {
-  return isDungeonMode ? _dungeonBlockReplace : null;
+  return gameDepthsMode === 'dungeon' ? _dungeonBlockReplace : null;
 }
 
 // ── Floor clear condition checking ───────────────────────────────────────────
@@ -257,7 +253,7 @@ function getDungeonBlockReplace() {
  * @param {string} trigger  What triggered the check: 'line_clear', 'mine', 'timer'
  */
 function checkDungeonFloorClear(trigger) {
-  if (!isDungeonMode) return;
+  if (!gameDepthsMode === 'dungeon') return;
   var floor = getDungeonCurrentFloor();
   if (!floor || !floor.clearCondition) return;
 
@@ -674,9 +670,8 @@ function _handleDungeonDescend(nextFloor) {
 
   if (typeof resetGame === 'function') resetGame();
 
-  // Restore dungeon mode flags (resetGame clears them)
-  isDungeonMode = true;
-  isDepthsMode  = true;
+  // Restore dungeon mode (resetGame clears it)
+  gameDepthsMode = 'dungeon';
 
   // Apply new floor
   _applyDungeonFloor(nextFloor);
@@ -708,7 +703,7 @@ function _handleDungeonDeath() {
 }
 
 /**
- * Handle dungeon death. Called from triggerGameOver when isDungeonMode is true.
+ * Handle dungeon death. Called from triggerGameOver when gameDepthsMode is 'dungeon'.
  * If Extra Life is active, revive instead of dying. Otherwise,
  * un-extracted loot is lost. XP and first-clear bonuses are kept.
  */
@@ -717,8 +712,7 @@ function handleDungeonDeath() {
   if (typeof consumeExtraLife === 'function' && consumeExtraLife()) {
     // Revive: reset the board but keep session state and loot
     if (typeof resetGame === 'function') resetGame();
-    isDungeonMode = true;
-    isDepthsMode  = true;
+    gameDepthsMode = 'dungeon';
     var floor = getDungeonCurrentFloor();
     if (floor) {
       _applyDungeonFloor(floor);
@@ -755,7 +749,7 @@ function handleDungeonDeath() {
  * @param {number} dtMs  Delta time in milliseconds
  */
 function updateDungeonFloorTimer(dtMs) {
-  if (!isDungeonMode || !dungeonFloorTimerActive) return;
+  if (!gameDepthsMode === 'dungeon' || !dungeonFloorTimerActive) return;
 
   var floor = getDungeonCurrentFloor();
   if (!floor) return;
@@ -794,7 +788,7 @@ function updateDungeonFloorTimer(dtMs) {
  * @param {number} lineCount  Number of lines cleared in this event
  */
 function onDungeonLinesClear(lineCount) {
-  if (!isDungeonMode) return;
+  if (!gameDepthsMode === 'dungeon') return;
   dungeonFloorLinesCleared += lineCount;
   depthsFloorLinesCleared = dungeonFloorLinesCleared; // sync legacy var
 
@@ -813,7 +807,7 @@ function onDungeonLinesClear(lineCount) {
  * Updates floor mine count and checks clear condition.
  */
 function onDungeonBlockMined() {
-  if (!isDungeonMode) return;
+  if (!gameDepthsMode === 'dungeon') return;
   dungeonFloorBlocksMined++;
 
   // Deal mine damage to boss if active
@@ -865,7 +859,7 @@ function _updateDungeonFloorHUD(floor) {
  * Update the dungeon goal HUD during play.
  */
 function updateDungeonGoalHUD() {
-  if (!isDungeonMode) return;
+  if (!gameDepthsMode === 'dungeon') return;
   var floor = getDungeonCurrentFloor();
   if (!floor || !floor.clearCondition) return;
 
@@ -1370,7 +1364,7 @@ function _getLootIcon(item) {
  * Clean up dungeon session state. Called by resetGame().
  */
 function resetDungeonSession() {
-  isDungeonMode = false;
+  gameDepthsMode = null;
   dungeonFloorLinesCleared = 0;
   dungeonFloorBlocksMined  = 0;
   dungeonFloorElapsedMs    = 0;

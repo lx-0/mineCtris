@@ -7,7 +7,7 @@ function addScore(pts) {
   let _mult = _wmod ? _wmod.scoreMultiplier : 1.0;
   if (isCoopMode) _mult *= coopScoreMultiplier;
   // Depths upgrade score multiplier (Adrenaline Rush, Glass Cannon)
-  if (isDepthsMode && typeof getDepthsScoreMultiplier === 'function') _mult *= getDepthsScoreMultiplier();
+  if (gameDepthsMode !== null && typeof getDepthsScoreMultiplier === 'function') _mult *= getDepthsScoreMultiplier();
   const _actual = (_mult !== 1.0) ? Math.round(pts * _mult) : pts;
   score += _actual;
   if (isCoopMode) {
@@ -143,7 +143,7 @@ function checkGameOver() {
   const authHeight = isCoopMode ? Math.max(localMaxY, coopPartnerMaxY) : localMaxY;
   // Depths Fragile Miner upgrade: reduces effective game-over height by N rows
   var _effectiveGoHeight = GAME_OVER_HEIGHT;
-  if (isDepthsMode && typeof getDepthsHeightPenalty === 'function') {
+  if (gameDepthsMode !== null && typeof getDepthsHeightPenalty === 'function') {
     _effectiveGoHeight = Math.max(8, GAME_OVER_HEIGHT - getDepthsHeightPenalty() * BLOCK_SIZE);
   }
   if (authHeight >= _effectiveGoHeight) {
@@ -156,7 +156,7 @@ function checkGameOver() {
     if (shieldActive && !isCoopMode) {
       shieldActive = false;
       // Track shield consumption for Depths Flawless Core achievement
-      if (isDepthsMode && typeof achOnDepthsShieldConsumed === 'function') achOnDepthsShieldConsumed();
+      if (gameDepthsMode !== null && typeof achOnDepthsShieldConsumed === 'function') achOnDepthsShieldConsumed();
       showCraftedBanner("Shield absorbed the blow! Keep going.");
       if (typeof updatePowerupHUD === "function") updatePowerupHUD();
       // Visual: absorption burst flash + chromatic hit
@@ -456,14 +456,14 @@ function triggerGameOver() {
   if (typeof playGameOverJingle === "function") playGameOverJingle();
 
   // Dungeon (Expeditions) mode: permadeath — run ends, show dungeon results
-  if (typeof isDungeonMode !== 'undefined' && isDungeonMode && typeof handleDungeonDeath === 'function') {
+  if (gameDepthsMode === 'dungeon' && typeof handleDungeonDeath === 'function') {
     handleDungeonDeath();
     if (controls && controls.isLocked) controls.unlock();
     return;
   }
 
   // Depths mode (legacy 7-floor): permadeath — run ends immediately, show depths results
-  if (isDepthsMode && typeof showDepthsResults === 'function') {
+  if (gameDepthsMode === 'depths' && typeof showDepthsResults === 'function') {
     var _depthsData = {
       score:        state.score,
       linesCleared: state.linesCleared,
@@ -831,8 +831,8 @@ function resetGame() {
   // Reset Dungeon (Expeditions) mode state
   if (typeof resetDungeonSession === 'function') resetDungeonSession();
 
-  // Reset Depths (legacy 7-floor dungeon) mode state
-  isDepthsMode = false;
+  // Reset depths/dungeon mode — gameDepthsMode is the single source of truth
+  gameDepthsMode = null;
   depthsFloorLinesCleared = 0;
   depthsFloorElapsedMs = 0;
   depthsFloorTimerActive = false;

@@ -97,7 +97,7 @@ function clearHazardBlocks() {
  * @param {number} delta  Frame delta in seconds
  */
 function updateHazardBlocks(delta) {
-  if (!isDepthsMode) return;
+  if (gameDepthsMode === null) return;
 
   _updateCrumbleBlocks(delta);
   _updateMagmaBlocks(delta);
