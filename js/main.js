@@ -354,6 +354,11 @@ function init() {
     function showModeSelect(highlightMode) {
       const modeSelectEl = document.getElementById("mode-select");
       if (!modeSelectEl) return;
+      // Map daily_depths highlight to the merged depths card
+      if (highlightMode === 'daily-depths' || highlightMode === 'daily_depths') highlightMode = 'depths';
+      // Reset variant selector visibility
+      var variantSel = document.getElementById('depths-variant-selector');
+      if (variantSel) variantSel.style.display = 'none';
       // Update co-op achievement count on mode card
       if (typeof updateCoopModeCardAch === 'function') updateCoopModeCardAch();
       // Populate Classic personal best
@@ -436,7 +441,7 @@ function init() {
       // Render World Card stats panel
       if (typeof renderWorldCard === "function") renderWorldCard();
       // Apply highlight to the specified mode card
-      ["classic", "sprint", "blitz", "daily", "weekly", "puzzle", "survival", "depths", "daily-depths", "expedition", "coop", "battle", "tournament"].forEach(function (mode) {
+      ["classic", "sprint", "blitz", "daily", "weekly", "puzzle", "survival", "depths", "expedition", "coop", "battle", "tournament"].forEach(function (mode) {
         const cardEl = document.getElementById("mode-card-" + mode);
         if (cardEl) {
           if (mode === highlightMode) {
@@ -761,35 +766,66 @@ function init() {
       });
     }
 
-    // Depths (dungeon) mode card
+    // Depths (dungeon) mode card — show variant selector on click
     const depthsCardEl = document.getElementById("mode-card-depths");
-    if (depthsCardEl) {
-      depthsCardEl.addEventListener("click", function () {
+    const depthsVariantSelector = document.getElementById("depths-variant-selector");
+    if (depthsCardEl && depthsVariantSelector) {
+      depthsCardEl.addEventListener("click", function (e) {
+        // Don't open variant selector if clicking the leaderboard button
+        if (e.target.closest('.mode-card-lb-btn')) return;
+        // Don't open if variant selector is already showing (clicks on variant buttons)
+        if (e.target.closest('.depths-variant-selector')) return;
+        depthsVariantSelector.style.display = 'flex';
+        _populateDepthsVariantPBs();
+      });
+    }
+
+    // Depths variant buttons
+    var depthsFreeBtn = document.getElementById("depths-variant-free");
+    if (depthsFreeBtn) {
+      depthsFreeBtn.addEventListener("click", function (e) {
+        e.stopPropagation();
+        if (depthsVariantSelector) depthsVariantSelector.style.display = 'none';
         if (typeof metricsModePlayed === 'function') metricsModePlayed('depths');
+        markModeSeen('depths');
         document.dispatchEvent(new CustomEvent('depthsLaunch'));
       });
+    }
+    var depthsDailyBtn = document.getElementById("depths-variant-daily");
+    if (depthsDailyBtn) {
+      depthsDailyBtn.addEventListener("click", function (e) {
+        e.stopPropagation();
+        if (depthsVariantSelector) depthsVariantSelector.style.display = 'none';
+        if (typeof metricsModePlayed === 'function') metricsModePlayed('daily_depths');
+        markModeSeen('depths');
+        document.dispatchEvent(new CustomEvent('dailyDepthsLaunch'));
+      });
+    }
+    var depthsVariantBack = document.getElementById("depths-variant-back");
+    if (depthsVariantBack) {
+      depthsVariantBack.addEventListener("click", function (e) {
+        e.stopPropagation();
+        if (depthsVariantSelector) depthsVariantSelector.style.display = 'none';
+      });
+    }
+
+    /** Populate personal best labels on variant buttons. */
+    function _populateDepthsVariantPBs() {
+      // Daily variant PB
+      var dailyPbEl = document.getElementById('depths-variant-daily-pb');
+      if (dailyPbEl && typeof loadDailyDepthsBest === 'function') {
+        var pb = loadDailyDepthsBest();
+        dailyPbEl.textContent = pb
+          ? 'Best: ' + pb.score.toLocaleString() + ' (Floor ' + pb.floorReached + '/7)'
+          : '';
+      }
+      // Free run PB — use depths leaderboard best if available
+      var freePbEl = document.getElementById('depths-variant-free-pb');
+      if (freePbEl) freePbEl.textContent = '';
     }
 
     // Render weekly depths reward preview on the mode card
     if (typeof renderDepthsRewardPreview === 'function') renderDepthsRewardPreview();
-
-    // Daily Depths mode card
-    const dailyDepthsCardEl = document.getElementById("mode-card-daily-depths");
-    if (dailyDepthsCardEl) {
-      dailyDepthsCardEl.addEventListener("click", function () {
-        if (typeof metricsModePlayed === 'function') metricsModePlayed('daily_depths');
-        document.dispatchEvent(new CustomEvent('dailyDepthsLaunch'));
-      });
-      // Show today's best on the card
-      if (typeof loadDailyDepthsBest === 'function') {
-        var pb = loadDailyDepthsBest();
-        var pbEl = document.getElementById('mode-pb-daily-depths');
-        if (pbEl && pb) {
-          pbEl.textContent = 'Best: ' + pb.score.toLocaleString() +
-            ' (Floor ' + pb.floorReached + '/7)';
-        }
-      }
-    }
 
     // ── Co-op mode card + lobby overlay ──────────────────────────────────────
     (function () {

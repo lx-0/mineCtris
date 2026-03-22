@@ -14179,22 +14179,88 @@ body.biome-ice #inventory-hud { border-color: #4499dd; }
 }
 .settings-link-btn:hover { background: #0a01; }
 
-/* ── Daily Depths ───────────────────────────────────────────────────────── */
+/* ── Depths Variant Selector ────────────────────────────────────────────── */
 
-.mode-card-daily-depths {
-  position: relative;
-}
-.mode-card-badge-daily {
+.depths-variant-selector {
   position: absolute;
-  top: 6px;
-  right: 8px;
+  inset: 0;
+  background: rgba(0, 12, 6, 0.95);
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 14px 10px;
+  z-index: 5;
+}
+.depths-variant-title {
   font-family: "Press Start 2P", cursive;
   font-size: 0.5em;
-  background: #e74c3c;
+  color: #aaa;
+  letter-spacing: 2px;
+  margin-bottom: 2px;
+}
+.depths-variant-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  width: 100%;
+  background: rgba(0, 255, 136, 0.08);
+  border: 1px solid rgba(0, 255, 136, 0.35);
+  border-radius: 5px;
+  padding: 8px 6px;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
   color: #fff;
-  padding: 2px 6px;
-  border-radius: 3px;
+}
+.depths-variant-btn:hover {
+  border-color: #00ff88;
+  background: rgba(0, 255, 136, 0.18);
+}
+.depths-variant-btn-daily {
+  border-color: rgba(231, 76, 60, 0.45);
+  background: rgba(231, 76, 60, 0.08);
+}
+.depths-variant-btn-daily:hover {
+  border-color: #e74c3c;
+  background: rgba(231, 76, 60, 0.18);
+}
+.depths-variant-btn-icon {
+  font-size: 1.2em;
+  line-height: 1;
+}
+.depths-variant-btn-name {
+  font-family: "Press Start 2P", cursive;
+  font-size: 0.55em;
   letter-spacing: 1px;
+}
+.depths-variant-btn-desc {
+  font-family: "Press Start 2P", cursive;
+  font-size: 0.35em;
+  color: #aaa;
+  line-height: 1.4;
+}
+.depths-variant-btn-pb {
+  font-family: "Press Start 2P", cursive;
+  font-size: 0.35em;
+  color: #ff0;
+  text-shadow: 0 0 6px rgba(255, 255, 0, 0.5);
+  min-height: 0.9em;
+}
+.depths-variant-back {
+  font-family: "Press Start 2P", cursive;
+  font-size: 0.4em;
+  color: #888;
+  background: none;
+  border: none;
+  cursor: pointer;
+  margin-top: 2px;
+  padding: 2px 6px;
+}
+.depths-variant-back:hover {
+  color: #fff;
 }
 /* Expedition card — earthy/explorer accent */
 .mode-card-expedition {
@@ -14315,13 +14381,6 @@ body.biome-ice #inventory-hud { border-color: #4499dd; }
   padding: 20px 0;
 }
 
-/* Daily Depths PB on mode card */
-#mode-pb-daily-depths {
-  font-family: "Press Start 2P", cursive;
-  font-size: 0.55em;
-  color: #888;
-  margin-top: 4px;
-}
 
 /* ── Depths Upgrade Selection Overlay ─────────────────────────────────────── */
 
