@@ -27,6 +27,7 @@ function registerHazardBlock(block) {
     block.userData.isHazard = true;
     block.userData.hazardType = 'void';
     block.userData.isVoid = true;
+    if (typeof playVoidHum === 'function') playVoidHum();
   } else if (mat === 'soft_moss') {
     block.userData.isHazard = true;
     block.userData.hazardType = 'soft_moss';
@@ -123,8 +124,12 @@ function _updateCrumbleBlocks(delta) {
       var pulse = Math.sin(progress * Math.PI * 4) * 0.08;
       block.material.opacity = Math.max(0.3, 1 - progress * 0.7 + pulse);
       block.material.transparent = true;
-      // Subtle shake in the last second
+      // Subtle shake in the last second — play crackle when entering shake phase
       if (entry.timer < 1.0 && block.userData.gridPos) {
+        if (!entry.shakeStarted) {
+          entry.shakeStarted = true;
+          if (typeof playCrumbleCrackle === 'function') playCrumbleCrackle();
+        }
         var shake = Math.sin(performance.now() * 0.03) * 0.02;
         block.position.x = block.userData.gridPos.x + shake;
         block.position.z = block.userData.gridPos.z + shake;
@@ -132,7 +137,8 @@ function _updateCrumbleBlocks(delta) {
     }
 
     if (entry.timer <= 0) {
-      // Crumble away: spawn dust particles and remove
+      // Crumble away: play crackle, spawn dust particles and remove
+      if (typeof playCrumbleCrackle === 'function') playCrumbleCrackle();
       if (typeof spawnDustParticles === 'function') {
         spawnDustParticles(block, { breakBurst: true });
       }
@@ -167,6 +173,7 @@ function _updateMagmaBlocks(delta) {
 
     if (entry.timer <= 0) {
       entry.timer = MAGMA_DAMAGE_INTERVAL;
+      if (typeof playMagmaSizzle === 'function') playMagmaSizzle();
       _magmaDamageAdjacent(block);
     }
   }

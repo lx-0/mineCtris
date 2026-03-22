@@ -19,6 +19,10 @@ let goldenFanfareSynth = null;
 let creeperHissSynth = null;
 let creeperBoomSynth = null;
 let _creeperHissGain = null;
+let crumbleCrackleSynth = null;
+let magmaSizzleSynth    = null;
+let _magmaSizzleGain    = null;
+let voidHumSynth        = null;
 let masterCompressor = null;
 let masterReverb = null;
 let masterLimiter = null;
@@ -113,6 +117,28 @@ function initAudio() {
       envelope: { attack: 0.001, decay: 0.4, sustain: 0.0, release: 0.3 },
     }).connect(masterCompressor);
     creeperBoomSynth.volume.value = -2;
+
+    // Crumble crackle — short burst of white noise for cracking stone
+    crumbleCrackleSynth = new Tone.NoiseSynth({
+      noise: { type: "white" },
+      envelope: { attack: 0.001, decay: 0.08, sustain: 0.0, release: 0.04 },
+    }).connect(masterCompressor);
+    crumbleCrackleSynth.volume.value = -14;
+
+    // Magma sizzle — filtered pink noise for hissing sizzle
+    _magmaSizzleGain = new Tone.Gain(0.7).connect(masterCompressor);
+    magmaSizzleSynth = new Tone.NoiseSynth({
+      noise: { type: "pink" },
+      envelope: { attack: 0.01, decay: 0.25, sustain: 0.0, release: 0.15 },
+    }).connect(_magmaSizzleGain);
+    magmaSizzleSynth.volume.value = -12;
+
+    // Void hum — low sine drone on spawn
+    voidHumSynth = new Tone.Synth({
+      oscillator: { type: "sine" },
+      envelope: { attack: 0.05, decay: 0.4, sustain: 0.1, release: 0.6 },
+    }).connect(masterCompressor);
+    voidHumSynth.volume.value = -16;
 
     _initBgMusic();
     console.log("Tone.js musical bus initialized.");
@@ -450,6 +476,39 @@ function playCreeperBoom() {
   if (rumbleSynth) {
     rumbleSynth.triggerAttackRelease("E1", "4n", now + 0.05);
   }
+}
+
+// ── Hazard block sounds ──────────────────────────────────────────────────────
+
+/** Short crack burst played as crumble blocks decay and on final break. */
+let _lastCrumbleCrackleTime = 0;
+function playCrumbleCrackle() {
+  if (!audioReady || !crumbleCrackleSynth) return;
+  // Throttle to avoid overlap when many crumble blocks are active
+  var now = performance.now();
+  if (now - _lastCrumbleCrackleTime < 120) return;
+  _lastCrumbleCrackleTime = now;
+  crumbleCrackleSynth.triggerAttackRelease("32n", Tone.now());
+}
+
+/** Sizzle sound played when magma deals damage to an adjacent block. */
+let _lastMagmaSizzleTime = 0;
+function playMagmaSizzle() {
+  if (!audioReady || !magmaSizzleSynth) return;
+  var now = performance.now();
+  if (now - _lastMagmaSizzleTime < 200) return;
+  _lastMagmaSizzleTime = now;
+  magmaSizzleSynth.triggerAttackRelease("16n", Tone.now());
+}
+
+/** Low eerie hum played when a void block spawns. */
+let _lastVoidHumTime = 0;
+function playVoidHum() {
+  if (!audioReady || !voidHumSynth) return;
+  var now = performance.now();
+  if (now - _lastVoidHumTime < 300) return;
+  _lastVoidHumTime = now;
+  voidHumSynth.triggerAttackRelease("D2", "8n", Tone.now());
 }
 
 // ── Volume settings ───────────────────────────────────────────────────────────
