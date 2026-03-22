@@ -5185,6 +5185,34 @@ body.theme-legendary #score-display {
   transition: background 0.15s;
 }
 #missions-tooltip-ok:hover { background: #86efac; }
+/* Dungeon missions section */
+#depths-missions-section {
+  margin-top: 16px;
+  width: 100%;
+}
+#depths-missions-title {
+  font-family: "Press Start 2P", cursive;
+  font-size: 1.1em;
+  color: #c084fc;
+  text-shadow: 0 0 10px #c084fc;
+  letter-spacing: 0.1em;
+  margin-bottom: 8px;
+}
+#depths-missions-body {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.mission-period-badge {
+  font-family: "Press Start 2P", cursive;
+  font-size: 7px;
+  color: #c084fc;
+  background: rgba(192,132,252,0.15);
+  border-radius: 3px;
+  padding: 1px 6px;
+  margin-left: 4px;
+}
 
 /* ── Mode select: power-up equip slot ── */
 #mode-powerup-slot {

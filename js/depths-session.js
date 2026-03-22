@@ -375,6 +375,11 @@ function _onDungeonFloorCleared() {
     }
   }
 
+  // Track dungeon mission progress
+  if (typeof onDepthsMissionFloorCleared === 'function') onDepthsMissionFloorCleared();
+  if (typeof onDepthsMissionFloorReached === 'function') onDepthsMissionFloorReached(floorNum);
+  if (isBoss && typeof onDepthsMissionBossDefeated === 'function') onDepthsMissionBossDefeated();
+
   // Track loot collection for achievements
   if (floorLoot.length > 0 && typeof achOnDepthsLootCollected === 'function') {
     achOnDepthsLootCollected(floorLoot.length);
@@ -641,9 +646,17 @@ function _handleDungeonExtract() {
   if (typeof achOnDepthsExtract === 'function') achOnDepthsExtract(loot.length);
   _saveDungeonLootToInventory(loot);
 
+  // Track dungeon mission progress for extraction
+  if (typeof onDepthsMissionExtract === 'function') onDepthsMissionExtract(loot.length);
+
   // Persist run stats
   var summary = getDungeonSessionSummary();
   _persistDungeonRunStats(summary);
+
+  // Track speedrun mission (extract counts as completion)
+  if (summary.totalTimeMs && typeof onDepthsMissionRunComplete === 'function') {
+    onDepthsMissionRunComplete(summary.totalTimeMs);
+  }
 
   // Show extraction results screen
   _showDungeonResultsScreen(summary);
