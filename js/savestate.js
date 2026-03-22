@@ -112,6 +112,8 @@ function restoreGameState() {
   selectedBlockColor  = data.selectedBlockColor  || null;
   pickaxeTier         = data.pickaxeTier         || "none";
   hasCraftingBench    = !!data.hasCraftingBench;
+  // Prevent localStorage exploit: diamond pickaxe requires crafting bench
+  if (pickaxeTier === "diamond" && !hasCraftingBench) pickaxeTier = "iron";
   consumables         = Object.assign({ lava_flask: 0, ice_bridge: 0 }, data.consumables || {});
   // Power-ups do not persist across Daily/Weekly Challenge sessions (fairness for leaderboard modes)
   const savedMode = data.mode || "classic";
