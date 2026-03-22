@@ -11,6 +11,7 @@ const EVENT_TYPES = {
   PIECE_STORM: "PIECE_STORM",
   GOLDEN_HOUR: "GOLDEN_HOUR",
   EARTHQUAKE:  "EARTHQUAKE",
+  CREEPER:     "CREEPER",
 };
 
 // ── Event metadata: icon, display name, description, color scheme ─────────────
@@ -39,6 +40,14 @@ const EVENT_META = {
     accent:      "#ff8c00",
     glow:        "rgba(200,100,0,0.7)",
   },
+  [EVENT_TYPES.CREEPER]: {
+    icon:        "💥",
+    name:        "CREEPER",
+    description: "A Creeper is approaching...",
+    bg:          "rgba(20,100,20,0.93)",
+    accent:      "#00ff00",
+    glow:        "rgba(50,255,50,0.7)",
+  },
 };
 
 // ── Event durations (ms) ──────────────────────────────────────────────────────
@@ -46,6 +55,7 @@ const EVENT_DURATIONS_MS = {
   [EVENT_TYPES.PIECE_STORM]: 30000,
   [EVENT_TYPES.GOLDEN_HOUR]: 20000,
   [EVENT_TYPES.EARTHQUAKE]:  10000,
+  [EVENT_TYPES.CREEPER]:     25000,
 };
 
 // ── Scheduler config ──────────────────────────────────────────────────────────
@@ -276,6 +286,7 @@ function _fireOnStart(type) {
   if (type === EVENT_TYPES.PIECE_STORM) _onPieceStormStart();
   if (type === EVENT_TYPES.GOLDEN_HOUR) _onGoldenHourStart();
   if (type === EVENT_TYPES.EARTHQUAKE)  _onEarthquakeStart();
+  if (type === EVENT_TYPES.CREEPER)     _onCreeperStart();
   _showEventAnnouncement(type);
   _showEventCountdownHud(type);
 }
@@ -284,6 +295,7 @@ function _fireOnTick(delta, type) {
   if (type === EVENT_TYPES.PIECE_STORM) _onPieceStormTick();
   if (type === EVENT_TYPES.GOLDEN_HOUR) _onGoldenHourTick();
   if (type === EVENT_TYPES.EARTHQUAKE)  _onEarthquakeTick();
+  if (type === EVENT_TYPES.CREEPER)     _onCreeperTick(delta);
   _updateEventCountdownHud();
 }
 
@@ -292,6 +304,7 @@ function _fireOnEnd(type) {
   if (type === EVENT_TYPES.PIECE_STORM) _onPieceStormEnd();
   if (type === EVENT_TYPES.GOLDEN_HOUR) _onGoldenHourEnd();
   if (type === EVENT_TYPES.EARTHQUAKE)  _onEarthquakeEnd();
+  if (type === EVENT_TYPES.CREEPER)     _onCreeperEnd();
   // Survival: record survived event for stats tracking and journal
   if (!isGameOver && typeof isSurvivalMode !== "undefined" && isSurvivalMode &&
       typeof recordSurvivedEvent === "function") {
@@ -515,6 +528,149 @@ function _spawnEarthquakeCracks() {
   }
 }
 
+// ── Creeper implementation ────────────────────────────────────────────────────
+
+const _CREEPER_SPEED       = 1.5;  // grid units per second
+const _CREEPER_FUSE_RANGE  = 5.0;  // grid units — enter fuse state at this distance
+const _CREEPER_FUSE_TIME   = 2.5;  // seconds of fusing before event ends
+const _CREEPER_COLOR       = new THREE.Color(0x00cc00);
+const _CREEPER_FUSE_WHITE  = new THREE.Color(0xffffff);
+
+/**
+ * Spawn a creeper mesh at a random edge of the grid, on the ground (y=0).
+ * Uses a simple scaled BoxGeometry as specified (reuse block-style mesh, scaled ~2×).
+ */
+function _spawnCreeperMesh() {
+  if (typeof scene === "undefined" || !scene) return null;
+
+  const size = typeof BLOCK_SIZE !== "undefined" ? BLOCK_SIZE : 1;
+  const worldSize = typeof WORLD_SIZE !== "undefined" ? WORLD_SIZE : 50;
+  const halfWorld = worldSize / 2;
+
+  // Pick a random edge: 0=north, 1=south, 2=east, 3=west
+  const edge = Math.floor(Math.random() * 4);
+  let x, z;
+  switch (edge) {
+    case 0: x = (Math.random() - 0.5) * worldSize; z = -halfWorld; break;
+    case 1: x = (Math.random() - 0.5) * worldSize; z =  halfWorld; break;
+    case 2: x =  halfWorld; z = (Math.random() - 0.5) * worldSize; break;
+    default: x = -halfWorld; z = (Math.random() - 0.5) * worldSize; break;
+  }
+
+  // Create a scaled-up green cube (2× block size)
+  const s = size * 2;
+  const geo = new THREE.BoxGeometry(s, s, s);
+  const mat = new THREE.MeshLambertMaterial({
+    color: _CREEPER_COLOR.clone(),
+    emissive: new THREE.Color(0x003300),
+  });
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.position.set(x, s / 2, z);  // sit on ground (center at half-height)
+  mesh.userData.isCreeper = true;
+
+  // Add edge lines for Minecraft-style look
+  const edges = new THREE.EdgesGeometry(geo);
+  const lineMat = new THREE.LineBasicMaterial({ color: 0x001100 });
+  const lineSegments = new THREE.LineSegments(edges, lineMat);
+  mesh.add(lineSegments);
+
+  scene.add(mesh);
+  return mesh;
+}
+
+/**
+ * Get the player world position (X, Z).
+ * Returns { x, z } or null if controls aren't available.
+ */
+function _getPlayerXZ() {
+  if (typeof controls === "undefined" || !controls) return null;
+  const obj = controls.getObject();
+  if (!obj) return null;
+  return { x: obj.position.x, z: obj.position.z };
+}
+
+function _onCreeperStart() {
+  creeperActive = true;
+  _creeperFusing = false;
+  _creeperFuseTimer = 0;
+
+  // Spawn the creeper mesh
+  _creeperMesh = _spawnCreeperMesh();
+
+  // Green atmospheric overlay
+  const overlay = document.getElementById("creeper-overlay");
+  if (overlay) overlay.style.display = "block";
+}
+
+function _onCreeperTick(delta) {
+  if (!_creeperMesh) return;
+
+  const player = _getPlayerXZ();
+  if (!player) return;
+
+  const dx = player.x - _creeperMesh.position.x;
+  const dz = player.z - _creeperMesh.position.z;
+  const dist = Math.sqrt(dx * dx + dz * dz);
+
+  if (!_creeperFusing) {
+    // Approach phase: walk toward player
+    if (dist <= _CREEPER_FUSE_RANGE) {
+      // Enter fuse state
+      _creeperFusing = true;
+      _creeperFuseTimer = _CREEPER_FUSE_TIME;
+    } else {
+      // Move toward player at constant speed
+      const step = _CREEPER_SPEED * delta;
+      const nx = dx / dist;
+      const nz = dz / dist;
+      _creeperMesh.position.x += nx * step;
+      _creeperMesh.position.z += nz * step;
+    }
+  } else {
+    // Fuse phase: rapid green/white color flash
+    _creeperFuseTimer -= delta;
+
+    const flashRate = 8 + (1 - _creeperFuseTimer / _CREEPER_FUSE_TIME) * 12; // accelerating flash
+    const t = Math.sin(performance.now() / 1000 * Math.PI * flashRate);
+    if (t > 0) {
+      _creeperMesh.material.color.copy(_CREEPER_FUSE_WHITE);
+      _creeperMesh.material.emissive.setHex(0x444444);
+    } else {
+      _creeperMesh.material.color.copy(_CREEPER_COLOR);
+      _creeperMesh.material.emissive.setHex(0x003300);
+    }
+    _creeperMesh.material.needsUpdate = true;
+
+    if (_creeperFuseTimer <= 0) {
+      // Fuse complete — event will end naturally via the event timer,
+      // but if fuse finishes early, force-end the event.
+      endEvent();
+    }
+  }
+}
+
+function _onCreeperEnd() {
+  creeperActive = false;
+  _creeperFusing = false;
+  _creeperFuseTimer = 0;
+
+  // Remove creeper mesh from scene
+  if (_creeperMesh) {
+    if (typeof scene !== "undefined" && scene) scene.remove(_creeperMesh);
+    if (_creeperMesh.geometry) _creeperMesh.geometry.dispose();
+    if (_creeperMesh.material) _creeperMesh.material.dispose();
+    _creeperMesh = null;
+  }
+
+  // Hide overlay
+  const overlay = document.getElementById("creeper-overlay");
+  if (overlay) overlay.style.display = "none";
+
+  if (!isGameOver && typeof achOnSurvivalEventEnd === "function") {
+    achOnSurvivalEventEnd("CREEPER");
+  }
+}
+
 // ── Main update — called from game loop each frame ────────────────────────────
 
 /**
@@ -547,6 +703,7 @@ function updateEventEngine(delta) {
         EVENT_TYPES.PIECE_STORM,
         EVENT_TYPES.GOLDEN_HOUR,
         EVENT_TYPES.EARTHQUAKE,
+        EVENT_TYPES.CREEPER,
       ];
       const chosen = candidates[Math.floor(Math.random() * candidates.length)];
       startEvent(chosen);
@@ -585,6 +742,18 @@ function resetEventEngine() {
     }
   }
 
+  // Clean up any active Creeper visuals before clearing state
+  if (activeEvent === EVENT_TYPES.CREEPER) {
+    const overlay = document.getElementById("creeper-overlay");
+    if (overlay) overlay.style.display = "none";
+    if (_creeperMesh) {
+      if (typeof scene !== "undefined" && scene) scene.remove(_creeperMesh);
+      if (_creeperMesh.geometry) _creeperMesh.geometry.dispose();
+      if (_creeperMesh.material) _creeperMesh.material.dispose();
+      _creeperMesh = null;
+    }
+  }
+
   // Clean up shared HUD/announcement elements
   _dismissEventAnnouncement();
   _hideEventCountdownHud();
@@ -609,6 +778,10 @@ function resetEventEngine() {
   earthquakeActive     = false;
   _eqShakeOffX         = 0;
   _eqShakeOffY         = 0;
+  creeperActive        = false;
+  _creeperFusing       = false;
+  _creeperFuseTimer    = 0;
+  _creeperMesh         = null;
 }
 
 // ── Debug hook ────────────────────────────────────────────────────────────────

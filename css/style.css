@@ -5585,6 +5585,23 @@ body.theme-legendary #score-display {
   50%       { opacity: 1.00; }
 }
 
+/* ── Creeper World Event ────────────────────────────────────────────────── */
+
+/* Green atmospheric tint — full-screen vignette while Creeper is active */
+#creeper-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 183;
+  background: radial-gradient(ellipse at center, transparent 30%, rgba(0,180,0,0.15) 100%);
+  box-shadow: inset 0 0 100px rgba(100,255,100,0.20);
+  animation: creeper-breathe 1.2s ease-in-out infinite;
+}
+@keyframes creeper-breathe {
+  0%, 100% { opacity: 0.65; }
+  50%       { opacity: 0.85; }
+}
+
 /* ── Event Announcement Card ─────────────────────────────────────────────── */
 
 /* Full-screen backdrop */

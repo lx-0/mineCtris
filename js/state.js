@@ -362,6 +362,16 @@ let earthquakeActive = false;
 let _eqShakeOffX = 0;
 let _eqShakeOffY = 0;
 
+// ── Creeper event state ──────────────────────────────────────────────────────
+// true while the CREEPER world event is active.
+let creeperActive = false;
+// The creeper 3D mesh currently in the scene (null when no creeper is alive).
+let _creeperMesh = null;
+// Creeper approach state: true once within fuse range (5 grid units).
+let _creeperFusing = false;
+// Fuse countdown in seconds (starts at 2.5 when fuse begins).
+let _creeperFuseTimer = 0;
+
 // ── Survival mode state ───────────────────────────────────────────────────────
 // isSurvivalMode: true while a Survival session is active.
 // survivalSessionNumber: increments each time the player continues on the same world.
