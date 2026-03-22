@@ -2,8 +2,13 @@
 // Generates 7-floor sequences with biome assignments, world modifiers,
 // and escalating exit conditions (line-clear threshold + time limit).
 //
-// Requires: worldmodifier.js (WORLD_MODIFIER_DEFS), biome-rules.js (BIOME_RULES)
-// Used by: main.js (depths launch), gamestate.js (game-over / floor transition)
+// Also contains the procedural dungeon floor generator (Expeditions system)
+// that reads from depths-config.js and produces seed-deterministic floor configs.
+//
+// Requires: worldmodifier.js (WORLD_MODIFIER_DEFS), biome-rules.js (BIOME_RULES),
+//           depths-config.js (DUNGEON_DEFINITIONS, DUNGEON_FLOOR_TEMPLATES, DUNGEON_MODIFIER_REGISTRY)
+// Used by: main.js (depths launch), gamestate.js (game-over / floor transition),
+//          depths-state.js (dungeon session management)
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -188,6 +193,29 @@ function _pickFloorModifiers(floorNum) {
   // Single modifier
   var idx2 = Math.floor(_depthsRng() * _DEPTHS_MODIFIER_POOL.length);
   return [_DEPTHS_MODIFIER_POOL[idx2]];
+}
+
+// ── Hazard block spawn weights per floor tier ────────────────────────────────
+// Index 9 = Crumble, 10 = Magma, 11 = Void.
+// Shallow (1-3): only Crumble. Deep (4-6): Crumble + Magma. Floor 7: all three.
+const _DEPTHS_HAZARD_WEIGHTS = [
+  null,                          // index 0 unused
+  { 9: 1 },                     // floor 1: rare crumble
+  { 9: 2 },                     // floor 2: more crumble
+  { 9: 3 },                     // floor 3: frequent crumble
+  { 9: 3, 10: 1 },              // floor 4: crumble + rare magma
+  { 9: 3, 10: 2 },              // floor 5: crumble + more magma
+  { 9: 4, 10: 3 },              // floor 6: heavy crumble + magma
+  { 9: 4, 10: 3, 11: 1 },       // floor 7: all hazards including rare void
+];
+
+/**
+ * Returns the hazard block weights for the current floor, or null if not in a run.
+ * Used by pieces.js to mix hazard blocks into the piece queue.
+ */
+function getDepthsHazardWeights() {
+  if (!_depthsRun || _depthsFloorNum < 1 || _depthsFloorNum > DEPTHS_FLOOR_COUNT) return null;
+  return _DEPTHS_HAZARD_WEIGHTS[_depthsFloorNum] || null;
 }
 
 // ── Active run state ─────────────────────────────────────────────────────────
@@ -560,6 +588,26 @@ function _showDepthsFloorLore(floor, onReady) {
     biomeEl.textContent = biomeText;
   }
 
+  // Show weekly reward preview on Floor 1 (the "lobby" moment)
+  var rewardHintEl = overlay.querySelector('.depths-lore-reward');
+  if (!rewardHintEl) {
+    rewardHintEl = document.createElement('div');
+    rewardHintEl.className = 'depths-lore-reward';
+    var panel = overlay.querySelector('.depths-lore-panel');
+    if (panel) panel.appendChild(rewardHintEl);
+  }
+  if (floor.floor === 1 && typeof getWeeklyDepthsReward === 'function') {
+    var reward = getWeeklyDepthsReward();
+    var owned = typeof hasDepthsReward === 'function' && hasDepthsReward(reward.id);
+    rewardHintEl.innerHTML =
+      '<span class="depths-lore-reward-label">This week\'s reward: </span>' +
+      '<span class="depths-lore-reward-name">' + reward.icon + ' ' + reward.name + '</span>' +
+      (owned ? ' <span class="depths-lore-reward-owned">\u2713 Owned</span>' : '');
+    rewardHintEl.style.display = '';
+  } else {
+    rewardHintEl.style.display = 'none';
+  }
+
   overlay.style.display = 'flex';
   overlay.setAttribute('tabindex', '-1');
   overlay.focus();
@@ -735,6 +783,373 @@ function showDepthsResults(data) {
     if (e.key === 'l' || e.key === 'L') { e.preventDefault(); if (lbBtn) lbBtn.click(); }
     if (e.key === 'Escape') { e.preventDefault(); if (lobbyBtn) lobbyBtn.click(); }
   });
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// ── Procedural Dungeon Floor Generator (Expeditions system) ──────────────
+// ══════════════════════════════════════════════════════════════════════════
+// Seed-deterministic floor generation using depths-config.js data model.
+// Produces floor configs with modifier stacking, gravity scaling, and
+// hazard tier unlocking for all three dungeon tiers.
+
+// ── Seeded PRNG (mulberry32) ─────────────────────────────────────────────
+
+/**
+ * Hash a string seed into a 32-bit integer for mulberry32.
+ */
+function _dungeonSeedHash(str) {
+  var h = 0;
+  for (var i = 0; i < str.length; i++) {
+    h = ((h << 5) - h + str.charCodeAt(i)) | 0;
+  }
+  return h >>> 0;
+}
+
+/**
+ * Create a seeded PRNG (mulberry32). Returns a function that produces
+ * deterministic floats in [0, 1) on each call.
+ *
+ * @param {string|number} seed  Seed value (string hashed, number used directly)
+ * @returns {function} RNG function returning [0, 1)
+ */
+function createDungeonRng(seed) {
+  var s = (typeof seed === 'string') ? _dungeonSeedHash(seed) : (seed >>> 0);
+  return function () {
+    s |= 0; s = (s + 0x6D2B79F5) | 0;
+    var t = Math.imul(s ^ (s >>> 15), 1 | s);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+// ── Gravity scaling ──────────────────────────────────────────────────────
+
+/**
+ * Gravity ranges per tier. The multiplier interpolates linearly from
+ * min to max as the player progresses through the dungeon's floors.
+ */
+var _DUNGEON_GRAVITY_RANGES = {
+  shallow: { min: 1.0, max: 1.3 },
+  deep:    { min: 1.3, max: 1.8 },
+  abyssal: { min: 1.8, max: 2.5 },
+};
+
+/**
+ * Calculate gravity multiplier for a floor based on tier and position.
+ * Interpolates within the tier's range based on how far through the
+ * dungeon the floor is.
+ *
+ * @param {string} tier         Tier id ('shallow', 'deep', 'abyssal')
+ * @param {number} floorIndex   0-based floor index within the dungeon
+ * @param {number} totalFloors  Total floor count in the dungeon
+ * @returns {number} Gravity multiplier (rounded to 1 decimal)
+ */
+function calcDungeonGravity(tier, floorIndex, totalFloors) {
+  var range = _DUNGEON_GRAVITY_RANGES[tier];
+  if (!range) return 1.0;
+  if (totalFloors <= 1) return range.min;
+  var t = floorIndex / (totalFloors - 1);  // 0.0 to 1.0
+  var raw = range.min + t * (range.max - range.min);
+  return Math.round(raw * 10) / 10;
+}
+
+// ── Hazard block tier filtering ──────────────────────────────────────────
+
+/**
+ * Allowed hazard types per tier.
+ * Shallow: crumble only. Deep: crumble + magma. Abyssal: all types.
+ */
+var _DUNGEON_HAZARD_TIERS = {
+  shallow: ['crumble'],
+  deep:    ['crumble', 'magma'],
+  abyssal: ['crumble', 'magma', 'void_block'],
+};
+
+/**
+ * Filter hazard block weights to only include types allowed for the tier.
+ *
+ * @param {string} tier     Tier id
+ * @param {object} weights  Raw hazard weights from floor template (e.g. { crumble: 3, magma: 1 })
+ * @returns {object} Filtered weights containing only tier-allowed hazard types
+ */
+function filterHazardsByTier(tier, weights) {
+  if (!weights) return {};
+  var allowed = _DUNGEON_HAZARD_TIERS[tier] || [];
+  var filtered = {};
+  for (var key in weights) {
+    if (weights.hasOwnProperty(key) && allowed.indexOf(key) !== -1) {
+      filtered[key] = weights[key];
+    }
+  }
+  return filtered;
+}
+
+// ── Seeded modifier selection ────────────────────────────────────────────
+
+/**
+ * Pick N non-conflicting modifiers from a pool using a seeded RNG.
+ * Respects the exclusion rules in DUNGEON_MODIFIER_REGISTRY.
+ *
+ * @param {string[]} pool   Array of modifier ids to choose from
+ * @param {number}   count  Number of modifiers to pick
+ * @param {function} rng    Seeded RNG function returning [0, 1)
+ * @returns {string[]} Array of chosen modifier ids
+ */
+function pickSeededModifiers(pool, count, rng) {
+  if (!pool || pool.length === 0 || count <= 0) return [];
+  var available = pool.slice();
+  var chosen = [];
+  for (var i = 0; i < count && available.length > 0; i++) {
+    var idx = Math.floor(rng() * available.length);
+    var modId = available.splice(idx, 1)[0];
+    var mod = (typeof DUNGEON_MODIFIER_REGISTRY !== 'undefined')
+      ? DUNGEON_MODIFIER_REGISTRY[modId] : null;
+    chosen.push(modId);
+    // Remove exclusive modifiers from the remaining pool
+    if (mod && mod.exclusive && mod.exclusive.length > 0) {
+      available = available.filter(function (id) {
+        return mod.exclusive.indexOf(id) === -1;
+      });
+    }
+    // Non-stackable: already removed from available by splice
+  }
+  return chosen;
+}
+
+// ── Modifier count by tier ───────────────────────────────────────────────
+
+/**
+ * Default modifier counts per tier. Used when the floor template's
+ * modifierCount should be overridden by the tier-based scaling rule.
+ */
+var _DUNGEON_TIER_MODIFIER_COUNTS = {
+  shallow: 1,
+  deep:    2,
+  abyssal: 3,
+};
+
+// ── Clear condition generation ───────────────────────────────────────────
+
+/**
+ * Clear condition templates by tier. The generator picks one randomly
+ * per floor, scaling the numeric targets with floor depth.
+ */
+var _DUNGEON_CLEAR_TEMPLATES = {
+  shallow: [
+    { type: 'clear_lines', baseCount: 5, perFloor: 3 },
+    { type: 'mine_blocks', baseCount: 8, perFloor: 4 },
+  ],
+  deep: [
+    { type: 'clear_lines', baseCount: 10, perFloor: 3 },
+    { type: 'mine_blocks', baseCount: 15, perFloor: 5 },
+    { type: 'survive_time', baseSecs: 45, perFloor: 10 },
+  ],
+  abyssal: [
+    { type: 'clear_lines', baseCount: 20, perFloor: 3 },
+    { type: 'mine_blocks', baseCount: 25, perFloor: 5 },
+    { type: 'survive_time', baseSecs: 60, perFloor: 10 },
+  ],
+};
+
+/**
+ * Generate a floor-clear condition based on tier, floor position, and RNG.
+ * Returns a condition object like { type: 'clear_lines', count: 12 }
+ * or { type: 'survive_time', seconds: 60 }.
+ *
+ * @param {string}   tier        Tier id
+ * @param {number}   floorIndex  0-based floor index
+ * @param {function} rng         Seeded RNG
+ * @returns {object} Clear condition
+ */
+function generateClearCondition(tier, floorIndex, rng) {
+  var templates = _DUNGEON_CLEAR_TEMPLATES[tier] || _DUNGEON_CLEAR_TEMPLATES.shallow;
+  var pick = templates[Math.floor(rng() * templates.length)];
+
+  if (pick.type === 'survive_time') {
+    return { type: 'survive_time', seconds: pick.baseSecs + floorIndex * pick.perFloor };
+  }
+  return { type: pick.type, count: pick.baseCount + floorIndex * pick.perFloor };
+}
+
+// ── Core generator ───────────────────────────────────────────────────────
+
+/**
+ * Generate a complete dungeon run with deterministic seed.
+ * Produces an array of floor configs by reading the dungeon definition
+ * and floor templates from depths-config.js, then applying:
+ *   - Seeded modifier selection with conflict validation
+ *   - Gravity scaling within the tier range
+ *   - Hazard block filtering by tier
+ *   - Varied clear conditions
+ *
+ * @param {string}        dungeonId  Id from DUNGEON_DEFINITIONS
+ * @param {string|number} seed       Seed for deterministic generation
+ * @returns {object|null} Run object with floors array, or null if invalid
+ */
+function generateSeededDungeonRun(dungeonId, seed) {
+  var def = (typeof getDungeonDef === 'function') ? getDungeonDef(dungeonId) : null;
+  if (!def) return null;
+
+  var rng = createDungeonRng(seed);
+  var floors = [];
+  var tierModCount = _DUNGEON_TIER_MODIFIER_COUNTS[def.tier] || 1;
+
+  for (var i = 0; i < def.floors.length; i++) {
+    var tmplId = def.floors[i];
+    var tmpl = (typeof getDungeonFloorTemplate === 'function')
+      ? getDungeonFloorTemplate(tmplId) : null;
+    if (!tmpl) continue;
+
+    // Modifier count: use tier-based scaling, capped by available pool
+    var modCount = Math.min(tierModCount, tmpl.modifierPool.length);
+
+    // Pick modifiers with seeded RNG and conflict validation
+    var mods = pickSeededModifiers(tmpl.modifierPool, modCount, rng);
+
+    // Gravity: interpolate within tier range based on floor position
+    var gravity = calcDungeonGravity(def.tier, i, def.floors.length);
+
+    // Hazard blocks: filter by tier
+    var hazards = filterHazardsByTier(def.tier, tmpl.hazardBlockWeights);
+
+    // Clear condition: use template's condition if defined, else generate
+    var clearCond;
+    if (tmpl.clearCondition) {
+      clearCond = {
+        type: tmpl.clearCondition.type,
+        count: tmpl.clearCondition.count,
+        seconds: tmpl.clearCondition.seconds,
+      };
+    } else {
+      clearCond = generateClearCondition(def.tier, i, rng);
+    }
+
+    floors.push({
+      templateId:           tmpl.id,
+      floorNumber:          i + 1,
+      tier:                 def.tier,
+      modifiers:            mods,
+      modifierDefs:         _resolveModifierDefs(mods),
+      piecePaletteOverride: tmpl.piecePaletteOverride,
+      gravityMultiplier:    gravity,
+      hazardBlockWeights:   hazards,
+      clearCondition:       clearCond,
+      timeLimitSecs:        tmpl.timeLimitSecs,
+      cleared:              false,
+    });
+  }
+
+  return {
+    dungeonId:   dungeonId,
+    dungeonName: def.name,
+    tier:        def.tier,
+    seed:        seed,
+    floors:      floors,
+    floorCount:  floors.length,
+  };
+}
+
+/**
+ * Resolve modifier ids to their full definition objects.
+ * Returns an array of modifier definition objects.
+ */
+function _resolveModifierDefs(modIds) {
+  var defs = [];
+  for (var i = 0; i < modIds.length; i++) {
+    var mod = (typeof getDungeonModifier === 'function')
+      ? getDungeonModifier(modIds[i]) : null;
+    if (mod) defs.push(mod);
+  }
+  return defs;
+}
+
+// ── Modifier effect application ──────────────────────────────────────────
+
+/**
+ * Apply a generated floor config's modifier effects to the base game config.
+ * Stacks multiple modifier effects (board width, visibility, gravity wave, etc.).
+ *
+ * @param {object} floorConfig  Floor config from generateSeededDungeonRun()
+ * @param {object} baseConfig   Base game config to modify in-place
+ * @returns {object} The modified baseConfig
+ */
+function applyDungeonFloorModifiers(floorConfig, baseConfig) {
+  if (!floorConfig || !baseConfig) return baseConfig || {};
+
+  // Apply gravity multiplier
+  baseConfig.gravityMultiplier = floorConfig.gravityMultiplier;
+
+  // Apply piece palette override
+  if (floorConfig.piecePaletteOverride) {
+    baseConfig.piecePalette = floorConfig.piecePaletteOverride.slice();
+  }
+
+  // Apply hazard block weights
+  baseConfig.hazardBlockWeights = floorConfig.hazardBlockWeights;
+
+  // Apply clear condition
+  baseConfig.clearCondition = floorConfig.clearCondition;
+  baseConfig.timeLimitSecs = floorConfig.timeLimitSecs;
+
+  // Stack modifier effects
+  var mods = floorConfig.modifierDefs || [];
+  for (var i = 0; i < mods.length; i++) {
+    var mod = mods[i];
+    switch (mod.effect) {
+      case 'boardWidth':
+        baseConfig.boardWidth = (baseConfig.boardWidth || 10) + mod.effectValue;
+        break;
+      case 'visibility':
+        baseConfig.visibilityRows = mod.effectValue;
+        baseConfig.fogOfWar = true;
+        break;
+      case 'pieceRemoval':
+        baseConfig.removePieceCount = (baseConfig.removePieceCount || 0) + mod.effectValue;
+        break;
+      case 'gravityWave':
+        baseConfig.gravityWave = mod.effectValue;
+        break;
+      case 'blockReplace':
+        baseConfig.blockReplace = mod.effectValue;
+        break;
+      case 'invertControls':
+        baseConfig.invertControls = true;
+        break;
+    }
+  }
+
+  return baseConfig;
+}
+
+// ── Share code encoding ──────────────────────────────────────────────────
+
+/**
+ * Encode a dungeon run into a shareable code string.
+ * Format: "{dungeonId}:{seed}" — compact and deterministic.
+ *
+ * @param {string}        dungeonId  Dungeon definition id
+ * @param {string|number} seed       Seed used for generation
+ * @returns {string} Share code
+ */
+function encodeDungeonShareCode(dungeonId, seed) {
+  return dungeonId + ':' + seed;
+}
+
+/**
+ * Decode a share code into dungeon id and seed.
+ *
+ * @param {string} code  Share code string
+ * @returns {object|null} { dungeonId, seed } or null if invalid
+ */
+function decodeDungeonShareCode(code) {
+  if (!code || typeof code !== 'string') return null;
+  var idx = code.indexOf(':');
+  if (idx === -1) return null;
+  var dungeonId = code.substring(0, idx);
+  var seed = code.substring(idx + 1);
+  // Validate dungeon exists
+  if (typeof getDungeonDef === 'function' && !getDungeonDef(dungeonId)) return null;
+  return { dungeonId: dungeonId, seed: seed };
 }
 
 // ── Upgrade selection overlay ─────────────────────────────────────────────

@@ -234,6 +234,35 @@ function spawnDustParticles(block, opts) {
         (Math.random() - 0.5) * 2
       ).normalize().multiplyScalar(speed);
     };
+  } else if (block.userData.hazardType === 'crumble') {
+    // Crumble: sandy dust cloud
+    count = opts.breakBurst
+      ? Math.floor(Math.random() * 4) + 10
+      : Math.floor(Math.random() * 2) + 5;
+    dustColor = new THREE.Color(0xc4a35a);
+    lifetime = 0.5;
+    velocityFn = () => new THREE.Vector3(
+      (Math.random() - 0.5) * 5,
+      Math.random() * 2 + 0.5,
+      (Math.random() - 0.5) * 5
+    );
+  } else if (block.userData.hazardType === 'magma') {
+    // Magma: fiery sparks
+    count = opts.breakBurst
+      ? Math.floor(Math.random() * 4) + 12
+      : Math.floor(Math.random() * 2) + 6;
+    dustColor = opts.breakBurst
+      ? new THREE.Color(0xffaa00)
+      : new THREE.Color(0xff4400);
+    lifetime = 0.4;
+    velocityFn = () => {
+      var speed = 3 + Math.random() * 3;
+      return new THREE.Vector3(
+        (Math.random() - 0.5) * 2,
+        Math.random() * 2 + 1,
+        (Math.random() - 0.5) * 2
+      ).normalize().multiplyScalar(speed);
+    };
   } else {
     // Default: landed_block — unchanged behavior
     count = 4;
@@ -298,6 +327,13 @@ function updateMaterialTooltip() {
     (targetedBlock.userData.objectType ? OBJECT_TYPE_TO_MATERIAL[targetedBlock.userData.objectType] : null);
   if (!matType) {
     tooltip.classList.remove("visible");
+    return;
+  }
+
+  // Void blocks: show special tooltip
+  if (typeof isVoidBlock === 'function' && isVoidBlock(targetedBlock)) {
+    tooltip.innerHTML = '<span style="color:#8844cc;">VOID</span> — Line-clear only';
+    tooltip.classList.add("visible");
     return;
   }
 

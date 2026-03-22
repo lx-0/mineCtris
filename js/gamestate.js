@@ -455,7 +455,14 @@ function triggerGameOver() {
   if (typeof stopBgMusic === "function") stopBgMusic();
   if (typeof playGameOverJingle === "function") playGameOverJingle();
 
-  // Depths mode: permadeath — run ends immediately, show depths results
+  // Dungeon (Expeditions) mode: permadeath — run ends, show dungeon results
+  if (typeof isDungeonMode !== 'undefined' && isDungeonMode && typeof handleDungeonDeath === 'function') {
+    handleDungeonDeath();
+    if (controls && controls.isLocked) controls.unlock();
+    return;
+  }
+
+  // Depths mode (legacy 7-floor): permadeath — run ends immediately, show depths results
   if (isDepthsMode && typeof showDepthsResults === 'function') {
     var _depthsData = {
       score:        state.score,
@@ -632,6 +639,9 @@ function resetGame() {
 
   // Reset grid occupancy
   gridOccupancy.clear();
+
+  // Clear hazard block tracking
+  if (typeof clearHazardBlocks === 'function') clearHazardBlocks();
 
   // Reset fog to initial clear density
   if (scene.fog) scene.fog.density = 0.002;
@@ -818,7 +828,10 @@ function resetGame() {
   const hsTableEl2 = document.getElementById('hs-go-table');
   if (hsTableEl2) hsTableEl2.style.display = '';
 
-  // Reset Depths (dungeon) mode state
+  // Reset Dungeon (Expeditions) mode state
+  if (typeof resetDungeonSession === 'function') resetDungeonSession();
+
+  // Reset Depths (legacy 7-floor dungeon) mode state
   isDepthsMode = false;
   depthsFloorLinesCleared = 0;
   depthsFloorElapsedMs = 0;

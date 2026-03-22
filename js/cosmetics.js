@@ -298,7 +298,8 @@ function checkUnlockCondition(cosmetic) {
       return false;
     }
     case 'dungeon': {
-      // Dungeon unlock — not yet wired
+      // Dungeon reward — check if the player owns this depths reward
+      if (typeof hasDepthsReward === 'function') return hasDepthsReward(cond.value);
       return false;
     }
     default:

@@ -441,7 +441,7 @@ function init() {
       // Render World Card stats panel
       if (typeof renderWorldCard === "function") renderWorldCard();
       // Apply highlight to the specified mode card
-      ["classic", "sprint", "blitz", "daily", "weekly", "puzzle", "survival", "depths", "expedition", "coop", "battle", "tournament"].forEach(function (mode) {
+      ["classic", "sprint", "blitz", "daily", "weekly", "puzzle", "survival", "depths", "dungeons", "expedition", "coop", "battle", "tournament"].forEach(function (mode) {
         const cardEl = document.getElementById("mode-card-" + mode);
         if (cardEl) {
           if (mode === highlightMode) {
@@ -826,6 +826,36 @@ function init() {
 
     // Render weekly depths reward preview on the mode card
     if (typeof renderDepthsRewardPreview === 'function') renderDepthsRewardPreview();
+
+    // ── Dungeons mode card — show tier selector on click ─────────────────────
+    var dungeonsCardEl = document.getElementById("mode-card-dungeons");
+    var dungeonTierSelector = document.getElementById("dungeon-tier-selector");
+    if (dungeonsCardEl && dungeonTierSelector) {
+      dungeonsCardEl.addEventListener("click", function (e) {
+        if (e.target.closest('.dungeon-tier-selector')) return;
+        dungeonTierSelector.style.display = 'flex';
+      });
+    }
+    // Dungeon tier buttons
+    var dungeonTierBtns = document.querySelectorAll('.dungeon-tier-btn');
+    for (var _dt = 0; _dt < dungeonTierBtns.length; _dt++) {
+      (function (btn) {
+        btn.addEventListener('click', function (e) {
+          e.stopPropagation();
+          if (dungeonTierSelector) dungeonTierSelector.style.display = 'none';
+          var dungeonId = btn.getAttribute('data-dungeon');
+          if (typeof metricsModePlayed === 'function') metricsModePlayed('dungeon_' + dungeonId);
+          document.dispatchEvent(new CustomEvent('dungeonLaunch', { detail: { dungeonId: dungeonId } }));
+        });
+      })(dungeonTierBtns[_dt]);
+    }
+    var dungeonTierBack = document.getElementById("dungeon-tier-back");
+    if (dungeonTierBack) {
+      dungeonTierBack.addEventListener("click", function (e) {
+        e.stopPropagation();
+        if (dungeonTierSelector) dungeonTierSelector.style.display = 'none';
+      });
+    }
 
     // ── Co-op mode card + lobby overlay ──────────────────────────────────────
     (function () {
@@ -4085,7 +4115,45 @@ function init() {
     }
   });
 
-  // ── Depths (dungeon) launch handler ──────────────────────────────────────
+  // ── Dungeon (Expeditions) launch handler ──────────────────────────────────
+  document.addEventListener('dungeonLaunch', function (e) {
+    hideModeSelect();
+    if (typeof resetGame === 'function') resetGame();
+
+    var dungeonId = (e.detail && e.detail.dungeonId) || 'shallow_mines';
+    var seed = (e.detail && e.detail.seed) || null;
+
+    // Launch dungeon session
+    if (typeof launchDungeonSession === 'function') {
+      var success = launchDungeonSession(dungeonId, seed);
+      if (!success) {
+        console.warn('Failed to launch dungeon session:', dungeonId);
+        return;
+      }
+    }
+
+    // Show mode badge
+    var badge = document.getElementById('depths-mode-badge');
+    if (badge) badge.style.display = 'inline-block';
+
+    // Show floor 1 lore, then start play
+    var floor = typeof getDungeonCurrentFloor === 'function' ? getDungeonCurrentFloor() : null;
+    if (floor && typeof _showDungeonDescentLore === 'function') {
+      _showDungeonDescentLore(floor, 1, function () {
+        dungeonFloorTimerActive = true;
+        depthsFloorTimerActive  = true;
+        requestPointerLock();
+      });
+    } else {
+      dungeonFloorTimerActive = true;
+      depthsFloorTimerActive  = true;
+      requestPointerLock();
+    }
+
+    try { localStorage.setItem('mineCtris_lastMode', 'dungeon'); } catch (_) {}
+  });
+
+  // ── Depths (legacy 7-floor) launch handler ────────────────────────────────
   document.addEventListener('depthsLaunch', function () {
     hideModeSelect();
     if (typeof resetGame === 'function') resetGame();
@@ -4362,6 +4430,21 @@ function onMouseDown(event) {
   }
   // ───────────────────────────────────────────────────────────────────────────
   if (targetedBlock) {
+    // Void blocks cannot be mined — reject click
+    if (typeof isVoidBlock === 'function' && isVoidBlock(targetedBlock)) {
+      // Visual feedback: brief purple flash
+      if (targetedBlock.material) {
+        targetedBlock.material.emissive.setRGB(0.4, 0, 0.6);
+        targetedBlock.material.needsUpdate = true;
+        setTimeout(function () {
+          if (targetedBlock && targetedBlock.material && targetedBlock.userData.defaultEmissive) {
+            targetedBlock.material.emissive.copy(targetedBlock.userData.defaultEmissive);
+            targetedBlock.material.needsUpdate = true;
+          }
+        }, 150);
+      }
+      return;
+    }
     miningProgress++;
     console.log(
       `Mining progress on block: ${miningProgress}/${MINING_CLICKS_NEEDED}`
@@ -4431,6 +4514,7 @@ function onMouseDown(event) {
       // Break burst particles (rubble gets orange crack burst)
       spawnDustParticles(targetedBlock, { breakBurst: true });
       blocksMined++;
+      if (typeof isDungeonMode !== 'undefined' && isDungeonMode && typeof onDungeonBlockMined === 'function') onDungeonBlockMined();
       if (isCoopMode) coopMyBlocksMined++;
       if (isBattleMode && _isRubble) {
         battleRubbleMined++;
@@ -4938,10 +5022,16 @@ function animate() {
       }
     }
 
-    // Tick Depths floor timer
-    if (isDepthsMode && depthsFloorTimerActive && typeof updateDepthsFloorTimer === 'function') {
+    // Tick Depths floor timer (legacy 7-floor mode)
+    if (isDepthsMode && !isDungeonMode && depthsFloorTimerActive && typeof updateDepthsFloorTimer === 'function') {
       updateDepthsFloorTimer(delta * 1000);
       if (typeof updateDepthsGoalHUD === 'function') updateDepthsGoalHUD();
+    }
+
+    // Tick Dungeon (Expeditions) floor timer
+    if (isDungeonMode && dungeonFloorTimerActive && typeof updateDungeonFloorTimer === 'function') {
+      updateDungeonFloorTimer(delta * 1000);
+      if (typeof updateDungeonGoalHUD === 'function') updateDungeonGoalHUD();
     }
 
     // Tick ice bridge slow timer
@@ -5055,6 +5145,7 @@ function animate() {
       // Boss floor: update piece HUD each frame (tracks active piece changes from landing)
       if (depthsBossActive) _updateBossPieceHud();
       updateLineClear(delta);
+      if (typeof updateHazardBlocks === 'function') updateHazardBlocks(delta);
       updateFallingPieces(delta);
       if (isBattleMode && typeof battleHud !== 'undefined') battleHud.tick(delta);
       if (isBattleMode && typeof checkBattleScoreRace === 'function') checkBattleScoreRace(delta);

@@ -317,6 +317,31 @@
                   <div class="mode-card-name">Expeditions</div>
                   <div class="mode-card-desc">Explore biomes. Gather resources. Build your world.</div>
                 </div>
+                <div class="mode-card mode-card-dungeons" id="mode-card-dungeons" data-mode="dungeons">
+                  <div class="mode-card-icon">&#9876;</div>
+                  <div class="mode-card-name">Dungeons</div>
+                  <div class="mode-card-desc">Tiered dungeon runs. Clear floors, collect loot, extract or push deeper.</div>
+                  <!-- Dungeon tier selector overlay -->
+                  <div class="dungeon-tier-selector" id="dungeon-tier-selector" style="display:none;">
+                    <div class="dungeon-tier-title">CHOOSE DUNGEON</div>
+                    <button class="dungeon-tier-btn" id="dungeon-tier-shallow" data-dungeon="shallow_mines">
+                      <span class="dungeon-tier-icon" style="color:#6ee7b7;">&#9878;</span>
+                      <span class="dungeon-tier-name">Shallow Mines</span>
+                      <span class="dungeon-tier-info">3 floors &middot; Easy</span>
+                    </button>
+                    <button class="dungeon-tier-btn" id="dungeon-tier-deep" data-dungeon="deep_caverns">
+                      <span class="dungeon-tier-icon" style="color:#fbbf24;">&#9878;</span>
+                      <span class="dungeon-tier-name">Deep Caverns</span>
+                      <span class="dungeon-tier-info">4 floors &middot; Hard</span>
+                    </button>
+                    <button class="dungeon-tier-btn" id="dungeon-tier-abyssal" data-dungeon="abyssal_rift">
+                      <span class="dungeon-tier-icon" style="color:#ef4444;">&#9878;</span>
+                      <span class="dungeon-tier-name">Abyssal Rift</span>
+                      <span class="dungeon-tier-info">4 floors &middot; Extreme</span>
+                    </button>
+                    <button class="dungeon-tier-back" id="dungeon-tier-back">&#8592; Back</button>
+                  </div>
+                </div>
               </div>
             </div>
             <!-- ── MULTIPLAYER ── -->
@@ -1787,6 +1812,7 @@
     <script src="js/pieces.js"></script>
     <script src="js/trails.js"></script>
     <script src="js/mining.js"></script>
+    <script src="js/hazard-blocks.js"></script>
     <script src="js/player.js"></script>
     <script src="js/sky.js"></script>
     <script src="js/postprocessing.js"></script>
@@ -1853,10 +1879,13 @@
     <script src="js/expedition-leaderboard.js"></script>
     <script src="js/depths-leaderboard.js"></script>
     <script src="js/depths-upgrades.js"></script>
+    <script src="js/depths-config.js"></script>
+    <script src="js/depths-state.js"></script>
     <script src="js/depths-tutorial.js"></script>
     <script src="js/depths-rewards.js"></script>
     <script src="js/depths-transition.js"></script>
     <script src="js/depths-floor-gen.js"></script>
+    <script src="js/depths-session.js"></script>
     <script src="js/daily-depths.js"></script>
     <script src="js/main.js"></script>
   </body>

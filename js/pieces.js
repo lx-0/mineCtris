@@ -113,11 +113,28 @@ function _randomShapeIndex() {
     const weights = Object.assign({}, _wmod.blockWeights);
     // Exclude diamond unless eligible.
     if (!diamondEligible) delete weights[8];
+    // Depths mode: inject hazard block weights based on floor depth
+    if (isDepthsMode && typeof getDepthsHazardWeights === 'function') {
+      var hw = getDepthsHazardWeights();
+      if (hw) { for (var hk in hw) weights[hk] = hw[hk]; }
+    }
     return worldModifierWeightedIndex(weights, _rng);
   }
 
+  // Depths mode without world modifier: still allow hazard blocks
+  if (isDepthsMode && typeof getDepthsHazardWeights === 'function') {
+    var _hw = getDepthsHazardWeights();
+    if (_hw) {
+      var _dWeights = { 1: 1, 2: 1, 3: 1, 4: 1, 5: 1, 6: 1, 7: 1 };
+      if (diamondEligible) _dWeights[8] = 1;
+      for (var _hk in _hw) _dWeights[_hk] = _hw[_hk];
+      return worldModifierWeightedIndex(_dWeights, _rng);
+    }
+  }
+
   // Standard pool is indices 1–7; diamond adds index 8.
-  const poolSize = diamondEligible ? SHAPES.length - 1 : 7;
+  // Hazard blocks (9–11) are never in the standard pool — only via Depths weights.
+  const poolSize = diamondEligible ? 8 : 7;
   return Math.floor(_rng() * poolSize) + 1;
 }
 

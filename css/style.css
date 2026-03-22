@@ -15126,3 +15126,227 @@ body.biome-ice #inventory-hud { border-color: #4499dd; }
 #instructions.first-launch .first-launch-settings:hover {
   color: #0f0;
 }
+
+/* ── Dungeon Tier Selector ─────────────────────────────────────────────── */
+
+.dungeon-tier-selector {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 6, 18, 0.96);
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 14px 10px;
+  z-index: 5;
+}
+.dungeon-tier-title {
+  font-family: "Press Start 2P", cursive;
+  font-size: 0.5em;
+  color: #aaa;
+  letter-spacing: 2px;
+  margin-bottom: 2px;
+}
+.dungeon-tier-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  width: 100%;
+  background: rgba(100, 140, 255, 0.08);
+  border: 1px solid rgba(100, 140, 255, 0.35);
+  border-radius: 5px;
+  padding: 8px 6px;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+  color: #fff;
+}
+.dungeon-tier-btn:hover {
+  border-color: #6ee7b7;
+  background: rgba(110, 231, 183, 0.15);
+}
+.dungeon-tier-icon {
+  font-size: 1.2em;
+  line-height: 1;
+}
+.dungeon-tier-name {
+  font-family: "Press Start 2P", cursive;
+  font-size: 0.55em;
+  letter-spacing: 1px;
+}
+.dungeon-tier-info {
+  font-family: "Press Start 2P", cursive;
+  font-size: 0.35em;
+  color: #aaa;
+  line-height: 1.4;
+}
+.dungeon-tier-back {
+  font-family: "Press Start 2P", cursive;
+  font-size: 0.4em;
+  color: #888;
+  background: none;
+  border: none;
+  cursor: pointer;
+  margin-top: 2px;
+  padding: 2px 6px;
+}
+
+/* ── Dungeon Extract / Descend Screen ──────────────────────────────────── */
+
+.dt-extract-panel {
+  max-width: 500px;
+}
+.dt-loot-reveal {
+  margin: 16px 0;
+  padding: 12px;
+  background: rgba(17, 24, 39, 0.8);
+  border: 1px solid rgba(110, 231, 183, 0.3);
+  border-radius: 6px;
+}
+.dt-loot-title {
+  font-size: 0.6em;
+  color: #6ee7b7;
+  letter-spacing: 2px;
+  margin-bottom: 10px;
+}
+.dt-loot-item {
+  font-size: 0.6em;
+  color: #fff;
+  padding: 4px 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.dt-loot-icon {
+  font-size: 1.2em;
+}
+.dt-loot-name {
+  text-transform: capitalize;
+}
+.dt-loot-amount {
+  color: #fbbf24;
+  margin-left: auto;
+}
+.dt-loot-total {
+  margin: 12px 0;
+  padding: 8px 12px;
+  background: rgba(17, 24, 39, 0.5);
+  border-radius: 4px;
+  border-left: 3px solid #a78bfa;
+}
+.dt-loot-total-title {
+  font-size: 0.45em;
+  color: #a78bfa;
+  letter-spacing: 1px;
+  margin-bottom: 6px;
+}
+.dt-loot-total-entry {
+  font-size: 0.5em;
+  color: #ccc;
+  margin-right: 12px;
+  text-transform: capitalize;
+}
+.dt-extract-choices {
+  display: flex;
+  gap: 16px;
+  margin-top: 20px;
+  justify-content: center;
+}
+.dt-extract-btn {
+  font-family: "Press Start 2P", cursive;
+  font-size: 0.6em;
+  padding: 16px 20px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s;
+  line-height: 1.6;
+  text-align: center;
+}
+.dt-extract-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+}
+.dt-extract-keep {
+  background: rgba(34, 197, 94, 0.15);
+  border: 2px solid #22c55e;
+  color: #22c55e;
+}
+.dt-extract-keep:hover {
+  border-color: #4ade80;
+  color: #4ade80;
+}
+.dt-extract-descend {
+  background: rgba(239, 68, 68, 0.12);
+  border: 2px solid #ef4444;
+  color: #ef4444;
+}
+.dt-extract-descend:hover {
+  border-color: #f87171;
+  color: #f87171;
+}
+.dt-extract-sub {
+  font-size: 0.65em;
+  color: #888;
+  display: block;
+  margin-top: 4px;
+}
+.dt-complete-msg {
+  font-size: 0.7em;
+  color: #fbbf24;
+  margin-top: 12px;
+  text-shadow: 0 0 12px rgba(251, 191, 36, 0.5);
+}
+.dt-dungeon-name {
+  font-size: 0.6em;
+  color: #a78bfa;
+  letter-spacing: 2px;
+  margin-bottom: 16px;
+  text-transform: capitalize;
+}
+.dt-results-loot {
+  margin: 12px 0;
+  padding: 10px;
+  background: rgba(17, 24, 39, 0.6);
+  border: 1px solid rgba(110, 231, 183, 0.25);
+  border-radius: 4px;
+}
+.dt-results-loot-title {
+  font-size: 0.5em;
+  color: #6ee7b7;
+  letter-spacing: 1px;
+  margin-bottom: 6px;
+}
+.dt-results-loot-item {
+  font-size: 0.55em;
+  color: #ddd;
+  padding: 2px 0;
+  text-transform: capitalize;
+}
+.dt-results-loot-lost {
+  font-size: 0.5em;
+  color: #ef4444;
+  margin: 12px 0;
+  padding: 8px;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 4px;
+}
+.dt-results-xp {
+  font-size: 0.55em;
+  color: #fbbf24;
+  margin: 10px 0;
+  text-shadow: 0 0 8px rgba(251, 191, 36, 0.3);
+}
+
+/* ── Dungeons mode card ────────────────────────────────────────────────── */
+.mode-card-dungeons .mode-card-icon {
+  color: #a78bfa;
+}
+.mode-card-dungeons {
+  border-color: rgba(167, 139, 250, 0.3);
+}
+.mode-card-dungeons:hover {
+  border-color: #a78bfa;
+  box-shadow: 0 0 20px rgba(167, 139, 250, 0.15);
+}

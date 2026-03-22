@@ -25,6 +25,8 @@ function registerBlock(block) {
   if (mat === 'lava' || mat === 'gold' || mat === 'ice') {
     registerAuraEmitter(gx, gy, gz, mat);
   }
+  // Register hazard block tracking (Crumble/Magma/Void)
+  if (typeof registerHazardBlock === 'function') registerHazardBlock(block);
 }
 
 /** Remove a block from the grid occupancy map (mining or line-clear). */
@@ -41,6 +43,9 @@ function unregisterBlock(block) {
   if (mat === 'lava' || mat === 'gold' || mat === 'ice') {
     removeAuraEmitter(gp.x, gp.y, gp.z);
   }
+
+  // Unregister hazard block tracking
+  if (typeof unregisterHazardBlock === 'function') unregisterHazardBlock(block);
 
   block.userData.gridPos = null;
 }
@@ -130,6 +135,27 @@ function createBlockMesh(color) {
       cube.material.emissive = lavaEmissive;
       cube.material.needsUpdate = true;
       cube.userData.defaultEmissive = lavaEmissive.clone();
+    }
+    // Magma hazard: orange emissive glow
+    if (BLOCK_TYPES[materialName].effect === "magma_glow" && !colorblindMode) {
+      const magmaEmissive = new THREE.Color(0x441100);
+      cube.material.emissive = magmaEmissive;
+      cube.material.needsUpdate = true;
+      cube.userData.defaultEmissive = magmaEmissive.clone();
+    }
+    // Void hazard: deep purple emissive shimmer
+    if (materialName === "void_block" && !colorblindMode) {
+      const voidEmissive = new THREE.Color(0x150025);
+      cube.material.emissive = voidEmissive;
+      cube.material.emissiveIntensity = 1.5;
+      cube.material.needsUpdate = true;
+      cube.userData.defaultEmissive = voidEmissive.clone();
+    }
+    // Tag hazard properties
+    if (BLOCK_TYPES[materialName].isHazard) {
+      cube.userData.isHazard = true;
+      cube.userData.hazardType = BLOCK_TYPES[materialName].hazardType;
+      if (materialName === 'void_block') cube.userData.isVoid = true;
     }
   }
 

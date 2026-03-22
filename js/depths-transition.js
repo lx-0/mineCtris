@@ -2,7 +2,7 @@
 // Shows score summary, upgrade selection, and descent animation between floors.
 // Also handles the Floor 7 victory screen with cosmetic reward.
 //
-// Requires: state.js, depths-floor-gen.js, depths-upgrades.js, gamestate.js
+// Requires: state.js, depths-floor-gen.js, depths-upgrades.js, depths-rewards.js, gamestate.js
 // Used by: depths-floor-gen.js (floor transition flow)
 
 // ── Per-floor score tracking ───────────────────────────────────────────────
@@ -278,8 +278,11 @@ function showDepthsVictoryScreen(data) {
   var mm = Math.floor(totalSecs / 60).toString().padStart(2, '0');
   var ss = (totalSecs % 60).toString().padStart(2, '0');
 
-  // Determine the weekly cosmetic reward
-  var cosmetic = _getWeeklyDepthsCosmetic();
+  // Grant the weekly cosmetic reward (with duplicate protection)
+  var rewardResult = (typeof awardWeeklyDepthsReward === 'function')
+    ? awardWeeklyDepthsReward()
+    : { awarded: false, reward: { icon: '?', name: 'Unknown', description: '' }, isDuplicate: false, bonusXP: 0 };
+  var cosmetic = rewardResult.reward;
 
   var panel = overlay.querySelector('.depths-results-panel');
   if (!panel) return;
@@ -311,9 +314,15 @@ function showDepthsVictoryScreen(data) {
 
   // Cosmetic reward
   html += '<div class="dt-victory-reward">';
-  html += '<div class="dt-reward-label">WEEKLY REWARD UNLOCKED</div>';
-  html += '<div class="dt-reward-item">' + cosmetic.icon + ' ' + cosmetic.name + '</div>';
-  html += '<div class="dt-reward-desc">' + cosmetic.description + '</div>';
+  if (rewardResult.isDuplicate) {
+    html += '<div class="dt-reward-label">WEEKLY REWARD (ALREADY OWNED)</div>';
+    html += '<div class="dt-reward-item dt-reward-duplicate">' + cosmetic.icon + ' ' + cosmetic.name + ' <span class="dt-reward-owned">\u2713</span></div>';
+    html += '<div class="dt-reward-desc">Bonus XP: +' + rewardResult.bonusXP + ' XP</div>';
+  } else {
+    html += '<div class="dt-reward-label">WEEKLY REWARD UNLOCKED</div>';
+    html += '<div class="dt-reward-item">' + cosmetic.icon + ' ' + cosmetic.name + '</div>';
+    html += '<div class="dt-reward-desc">' + cosmetic.description + '</div>';
+  }
   html += '</div>';
 
   // Upgrades summary
@@ -343,8 +352,7 @@ function showDepthsVictoryScreen(data) {
     }
   }
 
-  // Save cosmetic reward
-  _awardWeeklyDepthsCosmetic(cosmetic);
+  // Reward already granted above via awardWeeklyDepthsReward()
 
   // Depths achievements: run-complete and run-end tracking
   if (typeof achOnDepthsRunComplete === 'function') achOnDepthsRunComplete(data);
@@ -430,33 +438,6 @@ function showDepthsVictoryScreen(data) {
 }
 
 // ── Weekly cosmetic rewards ────────────────────────────────────────────────
-
-var _DEPTHS_COSMETICS = [
-  { id: 'pickaxe_obsidian',  icon: '⛏', name: 'Obsidian Pickaxe',   description: 'A dark pickaxe forged in the deepest fires.' },
-  { id: 'trail_embers',      icon: '🔥', name: 'Ember Trail',        description: 'Falling pieces leave glowing embers.' },
-  { id: 'aura_depths',       icon: '💎', name: 'Abyssal Aura',       description: 'A shimmering aura surrounds your blocks.' },
-  { id: 'frame_conqueror',   icon: '👑', name: 'Conqueror Frame',    description: 'A golden frame for your profile.' },
-  { id: 'sound_depths',      icon: '🎵', name: 'Depths Melody',      description: 'Unlock the Depths soundtrack for other modes.' },
-  { id: 'block_crystal',     icon: '✨', name: 'Crystal Blocks',     description: 'Translucent crystal block skin.' },
-  { id: 'bg_abyss',          icon: '🌌', name: 'Abyssal Background', description: 'A swirling void background theme.' },
-];
-
-function _getWeeklyDepthsCosmetic() {
-  // Rotate weekly based on ISO week number
-  var now = new Date();
-  var start = new Date(now.getFullYear(), 0, 1);
-  var weekNum = Math.ceil(((now - start) / 86400000 + start.getDay() + 1) / 7);
-  var idx = weekNum % _DEPTHS_COSMETICS.length;
-  return _DEPTHS_COSMETICS[idx];
-}
-
-function _awardWeeklyDepthsCosmetic(cosmetic) {
-  try {
-    var key = 'depths_cosmetics';
-    var stored = JSON.parse(localStorage.getItem(key) || '[]');
-    if (stored.indexOf(cosmetic.id) < 0) {
-      stored.push(cosmetic.id);
-      localStorage.setItem(key, JSON.stringify(stored));
-    }
-  } catch (e) { /* localStorage unavailable */ }
-}
+// Moved to depths-rewards.js — see DEPTHS_REWARD_POOL, getWeeklyDepthsReward(),
+// awardWeeklyDepthsReward() for the full implementation with duplicate
+// protection, bonus XP, lobby preview, and upcoming reward calendar.

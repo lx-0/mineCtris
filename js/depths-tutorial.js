@@ -39,6 +39,13 @@ var DEPTHS_TUTORIAL_STEPS = [
     autoDismissMs: 5000,
   },
   {
+    id: 'hazard_blocks',
+    text: 'Hazard blocks! Crumble blocks decay. Magma burns neighbors.',
+    subtext: 'Void blocks can only be destroyed by clearing their row.',
+    trigger: 'hazardBlockLanded',
+    autoDismissMs: 5000,
+  },
+  {
     id: 'death',
     text: 'Runs end on death. Try again — your XP is kept.',
     subtext: 'Each run teaches you more about the depths.',

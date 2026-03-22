@@ -171,8 +171,12 @@ function checkLineClear(newBlocks) {
     triggerSprintComplete();
   }
 
-  // Depths: track floor lines and check exit condition
-  if (isDepthsMode) {
+  // Dungeon (Expeditions): track floor lines and check clear condition
+  if (typeof isDungeonMode !== 'undefined' && isDungeonMode && typeof onDungeonLinesClear === 'function') {
+    onDungeonLinesClear(completeLevels.length);
+  }
+  // Depths (legacy 7-floor): track floor lines and check exit condition
+  else if (isDepthsMode) {
     depthsFloorLinesCleared += completeLevels.length;
     if (typeof checkDepthsFloorExit === 'function') checkDepthsFloorExit();
   }

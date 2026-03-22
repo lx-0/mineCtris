@@ -20,6 +20,9 @@ const BLOCK_MAT_PROPS = {
   0x008000: { roughness: 0.78, metalness: 0.0, noiseScale: 5.0, noiseStrength: 0.10 }, // green
   0xff0000: { roughness: 0.70, metalness: 0.0, noiseScale: 5.0, noiseStrength: 0.10 }, // red
   0x800080: { roughness: 0.65, metalness: 0.0, noiseScale: 5.0, noiseStrength: 0.10 }, // purple
+  0xc4a35a: { roughness: 0.95, metalness: 0.0, noiseScale: 8.0, noiseStrength: 0.20 }, // crumble — sandy, cracked
+  0xff4400: { roughness: 0.60, metalness: 0.0, noiseScale: 5.0, noiseStrength: 0.12 }, // magma — hot, glowing
+  0x2a0045: { roughness: 0.40, metalness: 0.15, noiseScale: 6.0, noiseStrength: 0.08 }, // void — smooth, dark
 };
 
 /**

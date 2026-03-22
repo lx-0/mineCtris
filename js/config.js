@@ -30,6 +30,13 @@ const DANGER_ZONE_HEIGHT = GAME_OVER_HEIGHT - 3; // 16.5
 
 const SHADOW_APPEAR_DIST = 20; // blocks of fall distance before shadow appears
 
+// Hazard block constants (Depths mode)
+const CRUMBLE_DECAY_SECS = 5;        // seconds before crumble block disappears
+const MAGMA_DAMAGE_INTERVAL = 3;     // seconds between magma adjacency damage ticks
+const HAZARD_COLOR_CRUMBLE = 0xc4a35a;
+const HAZARD_COLOR_MAGMA   = 0xff4400;
+const HAZARD_COLOR_VOID    = 0x2a0045;
+
 const PUSH_DISTANCE_THRESHOLD = 1.5 * BLOCK_SIZE; // horizontal distance to trigger push
 const PUSH_SPEED = 10.0 * BLOCK_SIZE;              // initial lateral push speed
 const PUSH_DECAY = 0.05;                           // velocity multiplier per second (fast decay)
@@ -64,6 +71,9 @@ const BLOCK_TYPES = {
   diamond: { hits: 6, points: 100, effect: null },
   obsidian: { hits: 8, points: 100, effect: null, dropMaterial: "obsidian_shard" },
   rubble:  { hits: 2, points: 5,  effect: null, isRubble: true },
+  crumble: { hits: 2, points: 10, effect: null, isHazard: true, hazardType: "crumble" },
+  magma:   { hits: 3, points: 30, effect: "magma_glow", isHazard: true, hazardType: "magma" },
+  void_block: { hits: Infinity, points: 0, effect: null, isHazard: true, hazardType: "void" },
 };
 
 // Crafted plank block color (light tan, distinct from all spawned palette colors).
@@ -89,6 +99,9 @@ const COLOR_TO_MATERIAL = {
   0x1a237e: "diamond",
   0x1a0020: "obsidian",
   0x6b6b6b: "rubble",
+  0xc4a35a: "crumble",
+  0xff4400: "magma",
+  0x2a0045: "void_block",
 };
 
 // Rubble block color — slate grey, used for battle-mode garbage rows.
@@ -114,6 +127,9 @@ const COLORS = [
   0xff0000,
   0x800080,
   0x1a237e,
+  0xc4a35a,  // 9: crumble (sandy tan — Depths hazard)
+  0xff4400,  // 10: magma (hot orange — Depths hazard)
+  0x2a0045,  // 11: void (deep purple — Depths hazard)
 ];
 
 // Deuteranopia-safe palette — blue/orange/amber/yellow/purple; never relies on red-green.
@@ -128,6 +144,9 @@ const COLORBLIND_COLORS = [
   0x9933cc, // 6 → violet        (was lava red)
   0x004499, // 7 → dark navy     (was crystal purple)
   0x0066cc, // 8 → medium blue   (was diamond deep blue)
+  0xddaa44, // 9 → muted gold   (crumble hazard)
+  0xff6633, // 10 → orange-red  (magma hazard)
+  0x6633aa, // 11 → purple      (void hazard)
 ];
 
 // Surface pattern index per color index (makes color never the sole differentiator).
@@ -142,6 +161,9 @@ const COLORBLIND_PATTERNS = [
   6, // violet    - checkerboard
   0, // dark navy - solid (very dark, clearly distinct)
   3, // medium blue - crosshatch (distinct from polka dots at index 2)
+  5, // muted gold - grid (crumble)
+  1, // orange-red - horizontal stripes (magma)
+  6, // purple     - checkerboard (void)
 ];
 
 // Nether theme palette — dark stone, molten lava emphasis, crimson/obsidian tones.
@@ -536,6 +558,15 @@ const SHAPES = [
   [
     [8, 8],
     [8, 0],
+  ],
+  // Crumble: 2-block domino (disappears 5s after landing)
+  [[9, 9]],
+  // Magma: single block (damages adjacent blocks over time)
+  [[10]],
+  // Void: 2-block vertical (unmovable, only cleared by line-clear)
+  [
+    [11],
+    [11],
   ],
 ];
 
