@@ -218,7 +218,7 @@ function _showEventEndToast(type) {
 function _eventsAllowed() {
   if (isPuzzleMode || isSprintMode || isBlitzMode) return false;
   if (isPaused || isGameOver) return false;
-  if (typeof isTutorialActive !== "undefined" && isTutorialActive) return false;
+  if (typeof isTutorialActive === "function" && isTutorialActive()) return false;
   return true;
 }
 
