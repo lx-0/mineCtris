@@ -550,6 +550,83 @@ const _CREEPER_DEFUSE_PTS  = 750;  // bonus points for defusing
 const _CREEPER_COLOR       = new THREE.Color(0x00cc00);
 const _CREEPER_FUSE_WHITE  = new THREE.Color(0xffffff);
 const _CREEPER_HIT_RED     = new THREE.Color(0xff2222);
+const _CREEPER_HIT_PULSE_DUR = 0.25; // seconds for squish-bounce pulse
+
+/**
+ * Build crack-line vertices for a given damage stage (1-4).
+ * Each stage adds a new set of jagged lines across cube faces.
+ * Coords are in local mesh space for a 2×blockSize cube centred at origin.
+ */
+function _buildCrackLines(stage, halfS) {
+  const h = halfS;
+  // Deterministic "random" offsets per stage for visual variety
+  const cracks = [];
+  if (stage >= 1) {
+    // Front face diagonal crack
+    cracks.push(
+      -h * 0.3, h * 0.9, h + 0.01,  h * 0.1, h * 0.4, h + 0.01,
+      h * 0.1, h * 0.4, h + 0.01,   h * 0.4, -h * 0.1, h + 0.01,
+      h * 0.4, -h * 0.1, h + 0.01,  h * 0.15, -h * 0.6, h + 0.01,
+    );
+  }
+  if (stage >= 2) {
+    // Right face crack
+    cracks.push(
+      h + 0.01, h * 0.7, h * 0.2,   h + 0.01, h * 0.2, -h * 0.1,
+      h + 0.01, h * 0.2, -h * 0.1,  h + 0.01, -h * 0.3, -h * 0.4,
+    );
+    // Top face crack
+    cracks.push(
+      -h * 0.5, h + 0.01, h * 0.3,  h * 0.1, h + 0.01, -h * 0.1,
+      h * 0.1, h + 0.01, -h * 0.1,  h * 0.5, h + 0.01, -h * 0.5,
+    );
+  }
+  if (stage >= 3) {
+    // Back face crack
+    cracks.push(
+      h * 0.4, h * 0.8, -h - 0.01,   -h * 0.05, h * 0.3, -h - 0.01,
+      -h * 0.05, h * 0.3, -h - 0.01,  -h * 0.35, -h * 0.2, -h - 0.01,
+      -h * 0.35, -h * 0.2, -h - 0.01, -h * 0.15, -h * 0.7, -h - 0.01,
+    );
+    // Left face crack
+    cracks.push(
+      -h - 0.01, h * 0.5, -h * 0.3,  -h - 0.01, -h * 0.1, h * 0.2,
+      -h - 0.01, -h * 0.1, h * 0.2,  -h - 0.01, -h * 0.5, h * 0.05,
+    );
+  }
+  return new Float32Array(cracks);
+}
+
+/**
+ * Update the crack overlay on the Creeper mesh based on damage taken.
+ * Adds dark line segments that progressively cover more faces.
+ */
+function _updateCreeperCracks(mesh, currentHP, maxHP) {
+  if (!mesh) return;
+  // Remove previous crack overlay if any
+  const old = mesh.getObjectByName("creeperCracks");
+  if (old) {
+    mesh.remove(old);
+    if (old.geometry) old.geometry.dispose();
+    if (old.material) old.material.dispose();
+  }
+
+  const stage = maxHP - currentHP; // 0=no cracks, 4=fully cracked
+  if (stage <= 0) return;
+
+  const size = typeof BLOCK_SIZE !== "undefined" ? BLOCK_SIZE : 1;
+  const halfS = size; // half of 2×size cube
+
+  const verts = _buildCrackLines(stage, halfS);
+  if (verts.length === 0) return;
+
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute("position", new THREE.BufferAttribute(verts, 3));
+  const mat = new THREE.LineBasicMaterial({ color: 0x111111, linewidth: 2 });
+  const lines = new THREE.LineSegments(geo, mat);
+  lines.name = "creeperCracks";
+  mesh.add(lines);
+}
 
 /**
  * Spawn a creeper mesh at a random edge of the grid, on the ground (y=0).
@@ -617,6 +694,7 @@ function _onCreeperStart() {
   _creeperHP = _CREEPER_HP;
   _creeperDefused = false;
   _creeperBobPhase = 0;
+  _creeperHitPulseTime = 0;
   _creeperFuseParticles = [];
   _creeperExplosionParticles = [];
 
@@ -637,7 +715,7 @@ function damageCreeperMesh(mesh) {
 
   _creeperHP--;
 
-  // Flash the mesh red briefly
+  // Flash the mesh red briefly (extended from 120ms → 220ms for juicier feel)
   if (mesh.material) {
     mesh.material.color.copy(_CREEPER_HIT_RED);
     mesh.material.emissive.setHex(0x440000);
@@ -647,8 +725,14 @@ function damageCreeperMesh(mesh) {
       mesh.material.color.copy(_CREEPER_COLOR);
       mesh.material.emissive.setHex(0x003300);
       mesh.material.needsUpdate = true;
-    }, 120);
+    }, 220);
   }
+
+  // Progressive crack overlay — more cracks as HP drops
+  _updateCreeperCracks(mesh, _creeperHP, _CREEPER_HP);
+
+  // Scale pulse: squish to 90% then bounce back
+  _creeperHitPulseTime = _CREEPER_HIT_PULSE_DUR;
 
   // Spawn dust particles for hit feedback
   if (typeof spawnDustParticles === "function") {
@@ -741,7 +825,7 @@ function _onCreeperTick(delta) {
     _creeperMesh.material.needsUpdate = true;
 
     // Reset bob to base during fuse (creeper stands still and swells)
-    const swell = 1.0 + 0.05 * Math.sin(performance.now() / 1000 * Math.PI * flashRate * 0.5);
+    var swell = 1.0 + 0.05 * Math.sin(performance.now() / 1000 * Math.PI * flashRate * 0.5);
     _creeperMesh.scale.set(swell, swell, swell);
     _creeperMesh.position.y = baseY;
 
@@ -752,6 +836,26 @@ function _onCreeperTick(delta) {
       // Fuse complete — force-end the event.
       endEvent();
     }
+  }
+
+  // Hit-pulse scale animation (squish to 90% then bounce back)
+  if (_creeperHitPulseTime > 0) {
+    _creeperHitPulseTime = Math.max(0, _creeperHitPulseTime - delta);
+    // Normalised progress 0→1 (0 = just hit, 1 = done)
+    var p = 1 - _creeperHitPulseTime / _CREEPER_HIT_PULSE_DUR;
+    // Elastic-ish curve: squish down fast, bounce back with overshoot
+    // At p=0→0.3: compress to 0.9, p=0.3→0.7: overshoot to 1.05, p=0.7→1: settle to 1.0
+    var pulseScale;
+    if (p < 0.3) {
+      pulseScale = 1.0 - 0.1 * (p / 0.3);               // 1.0 → 0.9
+    } else if (p < 0.7) {
+      pulseScale = 0.9 + 0.15 * ((p - 0.3) / 0.4);      // 0.9 → 1.05
+    } else {
+      pulseScale = 1.05 - 0.05 * ((p - 0.7) / 0.3);     // 1.05 → 1.0
+    }
+    // Apply pulse on top of current scale
+    var cur = _creeperMesh.scale.x; // current base scale (1.0 or fuse swell)
+    _creeperMesh.scale.set(cur * pulseScale, cur * pulseScale, cur * pulseScale);
   }
 
   // Update fuse particles
@@ -902,6 +1006,7 @@ function _onCreeperEnd() {
   _creeperFusing = false;
   _creeperFuseTimer = 0;
   _creeperHP = 0;
+  _creeperHitPulseTime = 0;
   // Note: _creeperDefused is NOT reset here — _fireOnEnd reads it to suppress
   // the default "CREEPER ended" toast when the player defused. It resets in
   // _onCreeperStart and resetEventEngine.
@@ -912,6 +1017,13 @@ function _onCreeperEnd() {
     _creeperMesh.scale.set(1, 1, 1);
     if (typeof worldGroup !== "undefined" && worldGroup) worldGroup.remove(_creeperMesh);
     if (typeof scene !== "undefined" && scene) scene.remove(_creeperMesh);
+    // Dispose children (edge lines, crack overlays)
+    while (_creeperMesh.children.length > 0) {
+      var child = _creeperMesh.children[0];
+      _creeperMesh.remove(child);
+      if (child.geometry) child.geometry.dispose();
+      if (child.material) child.material.dispose();
+    }
     if (_creeperMesh.geometry) _creeperMesh.geometry.dispose();
     if (_creeperMesh.material) _creeperMesh.material.dispose();
     _creeperMesh = null;
