@@ -307,6 +307,9 @@ function triggerGameOver() {
   if (typeof checkLevelUp === 'function') checkLevelUp(_xpBefore, _xpAfter);
   if (typeof updateStreakHUD === 'function') updateStreakHUD();
 
+  // Coach mark: first game over — explain XP and leveling
+  if (typeof coachMarkGameOver === 'function') coachMarkGameOver();
+
   // Key lifetime stats on game-over screen
   const lifetimeStats = loadLifetimeStats();
   const goLifetimeEl = document.getElementById('go-lifetime-stats');
@@ -1258,6 +1261,8 @@ function updateDifficulty(delta) {
   if (tier > lastDifficultyTier) {
     lastDifficultyTier = tier;
     if (typeof achOnDifficultyTier === "function") achOnDifficultyTier(tier);
+    // Coach mark: first speed increase
+    if (typeof coachMarkSpeedUp === "function") coachMarkSpeedUp(tier);
     if (speedUpBannerEl) {
       speedUpBannerEl.textContent =
         "SPEED UP!  Level " + (lastDifficultyTier + 1);

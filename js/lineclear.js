@@ -192,6 +192,9 @@ function checkLineClear(newBlocks) {
   // Achievement: Combo Starter, Combo King
   if (typeof achOnComboUpdate === "function") achOnComboUpdate(comboCount);
 
+  // Coach mark: first combo
+  if (typeof coachMarkCombo === "function") coachMarkCombo(comboCount);
+
   // Double or Nothing: flat 3× at any combo; normal multipliers otherwise.
   const COMBO_MULTIPLIERS = weeklyDoubleOrNothing
     ? [1.0, 1.0, 3.0, 3.0, 3.0]

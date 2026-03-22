@@ -297,6 +297,11 @@ function checkLevelUp(oldXP, newXP) {
     showModeUnlockToasts(oldLevel, newLevel);
   }
 
+  // Coach mark: level 2 unlock (Sprint mode)
+  if (oldLevel < 2 && newLevel >= 2 && typeof coachMarkModeUnlock === 'function') {
+    coachMarkModeUnlock(newLevel);
+  }
+
   // Update HUD badge
   updateLevelBadgeHUD();
   // Re-sync theme buttons in settings (unlock new options)
