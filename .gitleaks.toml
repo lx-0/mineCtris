@@ -1,0 +1,12 @@
+# Gitleaks configuration for MineCtris
+# https://github.com/gitleaks/gitleaks
+
+title = "MineCtris secrets scanner"
+
+[allowlist]
+  description = "Global allowlist"
+  paths = [
+    '''\.DS_Store''',
+    '''screenshot\.png''',
+    '''sounds/''',
+  ]
