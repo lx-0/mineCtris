@@ -126,7 +126,7 @@ function restoreGameState() {
       if ((_bank[equippedPowerUpType] || 0) === 0) equippedPowerUpType = null;
     }
   } else {
-    powerUps = { row_bomb: 0, slow_down: 0, shield: 0, magnet: 0 };
+    powerUps = { row_bomb: 0, slow_down: 0, shield: 0, magnet: 0, time_freeze: 0, sabotage: 0, counter: 0, fortress: 0 };
     equippedPowerUpType = null;
   }
   iceBridgeSlowActive = !!data.iceBridgeSlowActive;
