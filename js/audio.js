@@ -16,6 +16,9 @@ let gameOverSynth = null;
 let stormSwooshSynth = null;
 let goldenChimeSynth = null;
 let goldenFanfareSynth = null;
+let creeperHissSynth = null;
+let creeperBoomSynth = null;
+let _creeperHissGain = null;
 let masterCompressor = null;
 let masterReverb = null;
 let masterLimiter = null;
@@ -94,6 +97,22 @@ function initAudio() {
       envelope: { attack: 0.02, decay: 0.3, sustain: 0.4, release: 0.6 },
     }).connect(masterCompressor);
     goldenFanfareSynth.volume.value = -10;
+
+    // Creeper hiss — filtered white noise with gain ramp, connected through its own gain node
+    _creeperHissGain = new Tone.Gain(0).connect(masterCompressor);
+    creeperHissSynth = new Tone.NoiseSynth({
+      noise: { type: "pink" },
+      envelope: { attack: 0.3, decay: 0, sustain: 1.0, release: 0.1 },
+    }).connect(_creeperHissGain);
+    creeperHissSynth.volume.value = -8;
+
+    // Creeper explosion boom — deep membrane hit
+    creeperBoomSynth = new Tone.MembraneSynth({
+      pitchDecay: 0.2,
+      octaves: 5,
+      envelope: { attack: 0.001, decay: 0.4, sustain: 0.0, release: 0.3 },
+    }).connect(masterCompressor);
+    creeperBoomSynth.volume.value = -2;
 
     _initBgMusic();
     console.log("Tone.js musical bus initialized.");
@@ -402,6 +421,35 @@ function playEarthquakeRumble() {
 function playEarthquakeCrumble() {
   if (!audioReady || !rumbleSynth) return;
   rumbleSynth.triggerAttackRelease("E1", "16n", Tone.now());
+}
+
+// ── Creeper sounds ───────────────────────────────────────────────────────────
+
+/** Start the escalating hiss when fuse begins. Ramps volume over the fuse duration. */
+function startCreeperHiss() {
+  if (!audioReady || !creeperHissSynth || !_creeperHissGain) return;
+  _creeperHissGain.gain.cancelScheduledValues(Tone.now());
+  _creeperHissGain.gain.setValueAtTime(0.15, Tone.now());
+  _creeperHissGain.gain.linearRampToValueAtTime(1.0, Tone.now() + 2.5);
+  creeperHissSynth.triggerAttack(Tone.now());
+}
+
+/** Stop the hiss immediately (on defuse or explosion). */
+function stopCreeperHiss() {
+  if (!audioReady || !creeperHissSynth || !_creeperHissGain) return;
+  creeperHissSynth.triggerRelease(Tone.now());
+  _creeperHissGain.gain.cancelScheduledValues(Tone.now());
+  _creeperHissGain.gain.setValueAtTime(0, Tone.now());
+}
+
+/** Deep boom + thud on creeper explosion. */
+function playCreeperBoom() {
+  if (!audioReady || !creeperBoomSynth) return;
+  const now = Tone.now();
+  creeperBoomSynth.triggerAttackRelease("C1", "4n", now);
+  if (rumbleSynth) {
+    rumbleSynth.triggerAttackRelease("E1", "4n", now + 0.05);
+  }
 }
 
 // ── Volume settings ───────────────────────────────────────────────────────────

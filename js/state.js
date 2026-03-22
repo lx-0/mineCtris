@@ -375,6 +375,10 @@ let _creeperFuseTimer = 0;
 let _creeperHP = 0;
 // true when the player mined the Creeper to 0 HP (defused, no explosion).
 let _creeperDefused = false;
+// Creeper VFX: approach bob phase (radians), fuse particle array, explosion particle array
+let _creeperBobPhase = 0;
+let _creeperFuseParticles = [];
+let _creeperExplosionParticles = [];
 
 // ── Survival mode state ───────────────────────────────────────────────────────
 // isSurvivalMode: true while a Survival session is active.

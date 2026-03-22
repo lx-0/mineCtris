@@ -251,6 +251,11 @@ function startEvent(type) {
  * @param {number} delta  Seconds since last frame.
  */
 function tickEvent(delta) {
+  // Always update creeper explosion particles (they outlive the event)
+  if (_creeperExplosionParticles.length > 0) {
+    _updateCreeperExplosionParticles(delta);
+  }
+
   if (activeEvent === EVENT_TYPES.NONE) return;
 
   eventRemainingMs -= delta * 1000;
@@ -611,6 +616,9 @@ function _onCreeperStart() {
   _creeperFuseTimer = 0;
   _creeperHP = _CREEPER_HP;
   _creeperDefused = false;
+  _creeperBobPhase = 0;
+  _creeperFuseParticles = [];
+  _creeperExplosionParticles = [];
 
   // Spawn the creeper mesh
   _creeperMesh = _spawnCreeperMesh();
@@ -689,12 +697,18 @@ function _onCreeperTick(delta) {
   const dz = player.z - _creeperMesh.position.z;
   const dist = Math.sqrt(dx * dx + dz * dz);
 
+  // Store base Y so bobbing doesn't drift
+  const size = typeof BLOCK_SIZE !== "undefined" ? BLOCK_SIZE : 1;
+  const baseY = size;  // center of 2× scaled cube sitting on ground
+
   if (!_creeperFusing) {
-    // Approach phase: walk toward player
+    // Approach phase: walk toward player with bobbing animation
     if (dist <= _CREEPER_FUSE_RANGE) {
       // Enter fuse state
       _creeperFusing = true;
       _creeperFuseTimer = _CREEPER_FUSE_TIME;
+      // Start hiss audio
+      if (typeof startCreeperHiss === "function") startCreeperHiss();
     } else {
       // Move toward player at constant speed
       const step = _CREEPER_SPEED * delta;
@@ -702,15 +716,23 @@ function _onCreeperTick(delta) {
       const nz = dz / dist;
       _creeperMesh.position.x += nx * step;
       _creeperMesh.position.z += nz * step;
+
+      // Bobbing animation — sinusoidal Y offset, ~3 bobs/sec
+      _creeperBobPhase += delta * 6 * Math.PI;
+      _creeperMesh.position.y = baseY + Math.sin(_creeperBobPhase) * 0.1;
     }
   } else {
-    // Fuse phase: rapid green/white color flash
+    // Fuse phase: refined flash with exponential frequency ramp
     _creeperFuseTimer -= delta;
 
-    const flashRate = 8 + (1 - _creeperFuseTimer / _CREEPER_FUSE_TIME) * 12; // accelerating flash
-    const t = Math.sin(performance.now() / 1000 * Math.PI * flashRate);
+    const fuseProgress = 1 - Math.max(0, _creeperFuseTimer) / _CREEPER_FUSE_TIME; // 0→1
+    // Exponential flash rate: starts slow (4 Hz), ramps to ~24 Hz near detonation
+    const flashRate = 4 + 20 * fuseProgress * fuseProgress;
+    const t = Math.sin(performance.now() / 1000 * Math.PI * 2 * flashRate);
+    // Mix intensity: more white as fuse progresses
+    const whiteAmount = 0.3 + 0.7 * fuseProgress;
     if (t > 0) {
-      _creeperMesh.material.color.copy(_CREEPER_FUSE_WHITE);
+      _creeperMesh.material.color.lerpColors(_CREEPER_COLOR, _CREEPER_FUSE_WHITE, whiteAmount);
       _creeperMesh.material.emissive.setHex(0x444444);
     } else {
       _creeperMesh.material.color.copy(_CREEPER_COLOR);
@@ -718,12 +740,142 @@ function _onCreeperTick(delta) {
     }
     _creeperMesh.material.needsUpdate = true;
 
+    // Reset bob to base during fuse (creeper stands still and swells)
+    const swell = 1.0 + 0.05 * Math.sin(performance.now() / 1000 * Math.PI * flashRate * 0.5);
+    _creeperMesh.scale.set(swell, swell, swell);
+    _creeperMesh.position.y = baseY;
+
+    // Spawn fizzing particles on top of creeper during fuse
+    _spawnCreeperFuseParticle();
+
     if (_creeperFuseTimer <= 0) {
-      // Fuse complete — event will end naturally via the event timer,
-      // but if fuse finishes early, force-end the event.
+      // Fuse complete — force-end the event.
       endEvent();
     }
   }
+
+  // Update fuse particles
+  _updateCreeperFuseParticles(delta);
+}
+
+/** Spawn a small fizzing particle above the Creeper during fuse. */
+function _spawnCreeperFuseParticle() {
+  if (!_creeperMesh || typeof scene === "undefined") return;
+  // ~2 particles per frame at 60fps → throttle by random chance
+  if (Math.random() > 0.4) return;
+
+  const pos = _creeperMesh.position;
+  const size = typeof BLOCK_SIZE !== "undefined" ? BLOCK_SIZE : 1;
+  const geo = new THREE.BoxGeometry(0.06, 0.06, 0.06);
+  // Random green/yellow/white spark color
+  const colors = [0x00ff00, 0x88ff00, 0xffff44, 0xffffff];
+  const mat = new THREE.MeshBasicMaterial({
+    color: colors[Math.floor(Math.random() * colors.length)],
+    transparent: true,
+    opacity: 1.0,
+  });
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.position.set(
+    pos.x + (Math.random() - 0.5) * size * 0.8,
+    pos.y + size + Math.random() * 0.3,
+    pos.z + (Math.random() - 0.5) * size * 0.8
+  );
+  scene.add(mesh);
+
+  _creeperFuseParticles.push({
+    mesh: mesh,
+    velocity: new THREE.Vector3(
+      (Math.random() - 0.5) * 1.5,
+      1.5 + Math.random() * 2.0,
+      (Math.random() - 0.5) * 1.5
+    ),
+    age: 0,
+    maxAge: 0.3 + Math.random() * 0.25,
+  });
+}
+
+function _updateCreeperFuseParticles(delta) {
+  for (let i = _creeperFuseParticles.length - 1; i >= 0; i--) {
+    const p = _creeperFuseParticles[i];
+    p.age += delta;
+    if (p.age >= p.maxAge) {
+      scene.remove(p.mesh);
+      p.mesh.geometry.dispose();
+      p.mesh.material.dispose();
+      _creeperFuseParticles.splice(i, 1);
+      continue;
+    }
+    p.mesh.position.addScaledVector(p.velocity, delta);
+    p.velocity.y -= 3.0 * delta; // light gravity
+    p.mesh.material.opacity = 1.0 - p.age / p.maxAge;
+  }
+}
+
+/** Spawn explosion particle burst at a world position. */
+function _spawnCreeperExplosionParticles(center) {
+  if (typeof scene === "undefined") return;
+  const count = 40;
+  for (let i = 0; i < count; i++) {
+    const geo = new THREE.BoxGeometry(0.12, 0.12, 0.12);
+    // Green + brown + gray fragments
+    const palette = [0x00cc00, 0x008800, 0x664422, 0x553311, 0x999999, 0x00ff44];
+    const mat = new THREE.MeshLambertMaterial({
+      color: palette[Math.floor(Math.random() * palette.length)],
+      transparent: true,
+      opacity: 1.0,
+    });
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.position.set(center.x, center.y, center.z);
+    scene.add(mesh);
+
+    // Radial burst velocity
+    const theta = Math.random() * Math.PI * 2;
+    const phi = Math.random() * Math.PI * 0.5;
+    const speed = 4 + Math.random() * 6;
+    _creeperExplosionParticles.push({
+      mesh: mesh,
+      velocity: new THREE.Vector3(
+        Math.cos(theta) * Math.cos(phi) * speed,
+        Math.sin(phi) * speed * 0.8 + 2,
+        Math.sin(theta) * Math.cos(phi) * speed
+      ),
+      age: 0,
+      maxAge: 0.5 + Math.random() * 0.4,
+    });
+  }
+}
+
+function _updateCreeperExplosionParticles(delta) {
+  for (let i = _creeperExplosionParticles.length - 1; i >= 0; i--) {
+    const p = _creeperExplosionParticles[i];
+    p.age += delta;
+    if (p.age >= p.maxAge) {
+      scene.remove(p.mesh);
+      p.mesh.geometry.dispose();
+      p.mesh.material.dispose();
+      _creeperExplosionParticles.splice(i, 1);
+      continue;
+    }
+    p.mesh.position.addScaledVector(p.velocity, delta);
+    p.velocity.y -= 12.0 * delta; // strong gravity for arcing fragments
+    p.mesh.material.opacity = 1.0 - (p.age / p.maxAge);
+    // Tumble rotation
+    p.mesh.rotation.x += delta * 8;
+    p.mesh.rotation.z += delta * 5;
+  }
+}
+
+/** Trigger screen shake for creeper explosion via CSS class. */
+function _creeperScreenShake() {
+  const gc = document.getElementById("game-container");
+  if (!gc) return;
+  gc.classList.remove("bfx-shake-light", "bfx-shake-medium", "bfx-shake-strong", "creeper-shake");
+  void gc.offsetWidth;
+  gc.classList.add("creeper-shake");
+  gc.addEventListener("animationend", function cb() {
+    gc.classList.remove("creeper-shake");
+    gc.removeEventListener("animationend", cb);
+  }, { once: true });
 }
 
 function _onCreeperEnd() {
@@ -743,6 +895,9 @@ function _onCreeperEnd() {
     };
   }
 
+  // Stop hiss audio regardless of outcome
+  if (typeof stopCreeperHiss === "function") stopCreeperHiss();
+
   creeperActive = false;
   _creeperFusing = false;
   _creeperFuseTimer = 0;
@@ -753,6 +908,8 @@ function _onCreeperEnd() {
 
   // Remove creeper mesh from scene/worldGroup
   if (_creeperMesh) {
+    // Reset scale in case fuse swell was active
+    _creeperMesh.scale.set(1, 1, 1);
     if (typeof worldGroup !== "undefined" && worldGroup) worldGroup.remove(_creeperMesh);
     if (typeof scene !== "undefined" && scene) scene.remove(_creeperMesh);
     if (_creeperMesh.geometry) _creeperMesh.geometry.dispose();
@@ -760,13 +917,25 @@ function _onCreeperEnd() {
     _creeperMesh = null;
   }
 
+  // Clean up remaining fuse particles
+  for (let i = _creeperFuseParticles.length - 1; i >= 0; i--) {
+    const p = _creeperFuseParticles[i];
+    if (typeof scene !== "undefined" && scene) scene.remove(p.mesh);
+    p.mesh.geometry.dispose();
+    p.mesh.material.dispose();
+  }
+  _creeperFuseParticles = [];
+
   // Hide overlay
   const overlay = document.getElementById("creeper-overlay");
   if (overlay) overlay.style.display = "none";
 
-  // Trigger crater if the fuse actually completed
+  // Trigger crater + explosion VFX if the fuse actually completed
   if (blastCenter) {
     _creeperExplode(blastCenter);
+    _spawnCreeperExplosionParticles(blastCenter);
+    _creeperScreenShake();
+    if (typeof playCreeperBoom === "function") playCreeperBoom();
   }
 
   if (!isGameOver && typeof achOnSurvivalEventEnd === "function") {
@@ -958,7 +1127,22 @@ function resetEventEngine() {
       if (_creeperMesh.material) _creeperMesh.material.dispose();
       _creeperMesh = null;
     }
+    if (typeof stopCreeperHiss === "function") stopCreeperHiss();
   }
+
+  // Clean up any lingering creeper particles (fuse + explosion)
+  for (let i = _creeperFuseParticles.length - 1; i >= 0; i--) {
+    const p = _creeperFuseParticles[i];
+    if (typeof scene !== "undefined" && scene) scene.remove(p.mesh);
+    p.mesh.geometry.dispose(); p.mesh.material.dispose();
+  }
+  _creeperFuseParticles = [];
+  for (let i = _creeperExplosionParticles.length - 1; i >= 0; i--) {
+    const p = _creeperExplosionParticles[i];
+    if (typeof scene !== "undefined" && scene) scene.remove(p.mesh);
+    p.mesh.geometry.dispose(); p.mesh.material.dispose();
+  }
+  _creeperExplosionParticles = [];
 
   // Clean up shared HUD/announcement elements
   _dismissEventAnnouncement();
