@@ -48,27 +48,47 @@ function setShowAllModes(enabled) {
 const _RETURNING_PLAYER_CHECKED_KEY = 'mineCtris_returningPlayerChecked';
 
 /**
- * Detect returning players by checking for existing game data in localStorage.
- * Called once during init. If prior data exists, enables "Show all modes" and
- * grants XP credit equivalent to existing progress.
+ * Detect returning players by checking for meaningful play history.
+ * Called once during init. Requires 5+ games, 5000+ total score, or any
+ * mode-specific high score. Qualifying players get "Show all modes" enabled
+ * and XP credit for existing progress.
  */
 function detectReturningPlayer() {
   try {
     // Only run this check once ever
     if (localStorage.getItem(_RETURNING_PLAYER_CHECKED_KEY) === 'true') return;
 
-    // Check for evidence of prior play
-    var dataKeys = [
-      'mineCtris_stats', 'mineCtris_achievements', 'mineCtris_dailyBest',
-      'mineCtris_weeklyBest', 'mineCtris_sprintBest', 'mineCtris_blitzBest',
-      'mineCtris_survivalWorld', 'mineCtris_puzzleProgress', 'mineCtris_saveState',
-    ];
-    var hasExistingData = false;
-    for (var i = 0; i < dataKeys.length; i++) {
-      if (localStorage.getItem(dataKeys[i]) !== null) { hasExistingData = true; break; }
+    // Check for meaningful play history — not just any localStorage key.
+    // Require 5+ games, 5000+ total score, or any mode-specific high score.
+    var isReturningPlayer = false;
+    if (typeof loadLifetimeStats === 'function') {
+      var stats = loadLifetimeStats();
+      if ((stats.gamesPlayed || 0) >= 5 || (stats.totalScore || 0) >= 5000) {
+        isReturningPlayer = true;
+      }
+    }
+    if (!isReturningPlayer) {
+      // Check for any mode-specific high score > 0
+      var bestKeys = [
+        'mineCtris_dailyBest', 'mineCtris_weeklyBest',
+        'mineCtris_sprintBest', 'mineCtris_blitzBest',
+      ];
+      for (var i = 0; i < bestKeys.length; i++) {
+        var raw = localStorage.getItem(bestKeys[i]);
+        if (raw !== null) {
+          try {
+            var parsed = JSON.parse(raw);
+            var score = typeof parsed === 'number' ? parsed : (parsed && parsed.score) || 0;
+            if (score > 0) { isReturningPlayer = true; break; }
+          } catch (_) {
+            // Non-JSON value — treat as evidence if non-empty
+            if (raw && raw !== '0') { isReturningPlayer = true; break; }
+          }
+        }
+      }
     }
 
-    if (hasExistingData) {
+    if (isReturningPlayer) {
       // Auto-enable "Show all modes" for returning players
       localStorage.setItem(SHOW_ALL_MODES_KEY, 'true');
 
