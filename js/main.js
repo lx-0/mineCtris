@@ -838,6 +838,7 @@ function init() {
           var dungeonId = btn.getAttribute('data-dungeon');
           if (typeof metricsModePlayed === 'function') metricsModePlayed('dungeon_' + dungeonId);
           markModeSeen('depths');
+          if (typeof markDungeonTierSeen === 'function') markDungeonTierSeen(dungeonId);
           document.dispatchEvent(new CustomEvent('dungeonLaunch', { detail: { dungeonId: dungeonId } }));
         });
       })(dungeonTierBtns[_dt]);
@@ -851,6 +852,7 @@ function init() {
         if (depthsVariantSelector) depthsVariantSelector.style.display = 'none';
         if (typeof metricsModePlayed === 'function') metricsModePlayed('dungeon_infinite');
         markModeSeen('depths');
+        if (typeof markDungeonTierSeen === 'function') markDungeonTierSeen('infinite');
         document.dispatchEvent(new CustomEvent('dungeonLaunch', { detail: { dungeonId: 'infinite' } }));
       });
     }

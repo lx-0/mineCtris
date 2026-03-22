@@ -14198,6 +14198,14 @@ body.biome-ice #inventory-hud { border-color: #4499dd; }
   0%, 100% { box-shadow: 0 0 8px rgba(0, 255, 136, 0.5); }
   50%      { box-shadow: 0 0 16px rgba(0, 255, 136, 0.85); }
 }
+@keyframes mode-new-opacity-pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.6; }
+}
+/* Dungeon-tier variant: adds opacity pulse on top of the box-shadow pulse */
+.mode-new-badge-pulse {
+  animation: mode-new-pulse 1.8s ease-in-out infinite, mode-new-opacity-pulse 1.8s ease-in-out infinite;
+}
 
 /* ── Prestige system ──────────────────────────────────────────────────────── */
 

@@ -352,6 +352,7 @@ function _initSeenModes() {
  */
 function _applyNewBadges() {
   _initSeenModes();
+  _initSeenDungeonTiers();
   var seen = _getSeenModes();
   if (!seen) return;
   var cards = document.querySelectorAll('#mode-cards .mode-card[data-mode]');
@@ -359,13 +360,18 @@ function _applyNewBadges() {
     var card = cards[i];
     var mode = card.getAttribute('data-mode');
     var unlocked = !card.classList.contains('mode-card-locked');
-    var isNew = unlocked && seen.indexOf(mode) === -1;
+    var modeSeen = seen.indexOf(mode) !== -1;
+    var dungeonPulse = (mode === 'depths') && modeSeen && !_allDungeonTiersSeen();
+    var isNew = unlocked && (!modeSeen || dungeonPulse);
     var existing = card.querySelector('.mode-new-badge');
     if (isNew && !existing) {
       var badge = document.createElement('span');
-      badge.className = 'mode-new-badge';
+      badge.className = 'mode-new-badge' + (dungeonPulse ? ' mode-new-badge-pulse' : '');
       badge.textContent = 'NEW';
       card.appendChild(badge);
+    } else if (isNew && existing) {
+      if (dungeonPulse) existing.classList.add('mode-new-badge-pulse');
+      else existing.classList.remove('mode-new-badge-pulse');
     } else if (!isNew && existing) {
       existing.remove();
     }
@@ -381,6 +387,50 @@ function _initNewBadgeClickClear() {
     if (!card || card.classList.contains('mode-card-locked')) return;
     markModeSeen(card.getAttribute('data-mode'));
   }, false); // bubble phase — runs after the capture-phase lock gate
+}
+
+// ── NEW badge for unseen dungeon tiers ─────────────────────────────────────
+// Tracks which dungeon tiers the player has launched at least once.
+// The Depths card shows a pulsing NEW badge until all tiers are seen.
+
+var _SEEN_DUNGEON_TIERS_KEY = 'mineCtris_seenDungeonTiers';
+var _ALL_DUNGEON_TIERS = ['shallow_mines', 'deep_caverns', 'abyssal_rift', 'infinite'];
+
+function _getSeenDungeonTiers() {
+  try {
+    var raw = localStorage.getItem(_SEEN_DUNGEON_TIERS_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch (_) { return null; }
+}
+
+function _setSeenDungeonTiers(arr) {
+  try { localStorage.setItem(_SEEN_DUNGEON_TIERS_KEY, JSON.stringify(arr)); } catch (_) {}
+}
+
+/** Initialise seen dungeon tiers on first encounter (empty — all tiers start unseen). */
+function _initSeenDungeonTiers() {
+  if (_getSeenDungeonTiers() !== null) return;
+  _setSeenDungeonTiers([]);
+}
+
+function _allDungeonTiersSeen() {
+  var seen = _getSeenDungeonTiers();
+  if (!seen) return true; // not initialised yet, don't show badge
+  for (var i = 0; i < _ALL_DUNGEON_TIERS.length; i++) {
+    if (seen.indexOf(_ALL_DUNGEON_TIERS[i]) === -1) return false;
+  }
+  return true;
+}
+
+/** Mark a dungeon tier as seen and refresh the NEW badge on The Depths card. */
+function markDungeonTierSeen(tierId) {
+  _initSeenDungeonTiers();
+  var seen = _getSeenDungeonTiers();
+  if (seen.indexOf(tierId) === -1) {
+    seen.push(tierId);
+    _setSeenDungeonTiers(seen);
+  }
+  _applyNewBadges();
 }
 
 // ── Click gate ──────────────────────────────────────────────────────────────
