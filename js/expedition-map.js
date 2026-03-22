@@ -475,7 +475,7 @@ function initExpeditionMap() {
   const closeBtn = document.getElementById('expedition-map-close-btn');
   if (closeBtn) closeBtn.addEventListener('click', closeExpeditionMap);
 
-  const openBtn = document.getElementById('mode-expedition-btn');
+  const openBtn = document.getElementById('mode-expedition-btn') || document.getElementById('mode-card-expedition');
   if (openBtn) openBtn.addEventListener('click', openExpeditionMap);
 
   // Close on overlay background click

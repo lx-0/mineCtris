@@ -166,10 +166,8 @@ function applyModeUnlockState() {
     _applyLockToElement(card, mode, level, unlocked);
   }
 
-  // Special buttons (expedition, editor) — use ID-based mapping
-  var buttonMap = {
-    'mode-expedition-btn': 'expedition',
-  };
+  // Special buttons — use ID-based mapping (expedition is now a standard mode card)
+  var buttonMap = {};
   for (var btnId in buttonMap) {
     var btn = document.getElementById(btnId);
     if (btn) {

@@ -209,98 +209,117 @@
             <span id="season-banner-days"></span>
           </div>
           <div id="mode-cards">
-            <!-- Classic -->
-            <div class="mode-card" id="mode-card-classic" data-mode="classic">
-              <div class="mode-card-icon">&#8734;</div>
-              <div class="mode-card-name">Classic</div>
-              <div class="mode-card-desc">Survive as long as you can.</div>
-              <div class="mode-card-pb" id="mode-pb-classic"></div>
-            </div>
-            <!-- Sprint -->
-            <div class="mode-card" id="mode-card-sprint" data-mode="sprint">
-              <div class="mode-card-icon">&#9201;</div>
-              <div class="mode-card-name">Sprint</div>
-              <div class="mode-card-desc">Clear 40 lines. Beat the clock.</div>
-              <div class="mode-card-pb" id="mode-pb-sprint"></div>
-            </div>
-            <!-- Blitz -->
-            <div class="mode-card" id="mode-card-blitz" data-mode="blitz">
-              <div class="mode-card-icon">&#9889;</div>
-              <div class="mode-card-name">Blitz</div>
-              <div class="mode-card-desc">2 minutes. Maximum score.</div>
-              <div class="mode-card-pb" id="mode-pb-blitz"></div>
-            </div>
-            <!-- Survival -->
-            <div class="mode-card mode-card-survival" id="mode-card-survival" data-mode="survival">
-              <div class="mode-card-icon survival-creeper-face" aria-label="Creeper">
-                <svg viewBox="0 0 8 8" width="36" height="36" shape-rendering="crispEdges">
-                  <rect width="8" height="8" fill="#4a8c2c"/>
-                  <rect x="1" y="1" width="2" height="2" fill="#1a1a1a"/>
-                  <rect x="5" y="1" width="2" height="2" fill="#1a1a1a"/>
-                  <rect x="3" y="3" width="2" height="3" fill="#1a1a1a"/>
-                  <rect x="2" y="5" width="1" height="2" fill="#1a1a1a"/>
-                  <rect x="5" y="5" width="1" height="2" fill="#1a1a1a"/>
-                  <rect x="3" y="6" width="2" height="1" fill="#1a1a1a"/>
-                </svg>
+            <!-- ── CORE ── -->
+            <div class="mode-section">
+              <div class="mode-section-header">CORE</div>
+              <div class="mode-section-cards">
+                <div class="mode-card" id="mode-card-classic" data-mode="classic">
+                  <div class="mode-card-icon">&#8734;</div>
+                  <div class="mode-card-name">Classic</div>
+                  <div class="mode-card-desc">Survive as long as you can.</div>
+                  <div class="mode-card-pb" id="mode-pb-classic"></div>
+                </div>
+                <div class="mode-card" id="mode-card-sprint" data-mode="sprint">
+                  <div class="mode-card-icon">&#9201;</div>
+                  <div class="mode-card-name">Sprint</div>
+                  <div class="mode-card-desc">Clear 40 lines. Beat the clock.</div>
+                  <div class="mode-card-pb" id="mode-pb-sprint"></div>
+                </div>
+                <div class="mode-card" id="mode-card-blitz" data-mode="blitz">
+                  <div class="mode-card-icon">&#9889;</div>
+                  <div class="mode-card-name">Blitz</div>
+                  <div class="mode-card-desc">2 minutes. Maximum score.</div>
+                  <div class="mode-card-pb" id="mode-pb-blitz"></div>
+                </div>
               </div>
-              <div class="mode-card-name">Survival</div>
-              <div class="mode-card-desc">Your persistent world. Mine, build, survive — but death erases everything.</div>
-              <div class="mode-card-pb" id="mode-pb-survival"></div>
-              <div id="survival-world-card" class="survival-world-card"></div>
-              <button id="survival-reset-btn" class="survival-reset-btn" style="display:none;">&#128465; Reset World</button>
             </div>
-            <!-- Co-op -->
-            <div class="mode-card mode-card-coop" id="mode-card-coop" data-mode="coop">
-              <div class="mode-card-icon">&#128101;</div>
-              <div class="mode-card-name">Co-op</div>
-              <div class="mode-card-desc">Play together. One world, two miners.</div>
-              <div class="mode-coop-ach-count" id="mode-coop-ach-count"></div>
+            <!-- ── CHALLENGE ── -->
+            <div class="mode-section">
+              <div class="mode-section-header">CHALLENGE</div>
+              <div class="mode-section-cards">
+                <div class="mode-card mode-card-daily" id="mode-card-daily" data-mode="daily">
+                  <div class="mode-card-icon">&#128197;</div>
+                  <div class="mode-card-name">Daily</div>
+                  <div class="mode-card-desc">Today's seed. Everyone gets the same pieces.</div>
+                  <div class="mode-card-pb" id="mode-pb-daily"></div>
+                </div>
+                <div class="mode-card mode-card-weekly" id="mode-card-weekly" data-mode="weekly">
+                  <div class="mode-card-icon">&#127381;</div>
+                  <div class="mode-card-name">Weekly</div>
+                  <div class="mode-card-desc" id="mode-weekly-modifier-desc">This week's challenge.</div>
+                  <div class="mode-card-pb" id="mode-pb-weekly"></div>
+                </div>
+                <div class="mode-card mode-card-puzzle" id="mode-card-puzzle" data-mode="puzzle">
+                  <div class="mode-card-icon">&#129513;</div>
+                  <div class="mode-card-name">Puzzle</div>
+                  <div class="mode-card-desc">10 curated mining puzzles. Solve them all.</div>
+                  <div class="mode-card-pb" id="mode-pb-puzzle"></div>
+                </div>
+              </div>
             </div>
-            <!-- Battle -->
-            <div class="mode-card mode-card-battle" id="mode-card-battle" data-mode="battle">
-              <div class="mode-card-icon">&#9876;</div>
-              <div class="mode-card-name">Battle</div>
-              <div class="mode-card-desc">Fight your opponent. Last miner standing wins.</div>
+            <!-- ── ADVENTURE ── -->
+            <div class="mode-section">
+              <div class="mode-section-header">ADVENTURE</div>
+              <div class="mode-section-cards">
+                <div class="mode-card mode-card-survival" id="mode-card-survival" data-mode="survival">
+                  <div class="mode-card-icon survival-creeper-face" aria-label="Creeper">
+                    <svg viewBox="0 0 8 8" width="36" height="36" shape-rendering="crispEdges">
+                      <rect width="8" height="8" fill="#4a8c2c"/>
+                      <rect x="1" y="1" width="2" height="2" fill="#1a1a1a"/>
+                      <rect x="5" y="1" width="2" height="2" fill="#1a1a1a"/>
+                      <rect x="3" y="3" width="2" height="3" fill="#1a1a1a"/>
+                      <rect x="2" y="5" width="1" height="2" fill="#1a1a1a"/>
+                      <rect x="5" y="5" width="1" height="2" fill="#1a1a1a"/>
+                      <rect x="3" y="6" width="2" height="1" fill="#1a1a1a"/>
+                    </svg>
+                  </div>
+                  <div class="mode-card-name">Survival</div>
+                  <div class="mode-card-desc">Your persistent world. Mine, build, survive — but death erases everything.</div>
+                  <div class="mode-card-pb" id="mode-pb-survival"></div>
+                  <div id="survival-world-card" class="survival-world-card"></div>
+                  <button id="survival-reset-btn" class="survival-reset-btn" style="display:none;">&#128465; Reset World</button>
+                </div>
+                <div class="mode-card mode-card-depths" id="mode-card-depths" data-mode="depths">
+                  <div class="mode-card-icon">&#9760;</div>
+                  <div class="mode-card-name">The Depths</div>
+                  <div class="mode-card-desc">Roguelike dungeon. 7 floors, random upgrades, one life.</div>
+                  <div class="mode-card-pb" id="mode-pb-depths"></div>
+                </div>
+                <div class="mode-card mode-card-daily-depths" id="mode-card-daily-depths" data-mode="daily-depths">
+                  <div class="mode-card-icon">&#9760;</div>
+                  <div class="mode-card-badge-daily">DAILY</div>
+                  <div class="mode-card-name">Daily Dungeon</div>
+                  <div class="mode-card-desc">Today's Depths run. Same seed for all. One attempt.</div>
+                  <div class="mode-card-pb" id="mode-pb-daily-depths"></div>
+                </div>
+                <div class="mode-card mode-card-expedition" id="mode-card-expedition" data-mode="expedition">
+                  <div class="mode-card-icon">&#127758;</div>
+                  <div class="mode-card-name">Expeditions</div>
+                  <div class="mode-card-desc">Explore biomes. Gather resources. Build your world.</div>
+                </div>
+              </div>
             </div>
-            <!-- Tournament -->
-            <div class="mode-card mode-card-tournament" id="mode-card-tournament" data-mode="tournament">
-              <div class="mode-card-icon">&#127942;</div>
-              <div class="mode-card-name">Tournament</div>
-              <div class="mode-card-desc">8-player brackets. Compete for the prize.</div>
-            </div>
-            <!-- Daily Challenge -->
-            <div class="mode-card mode-card-daily" id="mode-card-daily" data-mode="daily">
-              <div class="mode-card-icon">&#128197;</div>
-              <div class="mode-card-name">Daily</div>
-              <div class="mode-card-desc">Today's seed. Everyone gets the same pieces.</div>
-              <div class="mode-card-pb" id="mode-pb-daily"></div>
-            </div>
-            <!-- Weekly Challenge -->
-            <div class="mode-card mode-card-weekly" id="mode-card-weekly" data-mode="weekly">
-              <div class="mode-card-icon">&#127381;</div>
-              <div class="mode-card-name">Weekly</div>
-              <div class="mode-card-desc" id="mode-weekly-modifier-desc">This week's challenge.</div>
-              <div class="mode-card-pb" id="mode-pb-weekly"></div>
-            </div>
-            <!-- Puzzle -->
-            <div class="mode-card mode-card-puzzle" id="mode-card-puzzle" data-mode="puzzle">
-              <div class="mode-card-icon">&#129513;</div>
-              <div class="mode-card-name">Puzzle</div>
-              <div class="mode-card-desc">10 curated mining puzzles. Solve them all.</div>
-              <div class="mode-card-pb" id="mode-pb-puzzle"></div>
-            </div>
-            <div class="mode-card mode-card-depths" id="mode-card-depths" data-mode="depths">
-              <div class="mode-card-icon">&#9760;</div>
-              <div class="mode-card-name">The Depths</div>
-              <div class="mode-card-desc">Roguelike dungeon. 7 floors, random upgrades, one life.</div>
-              <div class="mode-card-pb" id="mode-pb-depths"></div>
-            </div>
-            <div class="mode-card mode-card-daily-depths" id="mode-card-daily-depths" data-mode="daily-depths">
-              <div class="mode-card-icon">&#9760;</div>
-              <div class="mode-card-badge-daily">DAILY</div>
-              <div class="mode-card-name">Daily Dungeon</div>
-              <div class="mode-card-desc">Today's Depths run. Same seed for all. One attempt.</div>
-              <div class="mode-card-pb" id="mode-pb-daily-depths"></div>
+            <!-- ── MULTIPLAYER ── -->
+            <div class="mode-section">
+              <div class="mode-section-header">MULTIPLAYER</div>
+              <div class="mode-section-cards">
+                <div class="mode-card mode-card-coop" id="mode-card-coop" data-mode="coop">
+                  <div class="mode-card-icon">&#128101;</div>
+                  <div class="mode-card-name">Co-op</div>
+                  <div class="mode-card-desc">Play together. One world, two miners.</div>
+                  <div class="mode-coop-ach-count" id="mode-coop-ach-count"></div>
+                </div>
+                <div class="mode-card mode-card-battle" id="mode-card-battle" data-mode="battle">
+                  <div class="mode-card-icon">&#9876;</div>
+                  <div class="mode-card-name">Battle</div>
+                  <div class="mode-card-desc">Fight your opponent. Last miner standing wins.</div>
+                </div>
+                <div class="mode-card mode-card-tournament" id="mode-card-tournament" data-mode="tournament">
+                  <div class="mode-card-icon">&#127942;</div>
+                  <div class="mode-card-name">Tournament</div>
+                  <div class="mode-card-desc">8-player brackets. Compete for the prize.</div>
+                </div>
+              </div>
             </div>
           </div>
           <!-- World modifier selector -->
@@ -313,11 +332,13 @@
             <div id="mode-powerup-label">&#9889; EQUIP POWER-UP</div>
             <div id="mode-powerup-picker"></div>
           </div>
-          <button id="mode-expedition-btn">&#127758; Expeditions</button>
-          <button id="mode-biome-cosmetics-btn">&#127775; Expedition Cosmetics</button>
-          <button id="mode-season-pass-btn">&#127873; Season Pass</button>
-          <button id="mode-select-lb-btn">&#127942; Leaderboard</button>
-          <button id="hof-open-btn">&#127942; Hall of Fame</button>
+          <!-- Utility links — relocated from old bottom bar -->
+          <div id="mode-utility-row">
+            <button id="mode-select-lb-btn" class="mode-utility-btn">&#127942; Leaderboard</button>
+            <button id="hof-open-btn" class="mode-utility-btn">&#127942; Hall of Fame</button>
+            <button id="mode-season-pass-btn" class="mode-utility-btn">&#127873; Season Pass</button>
+            <button id="mode-biome-cosmetics-btn" class="mode-utility-btn">&#127775; Expedition Cosmetics</button>
+          </div>
           <button id="mode-select-back">&#8592; Back</button>
         </div>
       </div>
