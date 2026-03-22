@@ -4991,7 +4991,9 @@ function animate() {
   requestAnimationFrame(animate);
 
   const time = performance.now();
-  const delta = clock.getDelta();
+  const rawDelta = clock.getDelta();
+  // Cap delta to prevent timer skips after pause/tab-away (THREE.Clock accumulates real time)
+  const delta = Math.min(rawDelta, 0.1);
   const elapsedTime = clock.getElapsedTime();
 
   updateSky(elapsedTime, delta);
