@@ -207,6 +207,10 @@
               <span id="season-banner-name"></span>
             </div>
             <span id="season-banner-days"></span>
+            <div id="season-banner-actions">
+              <button id="mode-season-pass-btn" class="season-banner-btn" title="Season Pass">&#127873; Pass</button>
+              <button id="hof-open-btn" class="season-banner-btn" title="Hall of Fame">&#127942; Hall of Fame</button>
+            </div>
           </div>
           <div id="mode-cards">
             <!-- ── CORE ── -->
@@ -218,18 +222,21 @@
                   <div class="mode-card-name">Classic</div>
                   <div class="mode-card-desc">Survive as long as you can.</div>
                   <div class="mode-card-pb" id="mode-pb-classic"></div>
+                  <button class="mode-card-lb-btn" data-lb-tab="today" title="Leaderboard">&#127942;</button>
                 </div>
                 <div class="mode-card" id="mode-card-sprint" data-mode="sprint">
                   <div class="mode-card-icon">&#9201;</div>
                   <div class="mode-card-name">Sprint</div>
                   <div class="mode-card-desc">Clear 40 lines. Beat the clock.</div>
                   <div class="mode-card-pb" id="mode-pb-sprint"></div>
+                  <button class="mode-card-lb-btn" data-lb-tab="today" title="Leaderboard">&#127942;</button>
                 </div>
                 <div class="mode-card" id="mode-card-blitz" data-mode="blitz">
                   <div class="mode-card-icon">&#9889;</div>
                   <div class="mode-card-name">Blitz</div>
                   <div class="mode-card-desc">2 minutes. Maximum score.</div>
                   <div class="mode-card-pb" id="mode-pb-blitz"></div>
+                  <button class="mode-card-lb-btn" data-lb-tab="today" title="Leaderboard">&#127942;</button>
                 </div>
               </div>
             </div>
@@ -242,12 +249,14 @@
                   <div class="mode-card-name">Daily</div>
                   <div class="mode-card-desc">Today's seed. Everyone gets the same pieces.</div>
                   <div class="mode-card-pb" id="mode-pb-daily"></div>
+                  <button class="mode-card-lb-btn" data-lb-tab="today" title="Leaderboard">&#127942;</button>
                 </div>
                 <div class="mode-card mode-card-weekly" id="mode-card-weekly" data-mode="weekly">
                   <div class="mode-card-icon">&#127381;</div>
                   <div class="mode-card-name">Weekly</div>
                   <div class="mode-card-desc" id="mode-weekly-modifier-desc">This week's challenge.</div>
                   <div class="mode-card-pb" id="mode-pb-weekly"></div>
+                  <button class="mode-card-lb-btn" data-lb-tab="thisweek" title="Leaderboard">&#127942;</button>
                 </div>
                 <div class="mode-card mode-card-puzzle" id="mode-card-puzzle" data-mode="puzzle">
                   <div class="mode-card-icon">&#129513;</div>
@@ -284,6 +293,7 @@
                   <div class="mode-card-name">The Depths</div>
                   <div class="mode-card-desc">Roguelike dungeon. 7 floors, random upgrades, one life.</div>
                   <div class="mode-card-pb" id="mode-pb-depths"></div>
+                  <button class="mode-card-lb-btn" data-lb-tab="depths" title="Leaderboard">&#127942;</button>
                 </div>
                 <div class="mode-card mode-card-daily-depths" id="mode-card-daily-depths" data-mode="daily-depths">
                   <div class="mode-card-icon">&#9760;</div>
@@ -291,6 +301,7 @@
                   <div class="mode-card-name">Daily Dungeon</div>
                   <div class="mode-card-desc">Today's Depths run. Same seed for all. One attempt.</div>
                   <div class="mode-card-pb" id="mode-pb-daily-depths"></div>
+                  <button class="mode-card-lb-btn" data-lb-tab="depths" title="Leaderboard">&#127942;</button>
                 </div>
                 <div class="mode-card mode-card-expedition" id="mode-card-expedition" data-mode="expedition">
                   <div class="mode-card-icon">&#127758;</div>
@@ -308,16 +319,19 @@
                   <div class="mode-card-name">Co-op</div>
                   <div class="mode-card-desc">Play together. One world, two miners.</div>
                   <div class="mode-coop-ach-count" id="mode-coop-ach-count"></div>
+                  <button class="mode-card-lb-btn" data-lb-tab="coop" title="Leaderboard">&#127942;</button>
                 </div>
                 <div class="mode-card mode-card-battle" id="mode-card-battle" data-mode="battle">
                   <div class="mode-card-icon">&#9876;</div>
                   <div class="mode-card-name">Battle</div>
                   <div class="mode-card-desc">Fight your opponent. Last miner standing wins.</div>
+                  <button class="mode-card-lb-btn" data-lb-tab="battle" title="Leaderboard">&#127942;</button>
                 </div>
                 <div class="mode-card mode-card-tournament" id="mode-card-tournament" data-mode="tournament">
                   <div class="mode-card-icon">&#127942;</div>
                   <div class="mode-card-name">Tournament</div>
                   <div class="mode-card-desc">8-player brackets. Compete for the prize.</div>
+                  <button class="mode-card-lb-btn" data-lb-tab="season" title="Leaderboard">&#127942;</button>
                 </div>
               </div>
             </div>
@@ -331,13 +345,6 @@
           <div id="mode-powerup-slot">
             <div id="mode-powerup-label">&#9889; EQUIP POWER-UP</div>
             <div id="mode-powerup-picker"></div>
-          </div>
-          <!-- Utility links — relocated from old bottom bar -->
-          <div id="mode-utility-row">
-            <button id="mode-select-lb-btn" class="mode-utility-btn">&#127942; Leaderboard</button>
-            <button id="hof-open-btn" class="mode-utility-btn">&#127942; Hall of Fame</button>
-            <button id="mode-season-pass-btn" class="mode-utility-btn">&#127873; Season Pass</button>
-            <button id="mode-biome-cosmetics-btn" class="mode-utility-btn">&#127775; Expedition Cosmetics</button>
           </div>
           <button id="mode-select-back">&#8592; Back</button>
         </div>
@@ -1142,6 +1149,7 @@
           <div id="expedition-map-footer">
             <span class="exp-hint">&#8592;&#8594; Navigate &nbsp;|&nbsp; Enter / A: Play &nbsp;|&nbsp; Esc / B: Close</span>
             <div class="exp-footer-btns">
+              <button id="mode-biome-cosmetics-btn">&#127775; Cosmetics</button>
               <button id="expedition-codex-open-btn">&#128218; Codex</button>
               <button id="expedition-map-close-btn">&#8592; Close</button>
             </div>

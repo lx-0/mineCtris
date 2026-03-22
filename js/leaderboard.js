@@ -709,10 +709,16 @@ function initLeaderboard() {
     });
   }
 
-  // Leaderboard button on mode-select screen
-  const modeSelectLbBtn = document.getElementById('mode-select-lb-btn');
-  if (modeSelectLbBtn) {
-    modeSelectLbBtn.addEventListener('click', openLeaderboardPanel);
+  // Per-mode leaderboard buttons on mode cards (delegated)
+  const modeCards = document.getElementById('mode-cards');
+  if (modeCards) {
+    modeCards.addEventListener('click', function(e) {
+      var btn = e.target.closest('.mode-card-lb-btn');
+      if (!btn) return;
+      e.stopPropagation(); // don't trigger mode card click
+      var tab = btn.getAttribute('data-lb-tab') || 'today';
+      openLeaderboardPanel(tab);
+    });
   }
 
   // Leaderboard button on game-over screen — open weekly tab if in weekly mode

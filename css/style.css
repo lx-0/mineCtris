@@ -1776,6 +1776,52 @@ body {
   font-size: 0.9em;
   opacity: 0.7;
 }
+/* Per-mode leaderboard button */
+.mode-card-lb-btn {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+  font-size: 0.75em;
+  padding: 3px 5px;
+  cursor: pointer;
+  opacity: 0.4;
+  transition: opacity 0.15s, border-color 0.15s;
+  z-index: 3;
+  line-height: 1;
+}
+.mode-card:not(.mode-card-locked) .mode-card-lb-btn:hover {
+  opacity: 1;
+  border-color: rgba(0, 255, 136, 0.5);
+}
+.mode-card-locked .mode-card-lb-btn {
+  display: none;
+}
+/* Season banner action buttons */
+#season-banner-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.season-banner-btn {
+  font-family: "Press Start 2P", cursive;
+  font-size: 7px;
+  background: rgba(0, 255, 136, 0.08);
+  border: 1px solid rgba(0, 255, 136, 0.25);
+  color: rgba(0, 255, 136, 0.7);
+  padding: 5px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+  white-space: nowrap;
+}
+.season-banner-btn:hover {
+  color: #00ff88;
+  border-color: rgba(0, 255, 136, 0.5);
+  background: rgba(0, 255, 136, 0.15);
+}
 /* Daily Challenge card — gold/amber accent */
 .mode-card-daily {
   border-color: rgba(255, 180, 0, 0.5);
@@ -3410,27 +3456,6 @@ body {
   min-height: 12px;
 }
 
-#mode-utility-row {
-  display: flex;
-  gap: 10px;
-  justify-content: center;
-  flex-wrap: wrap;
-}
-.mode-utility-btn {
-  font-family: "Press Start 2P", cursive;
-  font-size: 0.42em;
-  background: transparent;
-  border: 1px solid rgba(0, 255, 136, 0.2);
-  color: rgba(170, 255, 204, 0.6);
-  padding: 6px 12px;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: color 0.15s, border-color 0.15s;
-}
-.mode-utility-btn:hover {
-  color: #00ff88;
-  border-color: rgba(0, 255, 136, 0.5);
-}
 #mode-select-back {
   font-family: "Press Start 2P", cursive;
   font-size: 0.65em;
