@@ -29,7 +29,7 @@ function unhighlightTarget() {
 function updateTargeting() {
   if (!controls || !camera || !raycaster) return;
   raycaster.setFromCamera({ x: 0, y: 0 }, camera);
-  const intersects = raycaster.intersectObjects(worldGroup.children);
+  const intersects = raycaster.intersectObjects(worldGroup.children, true);
   let newTarget = null;
   let newFaceNormal = null;
   let newGroundPoint = null;

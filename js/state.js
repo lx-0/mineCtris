@@ -381,6 +381,8 @@ let _creeperFuseParticles = [];
 let _creeperExplosionParticles = [];
 // Scale-pulse animation: time remaining in seconds (0 = idle).
 let _creeperHitPulseTime = 0;
+// Walk cycle phase for leg animation (radians).
+let _creeperWalkPhase = 0;
 
 // ── Survival mode state ───────────────────────────────────────────────────────
 // isSurvivalMode: true while a Survival session is active.
