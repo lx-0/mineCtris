@@ -1,6 +1,9 @@
 // Mining mechanics — targeting, damage, shake, dust particles, and pickaxe model.
 // Requires: state.js, config.js, world.js (unregisterBlock)
 
+// Shared geometry for all dust particles (0.07-unit cube). Never disposed at runtime.
+const _DUST_PARTICLE_GEO = new THREE.BoxGeometry(0.07, 0.07, 0.07);
+
 function highlightBlock(block) {
   if (!block || !block.material) return;
   if (!block.userData.originalColor) {
@@ -170,13 +173,12 @@ function spawnDustParticles(block, opts) {
       ).normalize().multiplyScalar(speed);
     };
     for (let i = 0; i < count; i++) {
-      const geo = new THREE.BoxGeometry(0.07, 0.07, 0.07);
       const mat = new THREE.MeshLambertMaterial({
         color: dustColor,
         transparent: true,
         opacity: 0.9,
       });
-      const mesh = new THREE.Mesh(geo, mat);
+      const mesh = new THREE.Mesh(_DUST_PARTICLE_GEO, mat);
       mesh.position.copy(wp);
       scene.add(mesh);
       dustParticles.push({ mesh, velocity: velocityFn(), startTime: clock.getElapsedTime(), lifetime });
@@ -279,13 +281,12 @@ function spawnDustParticles(block, opts) {
   }
 
   for (let i = 0; i < count; i++) {
-    const geo = new THREE.BoxGeometry(0.07, 0.07, 0.07);
     const mat = new THREE.MeshLambertMaterial({
       color: dustColor,
       transparent: true,
       opacity: 0.85,
     });
-    const mesh = new THREE.Mesh(geo, mat);
+    const mesh = new THREE.Mesh(_DUST_PARTICLE_GEO, mat);
     mesh.position.copy(wp);
     scene.add(mesh);
     dustParticles.push({
@@ -303,6 +304,7 @@ function updateDustParticles(delta) {
     const p = dustParticles[i];
     const age = now - p.startTime;
     if (age >= p.lifetime) {
+      p.mesh.material.dispose();
       scene.remove(p.mesh);
       dustParticles.splice(i, 1);
       continue;

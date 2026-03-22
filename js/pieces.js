@@ -2,6 +2,9 @@
 // Requires: state.js, config.js, world.js (createBlockMesh, registerBlock),
 //           lineclear.js (checkLineClear), gamestate.js (checkGameOver)
 
+// Shared geometry for nudge swoosh particles. Never disposed at runtime.
+const _NUDGE_PARTICLE_GEO = new THREE.BoxGeometry(0.12, 0.12, 0.12);
+
 // ── Landing shockwave ring pool ───────────────────────────────────────────────
 const _LANDING_RING_POOL_SIZE = 3;
 const _landingRingPool   = [];   // { mesh, active }
@@ -454,9 +457,8 @@ function spawnNudgeSwoosh(center, dx, dz, colorIndex) {
   swooshColor.b = Math.min(swooshColor.b * 1.6 + 0.15, 1);
   const count = 7;
   for (let i = 0; i < count; i++) {
-    const geo = new THREE.BoxGeometry(0.12, 0.12, 0.12);
     const mat = new THREE.MeshBasicMaterial({ color: swooshColor, transparent: true, opacity: 0.9 });
-    const mesh = new THREE.Mesh(geo, mat);
+    const mesh = new THREE.Mesh(_NUDGE_PARTICLE_GEO, mat);
     mesh.position.set(
       center.x + (Math.random() - 0.5) * 1.5,
       center.y + (Math.random() - 0.5) * 1.5,

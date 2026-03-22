@@ -514,6 +514,7 @@ function _lcDetonate() {
   lineClearFlashBlocks.forEach((b) => {
     if (b.userData._basePos) b.position.copy(b.userData._basePos);
     unregisterBlock(b);
+    disposeBlock(b);
     worldGroup.remove(b);
   });
   lineClearFlashBlocks = [];

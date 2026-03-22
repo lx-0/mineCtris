@@ -32,12 +32,12 @@ function spawnTree(tx, tz) {
     { y: leafTopY + BLOCK_SIZE * 2, radius: 0, cornerCut: false },
   ];
 
+  const leafGeo = new THREE.BoxGeometry(BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
   for (const layer of leafLayers) {
     const r = layer.radius;
     for (let lx = -r; lx <= r; lx++) {
       for (let lz = -r; lz <= r; lz++) {
         if (layer.cornerCut && Math.abs(lx) === r && Math.abs(lz) === r) continue;
-        const leafGeo = new THREE.BoxGeometry(BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
         const leaf = new THREE.Mesh(leafGeo, leafMat);
         leaf.position.set(
           tx + lx * BLOCK_SIZE,
@@ -61,8 +61,8 @@ function spawnTree(tx, tz) {
  * Rocks do not respawn when destroyed.
  */
 function spawnRock(rx, rz, size) {
+  const geo = new THREE.BoxGeometry(1.2, 1, 1.2);
   for (let i = 0; i < size; i++) {
-    const geo = new THREE.BoxGeometry(1.2, 1, 1.2);
     const mat = new THREE.MeshLambertMaterial({ color: 0x808080 });
     const block = new THREE.Mesh(geo, mat);
     block.position.set(rx, BLOCK_SIZE / 2 + i * BLOCK_SIZE, rz);
@@ -1352,6 +1352,7 @@ function init() {
           if (!_wb) return;
           spawnDustParticles(_wb, { breakBurst: true });
           unregisterBlock(_wb);
+          disposeBlock(_wb);
           worldGroup.remove(_wb);
           var _obIdx = obsidianBlocks.indexOf(_wb);
           if (_obIdx !== -1) obsidianBlocks.splice(_obIdx, 1);
@@ -4597,6 +4598,7 @@ function onMouseDown(event) {
         ? targetedBlock.userData.gridPos.y : null;
 
       unregisterBlock(targetedBlock);
+      disposeBlock(targetedBlock);
       worldGroup.remove(targetedBlock);
       // Remove from obsidian shimmer tracking if applicable
       const _obIdx = obsidianBlocks.indexOf(targetedBlock);
@@ -4669,6 +4671,7 @@ function _applyDiamondAOE(origin) {
     const nColor = neighbor.userData.originalColor || neighbor.material.color;
     addToInventory(threeColorToCss(nColor));
     unregisterBlock(neighbor);
+    disposeBlock(neighbor);
     worldGroup.remove(neighbor);
   });
 }
@@ -4703,6 +4706,7 @@ function activateLavaFlask() {
     const mName = block.userData.materialType || (oType ? OBJECT_TYPE_TO_MATERIAL[oType] : null);
     addScore(mName && BLOCK_TYPES[mName] ? BLOCK_TYPES[mName].points : 10);
     unregisterBlock(block);
+    disposeBlock(block);
     worldGroup.remove(block);
   });
   if (typeof achOnBlockMined === "function") achOnBlockMined(blocksMined, undefined);
@@ -4899,6 +4903,7 @@ function activateEquippedPowerup() {
         const mName = block.userData.materialType || (oType ? OBJECT_TYPE_TO_MATERIAL[oType] : null);
         addScore(mName && BLOCK_TYPES[mName] ? BLOCK_TYPES[mName].points : 10);
         unregisterBlock(block);
+        disposeBlock(block);
         worldGroup.remove(block);
       });
       if (typeof achOnBlockMined === "function") achOnBlockMined(blocksMined, undefined);
@@ -5101,6 +5106,7 @@ function animate() {
             if (mName) addToInventory(nearestBlock.material.color.getStyle());
             addScore(mName && BLOCK_TYPES[mName] ? BLOCK_TYPES[mName].points : 10);
             unregisterBlock(nearestBlock);
+            disposeBlock(nearestBlock);
             worldGroup.remove(nearestBlock);
             if (typeof achOnBlockMined === "function") achOnBlockMined(blocksMined, undefined);
           }

@@ -50,6 +50,20 @@ function unregisterBlock(block) {
   block.userData.gridPos = null;
 }
 
+/**
+ * Dispose GPU resources (geometry + material) for a block mesh and its
+ * edge-overlay child, preventing WebGL memory leaks on block removal.
+ */
+function disposeBlock(block) {
+  if (!block) return;
+  block.children.forEach(child => {
+    if (child.geometry) child.geometry.dispose();
+    if (child.material) child.material.dispose();
+  });
+  if (block.geometry) block.geometry.dispose();
+  if (block.material) block.material.dispose();
+}
+
 /** Create a single block mesh with edge overlay. */
 function createBlockMesh(color) {
   const geometry = new THREE.BoxGeometry(BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
