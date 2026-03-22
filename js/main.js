@@ -540,13 +540,82 @@ function init() {
       // Apply progressive mode unlock gates
       if (typeof applyModeUnlockState === 'function') applyModeUnlockState();
 
+      // Depths discovery prompt — show once after 3+ games if Depths never tried
+      _maybeShowDepthsDiscoveryPrompt();
+
       blocker.style.display = "none";
       modeSelectEl.style.display = "flex";
+    }
+
+    function _maybeShowDepthsDiscoveryPrompt() {
+      var promptEl = document.getElementById('depths-discovery-prompt');
+      if (!promptEl) return;
+
+      // Check dismissal flag first (cheapest check)
+      var dismissed = false;
+      try { dismissed = localStorage.getItem('mineCtris_depthsPromptDismissed') === 'true'; } catch (_) {}
+      if (dismissed) { promptEl.style.display = 'none'; return; }
+
+      // Check if player has played any Depths/Dungeon mode
+      var seenTiers = null;
+      try {
+        var raw = localStorage.getItem('mineCtris_seenDungeonTiers');
+        seenTiers = raw ? JSON.parse(raw) : null;
+      } catch (_) {}
+      var hasSeenTiers = seenTiers !== null && seenTiers.length > 0;
+
+      var depthsRuns = 0;
+      try { depthsRuns = parseInt(localStorage.getItem('mineCtris_depthsTotalRuns') || '0', 10) || 0; } catch (_) {}
+
+      if (hasSeenTiers || depthsRuns > 0) {
+        promptEl.style.display = 'none';
+        return;
+      }
+
+      // Check lifetime games played
+      var stats = typeof loadLifetimeStats === 'function' ? loadLifetimeStats() : { gamesPlayed: 0 };
+      if ((stats.gamesPlayed || 0) < 3) { promptEl.style.display = 'none'; return; }
+
+      // All conditions met — show the prompt
+      promptEl.style.display = 'block';
+
+      // Wire up buttons (use replaceWith trick to avoid duplicate listeners)
+      var showBtn = document.getElementById('ddp-show-me');
+      var laterBtn = document.getElementById('ddp-maybe-later');
+
+      if (showBtn && !showBtn.dataset.ddpBound) {
+        showBtn.dataset.ddpBound = '1';
+        showBtn.addEventListener('click', function () {
+          _dismissDepthsPrompt();
+          var depthsCard = document.getElementById('mode-card-depths');
+          if (depthsCard) {
+            depthsCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            depthsCard.classList.add('mode-card-highlight');
+            setTimeout(function () { depthsCard.classList.remove('mode-card-highlight'); }, 2100);
+          }
+        });
+      }
+
+      if (laterBtn && !laterBtn.dataset.ddpBound) {
+        laterBtn.dataset.ddpBound = '1';
+        laterBtn.addEventListener('click', function () {
+          _dismissDepthsPrompt();
+        });
+      }
+    }
+
+    function _dismissDepthsPrompt() {
+      var promptEl = document.getElementById('depths-discovery-prompt');
+      if (promptEl) promptEl.style.display = 'none';
+      try { localStorage.setItem('mineCtris_depthsPromptDismissed', 'true'); } catch (_) {}
     }
 
     function hideModeSelect() {
       const modeSelectEl = document.getElementById("mode-select");
       if (modeSelectEl) modeSelectEl.style.display = "none";
+      // Hide discovery prompt whenever mode select is dismissed
+      var promptEl = document.getElementById('depths-discovery-prompt');
+      if (promptEl) promptEl.style.display = 'none';
     }
 
     function _showCustomPuzzleLoadScreen() {

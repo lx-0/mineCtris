@@ -16700,3 +16700,97 @@ body.biome-ice #inventory-hud { border-color: #4499dd; }
     font-size: 0.28em;
   }
 }
+
+/* ── Depths discovery prompt ───────────────────────────────────────────────── */
+#depths-discovery-prompt {
+  display: none;
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(10, 4, 22, 0.95);
+  border: 2px solid #a855f7;
+  border-radius: 10px;
+  padding: 14px 20px 12px;
+  font-family: "Press Start 2P", cursive;
+  color: #e9d5ff;
+  text-align: center;
+  z-index: 260;
+  max-width: 520px;
+  width: calc(100% - 40px);
+  box-shadow: 0 0 24px rgba(168, 85, 247, 0.4);
+  animation: ddp-fade-in 0.35s ease-out both;
+}
+
+@keyframes ddp-fade-in {
+  from { opacity: 0; transform: translateX(-50%) translateY(-10px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+.ddp-header {
+  font-size: 10px;
+  color: #c084fc;
+  text-shadow: 0 0 8px rgba(192, 132, 252, 0.7);
+  margin-bottom: 8px;
+  letter-spacing: 1px;
+}
+
+.ddp-body {
+  font-size: 7px;
+  color: #d8b4fe;
+  line-height: 1.7;
+  margin-bottom: 12px;
+}
+
+.ddp-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.ddp-btn-show {
+  font-family: "Press Start 2P", cursive;
+  font-size: 7px;
+  padding: 7px 14px;
+  background: #7c3aed;
+  border: 2px solid #a855f7;
+  border-radius: 6px;
+  color: #fff;
+  cursor: pointer;
+  text-shadow: 0 0 6px rgba(168, 85, 247, 0.6);
+  transition: background 0.15s, box-shadow 0.15s;
+}
+
+.ddp-btn-show:hover {
+  background: #9333ea;
+  box-shadow: 0 0 12px rgba(168, 85, 247, 0.6);
+}
+
+.ddp-btn-later {
+  font-family: "Press Start 2P", cursive;
+  font-size: 7px;
+  padding: 7px 14px;
+  background: transparent;
+  border: 2px solid #6b21a8;
+  border-radius: 6px;
+  color: #c084fc;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.ddp-btn-later:hover {
+  border-color: #a855f7;
+  color: #e9d5ff;
+}
+
+/* ── Depths card discovery highlight animation ─────────────────────────────── */
+@keyframes mode-card-highlight-pulse {
+  0%   { box-shadow: 0 0 0 0 rgba(168, 85, 247, 0.8), 0 0 14px rgba(168, 85, 247, 0.3); border-color: #a855f7; }
+  40%  { box-shadow: 0 0 0 10px rgba(168, 85, 247, 0), 0 0 28px rgba(168, 85, 247, 0.7); border-color: #c084fc; }
+  100% { box-shadow: 0 0 0 0 rgba(168, 85, 247, 0), 0 0 14px rgba(168, 85, 247, 0.3); border-color: #a855f7; }
+}
+
+.mode-card-highlight {
+  animation: mode-card-highlight-pulse 0.7s ease-out 3;
+}
