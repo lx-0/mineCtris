@@ -334,6 +334,17 @@ var coopTrade = (function () {
       }
     },
 
+    /** Reject a pending incoming offer (called when receiver presses Q). */
+    rejectIncomingOffer: function () {
+      if (!_incoming) return false;
+      clearTimeout(_incoming.timeoutId);
+      _incoming = null;
+      _hideIncomingToast();
+      if (typeof coop !== 'undefined') coop.send({ type: 'trade_cancel' });
+      _showStatusToast('Trade declined');
+      return true;
+    },
+
     /** Show the one-time first-run co-op trade hint. */
     showFirstRunHint: function () {
       try {
@@ -346,14 +357,11 @@ var coopTrade = (function () {
       setTimeout(function () { if (hint) hint.style.display = 'none'; }, 6000);
     },
 
-    /** Reset all trade state (called on game reset). */
+    /** Reset all trade state (called on game reset / partner disconnect). */
     reset: function () {
       if (_outgoing) { clearTimeout(_outgoing.timeoutId); _outgoing = null; }
+      _closePanel();
       if (_incoming) { clearTimeout(_incoming.timeoutId); _incoming = null; }
-      _selectedMaterial = null;
-      coopTradePanelOpen = false;
-      var panel = document.getElementById('coop-trade-panel');
-      if (panel) panel.style.display = 'none';
       _hideIncomingToast();
     },
 

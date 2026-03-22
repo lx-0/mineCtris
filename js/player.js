@@ -132,6 +132,11 @@ function onKeyDown(event) {
       if (!isSprintMode && !isBlitzMode && !weeklyNoIron) toggleCraftingPanel();
       break;
     case "KeyQ":
+      // Reject incoming trade offer if one is pending
+      if (isCoopMode && typeof coopTrade !== 'undefined' && coopTrade.hasPendingIncomingOffer()) {
+        coopTrade.rejectIncomingOffer();
+        break;
+      }
       applyNudge(-1, 0);
       break;
     case "KeyE":

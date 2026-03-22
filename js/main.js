@@ -1503,6 +1503,11 @@ function init() {
       // ── Partner left mid-game: show continue/quit choice ──
       coop.on('partner_left', function () {
         if (!isCoopMode || isGameOver) return;
+        // Close trade panel / dismiss incoming toast so pointer lock is restored
+        if (typeof coopTrade !== 'undefined') {
+          coopTrade.closePanel();
+          coopTrade.onTradeCancel();
+        }
         _showCoopPartnerLeftDialog();
       });
 
