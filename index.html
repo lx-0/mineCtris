@@ -244,7 +244,7 @@
                 </svg>
               </div>
               <div class="mode-card-name">Survival</div>
-              <div class="mode-card-desc">Sssss... One world. Permadeath. Die and it's all gone.</div>
+              <div class="mode-card-desc">Your persistent world. Mine, build, survive — but death erases everything.</div>
               <div class="mode-card-pb" id="mode-pb-survival"></div>
               <div id="survival-world-card" class="survival-world-card"></div>
               <button id="survival-reset-btn" class="survival-reset-btn" style="display:none;">&#128465; Reset World</button>
@@ -292,14 +292,14 @@
             <div class="mode-card mode-card-depths" id="mode-card-depths" data-mode="depths">
               <div class="mode-card-icon">&#9760;</div>
               <div class="mode-card-name">The Depths</div>
-              <div class="mode-card-desc">7-floor dungeon. Permadeath. No mercy.</div>
+              <div class="mode-card-desc">Roguelike dungeon. 7 floors, random upgrades, one life.</div>
               <div class="mode-card-pb" id="mode-pb-depths"></div>
             </div>
             <div class="mode-card mode-card-daily-depths" id="mode-card-daily-depths" data-mode="daily-depths">
               <div class="mode-card-icon">&#9760;</div>
               <div class="mode-card-badge-daily">DAILY</div>
               <div class="mode-card-name">Daily Dungeon</div>
-              <div class="mode-card-desc">Today's shared seed. One shot at the leaderboard.</div>
+              <div class="mode-card-desc">Today's Depths run. Same seed for all. One attempt.</div>
               <div class="mode-card-pb" id="mode-pb-daily-depths"></div>
             </div>
           </div>
@@ -961,6 +961,9 @@
 
       <!-- Contextual game tooltips (first Classic game) -->
       <div id="game-tooltip" style="display:none;"></div>
+
+      <!-- Post-tutorial coach mark toasts (first 3 games) -->
+      <div id="coach-mark-toast" style="display:none;"></div>
 
       <!-- Depths dungeon tutorial tooltip (first dungeon run) -->
       <div id="depths-tutorial-tooltip" style="display:none;">
@@ -1763,6 +1766,7 @@
     <script src="js/aura.js"></script>
     <script src="js/tutorial.js"></script>
     <script src="js/game-tooltips.js"></script>
+    <script src="js/coach-marks.js"></script>
     <script src="js/settings.js"></script>
     <script src="js/metrics.js"></script>
     <script src="js/season.js"></script>
