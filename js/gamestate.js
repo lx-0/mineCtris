@@ -846,6 +846,7 @@ function resetGame() {
   if (dailyDepthsBadgeEl) dailyDepthsBadgeEl.style.display = 'none';
   const depthsFloorHudEl = document.getElementById('depths-floor-hud');
   if (depthsFloorHudEl) depthsFloorHudEl.style.display = 'none';
+  if (typeof depthsHud !== 'undefined' && depthsHud) depthsHud.hide();
   const depthsResultsEl = document.getElementById('depths-results-overlay');
   if (depthsResultsEl) depthsResultsEl.style.display = 'none';
   const depthsTransitionEl = document.getElementById('depths-transition-overlay');

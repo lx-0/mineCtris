@@ -48,6 +48,9 @@ function launchDungeonSession(dungeonId, seed) {
   _applyDungeonFloor(floor);
   _updateDungeonFloorHUD(floor);
 
+  // Show the dungeon HUD overlay
+  if (typeof depthsHud !== 'undefined' && depthsHud) depthsHud.show();
+
   // Snapshot starting score for per-floor tracking
   if (typeof snapshotDepthsFloorStart === 'function') snapshotDepthsFloorStart();
 
@@ -323,6 +326,9 @@ function _onDungeonFloorCleared() {
   dungeonFloorTimerActive = false;
   depthsFloorTimerActive  = false;
 
+  // Update dungeon HUD loot display
+  if (typeof depthsHud !== 'undefined' && depthsHud) depthsHud.updateLoot();
+
   // Advance session state (marks current floor cleared, moves index)
   var nextFloor = advanceDungeonFloor();
 
@@ -489,6 +495,9 @@ function _showDungeonExtractionScreen(clearedFloorNum, floorLoot, isComplete, ne
 function _handleDungeonExtract() {
   extractFromDungeon();
 
+  // Hide dungeon HUD overlay
+  if (typeof depthsHud !== 'undefined' && depthsHud) depthsHud.hide();
+
   // Save loot to inventory
   var loot = getDungeonLoot();
   _saveDungeonLootToInventory(loot);
@@ -521,6 +530,9 @@ function _handleDungeonDescend(nextFloor) {
   _applyDungeonFloor(nextFloor);
   _updateDungeonFloorHUD(nextFloor);
 
+  // Refresh dungeon HUD for new floor
+  if (typeof depthsHud !== 'undefined' && depthsHud) depthsHud.onFloorChange();
+
   // Snapshot starting score
   if (typeof snapshotDepthsFloorStart === 'function') snapshotDepthsFloorStart();
 
@@ -541,6 +553,9 @@ function _handleDungeonDescend(nextFloor) {
  */
 function handleDungeonDeath() {
   dungeonDeath();
+
+  // Hide dungeon HUD overlay
+  if (typeof depthsHud !== 'undefined' && depthsHud) depthsHud.hide();
 
   var summary = getDungeonSessionSummary();
 

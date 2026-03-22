@@ -5032,6 +5032,7 @@ function animate() {
     if (isDungeonMode && dungeonFloorTimerActive && typeof updateDungeonFloorTimer === 'function') {
       updateDungeonFloorTimer(delta * 1000);
       if (typeof updateDungeonGoalHUD === 'function') updateDungeonGoalHUD();
+      if (typeof depthsHud !== 'undefined' && depthsHud) { depthsHud.tick(delta); depthsHud.updateGoal(); }
     }
 
     // Tick ice bridge slow timer

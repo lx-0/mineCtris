@@ -15350,3 +15350,237 @@ body.biome-ice #inventory-hud { border-color: #4499dd; }
   border-color: #a78bfa;
   box-shadow: 0 0 20px rgba(167, 139, 250, 0.15);
 }
+
+/* ── Dungeon HUD overlay ─────────────────────────────────────────────── */
+
+.depths-hud {
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 220px;
+  pointer-events: none;
+  z-index: 900;
+  font-family: "Press Start 2P", cursive;
+  transition: opacity 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  padding: 12px;
+  gap: 12px;
+}
+
+.depths-hud * {
+  pointer-events: auto;
+}
+
+/* — Floor depth indicator — */
+
+.dhud-floor {
+  background: rgba(0, 0, 0, 0.65);
+  border-radius: 6px;
+  padding: 10px 12px;
+  border-left: 3px solid #6ee7b7;
+}
+
+.dhud-floor-num {
+  font-size: 0.85em;
+  color: #fff;
+  letter-spacing: 1px;
+  transition: color 0.3s, text-shadow 0.3s;
+}
+
+.dhud-floor-num.dhud-floor-descend {
+  color: #fbbf24;
+  text-shadow: 0 0 12px rgba(251, 191, 36, 0.7);
+  animation: dhud-descent-flash 1s ease-out;
+}
+
+.dhud-floor-tier {
+  font-size: 0.55em;
+  color: #6ee7b7;
+  margin-top: 4px;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+}
+
+.dhud-modifiers {
+  font-size: 0.45em;
+  color: #f59e0b;
+  margin-top: 6px;
+  line-height: 1.4;
+}
+
+/* — Objective progress — */
+
+.dhud-goal {
+  background: rgba(0, 0, 0, 0.65);
+  border-radius: 6px;
+  padding: 10px 12px;
+}
+
+.dhud-goal-text {
+  font-size: 0.5em;
+  color: #e5e7eb;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.dhud-goal-bar {
+  height: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.dhud-goal-bar-fill {
+  height: 100%;
+  background: #3b82f6;
+  border-radius: 4px;
+  transition: width 0.2s ease-out, background 0.3s ease;
+}
+
+/* — Loot inventory preview — */
+
+.dhud-loot {
+  background: rgba(0, 0, 0, 0.65);
+  border-radius: 6px;
+  padding: 10px 12px;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.dhud-loot-header {
+  font-size: 0.5em;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  margin-bottom: 8px;
+}
+
+.dhud-loot-count {
+  color: #6b7280;
+  font-size: 0.9em;
+}
+
+.dhud-loot-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  overflow: hidden;
+}
+
+.dhud-loot-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 6px;
+  border-left: 2px solid #9ca3af;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.03);
+  animation: dhud-loot-in 0.3s ease-out;
+}
+
+.dhud-loot-icon {
+  font-size: 0.7em;
+  flex-shrink: 0;
+}
+
+.dhud-loot-name {
+  font-size: 0.4em;
+  color: #9ca3af;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dhud-loot-empty {
+  font-size: 0.4em;
+  color: #4b5563;
+  font-style: italic;
+}
+
+.dhud-loot-more {
+  font-size: 0.4em;
+  color: #6b7280;
+  text-align: center;
+  margin-top: 2px;
+}
+
+/* — Extraction button — */
+
+.dhud-extract-wrap {
+  margin-top: auto;
+}
+
+.dhud-extract-btn {
+  width: 100%;
+  padding: 10px 12px;
+  background: rgba(34, 197, 94, 0.2);
+  border: 2px solid #22c55e;
+  border-radius: 6px;
+  color: #22c55e;
+  font-family: "Press Start 2P", cursive;
+  font-size: 0.6em;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  transition: background 0.2s, box-shadow 0.2s;
+}
+
+.dhud-extract-btn:hover {
+  background: rgba(34, 197, 94, 0.35);
+  box-shadow: 0 0 16px rgba(34, 197, 94, 0.3);
+}
+
+.dhud-extract-btn.dhud-extract-pulse {
+  animation: dhud-extract-pulse 1.5s ease-in-out infinite;
+}
+
+/* — Animations — */
+
+@keyframes dhud-descent-flash {
+  0%   { transform: scale(1.3); opacity: 0.5; }
+  100% { transform: scale(1);   opacity: 1;   }
+}
+
+@keyframes dhud-loot-in {
+  0%   { opacity: 0; transform: translateX(-8px); }
+  100% { opacity: 1; transform: translateX(0);    }
+}
+
+@keyframes dhud-extract-pulse {
+  0%, 100% { box-shadow: 0 0 4px  rgba(34, 197, 94, 0.2); }
+  50%      { box-shadow: 0 0 20px rgba(34, 197, 94, 0.5); border-color: #4ade80; }
+}
+
+/* — Responsive: collapse on small screens — */
+
+@media (max-width: 768px) {
+  .depths-hud {
+    width: 160px;
+    padding: 8px;
+    gap: 8px;
+  }
+  .dhud-floor-num { font-size: 0.65em; }
+  .dhud-floor-tier { font-size: 0.45em; }
+  .dhud-modifiers { font-size: 0.38em; }
+  .dhud-goal-text { font-size: 0.42em; }
+  .dhud-loot-name { font-size: 0.35em; }
+  .dhud-extract-btn { font-size: 0.5em; padding: 8px; }
+}
+
+@media (max-width: 480px) {
+  .depths-hud {
+    width: 120px;
+    padding: 6px;
+    gap: 6px;
+  }
+  .dhud-loot { display: none; }
+  .dhud-modifiers { display: none; }
+  .dhud-floor-num { font-size: 0.55em; }
+  .dhud-goal-text { font-size: 0.38em; }
+  .dhud-goal-bar { height: 6px; }
+  .dhud-extract-btn { font-size: 0.42em; padding: 6px; }
+}
