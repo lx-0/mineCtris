@@ -796,93 +796,191 @@ function _showDungeonResultsScreen(summary) {
   var isExtract  = summary.extracted;
 
   var title = 'DUNGEON COMPLETE';
-  if (isDeath) title = 'FALLEN ON FLOOR ' + (summary.floorsCleared + 1);
-  else if (isExtract) title = 'EXTRACTED ON FLOOR ' + summary.extractionFloor;
+  var titleClass = 'drw-title-victory';
+  if (isDeath) {
+    title = 'FALLEN ON FLOOR ' + (summary.floorsCleared + 1);
+    titleClass = 'drw-title-death';
+  } else if (isExtract) {
+    title = 'EXTRACTED ON FLOOR ' + summary.extractionFloor;
+    titleClass = 'drw-title-extract';
+  }
 
   var totalSecs = Math.floor((summary.totalTimeMs || 0) / 1000);
   var mm = Math.floor(totalSecs / 60).toString().padStart(2, '0');
   var ss = (totalSecs % 60).toString().padStart(2, '0');
+  var runScore = score || 0;
+  var runLines = linesCleared || 0;
+  var runBlocks = blocksMined || 0;
 
   var panel = overlay.querySelector('.depths-results-panel');
   if (!panel) return;
 
-  var html = '';
-  html += '<div class="depths-results-title">' + title + '</div>';
-  html += '<div class="dt-dungeon-name">' + (summary.dungeonName || '') + ' (' + (summary.tier || '') + ')</div>';
+  // -- Load personal bests for comparison --
+  var dungeonId = summary.dungeonId || 'unknown';
+  var prevStats = {};
+  try { prevStats = JSON.parse(localStorage.getItem(DUNGEON_STATS_KEY) || '{}'); } catch (_) {}
+  var prevBestFloor = (prevStats.bestFloors && prevStats.bestFloors[dungeonId]) || 0;
+  var prevBestScore = (prevStats.bestScores && prevStats.bestScores[dungeonId]) || 0;
+  var prevBestTime  = (prevStats.bestTimes  && prevStats.bestTimes[dungeonId])  || 0;
 
-  // Stats
-  html += '<div class="depths-results-stats">';
-  html += '<div class="depths-stat"><span>FLOORS CLEARED</span><span>' + summary.floorsCleared + '/' + summary.totalFloors + '</span></div>';
-  html += '<div class="depths-stat"><span>TIME</span><span>' + mm + ':' + ss + '</span></div>';
-  html += '<div class="depths-stat"><span>SCORE</span><span>' + (score || 0).toLocaleString() + '</span></div>';
-  html += '<div class="depths-stat"><span>LINES CLEARED</span><span>' + (linesCleared || 0) + '</span></div>';
-  html += '</div>';
+  var isNewBestFloor = summary.floorsCleared > prevBestFloor;
+  var isNewBestScore = runScore > prevBestScore;
+  var isNewBestTime  = (isExtract || isVictory) && (prevBestTime === 0 || (summary.totalTimeMs || 0) < prevBestTime);
 
-  // Loot section
-  if (isExtract || isVictory) {
-    var loot = summary.loot;
-    if (loot.length > 0) {
-      html += '<div class="dt-results-loot">';
-      html += '<div class="dt-results-loot-title">LOOT SECURED</div>';
-      var totals = {};
-      for (var i = 0; i < loot.length; i++) {
-        var key = loot[i].item;
-        totals[key] = (totals[key] || 0) + loot[i].amount;
-      }
-      var keys = Object.keys(totals);
-      for (var k = 0; k < keys.length; k++) {
-        html += '<div class="dt-results-loot-item">' +
-          _getLootIcon(keys[k]) + ' ' + keys[k] + ' x' + totals[keys[k]] +
-          '</div>';
-      }
-      html += '</div>';
+  // -- Resolve loot items with catalog data --
+  var lootItems = [];
+  if ((isExtract || isVictory) && summary.loot && summary.loot.length > 0) {
+    for (var li = 0; li < summary.loot.length; li++) {
+      var lootEntry = summary.loot[li];
+      var catalogItem = (typeof getLootItemById === 'function') ? getLootItemById(lootEntry.item) : null;
+      lootItems.push({
+        id:     lootEntry.item,
+        amount: lootEntry.amount,
+        name:   catalogItem ? catalogItem.name : lootEntry.item,
+        icon:   catalogItem ? catalogItem.icon : _getLootIcon(lootEntry.item),
+        rarity: catalogItem ? catalogItem.rarity : 'common',
+      });
     }
-  } else if (isDeath) {
-    html += '<div class="dt-results-loot-lost">All un-extracted loot has been lost.</div>';
+    // Sort by rarity (highest last for dramatic reveal)
+    var rarityOrder = { common: 0, uncommon: 1, rare: 2, epic: 3, legendary: 4 };
+    lootItems.sort(function (a, b) { return (rarityOrder[a.rarity] || 0) - (rarityOrder[b.rarity] || 0); });
   }
 
-  // XP earned
-  var xpEarned = Math.floor((score || 0) / 50);
-  html += '<div class="dt-results-xp">XP EARNED: +' + xpEarned + '</div>';
+  // -- Build HTML --
+  var html = '';
 
-  // Actions
-  html += '<div class="depths-results-actions">';
-  html += '<button class="depths-results-retry">&#9654; Try Again <span class="key-hint">[Enter]</span></button>';
-  html += '<button class="depths-results-lobby">&#8592; Return to Lobby <span class="key-hint">[Esc]</span></button>';
+  // Title
+  html += '<div class="drw-title ' + titleClass + '">' + title + '</div>';
+  html += '<div class="drw-dungeon-name">' + (summary.dungeonName || '') + ' &mdash; ' + (summary.tier || '') + '</div>';
+
+  // Section 1: Run Stats
+  html += '<div class="drw-section drw-stats">';
+  html += '<div class="drw-section-title">RUN STATS</div>';
+  html += '<div class="drw-stat-grid">';
+  html += '<div class="drw-stat" style="animation-delay:0.1s"><span class="drw-stat-label">FLOORS</span><span class="drw-stat-value">' + summary.floorsCleared + '/' + summary.totalFloors + '</span></div>';
+  html += '<div class="drw-stat" style="animation-delay:0.2s"><span class="drw-stat-label">TIME</span><span class="drw-stat-value">' + mm + ':' + ss + '</span></div>';
+  html += '<div class="drw-stat" style="animation-delay:0.3s"><span class="drw-stat-label">SCORE</span><span class="drw-stat-value">' + runScore.toLocaleString() + '</span></div>';
+  html += '<div class="drw-stat" style="animation-delay:0.4s"><span class="drw-stat-label">LINES</span><span class="drw-stat-value">' + runLines + '</span></div>';
+  html += '<div class="drw-stat" style="animation-delay:0.5s"><span class="drw-stat-label">BLOCKS MINED</span><span class="drw-stat-value">' + runBlocks + '</span></div>';
+  html += '<div class="drw-stat" style="animation-delay:0.6s"><span class="drw-stat-label">BOSS DEFEATED</span><span class="drw-stat-value">' + (summary.bossDefeated ? 'YES' : 'NO') + '</span></div>';
+  html += '</div></div>';
+
+  // Section 2: Loot Reveal
+  if (lootItems.length > 0) {
+    html += '<div class="drw-section drw-loot-section">';
+    html += '<div class="drw-section-title">LOOT SECURED</div>';
+    html += '<div class="drw-loot-grid" id="drw-loot-grid">';
+    for (var lk = 0; lk < lootItems.length; lk++) {
+      var li2 = lootItems[lk];
+      var rarityColor = LOOT_RARITY[li2.rarity] ? LOOT_RARITY[li2.rarity].color : '#9ca3af';
+      var rarityLabel = LOOT_RARITY[li2.rarity] ? LOOT_RARITY[li2.rarity].label : 'Common';
+      // Start hidden; JS will reveal them one by one
+      html += '<div class="drw-loot-orb drw-rarity-' + li2.rarity + '" data-rarity="' + li2.rarity + '" style="--rarity-color:' + rarityColor + '">';
+      html += '<div class="drw-orb-shell">&#11044;</div>';
+      html += '<div class="drw-orb-reveal">';
+      html += '<span class="drw-loot-icon">' + li2.icon + '</span>';
+      html += '<span class="drw-loot-name">' + li2.name + '</span>';
+      if (li2.amount > 1) html += '<span class="drw-loot-amount">x' + li2.amount + '</span>';
+      html += '<span class="drw-loot-rarity" style="color:' + rarityColor + '">' + rarityLabel + '</span>';
+      html += '</div></div>';
+    }
+    html += '</div></div>';
+  } else if (isDeath) {
+    html += '<div class="drw-section drw-loot-lost">';
+    html += '<div class="drw-section-title">LOOT LOST</div>';
+    html += '<div class="drw-loot-lost-text">All un-extracted loot has been lost.</div>';
+    html += '</div>';
+  }
+
+  // Section 3: Personal Best
+  html += '<div class="drw-section drw-personal-best">';
+  html += '<div class="drw-section-title">PERSONAL BEST</div>';
+  html += '<div class="drw-pb-grid">';
+
+  // Floors
+  html += '<div class="drw-pb-row">';
+  html += '<span class="drw-pb-label">FLOORS</span>';
+  html += '<span class="drw-pb-this">' + summary.floorsCleared + '</span>';
+  html += '<span class="drw-pb-vs">vs</span>';
+  html += '<span class="drw-pb-best">' + prevBestFloor + '</span>';
+  if (isNewBestFloor) html += '<span class="drw-pb-new">NEW!</span>';
+  html += '</div>';
+
+  // Score
+  html += '<div class="drw-pb-row">';
+  html += '<span class="drw-pb-label">SCORE</span>';
+  html += '<span class="drw-pb-this">' + runScore.toLocaleString() + '</span>';
+  html += '<span class="drw-pb-vs">vs</span>';
+  html += '<span class="drw-pb-best">' + prevBestScore.toLocaleString() + '</span>';
+  if (isNewBestScore) html += '<span class="drw-pb-new">NEW!</span>';
+  html += '</div>';
+
+  // Time (only if completed/extracted)
+  if (isExtract || isVictory) {
+    var prevBestTimeSecs = Math.floor(prevBestTime / 1000);
+    var pbMM = Math.floor(prevBestTimeSecs / 60).toString().padStart(2, '0');
+    var pbSS = (prevBestTimeSecs % 60).toString().padStart(2, '0');
+    html += '<div class="drw-pb-row">';
+    html += '<span class="drw-pb-label">TIME</span>';
+    html += '<span class="drw-pb-this">' + mm + ':' + ss + '</span>';
+    html += '<span class="drw-pb-vs">vs</span>';
+    html += '<span class="drw-pb-best">' + (prevBestTime > 0 ? pbMM + ':' + pbSS : '--:--') + '</span>';
+    if (isNewBestTime) html += '<span class="drw-pb-new">NEW!</span>';
+    html += '</div>';
+  }
+  html += '</div></div>';
+
+  // Section 4: XP Earned
+  var xpEarned = Math.floor(runScore / 50);
+  html += '<div class="drw-section drw-xp-section">';
+  html += '<div class="drw-xp-bar">';
+  html += '<span class="drw-xp-label">XP EARNED</span>';
+  html += '<span class="drw-xp-value" id="drw-xp-counter">+0</span>';
+  html += '</div></div>';
+
+  // Section 5: Action Buttons
+  html += '<div class="drw-actions">';
+  html += '<button class="drw-btn drw-btn-retry">&#9654; Run Again <span class="key-hint">[Enter]</span></button>';
+  html += '<button class="drw-btn drw-btn-lobby">&#8592; Back to Menu <span class="key-hint">[Esc]</span></button>';
+  html += '<button class="drw-btn drw-btn-share">&#9993; Share Result <span class="key-hint">[S]</span></button>';
   html += '</div>';
 
   panel.innerHTML = html;
 
-  // Award XP
+  // -- Award XP --
   if (typeof awardXP === 'function') {
-    awardXP(score || 0, 'dungeon');
+    awardXP(runScore, 'dungeon');
   }
-  // Submit lifetime stats
+  // -- Submit lifetime stats --
   if (typeof submitLifetimeStats === 'function') {
     submitLifetimeStats({
-      score:       score || 0,
-      blocksMined: blocksMined || 0,
-      linesCleared: linesCleared || 0,
+      score:       runScore,
+      blocksMined: runBlocks,
+      linesCleared: runLines,
     });
   }
 
+  // -- Show overlay --
   overlay.style.display = 'flex';
   overlay.setAttribute('tabindex', '-1');
   overlay.focus();
 
-  // Wire buttons
-  var retryBtn = overlay.querySelector('.depths-results-retry');
+  // -- Animate loot reveal --
+  _animateLootReveal(lootItems, xpEarned);
+
+  // -- Wire buttons --
+  var retryBtn = overlay.querySelector('.drw-btn-retry');
   if (retryBtn) {
     retryBtn.onclick = function () {
       overlay.style.display = 'none';
       var session = getDungeonSession();
-      var dungeonId = session ? session.dungeonId : 'shallow_mines';
+      var did = session ? session.dungeonId : 'shallow_mines';
       if (typeof resetGame === 'function') resetGame();
-      document.dispatchEvent(new CustomEvent('dungeonLaunch', { detail: { dungeonId: dungeonId } }));
+      document.dispatchEvent(new CustomEvent('dungeonLaunch', { detail: { dungeonId: did } }));
     };
   }
 
-  var lobbyBtn = overlay.querySelector('.depths-results-lobby');
+  var lobbyBtn = overlay.querySelector('.drw-btn-lobby');
   if (lobbyBtn) {
     lobbyBtn.onclick = function () {
       overlay.style.display = 'none';
@@ -890,11 +988,85 @@ function _showDungeonResultsScreen(summary) {
     };
   }
 
-  // Keyboard handlers
+  var shareBtn = overlay.querySelector('.drw-btn-share');
+  if (shareBtn) {
+    shareBtn.onclick = function () {
+      _shareDungeonResult(summary, runScore, runLines, mm + ss);
+    };
+  }
+
+  // -- Keyboard handlers --
   overlay.addEventListener('keydown', function (e) {
     if (e.key === 'Enter')  { e.preventDefault(); if (retryBtn) retryBtn.click(); }
     if (e.key === 'Escape') { e.preventDefault(); if (lobbyBtn) lobbyBtn.click(); }
+    if (e.key === 's' || e.key === 'S') { e.preventDefault(); if (shareBtn) shareBtn.click(); }
   });
+}
+
+/**
+ * Animate loot orbs revealing one by one with escalating pauses for rarer items.
+ * Then count up the XP earned.
+ */
+function _animateLootReveal(lootItems, xpEarned) {
+  var orbs = document.querySelectorAll('.drw-loot-orb');
+  var baseDelay = 600; // ms per common item
+
+  var rarityDelays = {
+    common: 600, uncommon: 800, rare: 1000, epic: 1300, legendary: 1800
+  };
+
+  var cumulativeDelay = 800; // initial pause before first reveal
+  for (var i = 0; i < orbs.length; i++) {
+    (function (orb, delay) {
+      setTimeout(function () {
+        orb.classList.add('drw-orb-revealed');
+      }, delay);
+    })(orbs[i], cumulativeDelay);
+    var rarity = lootItems[i] ? lootItems[i].rarity : 'common';
+    cumulativeDelay += (rarityDelays[rarity] || baseDelay);
+  }
+
+  // XP count-up animation after all loot is revealed
+  var xpDelay = cumulativeDelay + 400;
+  var xpEl = document.getElementById('drw-xp-counter');
+  if (xpEl && xpEarned > 0) {
+    setTimeout(function () {
+      var duration = 1200;
+      var start = performance.now();
+      function tick(now) {
+        var elapsed = now - start;
+        var progress = Math.min(elapsed / duration, 1);
+        // Ease-out
+        var eased = 1 - Math.pow(1 - progress, 3);
+        xpEl.textContent = '+' + Math.floor(xpEarned * eased).toLocaleString();
+        if (progress < 1) requestAnimationFrame(tick);
+      }
+      requestAnimationFrame(tick);
+    }, xpDelay);
+  } else if (xpEl) {
+    xpEl.textContent = '+' + xpEarned;
+  }
+}
+
+/**
+ * Generate a share URL and copy it to clipboard (or open share dialog).
+ */
+function _shareDungeonResult(summary, runScore, runLines, mmss) {
+  var mode = 'Dungeon';
+  var shareStr = mode + '-' + runScore + '-' + runLines + '-' + mmss;
+  var url = location.origin + location.pathname + '?share=' + encodeURIComponent(shareStr);
+
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(url).then(function () {
+      var shareBtn = document.querySelector('.drw-btn-share');
+      if (shareBtn) {
+        shareBtn.textContent = 'Copied!';
+        setTimeout(function () { shareBtn.innerHTML = '&#9993; Share Result <span class="key-hint">[S]</span>'; }, 2000);
+      }
+    });
+  } else if (navigator.share) {
+    navigator.share({ title: 'MineCtris Dungeon Run', text: 'I scored ' + runScore.toLocaleString() + ' in a dungeon run!', url: url });
+  }
 }
 
 // ── Loot persistence ─────────────────────────────────────────────────────────
@@ -955,6 +1127,23 @@ function _persistDungeonRunStats(summary) {
     // Track runs per dungeon
     if (!stats.runsPerDungeon) stats.runsPerDungeon = {};
     stats.runsPerDungeon[dungeonId] = (stats.runsPerDungeon[dungeonId] || 0) + 1;
+
+    // Best score per dungeon
+    if (!stats.bestScores) stats.bestScores = {};
+    var runScore = score || 0;
+    if (runScore > (stats.bestScores[dungeonId] || 0)) {
+      stats.bestScores[dungeonId] = runScore;
+    }
+
+    // Best time (fastest completion) per dungeon — only for completed/extracted runs
+    if (summary.completed || summary.extracted) {
+      if (!stats.bestTimes) stats.bestTimes = {};
+      var runTime = summary.totalTimeMs || 0;
+      var prevBest = stats.bestTimes[dungeonId] || 0;
+      if (prevBest === 0 || runTime < prevBest) {
+        stats.bestTimes[dungeonId] = runTime;
+      }
+    }
 
     stats.lastRunAt = Date.now();
 
