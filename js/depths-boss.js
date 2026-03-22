@@ -128,6 +128,12 @@ function dealBossLineDamage(linesCleared) {
   if (_bossState !== BOSS_STATE_ACTIVE || !_bossDef) return;
 
   var damage = calcBossLineDamage(linesCleared);
+
+  // Wither Storm: 2x damage during gravity inversion
+  if (typeof isWitherGravityInverted === 'function' && isWitherGravityInverted()) {
+    damage *= 2;
+  }
+
   _applyBossDamage(damage);
 }
 
@@ -249,6 +255,7 @@ function cleanupBossEncounter() {
   // Clean up boss-specific block tracking
   if (typeof cleanupCreepBlocks === 'function') cleanupCreepBlocks();
   if (typeof cleanupFurnaceBlocks === 'function') cleanupFurnaceBlocks();
+  if (typeof cleanupWitherBlocks === 'function') cleanupWitherBlocks();
 }
 
 // ── State tick handlers ──────────────────────────────────────────────────────
@@ -455,6 +462,34 @@ function _fireMechanic(mechanic) {
       // Spawn magma blocks from the bottom (The Furnace)
       if (typeof spawnFurnaceMagma === 'function') {
         spawnFurnaceMagma(mechanic.count || 3);
+      }
+      break;
+
+    case 'gravity_inversion':
+      // Flip gravity for a duration (The Wither Storm)
+      if (typeof triggerWitherGravityInversion === 'function') {
+        triggerWitherGravityInversion(mechanic.duration || 5);
+      }
+      break;
+
+    case 'void_spawn':
+      // Spawn void block clusters (The Wither Storm)
+      if (typeof spawnWitherVoidBlocks === 'function') {
+        spawnWitherVoidBlocks(mechanic.count || 2);
+      }
+      break;
+
+    case 'board_shrink':
+      // Shrink board width from alternating sides (The Wither Storm)
+      if (typeof shrinkWitherBoard === 'function') {
+        shrinkWitherBoard();
+      }
+      break;
+
+    case 'corruption_wave':
+      // Convert a random row of blocks to void (The Wither Storm)
+      if (typeof witherCorruptionWave === 'function') {
+        witherCorruptionWave();
       }
       break;
   }

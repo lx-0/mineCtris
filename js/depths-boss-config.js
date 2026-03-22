@@ -54,6 +54,10 @@ var BOSS_MECHANIC_TYPES = {
   vine_spread:       'vine_spread',        // spread vine from existing moss/vine
   magma_rise:        'magma_rise',         // magma blocks rise from the bottom
   lava_pool:         'lava_pool',          // lava pools form after line-clears (passive, triggered by clear)
+  gravity_inversion: 'gravity_inversion',  // flip gravity for a duration (Wither Storm)
+  void_spawn:        'void_spawn',         // spawn void block clusters (Wither Storm)
+  board_shrink:      'board_shrink',       // shrink board width from alternating sides (Wither Storm)
+  corruption_wave:   'corruption_wave',    // convert a row of blocks to void (Wither Storm)
 };
 
 // ── Boss definitions ─────────────────────────────────────────────────────────
@@ -217,6 +221,61 @@ var BOSS_DEFINITIONS = {
         gravityMult:   1.6,
         pieceSpeedMult: 1.5,
         visualShift:   'storm_intensify',
+      },
+    ],
+  },
+
+  // ── Abyssal boss: The Wither Storm ─────────────────────────────────────────
+  the_wither_storm: {
+    id:              'the_wither_storm',
+    name:            'The Wither Storm',
+    tier:            BOSS_TIER_ABYSSAL,
+    hp:              60,
+    introText:       'Reality fractures as the void tears through the abyss...',
+    defeatText:      'The Wither Storm collapses inward — the void seals shut.',
+    visualTheme:     'the_wither_storm',
+    lootTable:       'abyssal_loot',
+    firstKillReward: 'depths_border_storm_slayer',
+    phases: [
+      {
+        id:            'phase_1',
+        name:          'Fracture',
+        trigger:       { type: BOSS_PHASE_TRIGGER_HEALTH, value: 1.0 },  // starts at 100%
+        mechanics: [
+          { type: BOSS_MECHANIC_TYPES.gravity_inversion, interval: 20, duration: 5 },
+          { type: BOSS_MECHANIC_TYPES.void_spawn, interval: 15, count: 2 },
+        ],
+        gravityMult:   1.6,
+        pieceSpeedMult: 1.5,
+        visualShift:   null,
+      },
+      {
+        id:            'phase_2',
+        name:          'Corruption',
+        trigger:       { type: BOSS_PHASE_TRIGGER_HEALTH, value: 0.7 },  // at 70% HP
+        mechanics: [
+          { type: BOSS_MECHANIC_TYPES.gravity_inversion, interval: 15, duration: 5 },
+          { type: BOSS_MECHANIC_TYPES.void_spawn, interval: 10, count: 3 },
+          { type: BOSS_MECHANIC_TYPES.board_shrink, interval: 60 },
+          { type: BOSS_MECHANIC_TYPES.corruption_wave, interval: 30 },
+        ],
+        gravityMult:   1.8,
+        pieceSpeedMult: 1.7,
+        visualShift:   'wither_intensify',
+      },
+      {
+        id:            'phase_3',
+        name:          'Annihilation',
+        trigger:       { type: BOSS_PHASE_TRIGGER_HEALTH, value: 0.3 },  // at 30% HP
+        mechanics: [
+          { type: BOSS_MECHANIC_TYPES.gravity_inversion, interval: 10, duration: 8 },
+          { type: BOSS_MECHANIC_TYPES.void_spawn, interval: 8, count: 4 },
+          { type: BOSS_MECHANIC_TYPES.board_shrink, interval: 45 },
+          { type: BOSS_MECHANIC_TYPES.corruption_wave, interval: 20 },
+        ],
+        gravityMult:   2.0,
+        pieceSpeedMult: 2.0,
+        visualShift:   'wither_annihilation',
       },
     ],
   },

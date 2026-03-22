@@ -50,6 +50,14 @@ function registerHazardBlock(block) {
   } else if (mat === 'furnace_ice') {
     block.userData.isHazard = true;
     block.userData.hazardType = 'furnace_ice';
+  } else if (mat === 'wither_void') {
+    block.userData.isHazard = true;
+    block.userData.hazardType = 'wither_void';
+    block.userData.isVoid = true;
+  } else if (mat === 'wither_wall') {
+    block.userData.isHazard = true;
+    block.userData.hazardType = 'wither_wall';
+    block.userData.isVoid = true;
   }
 }
 
@@ -78,6 +86,7 @@ function clearHazardBlocks() {
   _magmaBlocks.length = 0;
   if (typeof cleanupCreepBlocks === 'function') cleanupCreepBlocks();
   if (typeof cleanupFurnaceBlocks === 'function') cleanupFurnaceBlocks();
+  if (typeof cleanupWitherBlocks === 'function') cleanupWitherBlocks();
 }
 
 // ── Per-frame update ──────────────────────────────────────────────────────────
@@ -95,6 +104,8 @@ function updateHazardBlocks(delta) {
   if (typeof updateCreepBlocks === 'function') updateCreepBlocks(delta);
   // Tick The Furnace magma/obsidian/lava/ice mechanics
   if (typeof updateFurnaceBlocks === 'function') updateFurnaceBlocks(delta);
+  // Tick The Wither Storm void/inversion mechanics
+  if (typeof updateWitherBlocks === 'function') updateWitherBlocks(delta);
 }
 
 // ── Crumble ──────────────────────────────────────────────────────────────────
