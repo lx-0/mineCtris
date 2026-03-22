@@ -830,14 +830,33 @@ function init() {
     // ── Dungeons mode card — show tier selector on click ─────────────────────
     var dungeonsCardEl = document.getElementById("mode-card-dungeons");
     var dungeonTierSelector = document.getElementById("dungeon-tier-selector");
+
+    // Update the Infinite Depths button lock state based on Wither Storm defeat
+    function _refreshInfiniteDepthsLockState() {
+      var infiniteBtn = document.getElementById("dungeon-tier-infinite");
+      var lockMsg     = document.getElementById("dungeon-infinite-lock-msg");
+      if (!infiniteBtn) return;
+      var unlocked = (typeof isInfiniteDepthsUnlocked === 'function') && isInfiniteDepthsUnlocked();
+      if (unlocked) {
+        infiniteBtn.classList.remove('dungeon-tier-btn-locked');
+        infiniteBtn.disabled = false;
+        if (lockMsg) lockMsg.style.display = 'none';
+      } else {
+        infiniteBtn.classList.add('dungeon-tier-btn-locked');
+        infiniteBtn.disabled = true;
+        if (lockMsg) lockMsg.style.display = '';
+      }
+    }
+
     if (dungeonsCardEl && dungeonTierSelector) {
       dungeonsCardEl.addEventListener("click", function (e) {
         if (e.target.closest('.dungeon-tier-selector')) return;
+        _refreshInfiniteDepthsLockState();
         dungeonTierSelector.style.display = 'flex';
       });
     }
-    // Dungeon tier buttons
-    var dungeonTierBtns = document.querySelectorAll('.dungeon-tier-btn');
+    // Dungeon tier buttons (excluding the infinite button which has special handling)
+    var dungeonTierBtns = document.querySelectorAll('.dungeon-tier-btn:not(.dungeon-tier-btn-infinite)');
     for (var _dt = 0; _dt < dungeonTierBtns.length; _dt++) {
       (function (btn) {
         btn.addEventListener('click', function (e) {
@@ -848,6 +867,17 @@ function init() {
           document.dispatchEvent(new CustomEvent('dungeonLaunch', { detail: { dungeonId: dungeonId } }));
         });
       })(dungeonTierBtns[_dt]);
+    }
+    // Infinite Depths button — only dispatches when unlocked
+    var infiniteBtn = document.getElementById("dungeon-tier-infinite");
+    if (infiniteBtn) {
+      infiniteBtn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        if (infiniteBtn.disabled) return;
+        if (dungeonTierSelector) dungeonTierSelector.style.display = 'none';
+        if (typeof metricsModePlayed === 'function') metricsModePlayed('dungeon_infinite');
+        document.dispatchEvent(new CustomEvent('dungeonLaunch', { detail: { dungeonId: 'infinite' } }));
+      });
     }
     var dungeonTierBack = document.getElementById("dungeon-tier-back");
     if (dungeonTierBack) {
@@ -4124,10 +4154,42 @@ function init() {
 
   // ── Dungeon (Expeditions) launch handler ──────────────────────────────────
   document.addEventListener('dungeonLaunch', function (e) {
+    var dungeonId = (e.detail && e.detail.dungeonId) || 'shallow_mines';
+
+    // ── Infinite Depths ─────────────────────────────────────────────────────
+    if (dungeonId === 'infinite') {
+      if (typeof isInfiniteDepthsUnlocked !== 'function' || !isInfiniteDepthsUnlocked()) {
+        console.warn('Infinite Depths is locked — defeat The Wither Storm first.');
+        return;
+      }
+      hideModeSelect();
+      if (typeof resetGame === 'function') resetGame();
+      if (typeof launchInfiniteDepthsSession === 'function') {
+        var ok = launchInfiniteDepthsSession();
+        if (!ok) { console.warn('Failed to launch Infinite Depths session.'); return; }
+      }
+      var badge = document.getElementById('depths-mode-badge');
+      if (badge) { badge.textContent = 'INFINITE DEPTHS'; badge.style.display = 'inline-block'; }
+      var floor = typeof getDungeonCurrentFloor === 'function' ? getDungeonCurrentFloor() : null;
+      if (floor && typeof _showDungeonDescentLore === 'function') {
+        _showDungeonDescentLore(floor, 1, function () {
+          dungeonFloorTimerActive = true;
+          depthsFloorTimerActive  = true;
+          requestPointerLock();
+        });
+      } else {
+        dungeonFloorTimerActive = true;
+        depthsFloorTimerActive  = true;
+        requestPointerLock();
+      }
+      try { localStorage.setItem('mineCtris_lastMode', 'infinite'); } catch (_) {}
+      return;
+    }
+
+    // ── Standard dungeon tiers ───────────────────────────────────────────────
     hideModeSelect();
     if (typeof resetGame === 'function') resetGame();
 
-    var dungeonId = (e.detail && e.detail.dungeonId) || 'shallow_mines';
     var seed = (e.detail && e.detail.seed) || null;
 
     // Launch dungeon session
@@ -4141,7 +4203,7 @@ function init() {
 
     // Show mode badge
     var badge = document.getElementById('depths-mode-badge');
-    if (badge) badge.style.display = 'inline-block';
+    if (badge) { badge.textContent = 'THE DEPTHS'; badge.style.display = 'inline-block'; }
 
     // Show floor 1 lore, then start play
     var floor = typeof getDungeonCurrentFloor === 'function' ? getDungeonCurrentFloor() : null;

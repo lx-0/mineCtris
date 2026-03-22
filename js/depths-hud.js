@@ -279,15 +279,23 @@ var depthsHud = (function () {
     var totalFloors = session.totalFloors || '?';
 
     if (_floorNumEl) {
-      _floorNumEl.textContent = 'FLOOR ' + floorNum + '/' + totalFloors;
+      // Infinite Depths: show "Descent N — Floor M"
+      var infRun = (typeof getInfiniteRun === 'function') ? getInfiniteRun() : null;
+      if (infRun) {
+        _floorNumEl.textContent = 'DESCENT ' + infRun.descentNum + ' \u2014 FLOOR ' + floorNum;
+      } else {
+        _floorNumEl.textContent = 'FLOOR ' + floorNum + '/' + totalFloors;
+      }
     }
 
     // Tier label with color
     if (_floorTierEl && typeof DUNGEON_TIERS !== 'undefined') {
       var tierDef = DUNGEON_TIERS[session.tier];
       if (tierDef) {
-        _floorTierEl.textContent = tierDef.label;
-        _floorTierEl.style.color = tierDef.color;
+        // Infinite mode: override label
+        var infRun2 = (typeof getInfiniteRun === 'function') ? getInfiniteRun() : null;
+        _floorTierEl.textContent = infRun2 ? '\u221E Infinite' : tierDef.label;
+        _floorTierEl.style.color = infRun2 ? '#a855f7' : tierDef.color;
       }
     }
 

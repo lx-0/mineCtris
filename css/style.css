@@ -15558,6 +15558,67 @@ body.biome-ice #inventory-hud { border-color: #4499dd; }
   padding: 2px 6px;
 }
 
+/* ── Infinite Depths — locked button variant ───────────────────────────── */
+
+.dungeon-tier-btn-infinite {
+  border-color: rgba(168, 85, 247, 0.45);
+  background: rgba(168, 85, 247, 0.08);
+}
+.dungeon-tier-btn-infinite:hover:not(:disabled) {
+  border-color: #a855f7;
+  background: rgba(168, 85, 247, 0.18);
+}
+.dungeon-tier-btn-infinite:disabled,
+.dungeon-tier-btn-locked {
+  opacity: 0.55;
+  cursor: not-allowed;
+  border-color: rgba(107, 114, 128, 0.35);
+  background: rgba(107, 114, 128, 0.06);
+}
+.dungeon-infinite-lock {
+  font-family: "Press Start 2P", cursive;
+  font-size: 0.32em;
+  color: #ef4444;
+  letter-spacing: 1px;
+  margin-top: 2px;
+}
+
+/* ── Infinite Depths — inter-Descent extraction screen ─────────────────── */
+
+.dt-infinite-panel {
+  border-top: 3px solid #a855f7;
+  max-width: 520px;
+}
+.dt-infinite-header {
+  color: #a855f7 !important;
+}
+.dt-infinite-sub {
+  font-family: "Press Start 2P", cursive;
+  font-size: 0.42em;
+  color: #9ca3af;
+  text-align: center;
+  margin: 8px 0 16px;
+  line-height: 1.6;
+}
+.dt-infinite-choices {
+  gap: 12px;
+}
+.dt-go-deeper-btn {
+  border-color: #a855f7 !important;
+  background: rgba(168, 85, 247, 0.12) !important;
+}
+.dt-go-deeper-btn:hover {
+  background: rgba(168, 85, 247, 0.25) !important;
+}
+.dt-infinite-warning {
+  font-family: "Press Start 2P", cursive;
+  font-size: 0.32em;
+  color: #fbbf24;
+  text-align: center;
+  margin-top: 12px;
+  line-height: 1.6;
+}
+
 /* ── Dungeon Extract / Descend Screen ──────────────────────────────────── */
 
 .dt-extract-panel {

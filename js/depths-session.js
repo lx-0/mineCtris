@@ -75,13 +75,15 @@ function _applyDungeonFloor(floor) {
   depthsFloorTimerActive  = false;
   depthsRunComplete       = false;
 
-  // Apply gravity multiplier from tier + floor
+  // Apply gravity multiplier from tier + floor + Infinite Descent scaling
   var session = getDungeonSession();
   var tierDef = session ? DUNGEON_TIERS[session.tier] : null;
   var baseGravity = tierDef ? tierDef.baseGravityMult : 1.0;
   var floorGravity = floor.gravityMultiplier || 1.0;
+  var infiniteSpeedMult = (typeof isInfiniteMode === 'function' && isInfiniteMode() && typeof getInfiniteSpeedMult === 'function')
+    ? getInfiniteSpeedMult() : 1.0;
   // Store combined gravity for piece physics to read
-  _dungeonGravityMult = baseGravity * floorGravity;
+  _dungeonGravityMult = baseGravity * floorGravity * infiniteSpeedMult;
 
   // Apply modifiers from the floor's rolled modifier list
   if (floor.modifiers && floor.modifiers.length > 0) {
@@ -394,8 +396,15 @@ function _onDungeonFloorCleared() {
   var nextFloor = advanceDungeonFloor();
 
   if (session.completed) {
-    // All floors cleared — show victory/extraction with all loot
-    _showDungeonExtractionScreen(floorNum, floorLoot, true);
+    // Infinite Depths: after floor 7, show inter-Descent screen instead
+    if (typeof isInfiniteMode === 'function' && isInfiniteMode() && typeof showInfiniteDescentScreen === 'function') {
+      var infRun = (typeof getInfiniteRun === 'function') ? getInfiniteRun() : null;
+      var descentNum = infRun ? infRun.descentNum : 1;
+      showInfiniteDescentScreen(descentNum, floorLoot);
+    } else {
+      // Standard dungeon: all floors cleared
+      _showDungeonExtractionScreen(floorNum, floorLoot, true);
+    }
   } else {
     // Show extract-or-descend choice
     _showDungeonExtractionScreen(floorNum, floorLoot, false, nextFloor);
@@ -630,6 +639,15 @@ function _showDungeonExtractionScreen(clearedFloorNum, floorLoot, isComplete, ne
  * Handle the player choosing to extract (leave with loot).
  */
 function _handleDungeonExtract() {
+  // Infinite Depths: mid-Descent extract ends the entire run
+  if (typeof isInfiniteMode === 'function' && isInfiniteMode()) {
+    extractFromDungeon();
+    if (typeof depthsHud !== 'undefined' && depthsHud) depthsHud.hide();
+    if (typeof extractInfiniteRun === 'function') extractInfiniteRun();
+    if (typeof showInfiniteRunResults === 'function') showInfiniteRunResults(false);
+    return;
+  }
+
   extractFromDungeon();
 
   // Hide dungeon HUD overlay
@@ -730,6 +748,13 @@ function handleDungeonDeath() {
   // Hide dungeon HUD overlay
   if (typeof depthsHud !== 'undefined' && depthsHud) depthsHud.hide();
 
+  // Infinite Depths: current Descent loot is forfeited; banked loot is kept
+  if (typeof isInfiniteMode === 'function' && isInfiniteMode()) {
+    if (typeof onInfiniteDescentDeath === 'function') onInfiniteDescentDeath();
+    if (typeof showInfiniteRunResults === 'function') showInfiniteRunResults(true);
+    return;
+  }
+
   var summary = getDungeonSessionSummary();
 
   // Persist run stats (without loot — it's forfeited)
@@ -829,7 +854,18 @@ function _updateDungeonFloorHUD(floor) {
   var totalFloors = session ? session.totalFloors : '?';
 
   var floorNumEl = hudEl.querySelector('.depths-floor-num');
-  if (floorNumEl) floorNumEl.textContent = 'FLOOR ' + getDungeonFloorNum() + '/' + totalFloors;
+  if (floorNumEl) {
+    if (typeof isInfiniteMode === 'function' && isInfiniteMode() && typeof getInfiniteRun === 'function') {
+      var infRun = getInfiniteRun();
+      if (infRun) {
+        floorNumEl.textContent = 'DESCENT ' + infRun.descentNum + ' \u2014 FLOOR ' + getDungeonFloorNum();
+      } else {
+        floorNumEl.textContent = 'FLOOR ' + getDungeonFloorNum() + '/' + totalFloors;
+      }
+    } else {
+      floorNumEl.textContent = 'FLOOR ' + getDungeonFloorNum() + '/' + totalFloors;
+    }
+  }
 
   var biomeEl = hudEl.querySelector('.depths-biome');
   if (biomeEl) {
