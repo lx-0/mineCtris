@@ -350,6 +350,12 @@ function showExpeditionResults(data) {
     recordExpeditionScore(node.nodeId, data.score || 0);
   }
 
+  // Mastery tracking — pass biomeId and fresh track info (XP already awarded above)
+  if (typeof masteryOnExpeditionEnd === 'function') {
+    var _masterTrackInfo = (typeof getBiomeTrackInfo === 'function') ? getBiomeTrackInfo(biomeId) : null;
+    masteryOnExpeditionEnd(biomeId, _masterTrackInfo);
+  }
+
   // Submit to biome weekly leaderboard (async, best-score only)
   if (typeof submitBiomeWeeklyScoreIfBest === 'function') {
     submitBiomeWeeklyScoreIfBest(biomeId, data.score || 0, data.linesCleared || 0)

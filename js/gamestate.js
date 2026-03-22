@@ -285,6 +285,21 @@ function triggerGameOver() {
     metricsSessionEnd({ score: state.score, linesCleared: state.linesCleared, blocksMined: state.blocksMined });
   }
 
+  // Mastery tracking
+  if (typeof masteryOnClassicEnd === 'function') {
+    masteryOnClassicEnd({
+      score:           state.score,
+      linesCleared:    state.linesCleared,
+      maxCombo:        sessionHighestComboCount,
+      difficultyTier:  lastDifficultyTier,
+      timeSeconds:     state.elapsedSeconds,
+      pickaxeTier:     pickaxeTier,
+      isSurvivalMode:  isSurvivalMode,
+      isDailyChallenge: isDailyChallenge,
+      blocksPlaced:    blocksPlaced,
+    });
+  }
+
   // Daily missions: classic survival time (only in pure classic mode)
   if (!isDailyChallenge && !isWeeklyChallenge) {
     if (typeof onMissionClassicEnd === "function") onMissionClassicEnd(state.elapsedSeconds);
@@ -1025,6 +1040,9 @@ function triggerBattleResult(result) {
   if (typeof achOnBattleResult === 'function') {
     achOnBattleResult(result, _myStats.garbageReceived, _myStats.duration);
   }
+
+  // Mastery tracking — rating updated above, read fresh from storage
+  if (typeof masteryOnBattleResult === 'function') masteryOnBattleResult();
 
   // Fire battle mission hooks
   if (result === 'win' && typeof onMissionBattleWin === 'function') {

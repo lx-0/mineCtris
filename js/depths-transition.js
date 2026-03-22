@@ -358,6 +358,9 @@ function showDepthsVictoryScreen(data) {
   if (typeof achOnDepthsRunComplete === 'function') achOnDepthsRunComplete(data);
   if (typeof achOnDepthsRunEnd === 'function') achOnDepthsRunEnd();
 
+  // Mastery tracking
+  if (typeof masteryOnDepthsEnd === 'function') masteryOnDepthsEnd(data);
+
   // Play victory fanfare for The Core
   if (typeof playCoreVictoryFanfare === 'function') playCoreVictoryFanfare();
 

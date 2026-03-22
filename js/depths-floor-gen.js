@@ -702,6 +702,9 @@ function showDepthsResults(data) {
   if (typeof achOnDepthsRunComplete === 'function') achOnDepthsRunComplete(data);
   if (typeof achOnDepthsRunEnd === 'function') achOnDepthsRunEnd();
 
+  // Mastery tracking
+  if (typeof masteryOnDepthsEnd === 'function') masteryOnDepthsEnd(data);
+
   // Daily Depths: record score, show daily-specific UI, submit to leaderboard
   if (isDailyDepths) {
     var isPractice = typeof isDailyDepthsPractice === 'function' && isDailyDepthsPractice();

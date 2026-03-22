@@ -103,6 +103,9 @@ function triggerSprintComplete() {
   // Achievements: Sprinter, Speed Sprinter
   if (typeof achOnSprintComplete === "function") achOnSprintComplete(finalTimeMs);
 
+  // Mastery tracking
+  if (typeof masteryOnSprintComplete === 'function') masteryOnSprintComplete(finalTimeMs);
+
   // Daily missions: sprint session end
   if (typeof onMissionSprintEnd === "function") onMissionSprintEnd(finalTimeMs);
 

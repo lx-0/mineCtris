@@ -404,6 +404,11 @@ function showInfiniteDescentScreen(descentNum, floorLoot) {
   overlay.setAttribute('tabindex', '-1');
   overlay.focus();
 
+  // Mastery tracking — record this completed descent
+  if (typeof masteryOnInfiniteDescentComplete === 'function') {
+    masteryOnInfiniteDescentComplete(descentNum);
+  }
+
   // Wire Extract button
   var extractBtn = document.getElementById('infinite-extract-btn');
   if (extractBtn) {

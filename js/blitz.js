@@ -87,6 +87,9 @@ function triggerBlitzComplete() {
   // Achievement: Blitz Bomber
   if (typeof achOnBlitzComplete === "function") achOnBlitzComplete(finalScore);
 
+  // Mastery tracking
+  if (typeof masteryOnBlitzComplete === 'function') masteryOnBlitzComplete(finalScore, sessionHighestComboCount);
+
   // Daily missions: blitz session end
   if (typeof onMissionBlitzEnd === "function") onMissionBlitzEnd(finalScore);
 
