@@ -14,6 +14,11 @@
 
 // ── Tier definitions ─────────────────────────────────────────────────────────
 // xpRequired is cumulative (lifetime biome XP needed to REACH this tier).
+//
+// materialBonus (optional) on mid-tier entries:
+//   { color: '<css-hex>', count: <number>, label: '<display name>' }
+// When a tier with materialBonus is claimed, the blocks are saved to a
+// persistent stash (localStorage) and loaded into inventory at session start.
 
 const BIOME_REWARD_TRACKS = {
   stone: [
@@ -23,8 +28,8 @@ const BIOME_REWARD_TRACKS = {
     { tier:  4, xpRequired:  1300, label: 'Excavator',    rewardType: 'xp_boost',         rewardLabel: '+10% Expedition XP',        rewardValue: 10  },
     { tier:  5, xpRequired:  2100, label: 'Tunneler',     rewardType: 'xp_boost',         rewardLabel: '+10% Expedition XP',        rewardValue: 10  },
     { tier:  6, xpRequired:  3200, label: 'Miner',        rewardType: 'cosmetic_common',  rewardLabel: 'Iron Cell Style',           rewardValue: 'stone_iron_cell'     },
-    { tier:  7, xpRequired:  4500, label: 'Quarrier',     rewardType: 'cosmetic_common',  rewardLabel: 'Cobblestone Piece Skin',    rewardValue: 'stone_cobble_skin'   },
-    { tier:  8, xpRequired:  6000, label: 'Prospector',   rewardType: 'cosmetic_common',  rewardLabel: 'Ore Vein Cell Style',       rewardValue: 'stone_ore_cell'      },
+    { tier:  7, xpRequired:  4500, label: 'Quarrier',     rewardType: 'cosmetic_common',  rewardLabel: 'Cobblestone Piece Skin + 5 Stone Blocks',    rewardValue: 'stone_cobble_skin',  materialBonus: { color: '#808080', count: 5, label: '5 Stone Blocks' }  },
+    { tier:  8, xpRequired:  6000, label: 'Prospector',   rewardType: 'cosmetic_common',  rewardLabel: 'Ore Vein Cell Style + 5 Stone Blocks',       rewardValue: 'stone_ore_cell',     materialBonus: { color: '#808080', count: 5, label: '5 Stone Blocks' }  },
     { tier:  9, xpRequired:  7800, label: 'Shaft Delver', rewardType: 'cosmetic_common',  rewardLabel: 'Ancient Stone Piece Skin',  rewardValue: 'stone_ancient_skin'  },
     { tier: 10, xpRequired:  9900, label: 'Deep Diver',   rewardType: 'xp_boost_badge',   rewardLabel: '+15% Expedition XP + "Deep Diver" Badge', rewardValue: { boost: 15, badge: 'Deep Diver' }  },
     { tier: 11, xpRequired: 12300, label: 'Core Seeker',  rewardType: 'xp_boost_badge',   rewardLabel: '+15% Expedition XP + "Core Seeker" Badge', rewardValue: { boost: 15, badge: 'Core Seeker' } },
@@ -40,10 +45,10 @@ const BIOME_REWARD_TRACKS = {
     { tier:  3, xpRequired:   700, label: 'Forager',      rewardType: 'xp_boost',         rewardLabel: '+5% Expedition XP',         rewardValue: 5   },
     { tier:  4, xpRequired:  1300, label: 'Tracker',      rewardType: 'xp_boost',         rewardLabel: '+10% Expedition XP',        rewardValue: 10  },
     { tier:  5, xpRequired:  2100, label: 'Ranger',       rewardType: 'xp_boost',         rewardLabel: '+10% Expedition XP',        rewardValue: 10  },
-    { tier:  6, xpRequired:  3200, label: 'Woodcutter',   rewardType: 'cosmetic_common',  rewardLabel: 'Leaf Cell Style',           rewardValue: 'forest_leaf_cell'    },
-    { tier:  7, xpRequired:  4500, label: 'Pathfinder',   rewardType: 'cosmetic_common',  rewardLabel: 'Bark Piece Skin',           rewardValue: 'forest_bark_skin'    },
-    { tier:  8, xpRequired:  6000, label: 'Warden',       rewardType: 'cosmetic_common',  rewardLabel: 'Vine Cell Style',           rewardValue: 'forest_vine_cell'    },
-    { tier:  9, xpRequired:  7800, label: 'Grove Keeper', rewardType: 'cosmetic_common',  rewardLabel: 'Mossy Piece Skin',          rewardValue: 'forest_mossy_skin'   },
+    { tier:  6, xpRequired:  3200, label: 'Woodcutter',   rewardType: 'cosmetic_common',  rewardLabel: 'Leaf Cell Style',                       rewardValue: 'forest_leaf_cell'    },
+    { tier:  7, xpRequired:  4500, label: 'Pathfinder',   rewardType: 'cosmetic_common',  rewardLabel: 'Bark Piece Skin + 5 Wood Blocks',        rewardValue: 'forest_bark_skin',   materialBonus: { color: '#8b4513', count: 5, label: '5 Wood Blocks'  }  },
+    { tier:  8, xpRequired:  6000, label: 'Warden',       rewardType: 'cosmetic_common',  rewardLabel: 'Vine Cell Style + 5 Wood Blocks',        rewardValue: 'forest_vine_cell',   materialBonus: { color: '#8b4513', count: 5, label: '5 Wood Blocks'  }  },
+    { tier:  9, xpRequired:  7800, label: 'Grove Keeper', rewardType: 'cosmetic_common',  rewardLabel: 'Mossy Piece Skin',                       rewardValue: 'forest_mossy_skin'   },
     { tier: 10, xpRequired:  9900, label: 'Canopy Scout', rewardType: 'xp_boost_badge',   rewardLabel: '+15% Expedition XP + "Canopy Scout" Badge', rewardValue: { boost: 15, badge: 'Canopy Scout' }  },
     { tier: 11, xpRequired: 12300, label: 'Root Walker',  rewardType: 'xp_boost_badge',   rewardLabel: '+15% Expedition XP + "Root Walker" Badge',  rewardValue: { boost: 15, badge: 'Root Walker' }   },
     { tier: 12, xpRequired: 15000, label: 'Elder Bough',  rewardType: 'xp_boost_badge',   rewardLabel: '+20% Expedition XP + "Elder Bough" Badge',  rewardValue: { boost: 20, badge: 'Elder Bough' }   },
@@ -58,10 +63,10 @@ const BIOME_REWARD_TRACKS = {
     { tier:  3, xpRequired:   700, label: 'Blazer',       rewardType: 'xp_boost',         rewardLabel: '+5% Expedition XP',         rewardValue: 5   },
     { tier:  4, xpRequired:  1300, label: 'Inferno',      rewardType: 'xp_boost',         rewardLabel: '+10% Expedition XP',        rewardValue: 10  },
     { tier:  5, xpRequired:  2100, label: 'Pyromancer',   rewardType: 'xp_boost',         rewardLabel: '+10% Expedition XP',        rewardValue: 10  },
-    { tier:  6, xpRequired:  3200, label: 'Lava Walker',  rewardType: 'cosmetic_common',  rewardLabel: 'Magma Cell Style',          rewardValue: 'nether_magma_cell'   },
-    { tier:  7, xpRequired:  4500, label: 'Ash Drifter',  rewardType: 'cosmetic_common',  rewardLabel: 'Blaze Piece Skin',          rewardValue: 'nether_blaze_skin'   },
-    { tier:  8, xpRequired:  6000, label: 'Soul Burner',  rewardType: 'cosmetic_common',  rewardLabel: 'Hellfire Cell Style',       rewardValue: 'nether_hellfire_cell' },
-    { tier:  9, xpRequired:  7800, label: 'Netherbane',   rewardType: 'cosmetic_common',  rewardLabel: 'Crimson Piece Skin',        rewardValue: 'nether_crimson_skin'  },
+    { tier:  6, xpRequired:  3200, label: 'Lava Walker',  rewardType: 'cosmetic_common',  rewardLabel: 'Magma Cell Style',                        rewardValue: 'nether_magma_cell'    },
+    { tier:  7, xpRequired:  4500, label: 'Ash Drifter',  rewardType: 'cosmetic_common',  rewardLabel: 'Blaze Piece Skin + 5 Lava Blocks',         rewardValue: 'nether_blaze_skin',   materialBonus: { color: '#ff0000', count: 5, label: '5 Lava Blocks'  }  },
+    { tier:  8, xpRequired:  6000, label: 'Soul Burner',  rewardType: 'cosmetic_common',  rewardLabel: 'Hellfire Cell Style + 5 Lava Blocks',      rewardValue: 'nether_hellfire_cell', materialBonus: { color: '#ff0000', count: 5, label: '5 Lava Blocks'  }  },
+    { tier:  9, xpRequired:  7800, label: 'Netherbane',   rewardType: 'cosmetic_common',  rewardLabel: 'Crimson Piece Skin',                       rewardValue: 'nether_crimson_skin'  },
     { tier: 10, xpRequired:  9900, label: 'Lava Diver',   rewardType: 'xp_boost_badge',   rewardLabel: '+15% Expedition XP + "Lava Diver" Badge',   rewardValue: { boost: 15, badge: 'Lava Diver' }    },
     { tier: 11, xpRequired: 12300, label: 'Char Fiend',   rewardType: 'xp_boost_badge',   rewardLabel: '+15% Expedition XP + "Char Fiend" Badge',   rewardValue: { boost: 15, badge: 'Char Fiend' }    },
     { tier: 12, xpRequired: 15000, label: 'Flame Warden', rewardType: 'xp_boost_badge',   rewardLabel: '+20% Expedition XP + "Flame Warden" Badge', rewardValue: { boost: 20, badge: 'Flame Warden' }  },
@@ -76,10 +81,10 @@ const BIOME_REWARD_TRACKS = {
     { tier:  3, xpRequired:   700, label: 'Glacier Born',  rewardType: 'xp_boost',        rewardLabel: '+5% Expedition XP',         rewardValue: 5   },
     { tier:  4, xpRequired:  1300, label: 'Permafrost',    rewardType: 'xp_boost',        rewardLabel: '+10% Expedition XP',        rewardValue: 10  },
     { tier:  5, xpRequired:  2100, label: 'Ice Fisher',    rewardType: 'xp_boost',        rewardLabel: '+10% Expedition XP',        rewardValue: 10  },
-    { tier:  6, xpRequired:  3200, label: 'Frost Carver',  rewardType: 'cosmetic_common', rewardLabel: 'Frost Cell Style',          rewardValue: 'ice_frost_cell'       },
-    { tier:  7, xpRequired:  4500, label: 'Tundra Seeker', rewardType: 'cosmetic_common', rewardLabel: 'Crystal Piece Skin',        rewardValue: 'ice_crystal_skin'     },
-    { tier:  8, xpRequired:  6000, label: 'Glacier Scout', rewardType: 'cosmetic_common', rewardLabel: 'Aurora Cell Style',         rewardValue: 'ice_aurora_cell'      },
-    { tier:  9, xpRequired:  7800, label: 'Blizzard Ward', rewardType: 'cosmetic_common', rewardLabel: 'Snowflake Piece Skin',      rewardValue: 'ice_snowflake_skin'   },
+    { tier:  6, xpRequired:  3200, label: 'Frost Carver',  rewardType: 'cosmetic_common', rewardLabel: 'Frost Cell Style',                        rewardValue: 'ice_frost_cell'       },
+    { tier:  7, xpRequired:  4500, label: 'Tundra Seeker', rewardType: 'cosmetic_common', rewardLabel: 'Crystal Piece Skin + 5 Ice Blocks',         rewardValue: 'ice_crystal_skin',    materialBonus: { color: '#00ffff', count: 5, label: '5 Ice Blocks'   }  },
+    { tier:  8, xpRequired:  6000, label: 'Glacier Scout', rewardType: 'cosmetic_common', rewardLabel: 'Aurora Cell Style + 5 Ice Blocks',          rewardValue: 'ice_aurora_cell',     materialBonus: { color: '#00ffff', count: 5, label: '5 Ice Blocks'   }  },
+    { tier:  9, xpRequired:  7800, label: 'Blizzard Ward', rewardType: 'cosmetic_common', rewardLabel: 'Snowflake Piece Skin',                      rewardValue: 'ice_snowflake_skin'   },
     { tier: 10, xpRequired:  9900, label: 'Cryo Scout',    rewardType: 'xp_boost_badge',  rewardLabel: '+15% Expedition XP + "Cryo Scout" Badge',   rewardValue: { boost: 15, badge: 'Cryo Scout' }    },
     { tier: 11, xpRequired: 12300, label: 'Ice Warden',    rewardType: 'xp_boost_badge',  rewardLabel: '+15% Expedition XP + "Ice Warden" Badge',   rewardValue: { boost: 15, badge: 'Ice Warden' }    },
     { tier: 12, xpRequired: 15000, label: 'Frost Sovereign', rewardType: 'xp_boost_badge', rewardLabel: '+20% Expedition XP + "Frost Sovereign" Badge', rewardValue: { boost: 20, badge: 'Frost Sovereign' } },
@@ -92,8 +97,9 @@ const BIOME_REWARD_TRACKS = {
 // ── Storage ───────────────────────────────────────────────────────────────────
 // Lifetime keys — intentionally NOT tied to season so progress never resets.
 
-var _BIOME_XP_KEY      = 'mineCtris_biomeRewardXP';      // { stone: 1200, forest: 0, ... }
-var _BIOME_CLAIMED_KEY = 'mineCtris_biomeRewardClaimed';  // { stone: [1,2,3], forest: [], ... }
+var _BIOME_XP_KEY        = 'mineCtris_biomeRewardXP';       // { stone: 1200, forest: 0, ... }
+var _BIOME_CLAIMED_KEY   = 'mineCtris_biomeRewardClaimed';   // { stone: [1,2,3], forest: [], ... }
+var _MATERIAL_STASH_KEY  = 'mineCtris_materialStash';        // { '#808080': 10, '#8b4513': 5, ... }
 
 function _loadBiomeXP() {
   try { return JSON.parse(localStorage.getItem(_BIOME_XP_KEY) || '{}'); } catch (_) { return {}; }
@@ -109,6 +115,21 @@ function _loadClaimed() {
 
 function _saveClaimed(obj) {
   try { localStorage.setItem(_BIOME_CLAIMED_KEY, JSON.stringify(obj)); } catch (_) {}
+}
+
+function _loadMaterialStash() {
+  try { return JSON.parse(localStorage.getItem(_MATERIAL_STASH_KEY) || '{}'); } catch (_) { return {}; }
+}
+
+function _saveMaterialStash(obj) {
+  try { localStorage.setItem(_MATERIAL_STASH_KEY, JSON.stringify(obj)); } catch (_) {}
+}
+
+function _depositMaterialBonus(materialBonus) {
+  var stash = _loadMaterialStash();
+  var color = String(materialBonus.color);
+  stash[color] = (stash[color] || 0) + (materialBonus.count || 0);
+  _saveMaterialStash(stash);
 }
 
 // ── Internal helpers ─────────────────────────────────────────────────────────
@@ -239,6 +260,12 @@ function claimBiomeReward(biomeId, tierNum) {
 
   claimed[key].push(tierNum);
   _saveClaimed(claimed);
+
+  // Deposit material bonus to persistent stash (applied to inventory at next session start)
+  if (tierDef.materialBonus) {
+    _depositMaterialBonus(tierDef.materialBonus);
+  }
+
   return true;
 }
 
@@ -265,6 +292,27 @@ function getPendingBiomeClaims(biomeId) {
   return tiers.filter(function (t) {
     return t.rewardType && xp >= t.xpRequired && !isBiomeRewardClaimed(biomeId, t.tier);
   });
+}
+
+/**
+ * Load the material stash from localStorage, add each block to inventory via
+ * addToInventory(), and clear the stash.  Call this at expedition session start
+ * so rewards from previous runs carry forward into the new game.
+ * Safe to call when addToInventory is not defined (no-ops silently).
+ */
+function loadAndClearMaterialStash() {
+  var stash = _loadMaterialStash();
+  var colors = Object.keys(stash);
+  if (!colors.length) return;
+  if (typeof addToInventory !== 'function') return;
+  for (var i = 0; i < colors.length; i++) {
+    var color = colors[i];
+    var count = stash[color] || 0;
+    for (var n = 0; n < count; n++) {
+      addToInventory(color);
+    }
+  }
+  _saveMaterialStash({});
 }
 
 /**

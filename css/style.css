@@ -11983,6 +11983,30 @@ body.biome-ice #inventory-hud { border-color: #4499dd; }
   letter-spacing: 0.3px;
 }
 
+.exp-res-reward-claim {
+  font-size: 12px;
+  color: #a78bfa;
+  font-weight: 600;
+}
+
+.exp-res-material-bonus {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: #34d399;
+  font-weight: 600;
+  font-size: 11px;
+}
+
+.exp-res-material-swatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  border: 1px solid rgba(255,255,255,0.2);
+  flex-shrink: 0;
+}
+
 .exp-res-track-bar-wrap {
   height: 8px;
   background: #1e3a5f;

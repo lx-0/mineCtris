@@ -166,6 +166,10 @@ function _confirmLore() {
     overlay.removeEventListener('keydown',  _loreKeyHandler);
     overlay.removeEventListener('click',    _loreOverlayClick);
   }
+  // Apply any pending material bonus pack rewards into the starting inventory
+  if (typeof loadAndClearMaterialStash === 'function') {
+    loadAndClearMaterialStash();
+  }
   const cb    = _loreBeginCb;
   _loreBeginCb = null;
   if (cb) cb();
@@ -264,6 +268,14 @@ function showExpeditionResults(data) {
     for (var j = 0; j < newlyClaimed.length; j++) {
       claimedHtml +=
         '<div class="exp-res-reward-claim">&#127873; ' + newlyClaimed[j].rewardLabel + '</div>';
+      if (newlyClaimed[j].materialBonus) {
+        var mb = newlyClaimed[j].materialBonus;
+        claimedHtml +=
+          '<div class="exp-res-reward-claim exp-res-material-bonus">' +
+            '<span class="exp-res-material-swatch" style="background:' + mb.color + '"></span>' +
+            '&#129656; +' + mb.count + ' ' + mb.label + ' added to next session' +
+          '</div>';
+      }
     }
 
     const nextLabel = nextTier
