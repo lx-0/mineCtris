@@ -5020,7 +5020,7 @@ function animate() {
         blitzBonusActive = true;
         // Show visual cue via speed-up banner
         if (speedUpBannerEl) {
-          speedUpBannerEl.textContent = "⚡ BLITZ BONUS! 1.5×";
+          speedUpBannerEl.textContent = "⚡ BLITZ BONUS! 2.0×";
           speedUpBannerEl.style.color = "#ffd700";
           speedUpBannerEl.style.display = "block";
           speedUpBannerTimer = 2.5;

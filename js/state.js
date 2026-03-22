@@ -255,7 +255,7 @@ const SPRINT_FIXED_MULTIPLIER   = Math.pow(1.1, 4); // ≈ 1.4641 (Level 5)
 // ── Blitz mode state ──────────────────────────────────────────────────────────
 // Target: score as many points as possible in 2 minutes.
 // Fixed fall speed = Classic Level 5. Crafting disabled; mining enabled.
-// No lose condition. Blitz bonus: final 30s → 1.5x multiplier on line clears.
+// No lose condition. Blitz bonus: final 30s → 2.0x multiplier on line clears.
 let isBlitzMode        = false;
 let blitzTimerActive   = false;   // becomes true on first piece drop
 let blitzRemainingMs   = 120000;  // milliseconds remaining (counts down)
@@ -263,7 +263,7 @@ let blitzComplete      = false;
 let blitzBonusActive   = false;   // true when ≤ 30s remaining
 const BLITZ_DURATION_MS        = 120000; // 2 minutes
 const BLITZ_BONUS_THRESHOLD_MS = 30000;  // final 30 seconds
-const BLITZ_BONUS_MULTIPLIER   = 1.5;
+const BLITZ_BONUS_MULTIPLIER   = 2.0;
 const BLITZ_FIXED_MULTIPLIER   = Math.pow(1.1, 4); // ≈ 1.4641 (same as Sprint)
 
 // ── Accessibility ─────────────────────────────────────────────────────────────
