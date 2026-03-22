@@ -134,6 +134,66 @@ const COSMETIC_REGISTRY = [
     unlockCondition: { type: 'prestige', value: 10 },
     assets:          { displayText: 'Crown', leaderboardIcon: '\uD83D\uDC51' },
   },
+
+  // ── Mastery Cosmetics (40 total: 8 modes × 5 tiers) ──────────────────────
+  // Bronze → title, Silver → block_skin, Gold → trail,
+  // Diamond → landing_effect, Obsidian → border
+
+  // Classic
+  { id: 'mastery_classic_bronze',   category: 'title',          name: 'Classic Runner',      rarity: 'common',    unlockCondition: { type: 'mastery', mode: 'classic',    tier: 'bronze'   }, assets: { displayText: 'Classic Runner' } },
+  { id: 'mastery_classic_silver',   category: 'block_skin',     name: 'Classic Stone',       rarity: 'rare',      unlockCondition: { type: 'mastery', mode: 'classic',    tier: 'silver'   }, assets: { themeKey: 'classic_stone' } },
+  { id: 'mastery_classic_gold',     category: 'trail',          name: 'Classic Glow',        rarity: 'rare',      unlockCondition: { type: 'mastery', mode: 'classic',    tier: 'gold'     }, assets: { trailKey: 'classic_glow' } },
+  { id: 'mastery_classic_diamond',  category: 'landing_effect', name: 'Classic Shatter',     rarity: 'epic',      unlockCondition: { type: 'mastery', mode: 'classic',    tier: 'diamond'  }, assets: { effectKey: 'classic_shatter' } },
+  { id: 'mastery_classic_obsidian', category: 'border',         name: 'Classic Obsidian',    rarity: 'legendary', unlockCondition: { type: 'mastery', mode: 'classic',    tier: 'obsidian' }, assets: { borderKey: 'classic_obsidian', animated: true } },
+
+  // Sprint
+  { id: 'mastery_sprint_bronze',    category: 'title',          name: 'Sprint Initiate',     rarity: 'common',    unlockCondition: { type: 'mastery', mode: 'sprint',     tier: 'bronze'   }, assets: { displayText: 'Sprint Initiate' } },
+  { id: 'mastery_sprint_silver',    category: 'block_skin',     name: 'Sprint Flash',        rarity: 'rare',      unlockCondition: { type: 'mastery', mode: 'sprint',     tier: 'silver'   }, assets: { themeKey: 'sprint_flash' } },
+  { id: 'mastery_sprint_gold',      category: 'trail',          name: 'Speed Trail',         rarity: 'rare',      unlockCondition: { type: 'mastery', mode: 'sprint',     tier: 'gold'     }, assets: { trailKey: 'speed_trail' } },
+  { id: 'mastery_sprint_diamond',   category: 'landing_effect', name: 'Sprint Burst',        rarity: 'epic',      unlockCondition: { type: 'mastery', mode: 'sprint',     tier: 'diamond'  }, assets: { effectKey: 'sprint_burst' } },
+  { id: 'mastery_sprint_obsidian',  category: 'border',         name: 'Sprint Obsidian',     rarity: 'legendary', unlockCondition: { type: 'mastery', mode: 'sprint',     tier: 'obsidian' }, assets: { borderKey: 'sprint_obsidian', animated: true } },
+
+  // Blitz
+  { id: 'mastery_blitz_bronze',     category: 'title',          name: 'Blitz Initiate',      rarity: 'common',    unlockCondition: { type: 'mastery', mode: 'blitz',      tier: 'bronze'   }, assets: { displayText: 'Blitz Initiate' } },
+  { id: 'mastery_blitz_silver',     category: 'block_skin',     name: 'Blitz Neon',          rarity: 'rare',      unlockCondition: { type: 'mastery', mode: 'blitz',      tier: 'silver'   }, assets: { themeKey: 'blitz_neon' } },
+  { id: 'mastery_blitz_gold',       category: 'trail',          name: 'Blitz Flare',         rarity: 'rare',      unlockCondition: { type: 'mastery', mode: 'blitz',      tier: 'gold'     }, assets: { trailKey: 'blitz_flare' } },
+  { id: 'mastery_blitz_diamond',    category: 'landing_effect', name: 'Blitz Impact',        rarity: 'epic',      unlockCondition: { type: 'mastery', mode: 'blitz',      tier: 'diamond'  }, assets: { effectKey: 'blitz_impact' } },
+  { id: 'mastery_blitz_obsidian',   category: 'border',         name: 'Blitz Halo',          rarity: 'legendary', unlockCondition: { type: 'mastery', mode: 'blitz',      tier: 'obsidian' }, assets: { borderKey: 'blitz_halo', animated: true } },
+
+  // Daily
+  { id: 'mastery_daily_bronze',     category: 'title',          name: 'Daily Runner',        rarity: 'common',    unlockCondition: { type: 'mastery', mode: 'daily',      tier: 'bronze'   }, assets: { displayText: 'Daily Runner' } },
+  { id: 'mastery_daily_silver',     category: 'block_skin',     name: 'Daily Amber',         rarity: 'rare',      unlockCondition: { type: 'mastery', mode: 'daily',      tier: 'silver'   }, assets: { themeKey: 'daily_amber' } },
+  { id: 'mastery_daily_gold',       category: 'trail',          name: 'Daily Star',          rarity: 'rare',      unlockCondition: { type: 'mastery', mode: 'daily',      tier: 'gold'     }, assets: { trailKey: 'daily_star' } },
+  { id: 'mastery_daily_diamond',    category: 'landing_effect', name: 'Daily Shimmer',       rarity: 'epic',      unlockCondition: { type: 'mastery', mode: 'daily',      tier: 'diamond'  }, assets: { effectKey: 'daily_shimmer' } },
+  { id: 'mastery_daily_obsidian',   category: 'border',         name: 'Daily Legend',        rarity: 'legendary', unlockCondition: { type: 'mastery', mode: 'daily',      tier: 'obsidian' }, assets: { borderKey: 'daily_legend', animated: true } },
+
+  // Survival
+  { id: 'mastery_survival_bronze',   category: 'title',          name: 'Survivor',            rarity: 'common',    unlockCondition: { type: 'mastery', mode: 'survival',   tier: 'bronze'   }, assets: { displayText: 'Survivor' } },
+  { id: 'mastery_survival_silver',   category: 'block_skin',     name: 'Forest Green',        rarity: 'rare',      unlockCondition: { type: 'mastery', mode: 'survival',   tier: 'silver'   }, assets: { themeKey: 'forest_green' } },
+  { id: 'mastery_survival_gold',     category: 'trail',          name: 'Jungle Trail',        rarity: 'rare',      unlockCondition: { type: 'mastery', mode: 'survival',   tier: 'gold'     }, assets: { trailKey: 'jungle_trail' } },
+  { id: 'mastery_survival_diamond',  category: 'landing_effect', name: 'Nature Bloom',        rarity: 'epic',      unlockCondition: { type: 'mastery', mode: 'survival',   tier: 'diamond'  }, assets: { effectKey: 'nature_bloom' } },
+  { id: 'mastery_survival_obsidian', category: 'border',         name: 'Survivor Halo',       rarity: 'legendary', unlockCondition: { type: 'mastery', mode: 'survival',   tier: 'obsidian' }, assets: { borderKey: 'survivor_halo', animated: true } },
+
+  // Battle
+  { id: 'mastery_battle_bronze',    category: 'title',          name: 'Battle Initiate',     rarity: 'common',    unlockCondition: { type: 'mastery', mode: 'battle',     tier: 'bronze'   }, assets: { displayText: 'Battle Initiate' } },
+  { id: 'mastery_battle_silver',    category: 'block_skin',     name: 'Battle Scarlet',      rarity: 'rare',      unlockCondition: { type: 'mastery', mode: 'battle',     tier: 'silver'   }, assets: { themeKey: 'battle_scarlet' } },
+  { id: 'mastery_battle_gold',      category: 'trail',          name: 'Combat Trail',        rarity: 'rare',      unlockCondition: { type: 'mastery', mode: 'battle',     tier: 'gold'     }, assets: { trailKey: 'combat_trail' } },
+  { id: 'mastery_battle_diamond',   category: 'landing_effect', name: 'Battle Shockwave',    rarity: 'epic',      unlockCondition: { type: 'mastery', mode: 'battle',     tier: 'diamond'  }, assets: { effectKey: 'battle_shockwave' } },
+  { id: 'mastery_battle_obsidian',  category: 'border',         name: 'Battle Crown',        rarity: 'legendary', unlockCondition: { type: 'mastery', mode: 'battle',     tier: 'obsidian' }, assets: { borderKey: 'battle_crown', animated: true } },
+
+  // Expedition
+  { id: 'mastery_expedition_bronze',   category: 'title',          name: 'Explorer',            rarity: 'common',    unlockCondition: { type: 'mastery', mode: 'expedition', tier: 'bronze'   }, assets: { displayText: 'Explorer' } },
+  { id: 'mastery_expedition_silver',   category: 'block_skin',     name: 'Expedition Mossy',    rarity: 'rare',      unlockCondition: { type: 'mastery', mode: 'expedition', tier: 'silver'   }, assets: { themeKey: 'expedition_mossy' } },
+  { id: 'mastery_expedition_gold',     category: 'trail',          name: 'Explorer Trail',      rarity: 'rare',      unlockCondition: { type: 'mastery', mode: 'expedition', tier: 'gold'     }, assets: { trailKey: 'explorer_trail' } },
+  { id: 'mastery_expedition_diamond',  category: 'landing_effect', name: 'Expedition Burst',    rarity: 'epic',      unlockCondition: { type: 'mastery', mode: 'expedition', tier: 'diamond'  }, assets: { effectKey: 'expedition_burst' } },
+  { id: 'mastery_expedition_obsidian', category: 'border',         name: 'Explorer Wreath',     rarity: 'legendary', unlockCondition: { type: 'mastery', mode: 'expedition', tier: 'obsidian' }, assets: { borderKey: 'explorer_wreath', animated: true } },
+
+  // Depths
+  { id: 'mastery_depths_bronze',    category: 'title',          name: 'Depth Diver',         rarity: 'common',    unlockCondition: { type: 'mastery', mode: 'depths',     tier: 'bronze'   }, assets: { displayText: 'Depth Diver' } },
+  { id: 'mastery_depths_silver',    category: 'block_skin',     name: 'Depths Dark',         rarity: 'rare',      unlockCondition: { type: 'mastery', mode: 'depths',     tier: 'silver'   }, assets: { themeKey: 'depths_dark' } },
+  { id: 'mastery_depths_gold',      category: 'trail',          name: 'Depths Void',         rarity: 'rare',      unlockCondition: { type: 'mastery', mode: 'depths',     tier: 'gold'     }, assets: { trailKey: 'depths_void' } },
+  { id: 'mastery_depths_diamond',   category: 'landing_effect', name: 'Depths Explosion',    rarity: 'epic',      unlockCondition: { type: 'mastery', mode: 'depths',     tier: 'diamond'  }, assets: { effectKey: 'depths_explosion' } },
+  { id: 'mastery_depths_obsidian',  category: 'border',         name: 'Depths Abyss',        rarity: 'legendary', unlockCondition: { type: 'mastery', mode: 'depths',     tier: 'obsidian' }, assets: { borderKey: 'depths_abyss', animated: true } },
 ];
 
 // ── Persistence helpers ─────────────────────────────────────────────────────────
@@ -290,8 +350,11 @@ function checkUnlockCondition(cosmetic) {
       return getPrestigeLevel() >= cond.value;
     }
     case 'mastery': {
-      // Mastery system not yet implemented — always false
-      return false;
+      if (typeof getMasteryTier !== 'function') return false;
+      var tierOrder = ['bronze', 'silver', 'gold', 'diamond', 'obsidian'];
+      var requiredIdx = tierOrder.indexOf(cond.tier);
+      var currentTier = getMasteryTier(cond.mode); // returns 0-5
+      return currentTier >= requiredIdx + 1;
     }
     case 'season': {
       // Season unlock — not yet wired

@@ -330,44 +330,139 @@ function unlockMasteryTier(mode, tier) {
 
   var tierName = MASTERY_TIER_NAMES[tier - 1] || '';
   var modeLabel = mode.charAt(0).toUpperCase() + mode.slice(1);
-  _showMasteryToast(modeLabel, tierName);
+
+  // Unlock the cosmetic reward for this tier
+  var cosmeticId = 'mastery_' + mode + '_' + tierName;
+  if (typeof processUnlocks === 'function') processUnlocks();
+
+  _showMasteryUnlockOverlay(modeLabel, tierName, cosmeticId);
 }
 
 // ── Notification ──────────────────────────────────────────────────────────────
 
-function _showMasteryToast(modeLabel, tierName) {
-  var tierIcon = MASTERY_TIER_ICONS[tierName] || '⭐';
-  var tierLabel = tierName.charAt(0).toUpperCase() + tierName.slice(1);
+// Mode icons for display
+var MASTERY_MODE_ICONS = {
+  classic:    '\uD83C\uDFAE',
+  sprint:     '\u26A1',
+  blitz:      '\uD83D\uDCA5',
+  daily:      '\uD83D\uDCC5',
+  survival:   '\uD83C\uDF32',
+  battle:     '\u2694\uFE0F',
+  expedition: '\uD83D\uDDFA\uFE0F',
+  depths:     '\u26CF\uFE0F',
+};
 
-  // Try to reuse existing achievement toast element
-  var toastEl = document.getElementById('mastery-toast');
-  if (!toastEl) {
-    // Create a lightweight mastery toast if not present in HTML
-    toastEl = document.createElement('div');
-    toastEl.id = 'mastery-toast';
-    toastEl.className = 'mastery-toast';
-    toastEl.innerHTML =
-      '<span class="mastery-toast-icon"></span>' +
-      '<div class="mastery-toast-body">' +
-        '<span class="mastery-toast-title">Mastery Unlocked</span>' +
-        '<span class="mastery-toast-desc"></span>' +
-      '</div>';
-    document.body.appendChild(toastEl);
+// Tier accent colors
+var MASTERY_TIER_COLORS = {
+  bronze:   '#cd7f32',
+  silver:   '#c0c0c0',
+  gold:     '#ffd700',
+  diamond:  '#b9f2ff',
+  obsidian: '#7c3aed',
+};
+
+function _showMasteryUnlockOverlay(modeLabel, tierName, cosmeticId) {
+  var tierIcon  = MASTERY_TIER_ICONS[tierName] || '\u2B50';
+  var tierLabel = tierName.charAt(0).toUpperCase() + tierName.slice(1);
+  var tierColor = MASTERY_TIER_COLORS[tierName] || '#ffd700';
+  var modeLower = modeLabel.toLowerCase();
+  var modeIcon  = MASTERY_MODE_ICONS[modeLower] || '\uD83C\uDFAE';
+
+  // Find cosmetic reward name
+  var rewardName = '';
+  if (typeof getCosmeticById === 'function' && cosmeticId) {
+    var cos = getCosmeticById(cosmeticId);
+    if (cos) rewardName = cos.name + ' (' + cos.category.replace('_', ' ') + ')';
   }
 
-  var iconEl = toastEl.querySelector('.mastery-toast-icon');
-  var descEl = toastEl.querySelector('.mastery-toast-desc');
-  if (iconEl) iconEl.textContent = tierIcon;
-  if (descEl) descEl.textContent = modeLabel + ' — ' + tierLabel;
+  // Build or reuse overlay
+  var overlay = document.getElementById('mastery-unlock-overlay');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.id = 'mastery-unlock-overlay';
+    overlay.innerHTML =
+      '<div class="muo-backdrop"></div>' +
+      '<div class="muo-panel">' +
+        '<div class="muo-mode-icon"></div>' +
+        '<div class="muo-tier-icon"></div>' +
+        '<div class="muo-header">MASTERY UNLOCKED</div>' +
+        '<div class="muo-tier-label"></div>' +
+        '<div class="muo-mode-label"></div>' +
+        '<div class="muo-reward"></div>' +
+        '<button class="muo-dismiss-btn">TAP TO CONTINUE</button>' +
+      '</div>';
+    document.body.appendChild(overlay);
 
-  toastEl.classList.remove('mastery-toast-visible');
-  void toastEl.offsetWidth; // force reflow
-  toastEl.classList.add('mastery-toast-visible');
+    // Dismiss on button or backdrop click
+    overlay.querySelector('.muo-dismiss-btn').addEventListener('click', function () {
+      _hideMasteryUnlockOverlay();
+    });
+    overlay.querySelector('.muo-backdrop').addEventListener('click', function () {
+      _hideMasteryUnlockOverlay();
+    });
+  }
 
-  clearTimeout(toastEl._hideTimer);
-  toastEl._hideTimer = setTimeout(function () {
-    toastEl.classList.remove('mastery-toast-visible');
-  }, 4000);
+  overlay.querySelector('.muo-mode-icon').textContent  = modeIcon;
+  overlay.querySelector('.muo-tier-icon').textContent  = tierIcon;
+  overlay.querySelector('.muo-tier-label').textContent = tierLabel;
+  overlay.querySelector('.muo-mode-label').textContent = modeLabel + ' Mastery';
+  overlay.querySelector('.muo-reward').textContent     = rewardName ? '\uD83C\uDF81 ' + rewardName : '';
+
+  var panel = overlay.querySelector('.muo-panel');
+  if (panel) panel.style.borderColor = tierColor;
+  var header = overlay.querySelector('.muo-header');
+  if (header) header.style.color = tierColor;
+
+  // Play ascending chime
+  _playMasteryChime(tierName);
+
+  overlay.classList.remove('muo-visible');
+  void overlay.offsetWidth;
+  overlay.classList.add('muo-visible');
+
+  // Auto-dismiss after 3 seconds
+  clearTimeout(overlay._hideTimer);
+  overlay._hideTimer = setTimeout(function () {
+    _hideMasteryUnlockOverlay();
+  }, 3000);
+}
+
+function _hideMasteryUnlockOverlay() {
+  var overlay = document.getElementById('mastery-unlock-overlay');
+  if (overlay) {
+    clearTimeout(overlay._hideTimer);
+    overlay.classList.remove('muo-visible');
+  }
+}
+
+function _playMasteryChime(tierName) {
+  try {
+    var AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) return;
+    var ctx = new AudioCtx();
+
+    // Ascending scale — more notes for higher tiers
+    var tierIndex = ['bronze', 'silver', 'gold', 'diamond', 'obsidian'].indexOf(tierName);
+    var noteCount = 3 + tierIndex; // 3-7 notes
+    var baseFreq = 440;
+    var scale    = [1, 1.125, 1.25, 1.333, 1.5, 1.667, 1.875, 2]; // major scale ratios
+    var noteDur  = 0.12;
+    var now = ctx.currentTime;
+
+    for (var i = 0; i < noteCount; i++) {
+      var osc = ctx.createOscillator();
+      var gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = 'sine';
+      osc.frequency.value = baseFreq * scale[i % scale.length];
+      var t = now + i * noteDur;
+      gain.gain.setValueAtTime(0.28, t);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + noteDur * 0.9);
+      osc.start(t);
+      osc.stop(t + noteDur);
+    }
+  } catch (_) {}
 }
 
 // ── Core progress checker ─────────────────────────────────────────────────────

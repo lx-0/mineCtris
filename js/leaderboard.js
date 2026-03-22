@@ -348,6 +348,13 @@ function _renderLeaderboard(container, entries, date, labelOverride, isSeason) {
       const badgeLabel = typeof getLevelBadgeLabel === 'function' ? getLevelBadgeLabel(_myLevel) : 'L' + _myLevel;
       nameCell += ' <span class="lb-level-badge">' + badgeLabel + '</span>';
       if (_myTitle) nameCell += ' <span class="lb-level-title">' + _myTitle + '</span>';
+      // Mastery score badge
+      if (typeof getMasteryScore === 'function') {
+        const _masteryScore = getMasteryScore();
+        if (_masteryScore > 0) {
+          nameCell += ' <span class="lb-mastery-badge" title="Mastery Score: ' + _masteryScore + '/40">\u2694 ' + _masteryScore + '</span>';
+        }
+      }
       // Show guild emblem if in a guild
       const _guildCosmetics = (typeof getMyGuildCosmetics === 'function') ? getMyGuildCosmetics() : null;
       if (_guildCosmetics && _guildCosmetics.emblem) {

@@ -136,14 +136,112 @@ function _renderEquippedCosmetics() {
   return html;
 }
 
+var _MASTERY_MODE_META = [
+  { key: 'classic',    label: 'Classic',    icon: '\uD83C\uDFAE' },
+  { key: 'sprint',     label: 'Sprint',     icon: '\u26A1' },
+  { key: 'blitz',      label: 'Blitz',      icon: '\uD83D\uDCA5' },
+  { key: 'daily',      label: 'Daily',      icon: '\uD83D\uDCC5' },
+  { key: 'survival',   label: 'Survival',   icon: '\uD83C\uDF32' },
+  { key: 'battle',     label: 'Battle',     icon: '\u2694\uFE0F' },
+  { key: 'expedition', label: 'Expedition', icon: '\uD83D\uDDFA\uFE0F' },
+  { key: 'depths',     label: 'Depths',     icon: '\u26CF\uFE0F' },
+];
+
+var _MASTERY_TIER_BORDER_COLORS = {
+  0: 'rgba(255,255,255,0.12)',
+  1: '#cd7f32',
+  2: '#c0c0c0',
+  3: '#ffd700',
+  4: '#b9f2ff',
+  5: '#7c3aed',
+};
+
+var _MASTERY_TIER_LABELS = ['None', 'Bronze', 'Silver', 'Gold', 'Diamond', 'Obsidian'];
+var _MASTERY_TIER_ICONS_PROFILE  = ['\u25CB', '\uD83E\uDD49', '\uD83E\uDD48', '\uD83E\uDD47', '\uD83D\uDCAE', '\u2B1B'];
+
 function _renderMasteryBadges() {
-  var html = '<div class="profile-section-title">MASTERY BADGES</div>';
-  html += '<div class="profile-mastery-placeholder">' +
-    '<div class="profile-mastery-icon">\uD83C\uDFC5</div>' +
-    '<div class="profile-mastery-text">Coming in Phase 3</div>' +
-    '<div class="profile-mastery-sub">Per-mode mastery tiers: Bronze \u2022 Silver \u2022 Gold \u2022 Diamond \u2022 Master</div>' +
-  '</div>';
+  var hasMastery = typeof getMasteryTier === 'function';
+  var hasChallenges = typeof MASTERY_CHALLENGES !== 'undefined';
+  var totalScore = (typeof getMasteryScore === 'function') ? getMasteryScore() : 0;
+
+  var html = '<div class="profile-section-title">MASTERY</div>';
+  html += '<div class="profile-mastery-score">Total Mastery Score: <span class="profile-mastery-score-val">' + totalScore + ' / 40</span></div>';
+  html += '<div class="profile-mastery-grid">';
+
+  for (var i = 0; i < _MASTERY_MODE_META.length; i++) {
+    var meta = _MASTERY_MODE_META[i];
+    var tier = hasMastery ? getMasteryTier(meta.key) : 0;
+    var borderColor = _MASTERY_TIER_BORDER_COLORS[tier] || _MASTERY_TIER_BORDER_COLORS[0];
+    var tierLabel   = _MASTERY_TIER_LABELS[tier] || 'None';
+    var tierIcon    = _MASTERY_TIER_ICONS_PROFILE[tier] || '\u25CB';
+
+    // Next challenge description
+    var nextDesc = '';
+    if (hasChallenges && tier < 5) {
+      var challenges = MASTERY_CHALLENGES[meta.key];
+      if (challenges && challenges[tier]) {
+        nextDesc = challenges[tier].desc;
+      }
+    }
+
+    var tooltip = meta.label + '\nTier: ' + tierLabel + (nextDesc ? '\nNext: ' + nextDesc : '\nMax tier reached!');
+
+    html += '<div class="profile-mastery-card" style="border-color:' + borderColor + '" title="' + _escProfileHtml(tooltip) + '" data-mode="' + meta.key + '">';
+    html += '<div class="profile-mastery-card-icon">' + meta.icon + '</div>';
+    html += '<div class="profile-mastery-card-tier-icon">' + tierIcon + '</div>';
+    html += '<div class="profile-mastery-card-name">' + _escProfileHtml(meta.label) + '</div>';
+    html += '</div>';
+  }
+
+  html += '</div>';
+
+  // Detail panel (shown on click)
+  html += '<div id="profile-mastery-detail" class="profile-mastery-detail" style="display:none"></div>';
+
   return html;
+}
+
+function _renderMasteryDetail(modeKey) {
+  var detailEl = document.getElementById('profile-mastery-detail');
+  if (!detailEl) return;
+
+  var meta = null;
+  for (var i = 0; i < _MASTERY_MODE_META.length; i++) {
+    if (_MASTERY_MODE_META[i].key === modeKey) { meta = _MASTERY_MODE_META[i]; break; }
+  }
+  if (!meta) return;
+
+  var tier = (typeof getMasteryTier === 'function') ? getMasteryTier(modeKey) : 0;
+  var tierLabel = _MASTERY_TIER_LABELS[tier] || 'None';
+  var borderColor = _MASTERY_TIER_BORDER_COLORS[tier] || _MASTERY_TIER_BORDER_COLORS[0];
+
+  var html = '<div class="pmd-header" style="color:' + borderColor + '">' +
+    meta.icon + ' ' + _escProfileHtml(meta.label) + ' &mdash; ' + tierLabel +
+  '</div>';
+
+  // Show all 5 challenges with check/lock
+  if (typeof MASTERY_CHALLENGES !== 'undefined' && MASTERY_CHALLENGES[modeKey]) {
+    var challenges = MASTERY_CHALLENGES[modeKey];
+    html += '<div class="pmd-challenges">';
+    for (var j = 0; j < challenges.length; j++) {
+      var ch = challenges[j];
+      var done = tier >= ch.tier;
+      var isNext = ch.tier === tier + 1;
+      var cls = done ? 'pmd-ch pmd-ch-done' : (isNext ? 'pmd-ch pmd-ch-next' : 'pmd-ch pmd-ch-locked');
+      var statusIcon = done ? '\u2705' : (isNext ? '\u25B6' : '\uD83D\uDD12');
+      var tierIco = _MASTERY_TIER_ICONS_PROFILE[ch.tier] || '';
+      html += '<div class="' + cls + '">' +
+        '<span class="pmd-ch-status">' + statusIcon + '</span>' +
+        '<span class="pmd-ch-tier">' + tierIco + ' ' + _MASTERY_TIER_LABELS[ch.tier] + '</span>' +
+        '<span class="pmd-ch-desc">' + _escProfileHtml(ch.desc) + '</span>' +
+      '</div>';
+    }
+    html += '</div>';
+  }
+
+  detailEl.innerHTML = html;
+  detailEl.style.display = 'block';
+  detailEl.setAttribute('data-active-mode', modeKey);
 }
 
 function _renderWardrobeTabs() {
@@ -218,7 +316,11 @@ function _getUnlockHint(cosmetic) {
     case 'level':       return 'Reach Level ' + cond.value;
     case 'prestige':    return 'Prestige ' + cond.value;
     case 'achievement': return 'Achievement: ' + cond.value;
-    case 'mastery':     return 'Mastery (Phase 3)';
+    case 'mastery': {
+      var tierLabel = cond.tier ? cond.tier.charAt(0).toUpperCase() + cond.tier.slice(1) : '';
+      var modeLabel = cond.mode ? cond.mode.charAt(0).toUpperCase() + cond.mode.slice(1) : '';
+      return modeLabel + ' ' + tierLabel + ' Mastery';
+    }
     case 'season':      return 'Season reward';
     case 'dungeon':     return 'Dungeon reward';
     default:            return 'Locked';
@@ -262,6 +364,28 @@ function renderProfilePage() {
 
   // Render initial wardrobe tab
   _renderWardrobeContent(_profileActiveTab);
+
+  // Wire mastery card clicks
+  var masteryCards = body.querySelectorAll('.profile-mastery-card');
+  for (var mi = 0; mi < masteryCards.length; mi++) {
+    masteryCards[mi].addEventListener('click', function (e) {
+      var modeKey = e.currentTarget.getAttribute('data-mode');
+      if (!modeKey) return;
+      var detailEl = document.getElementById('profile-mastery-detail');
+      var isOpen = detailEl && detailEl.style.display !== 'none' &&
+                   detailEl.getAttribute('data-active-mode') === modeKey;
+      if (isOpen) {
+        if (detailEl) detailEl.style.display = 'none';
+      } else {
+        _renderMasteryDetail(modeKey);
+      }
+      // Toggle active state
+      var allCards = document.querySelectorAll('.profile-mastery-card');
+      for (var k = 0; k < allCards.length; k++) {
+        allCards[k].classList.toggle('profile-mastery-card-active', allCards[k].getAttribute('data-mode') === modeKey && !isOpen);
+      }
+    });
+  }
 
   // Wire tab clicks
   var tabs = body.querySelectorAll('.profile-tab-btn');

@@ -3886,6 +3886,225 @@ body {
   color: rgba(0, 255, 0, 0.3);
   margin-top: 4px;
 }
+
+/* ── Profile — Mastery grid ─────────────────────────────────────────────────── */
+.profile-mastery-score {
+  font-family: "Press Start 2P", cursive;
+  font-size: 7px;
+  color: #ffd700;
+  text-align: center;
+  margin-bottom: 10px;
+  text-shadow: 0 0 6px rgba(255, 215, 0, 0.4);
+}
+.profile-mastery-score-val {
+  color: #fff;
+}
+.profile-mastery-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: center;
+  margin-bottom: 10px;
+}
+.profile-mastery-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 68px;
+  padding: 6px 4px;
+  border: 2px solid rgba(255, 255, 255, 0.12);
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.35);
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s, transform 0.12s;
+  gap: 3px;
+}
+.profile-mastery-card:hover,
+.profile-mastery-card-active {
+  box-shadow: 0 0 12px rgba(255, 215, 0, 0.25);
+  transform: translateY(-2px);
+}
+.profile-mastery-card-icon {
+  font-size: 20px;
+  line-height: 1;
+}
+.profile-mastery-card-tier-icon {
+  font-size: 13px;
+  line-height: 1;
+}
+.profile-mastery-card-name {
+  font-family: "Press Start 2P", cursive;
+  font-size: 5px;
+  color: #aaffcc;
+  text-align: center;
+  white-space: nowrap;
+}
+
+/* ── Profile — Mastery detail panel ──────────────────────────────────────────── */
+.profile-mastery-detail {
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255, 215, 0, 0.2);
+  border-radius: 6px;
+  padding: 10px;
+  margin-bottom: 10px;
+}
+.pmd-header {
+  font-family: "Press Start 2P", cursive;
+  font-size: 8px;
+  margin-bottom: 8px;
+  text-shadow: 0 0 6px rgba(255, 215, 0, 0.3);
+}
+.pmd-challenges {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.pmd-ch {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-family: "Press Start 2P", cursive;
+  font-size: 6px;
+  padding: 4px 6px;
+  border-radius: 3px;
+}
+.pmd-ch-done {
+  background: rgba(0, 200, 80, 0.12);
+  color: #7fffaa;
+}
+.pmd-ch-next {
+  background: rgba(255, 215, 0, 0.12);
+  color: #ffd700;
+}
+.pmd-ch-locked {
+  color: rgba(180, 180, 180, 0.4);
+}
+.pmd-ch-status { flex-shrink: 0; }
+.pmd-ch-tier   { flex-shrink: 0; min-width: 60px; }
+.pmd-ch-desc   { line-height: 1.5; }
+
+/* ── Mastery unlock full-screen overlay ─────────────────────────────────────── */
+#mastery-unlock-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+#mastery-unlock-overlay.muo-visible {
+  display: flex;
+  pointer-events: all;
+}
+.muo-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  animation: muo-fade-in 0.3s ease;
+}
+.muo-panel {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 32px 40px;
+  background: rgba(10, 10, 20, 0.97);
+  border: 3px solid #ffd700;
+  border-radius: 10px;
+  min-width: 260px;
+  max-width: 340px;
+  animation: muo-pop-in 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  box-shadow: 0 0 40px rgba(255, 215, 0, 0.25);
+}
+.muo-mode-icon {
+  font-size: 42px;
+  line-height: 1;
+}
+.muo-tier-icon {
+  font-size: 28px;
+  line-height: 1;
+}
+.muo-header {
+  font-family: "Press Start 2P", cursive;
+  font-size: 12px;
+  color: #ffd700;
+  text-shadow: 0 0 10px rgba(255, 215, 0, 0.6);
+  text-align: center;
+  letter-spacing: 1px;
+}
+.muo-tier-label {
+  font-family: "Press Start 2P", cursive;
+  font-size: 9px;
+  color: #fff;
+  text-align: center;
+}
+.muo-mode-label {
+  font-family: "Press Start 2P", cursive;
+  font-size: 7px;
+  color: #aaffcc;
+  text-align: center;
+}
+.muo-reward {
+  font-family: "Press Start 2P", cursive;
+  font-size: 6px;
+  color: #ce93d8;
+  text-align: center;
+  min-height: 1em;
+}
+.muo-dismiss-btn {
+  font-family: "Press Start 2P", cursive;
+  font-size: 7px;
+  color: rgba(255, 255, 255, 0.5);
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  padding: 6px 14px;
+  cursor: pointer;
+  margin-top: 6px;
+  transition: color 0.15s, border-color 0.15s;
+}
+.muo-dismiss-btn:hover {
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.5);
+}
+@keyframes muo-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes muo-pop-in {
+  from { opacity: 0; transform: scale(0.7); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+/* ── Mode card mastery badge ────────────────────────────────────────────────── */
+.mode-card-mastery-badge {
+  position: absolute;
+  bottom: 6px;
+  left: 8px;
+  font-size: 13px;
+  line-height: 1;
+  pointer-events: none;
+  z-index: 2;
+  filter: drop-shadow(0 0 3px rgba(0,0,0,0.6));
+}
+
+/* ── Leaderboard mastery badge ──────────────────────────────────────────────── */
+.lb-mastery-badge {
+  display: inline-block;
+  background: rgba(124, 58, 237, 0.25);
+  border: 1px solid rgba(124, 58, 237, 0.5);
+  border-radius: 3px;
+  padding: 1px 4px;
+  font-size: 0.75em;
+  color: #c4b5fd;
+  margin-left: 2px;
+  vertical-align: middle;
+}
+
 .profile-wardrobe-tabs {
   display: flex;
   flex-wrap: wrap;

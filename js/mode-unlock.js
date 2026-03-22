@@ -197,6 +197,15 @@ function applyModeUnlockState() {
 
   // Apply NEW badges after lock state is settled
   _applyNewBadges();
+
+  // Apply mastery tier badges to each unlocked mode card
+  for (var mi = 0; mi < cards.length; mi++) {
+    var mcard = cards[mi];
+    var mmode = mcard.getAttribute('data-mode');
+    if (!mcard.classList.contains('mode-card-locked')) {
+      _applyMasteryTierBadge(mcard, mmode);
+    }
+  }
 }
 
 function _applyLockToElement(el, mode, playerLevel, unlocked) {
@@ -219,6 +228,37 @@ function _applyLockToElement(el, mode, playerLevel, unlocked) {
       el.appendChild(overlay);
     }
   }
+}
+
+var _MASTERY_TIER_ICONS_UNLOCK = [null, '\uD83E\uDD49', '\uD83E\uDD48', '\uD83E\uDD47', '\uD83D\uDCAE', '\u2B1B'];
+var _MASTERY_TIER_COLORS_UNLOCK = {
+  1: '#cd7f32',
+  2: '#c0c0c0',
+  3: '#ffd700',
+  4: '#b9f2ff',
+  5: '#7c3aed',
+};
+
+function _applyMasteryTierBadge(card, mode) {
+  if (typeof getMasteryTier !== 'function') return;
+  var tier = getMasteryTier(mode);
+
+  // Remove existing badge
+  var existing = card.querySelector('.mode-card-mastery-badge');
+  if (existing) existing.remove();
+
+  if (tier < 1) return; // no badge for tier 0
+
+  var icon  = _MASTERY_TIER_ICONS_UNLOCK[tier] || '';
+  var color = _MASTERY_TIER_COLORS_UNLOCK[tier] || '#ffd700';
+  var tierNames = ['', 'Bronze', 'Silver', 'Gold', 'Diamond', 'Obsidian'];
+
+  var badge = document.createElement('div');
+  badge.className = 'mode-card-mastery-badge';
+  badge.textContent = icon;
+  badge.title = tierNames[tier] + ' Mastery';
+  badge.style.color = color;
+  card.appendChild(badge);
 }
 
 function _applyLockToButton(btn, mode, playerLevel, unlocked) {
