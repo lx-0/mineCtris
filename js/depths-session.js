@@ -274,20 +274,49 @@ function _onDungeonFloorCleared() {
 
   var floorNum = getDungeonFloorNum();
 
-  // Roll 1-3 loot drops based on floor depth
-  var dropCount = Math.min(3, 1 + Math.floor(floorNum / 2));
-  var floorLoot = [];
-  for (var i = 0; i < dropCount; i++) {
-    var drop = rollDungeonLoot();
-    if (drop) {
-      addDungeonLoot(drop.item, drop.amount);
-      floorLoot.push(drop);
-    }
-  }
+  // Determine dungeon tier and boss status for loot rolling
+  var isBoss = isDungeonBossFloor();
 
   // Check if boss floor was defeated
-  if (isDungeonBossFloor()) {
+  if (isBoss) {
     defeatBoss();
+  }
+
+  // Roll loot using the rarity system (loot-tables.js) if available,
+  // otherwise fall back to the simple loot table roll.
+  var floorLoot = [];
+  var rarityDrops = null;
+  if (typeof rollFloorLoot === 'function') {
+    var tier = session.tier || 'shallow';
+    rarityDrops = rollFloorLoot(tier, floorNum, isBoss);
+    for (var i = 0; i < rarityDrops.length; i++) {
+      var rd = rarityDrops[i];
+      addDungeonLoot(rd.item.id, 1);
+      floorLoot.push({ item: rd.item.id, amount: 1, rarity: rd.rarity, lootDrop: rd });
+    }
+    // Save loot drops to persistent inventory
+    if (typeof saveLootDrops === 'function') saveLootDrops(rarityDrops);
+    // Check boss first-kill reward
+    if (isBoss && typeof checkBossFirstKillReward === 'function') {
+      var bossConfig = getDungeonBossConfig();
+      if (bossConfig) {
+        var bossReward = checkBossFirstKillReward(bossConfig.bossId);
+        if (bossReward) {
+          addDungeonLoot(bossReward.id, 1);
+          floorLoot.push({ item: bossReward.id, amount: 1, rarity: bossReward.rarity, isBossReward: true, lootDrop: { item: bossReward, rarity: bossReward.rarity, isDuplicate: false, bonusXP: 0 } });
+        }
+      }
+    }
+  } else {
+    // Fallback: simple loot table roll
+    var dropCount = Math.min(3, 1 + Math.floor(floorNum / 2));
+    for (var i = 0; i < dropCount; i++) {
+      var drop = rollDungeonLoot();
+      if (drop) {
+        addDungeonLoot(drop.item, drop.amount);
+        floorLoot.push(drop);
+      }
+    }
   }
 
   // Pause gameplay
@@ -342,12 +371,33 @@ function _showDungeonExtractionScreen(clearedFloorNum, floorLoot, isComplete, ne
     html += '<div class="dt-loot-title">LOOT FOUND</div>';
     for (var i = 0; i < floorLoot.length; i++) {
       var drop = floorLoot[i];
-      var icon = _getLootIcon(drop.item);
-      html += '<div class="dt-loot-item">' +
-        '<span class="dt-loot-icon">' + icon + '</span> ' +
-        '<span class="dt-loot-name">' + drop.item + '</span> ' +
-        '<span class="dt-loot-amount">x' + drop.amount + '</span>' +
-        '</div>';
+      // Use rarity-aware display if lootDrop metadata is available
+      if (drop.lootDrop && drop.lootDrop.item) {
+        var ld = drop.lootDrop;
+        var rarityColor = (typeof LOOT_RARITY !== 'undefined' && LOOT_RARITY[ld.rarity])
+          ? LOOT_RARITY[ld.rarity].color : '#9ca3af';
+        var rarityLabel = (typeof LOOT_RARITY !== 'undefined' && LOOT_RARITY[ld.rarity])
+          ? LOOT_RARITY[ld.rarity].label : '';
+        html += '<div class="dt-loot-item" style="border-left: 3px solid ' + rarityColor + '; padding-left: 8px;">';
+        html += '<span class="dt-loot-icon">' + (ld.item.icon || '\uD83D\uDCE6') + '</span> ';
+        html += '<span class="dt-loot-name" style="color:' + rarityColor + ';">' + ld.item.name + '</span> ';
+        html += '<span class="dt-loot-rarity" style="color:' + rarityColor + '; font-size:0.75em;">(' + rarityLabel + ')</span>';
+        if (ld.isDuplicate) {
+          html += ' <span class="dt-loot-dupe" style="color:#fbbf24; font-size:0.75em;">OWNED +' + ld.bonusXP + ' XP</span>';
+        }
+        if (drop.isBossReward) {
+          html += ' <span class="dt-loot-boss" style="color:#ef4444; font-size:0.75em;">\u2605 BOSS REWARD</span>';
+        }
+        html += '</div>';
+      } else {
+        // Fallback: simple display
+        var icon = _getLootIcon(drop.item);
+        html += '<div class="dt-loot-item">' +
+          '<span class="dt-loot-icon">' + icon + '</span> ' +
+          '<span class="dt-loot-name">' + drop.item + '</span> ' +
+          '<span class="dt-loot-amount">x' + drop.amount + '</span>' +
+          '</div>';
+      }
     }
     html += '</div>';
   }
