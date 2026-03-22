@@ -293,6 +293,30 @@ function initSettings() {
       if (typeof openMetricsDashboard === 'function') openMetricsDashboard();
     });
   }
+
+  // Wire up replay tutorial button
+  const replayTutBtn = document.getElementById("settings-replay-tutorial-btn");
+  if (replayTutBtn) {
+    replayTutBtn.addEventListener("click", function () {
+      try { localStorage.setItem('mineCtris_tutorialDone', ''); } catch (_e) {}
+      try { localStorage.setItem('mineCtris_craftHintShown', ''); } catch (_e) {}
+      // Show confirmation via event-end-toast (reusable toast element)
+      var toast = document.getElementById("event-end-toast");
+      if (toast) {
+        toast.textContent = "\uD83C\uDF93 Tutorial will play on your next game.";
+        toast.classList.remove("toast-visible");
+        void toast.offsetWidth;
+        toast.style.display = "block";
+        toast.classList.add("toast-visible");
+        clearTimeout(toast._tutReplayTimer);
+        toast._tutReplayTimer = setTimeout(function () {
+          toast.classList.remove("toast-visible");
+          setTimeout(function () { toast.style.display = "none"; }, 400);
+        }, 3100);
+      }
+      closeSettings();
+    });
+  }
   var metricsCloseBtn = document.getElementById("metrics-close-btn");
   if (metricsCloseBtn) {
     metricsCloseBtn.addEventListener("click", function () {
