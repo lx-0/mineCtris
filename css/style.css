@@ -14482,10 +14482,18 @@ body.biome-ice #inventory-hud { border-color: #4499dd; }
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 14px 10px;
+  justify-content: flex-start;
+  gap: 6px;
+  padding: 10px 8px;
   z-index: 5;
+  overflow-y: auto;
+}
+.depths-variant-divider {
+  width: 80%;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.12);
+  margin: 2px 0;
+  flex-shrink: 0;
 }
 .depths-variant-title {
   font-family: "Press Start 2P", cursive;
@@ -15711,21 +15719,8 @@ body.biome-ice #inventory-hud { border-color: #4499dd; }
   color: #0f0;
 }
 
-/* ── Dungeon Tier Selector ─────────────────────────────────────────────── */
+/* ── Dungeon Tier Buttons (inside unified depths selector) ──────────────── */
 
-.dungeon-tier-selector {
-  position: absolute;
-  inset: 0;
-  background: rgba(0, 6, 18, 0.96);
-  border-radius: 6px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 14px 10px;
-  z-index: 5;
-}
 .dungeon-tier-title {
   font-family: "Press Start 2P", cursive;
   font-size: 0.5em;
@@ -15982,18 +15977,6 @@ body.biome-ice #inventory-hud { border-color: #4499dd; }
   color: #fbbf24;
   margin: 10px 0;
   text-shadow: 0 0 8px rgba(251, 191, 36, 0.3);
-}
-
-/* ── Dungeons mode card ────────────────────────────────────────────────── */
-.mode-card-dungeons .mode-card-icon {
-  color: #a78bfa;
-}
-.mode-card-dungeons {
-  border-color: rgba(167, 139, 250, 0.3);
-}
-.mode-card-dungeons:hover {
-  border-color: #a78bfa;
-  box-shadow: 0 0 20px rgba(167, 139, 250, 0.15);
 }
 
 /* ── Dungeon HUD overlay ─────────────────────────────────────────────── */

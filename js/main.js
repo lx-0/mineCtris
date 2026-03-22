@@ -769,12 +769,31 @@ function init() {
     // Depths (dungeon) mode card — show variant selector on click
     const depthsCardEl = document.getElementById("mode-card-depths");
     const depthsVariantSelector = document.getElementById("depths-variant-selector");
+
+    // Update the Infinite Depths button lock state based on Wither Storm defeat
+    function _refreshInfiniteDepthsLockState() {
+      var infiniteBtn = document.getElementById("dungeon-tier-infinite");
+      var lockMsg     = document.getElementById("dungeon-infinite-lock-msg");
+      if (!infiniteBtn) return;
+      var unlocked = (typeof isInfiniteDepthsUnlocked === 'function') && isInfiniteDepthsUnlocked();
+      if (unlocked) {
+        infiniteBtn.classList.remove('dungeon-tier-btn-locked');
+        infiniteBtn.disabled = false;
+        if (lockMsg) lockMsg.style.display = 'none';
+      } else {
+        infiniteBtn.classList.add('dungeon-tier-btn-locked');
+        infiniteBtn.disabled = true;
+        if (lockMsg) lockMsg.style.display = '';
+      }
+    }
+
     if (depthsCardEl && depthsVariantSelector) {
       depthsCardEl.addEventListener("click", function (e) {
         // Don't open variant selector if clicking the leaderboard button
         if (e.target.closest('.mode-card-lb-btn')) return;
         // Don't open if variant selector is already showing (clicks on variant buttons)
         if (e.target.closest('.depths-variant-selector')) return;
+        _refreshInfiniteDepthsLockState();
         depthsVariantSelector.style.display = 'flex';
         _populateDepthsVariantPBs();
       });
@@ -809,6 +828,33 @@ function init() {
       });
     }
 
+    // Dungeon tier buttons (excluding the infinite button which has special handling)
+    var dungeonTierBtns = document.querySelectorAll('.dungeon-tier-btn:not(.dungeon-tier-btn-infinite)');
+    for (var _dt = 0; _dt < dungeonTierBtns.length; _dt++) {
+      (function (btn) {
+        btn.addEventListener('click', function (e) {
+          e.stopPropagation();
+          if (depthsVariantSelector) depthsVariantSelector.style.display = 'none';
+          var dungeonId = btn.getAttribute('data-dungeon');
+          if (typeof metricsModePlayed === 'function') metricsModePlayed('dungeon_' + dungeonId);
+          markModeSeen('depths');
+          document.dispatchEvent(new CustomEvent('dungeonLaunch', { detail: { dungeonId: dungeonId } }));
+        });
+      })(dungeonTierBtns[_dt]);
+    }
+    // Infinite Depths button — only dispatches when unlocked
+    var infiniteBtn = document.getElementById("dungeon-tier-infinite");
+    if (infiniteBtn) {
+      infiniteBtn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        if (infiniteBtn.disabled) return;
+        if (depthsVariantSelector) depthsVariantSelector.style.display = 'none';
+        if (typeof metricsModePlayed === 'function') metricsModePlayed('dungeon_infinite');
+        markModeSeen('depths');
+        document.dispatchEvent(new CustomEvent('dungeonLaunch', { detail: { dungeonId: 'infinite' } }));
+      });
+    }
+
     /** Populate personal best labels on variant buttons. */
     function _populateDepthsVariantPBs() {
       // Daily variant PB
@@ -826,66 +872,6 @@ function init() {
 
     // Render weekly depths reward preview on the mode card
     if (typeof renderDepthsRewardPreview === 'function') renderDepthsRewardPreview();
-
-    // ── Dungeons mode card — show tier selector on click ─────────────────────
-    var dungeonsCardEl = document.getElementById("mode-card-dungeons");
-    var dungeonTierSelector = document.getElementById("dungeon-tier-selector");
-
-    // Update the Infinite Depths button lock state based on Wither Storm defeat
-    function _refreshInfiniteDepthsLockState() {
-      var infiniteBtn = document.getElementById("dungeon-tier-infinite");
-      var lockMsg     = document.getElementById("dungeon-infinite-lock-msg");
-      if (!infiniteBtn) return;
-      var unlocked = (typeof isInfiniteDepthsUnlocked === 'function') && isInfiniteDepthsUnlocked();
-      if (unlocked) {
-        infiniteBtn.classList.remove('dungeon-tier-btn-locked');
-        infiniteBtn.disabled = false;
-        if (lockMsg) lockMsg.style.display = 'none';
-      } else {
-        infiniteBtn.classList.add('dungeon-tier-btn-locked');
-        infiniteBtn.disabled = true;
-        if (lockMsg) lockMsg.style.display = '';
-      }
-    }
-
-    if (dungeonsCardEl && dungeonTierSelector) {
-      dungeonsCardEl.addEventListener("click", function (e) {
-        if (e.target.closest('.dungeon-tier-selector')) return;
-        _refreshInfiniteDepthsLockState();
-        dungeonTierSelector.style.display = 'flex';
-      });
-    }
-    // Dungeon tier buttons (excluding the infinite button which has special handling)
-    var dungeonTierBtns = document.querySelectorAll('.dungeon-tier-btn:not(.dungeon-tier-btn-infinite)');
-    for (var _dt = 0; _dt < dungeonTierBtns.length; _dt++) {
-      (function (btn) {
-        btn.addEventListener('click', function (e) {
-          e.stopPropagation();
-          if (dungeonTierSelector) dungeonTierSelector.style.display = 'none';
-          var dungeonId = btn.getAttribute('data-dungeon');
-          if (typeof metricsModePlayed === 'function') metricsModePlayed('dungeon_' + dungeonId);
-          document.dispatchEvent(new CustomEvent('dungeonLaunch', { detail: { dungeonId: dungeonId } }));
-        });
-      })(dungeonTierBtns[_dt]);
-    }
-    // Infinite Depths button — only dispatches when unlocked
-    var infiniteBtn = document.getElementById("dungeon-tier-infinite");
-    if (infiniteBtn) {
-      infiniteBtn.addEventListener('click', function (e) {
-        e.stopPropagation();
-        if (infiniteBtn.disabled) return;
-        if (dungeonTierSelector) dungeonTierSelector.style.display = 'none';
-        if (typeof metricsModePlayed === 'function') metricsModePlayed('dungeon_infinite');
-        document.dispatchEvent(new CustomEvent('dungeonLaunch', { detail: { dungeonId: 'infinite' } }));
-      });
-    }
-    var dungeonTierBack = document.getElementById("dungeon-tier-back");
-    if (dungeonTierBack) {
-      dungeonTierBack.addEventListener("click", function (e) {
-        e.stopPropagation();
-        if (dungeonTierSelector) dungeonTierSelector.style.display = 'none';
-      });
-    }
 
     // ── Co-op mode card + lobby overlay ──────────────────────────────────────
     (function () {
