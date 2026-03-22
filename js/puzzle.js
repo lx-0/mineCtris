@@ -87,18 +87,19 @@ const PUZZLES = [
     id: 8,
     name: "Lava Shards",
     difficulty: "hard",
-    description: "Lava blocks scattered at height. Precision and planning required.",
+    description: "Lava blocks scattered at height. Build stacks to reach them and clear 3 lines.",
     layout: [
       [-2, 3, -1, 6], [0, 4, 0, 6], [2, 3, 1, 6],
       [-1, 2, 1, 6], [1, 2, -1, 6],
     ],
     pieces: [2, 4, 7, 1, 5, 3, 6, 2, 4, 7, 1, 5],
+    winCondition: { mode: "clear_lines", n: 3 },
   },
   {
     id: 9,
     name: "Crystal Fortress",
     difficulty: "hard",
-    description: "Crystal walls form a fortress. Tear it down block by block.",
+    description: "Crystal walls form a fortress. Tear it down — but don't touch the crafting table.",
     layout: [
       [-1, 0, -1, 7], [0, 0, -1, 7], [1, 0, -1, 7],
       [-1, 0, 1, 7], [0, 0, 1, 7], [1, 0, 1, 7],
@@ -106,12 +107,13 @@ const PUZZLES = [
       [-1, 1, 1, 7], [1, 1, 1, 7],
     ],
     pieces: [1, 5, 3, 7, 2, 6, 4, 1, 5, 3, 7, 2, 6, 4],
+    winCondition: { mode: "no_craft" },
   },
   {
     id: 10,
     name: "The Colossus",
     difficulty: "hard",
-    description: "Stone pillars, a gold crown, a crystal capstone. The ultimate challenge.",
+    description: "Stone pillars, a gold crown, a crystal capstone. Score 500 points in 2 minutes.",
     layout: [
       [-2, 0, 0, 2], [-2, 1, 0, 2], [-2, 2, 0, 2], [-2, 3, 0, 2],
       [2, 0, 0, 2], [2, 1, 0, 2], [2, 2, 0, 2], [2, 3, 0, 2],
@@ -119,6 +121,7 @@ const PUZZLES = [
       [0, 5, 0, 7],
     ],
     pieces: [4, 6, 2, 7, 1, 5, 3, 4, 6, 2, 7, 1, 5, 3, 4, 6],
+    winCondition: { mode: "timed_score", scoreTarget: 500, timeLimit: 120 },
   },
 ];
 
@@ -178,12 +181,18 @@ let _puzzleInitialCount = 0;    // Total preset blocks at puzzle start
 let _puzzleIsFirstAttempt = true; // Cleared if player has attempted this puzzle before
 let _puzzlePiecesUsed = 0;      // Count of pieces consumed so far this session
 let _thinkModeActive = false;   // True while think-mode key is held
+let _puzzleNoCraftViolated = false; // True if player crafted during a no_craft puzzle
+let _puzzleTimeLimitSecs = 0;       // Time limit for timed_score puzzles (0 = no limit)
+let _puzzleTimeElapsed = 0;         // Seconds elapsed for timed_score puzzles
 
 function resetPuzzleState() {
   _puzzlePresetBlocks = [];
   _puzzleInitialCount = 0;
   _puzzlePiecesUsed = 0;
   _thinkModeActive = false;
+  _puzzleNoCraftViolated = false;
+  _puzzleTimeLimitSecs = 0;
+  _puzzleTimeElapsed = 0;
 }
 
 // ── Piece queue for puzzle mode ────────────────────────────────────────────────
@@ -204,6 +213,15 @@ function initPuzzlePieceQueue() {
     pieceQueue.push({ index: idx, shape: SHAPES[idx] });
   }
   updateNextPiecesHUD();
+}
+
+/** Initialize win-condition state for the current built-in puzzle (call after resetPuzzleState). */
+function initPuzzleWinCondition() {
+  const puzzle = getPuzzleById(puzzlePuzzleId);
+  const wc = puzzle && puzzle.winCondition;
+  _puzzleTimeLimitSecs = (wc && wc.mode === "timed_score") ? wc.timeLimit : 0;
+  _puzzleTimeElapsed = 0;
+  _puzzleNoCraftViolated = false;
 }
 
 /** Draw the next piece from puzzleFixedQueue. Returns { index, shape } or null if empty. */
@@ -404,16 +422,51 @@ function checkPuzzleConditions() {
   // ── Built-in puzzle mode ──────────────────────────────────────────────────
   if (!isPuzzleMode) return;
 
-  const remaining = countRemainingPresetBlocks();
+  const puzzle = getPuzzleById(puzzlePuzzleId);
+  const wc = (puzzle && puzzle.winCondition) ? puzzle.winCondition : { mode: "mine_all" };
 
-  if (remaining === 0) {
-    _triggerPuzzleWin();
-    return;
-  }
+  if (wc.mode === "mine_all") {
+    const remaining = countRemainingPresetBlocks();
+    if (remaining === 0 && _puzzleInitialCount > 0) {
+      _triggerPuzzleWin();
+      return;
+    }
+    if (puzzleFixedQueue.length === 0 && pieceQueue.length === 0 && fallingPieces.length === 0) {
+      _triggerPuzzleLose();
+    }
 
-  // Lose: all pieces consumed and blocks remain
-  if (puzzleFixedQueue.length === 0 && pieceQueue.length === 0 && fallingPieces.length === 0) {
-    _triggerPuzzleLose();
+  } else if (wc.mode === "clear_lines") {
+    if (linesCleared >= wc.n) {
+      _triggerPuzzleWin();
+      return;
+    }
+    if (puzzleFixedQueue.length === 0 && pieceQueue.length === 0 && fallingPieces.length === 0) {
+      _triggerPuzzleLose();
+    }
+
+  } else if (wc.mode === "no_craft") {
+    const remaining = countRemainingPresetBlocks();
+    if (remaining === 0 && _puzzleInitialCount > 0) {
+      if (_puzzleNoCraftViolated) {
+        _triggerPuzzleLose();
+      } else {
+        _triggerPuzzleWin();
+      }
+      return;
+    }
+    if (puzzleFixedQueue.length === 0 && pieceQueue.length === 0 && fallingPieces.length === 0) {
+      _triggerPuzzleLose();
+    }
+
+  } else if (wc.mode === "timed_score") {
+    if (score >= wc.scoreTarget) {
+      _triggerPuzzleWin();
+      return;
+    }
+    const timeLeft = _puzzleTimeLimitSecs - _puzzleTimeElapsed;
+    if (timeLeft <= 0) {
+      _triggerPuzzleLose();
+    }
   }
 }
 
@@ -496,7 +549,7 @@ function _triggerPuzzleWin() {
   if (controls && controls.isLocked) controls.unlock();
 }
 
-function _triggerPuzzleLose() {
+function _triggerPuzzleLose(reason) {
   if (puzzleComplete) return;
   puzzleComplete = true;
   isGameOver = true;
@@ -505,19 +558,29 @@ function _triggerPuzzleLose() {
   const pzXpElLose = document.getElementById('puzzle-xp-earned');
   if (pzXpElLose) { pzXpElLose.textContent = ''; pzXpElLose.className = 'xp-earned-display'; }
 
-  _showPuzzleCompleteOverlay(false, 0, false, getPuzzleById(puzzlePuzzleId));
+  _showPuzzleCompleteOverlay(false, 0, false, getPuzzleById(puzzlePuzzleId), reason);
 
   if (typeof stopBgMusic === "function") stopBgMusic();
   if (typeof playGameOverJingle === "function") playGameOverJingle();
   if (controls && controls.isLocked) controls.unlock();
 }
 
-function _showPuzzleCompleteOverlay(won, stars, isNewBest, puzzle) {
+function _showPuzzleCompleteOverlay(won, stars, isNewBest, puzzle, loseReason) {
   const overlayEl = document.getElementById("puzzle-complete-screen");
   if (!overlayEl) return;
 
   const titleEl = document.getElementById("puzzle-complete-title");
-  if (titleEl) titleEl.textContent = won ? "PUZZLE SOLVED!" : "OUT OF PIECES";
+  if (titleEl) {
+    if (won) {
+      titleEl.textContent = "PUZZLE SOLVED!";
+    } else if (loseReason === "crafting_used") {
+      titleEl.textContent = "CRAFTING USED!";
+    } else if (loseReason === "time_up") {
+      titleEl.textContent = "TIME'S UP!";
+    } else {
+      titleEl.textContent = "OUT OF PIECES";
+    }
+  }
 
   const nameEl = document.getElementById("puzzle-complete-name");
   if (nameEl && puzzle) nameEl.textContent = "#" + puzzle.id + " — " + puzzle.name;
@@ -550,11 +613,28 @@ function _showPuzzleCompleteOverlay(won, stars, isNewBest, puzzle) {
 
   const remainEl = document.getElementById("puzzle-complete-remain");
   if (remainEl) {
-    const remaining = countRemainingPresetBlocks();
+    const wc = (puzzle && puzzle.winCondition) ? puzzle.winCondition : { mode: "mine_all" };
     if (won) {
-      remainEl.textContent = "All " + _puzzleInitialCount + " blocks cleared!";
+      if (wc.mode === "clear_lines") {
+        remainEl.textContent = linesCleared + " line" + (linesCleared === 1 ? "" : "s") + " cleared!";
+      } else if (wc.mode === "no_craft") {
+        remainEl.textContent = "All " + _puzzleInitialCount + " blocks cleared without crafting!";
+      } else if (wc.mode === "timed_score") {
+        remainEl.textContent = "Score: " + score + " / " + wc.scoreTarget + " reached!";
+      } else {
+        remainEl.textContent = "All " + _puzzleInitialCount + " blocks cleared!";
+      }
     } else {
-      remainEl.textContent = remaining + " block" + (remaining === 1 ? "" : "s") + " remaining";
+      if (wc.mode === "clear_lines") {
+        remainEl.textContent = linesCleared + " / " + wc.n + " lines cleared";
+      } else if (wc.mode === "no_craft") {
+        remainEl.textContent = "Crafting was used — no-craft condition failed";
+      } else if (wc.mode === "timed_score") {
+        remainEl.textContent = "Score: " + score + " / " + wc.scoreTarget + " — time ran out";
+      } else {
+        const remaining = countRemainingPresetBlocks();
+        remainEl.textContent = remaining + " block" + (remaining === 1 ? "" : "s") + " remaining";
+      }
     }
   }
 
@@ -809,6 +889,37 @@ function _showCustomPuzzleCompleteOverlay(won) {
   overlayEl.style.display = "flex";
 }
 
+// ── No-craft enforcement ──────────────────────────────────────────────────────
+
+/**
+ * Called from crafting.js whenever a recipe is crafted during built-in puzzle mode.
+ * Immediately fails the puzzle if the win condition requires no crafting.
+ */
+function _onPuzzleCraftUsed() {
+  if (!isPuzzleMode || puzzleComplete) return;
+  const puzzle = getPuzzleById(puzzlePuzzleId);
+  const wc = puzzle && puzzle.winCondition;
+  if (wc && wc.mode === "no_craft") {
+    _puzzleNoCraftViolated = true;
+    _triggerPuzzleLose("crafting_used");
+  }
+}
+
+// ── Timed-score tick ──────────────────────────────────────────────────────────
+
+/**
+ * Advance the timed_score countdown. Call every frame with delta seconds.
+ * Only active for built-in puzzles with mode === "timed_score".
+ */
+function tickPuzzleTimeLimit(delta) {
+  if (!isPuzzleMode || puzzleComplete || _puzzleTimeLimitSecs === 0) return;
+  _puzzleTimeElapsed += delta;
+  if (_puzzleTimeElapsed >= _puzzleTimeLimitSecs) {
+    _puzzleTimeElapsed = _puzzleTimeLimitSecs;
+    checkPuzzleConditions();
+  }
+}
+
 // ── Think mode ────────────────────────────────────────────────────────────────
 
 /** Call from keydown handler when the think-mode key (F) is pressed. */
@@ -846,12 +957,31 @@ function updatePuzzleHUD() {
   }
 
   const puzzle = getPuzzleById(puzzlePuzzleId);
-  const blocksLeft = countRemainingPresetBlocks();
   const piecesLeft = puzzleFixedQueue.length + pieceQueue.length + fallingPieces.length;
-  badgeEl.textContent =
-    "Puzzle " + (puzzle ? puzzle.id : "?") + "/" + PUZZLES.length +
-    " | Blocks: " + blocksLeft + " | Pieces: " + piecesLeft +
-    (isThinkModeActive() ? " | THINK MODE" : "");
+  const prefix = "Puzzle " + (puzzle ? puzzle.id : "?") + "/" + PUZZLES.length;
+  const thinkSuffix = isThinkModeActive() ? " | THINK MODE" : "";
+
+  const wc = (puzzle && puzzle.winCondition) ? puzzle.winCondition : { mode: "mine_all" };
+  let objective = "";
+  if (wc.mode === "clear_lines") {
+    objective = "Lines: " + linesCleared + "/" + wc.n + " | Pieces: " + piecesLeft;
+  } else if (wc.mode === "no_craft") {
+    const blocksLeft = countRemainingPresetBlocks();
+    objective = "Blocks: " + blocksLeft + "/" + _puzzleInitialCount +
+      " | No Crafting" + (_puzzleNoCraftViolated ? " ✗" : " ✓") +
+      " | Pieces: " + piecesLeft;
+  } else if (wc.mode === "timed_score") {
+    const timeLeft = Math.max(0, Math.ceil(_puzzleTimeLimitSecs - _puzzleTimeElapsed));
+    const mins = Math.floor(timeLeft / 60);
+    const secs = timeLeft % 60;
+    const timeStr = (mins < 10 ? "0" : "") + mins + ":" + (secs < 10 ? "0" : "") + secs;
+    objective = "Score: " + score + "/" + wc.scoreTarget + " | Time: " + timeStr;
+  } else {
+    const blocksLeft = countRemainingPresetBlocks();
+    objective = "Blocks: " + blocksLeft + "/" + _puzzleInitialCount + " | Pieces: " + piecesLeft;
+  }
+
+  badgeEl.textContent = prefix + " | " + objective + thinkSuffix;
 }
 
 // ── Puzzle selector ───────────────────────────────────────────────────────────

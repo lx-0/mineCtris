@@ -341,6 +341,7 @@ function craftRecipe(recipe) {
   sessionCrafts++;
   if (typeof isCoopMode !== 'undefined' && isCoopMode) coopMyCraftsMade++;
   if (typeof onMissionItemCrafted === "function") onMissionItemCrafted(recipe.id);
+  if (typeof _onPuzzleCraftUsed === "function") _onPuzzleCraftUsed();
   return true;
 }
 

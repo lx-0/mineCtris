@@ -3554,6 +3554,7 @@ function init() {
         if (typeof resetPuzzleState === "function") resetPuzzleState();
         if (typeof setupPuzzleLayout === "function") setupPuzzleLayout();
         if (typeof initPuzzlePieceQueue === "function") initPuzzlePieceQueue();
+        if (typeof initPuzzleWinCondition === "function") initPuzzleWinCondition();
         const badgeEl = document.getElementById("puzzle-badge");
         if (badgeEl) {
           badgeEl.style.display = "block";
@@ -5174,6 +5175,9 @@ function animate() {
   updateDangerWarning();
 
   if (controls && controls.isLocked === true && !isGameOver) {
+    // Tick puzzle time limit every frame (timed_score mode)
+    if (typeof tickPuzzleTimeLimit === "function") tickPuzzleTimeLimit(delta);
+
     // Tick survival timer and refresh HUD once per second
     if (gameTimerRunning) {
       gameElapsedSeconds += delta;
@@ -5191,6 +5195,8 @@ function animate() {
           checkPuzzleConditions();
           if (typeof updatePuzzleHUD === "function") updatePuzzleHUD();
         }
+        // Built-in puzzle: refresh HUD each second (covers timed_score countdown)
+        if (isPuzzleMode && typeof updatePuzzleHUD === "function") updatePuzzleHUD();
       }
     }
 
