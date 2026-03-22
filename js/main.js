@@ -4327,6 +4327,7 @@ function placeBlock() {
   // Placement sound
   playPlaceSound();
   if (typeof tutorialNotify === "function") tutorialNotify("blockPlace");
+  if (typeof coachMarkBlockPlacement === 'function') coachMarkBlockPlacement();
   if (typeof gameTooltipDismiss === 'function') gameTooltipDismiss();
 }
 

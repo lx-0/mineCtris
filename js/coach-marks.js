@@ -42,6 +42,14 @@ function coachMarkGameOver() {
 }
 
 /**
+ * Fire the "first block placement" coach mark.
+ * Call from main.js placeBlock() after a successful placement outside the tutorial.
+ */
+function coachMarkBlockPlacement() {
+  _cmShow('blockPlacement', 'Nice! Place blocks to fill gaps and set up line clears.');
+}
+
+/**
  * Fire the "level 2 unlock" coach mark — Sprint mode unlocked.
  * Call from leveling.js checkLevelUp or mode-unlock.js.
  * @param {number} newLevel
