@@ -335,7 +335,7 @@ function showExpeditionResults(data) {
 
   // Persist the score to the expedition map (server + local cache)
   if (typeof recordExpeditionScore === 'function') {
-    recordExpeditionScore(nodeId, data.score || 0);
+    recordExpeditionScore(node.nodeId, data.score || 0);
   }
 
   // Submit to biome weekly leaderboard (async, best-score only)
