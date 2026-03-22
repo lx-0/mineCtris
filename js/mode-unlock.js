@@ -17,7 +17,6 @@ const MODE_UNLOCK_TABLE = {
   expedition: 12,
   depths:     14,
   coop:       16,
-  tournament: 18,
   clan_wars:  18,
   editor:     20,
 };
@@ -165,7 +164,7 @@ var _MODE_DISPLAY_NAMES = {
   classic: 'Classic', sprint: 'Sprint', blitz: 'Blitz', puzzle: 'Puzzle',
   daily: 'Daily Challenge', weekly: 'Weekly Challenge', survival: 'Survival',
   battle: 'Battle', expedition: 'Expeditions', depths: 'The Depths',
-  coop: 'Co-op', tournament: 'Tournament', clan_wars: 'Clan Wars',
+  coop: 'Co-op', clan_wars: 'Clan Wars',
   editor: 'Editor',
 };
 

@@ -77,7 +77,6 @@ const EXPECTED_IDS = [
   // Main menu buttons
   'start-random-btn',
   'start-resume-btn',
-  'daily-challenge-btn',
   'start-guild-btn',
   'start-tournament-btn',
   'start-profile-btn',

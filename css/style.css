@@ -1268,13 +1268,6 @@ body {
   cursor: pointer;
   text-shadow: 0 0 12px rgba(255,255,0,0.4);
 }
-/* Daily challenge — accent button in play group */
-#daily-challenge-btn {
-  color: #0cf;
-  background: rgba(0,204,255,0.1);
-  border-color: rgba(0,204,255,0.4);
-}
-#daily-challenge-btn:hover { background: rgba(0,204,255,0.25); color: #fff; border-color: #0cf; }
 
 #daily-challenge-badge {
   position: absolute;
@@ -7883,26 +7876,6 @@ body.theme-legendary #score-display {
   100% { opacity: 0; transform: translateX(-50%) translateY(-8px); }
 }
 
-/* ═══════════════════════════════════════════════════════════════════════════ */
-/* ── Tournament mode card ── */
-/* ═══════════════════════════════════════════════════════════════════════════ */
-.mode-card-tournament {
-  border-color: rgba(255, 200, 0, 0.45);
-  box-shadow: 0 0 14px rgba(255, 200, 0, 0.1);
-}
-.mode-card-tournament .mode-card-icon {
-  color: #ffd700;
-}
-.mode-card-tournament .mode-card-name {
-  color: #ffd700;
-  text-shadow: 0 0 6px #ffd700;
-}
-.mode-card-tournament .mode-card-desc {
-  color: #ffe88a;
-}
-.mode-card-tournament:hover {
-  border-color: #ffd700 !important;
-  box-shadow: 0 0 22px rgba(255, 200, 0, 0.45) !important;
 }
 
 /* ── Tournament lobby overlay ── */
@@ -15033,7 +15006,6 @@ body.biome-ice #inventory-hud { border-color: #4499dd; }
 #instructions.first-launch #menu-missions-panel,
 #instructions.first-launch #menu-more-toggle,
 #instructions.first-launch #menu-secondary,
-#instructions.first-launch #daily-challenge-btn,
 #instructions.first-launch #start-resume-btn,
 #instructions.first-launch #hs-start-panel {
   display: none !important;

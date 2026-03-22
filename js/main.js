@@ -349,14 +349,6 @@ function init() {
       showModeSelect();
     });
 
-    const dailyChallengeBtn = document.getElementById("daily-challenge-btn");
-    if (dailyChallengeBtn) {
-      dailyChallengeBtn.addEventListener("click", function (e) {
-        e.stopPropagation();
-        // Show mode select with Daily highlighted as a shortcut
-        showModeSelect("daily");
-      });
-    }
 
     // ── Mode select helpers ───────────────────────────────────────────
     function showModeSelect(highlightMode) {
@@ -3242,15 +3234,6 @@ function init() {
       if (listCloseBtn) {
         listCloseBtn.addEventListener('click', function () {
           closeTournamentOverlay();
-        });
-      }
-
-      // ── Mode card click (from mode-select) ──
-
-      var tournCardEl = document.getElementById('mode-card-tournament');
-      if (tournCardEl) {
-        tournCardEl.addEventListener('click', function () {
-          openTournamentOverlay();
         });
       }
 
