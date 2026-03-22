@@ -5,7 +5,7 @@
 //             state.js (activeTheme, colorblindMode, worldGroup, fallingPiecesGroup)
 
 // ── Tier → reward definitions ─────────────────────────────────────────────────
-// Ordered highest → lowest so iteration order matches the visual track (top = best).
+// Ordered highest → lowest; render loop reverses for ascending display (Bronze → Diamond).
 const SEASON_PASS_REWARD_TIERS = [
   {
     tierId:  'diamond',
@@ -313,9 +313,9 @@ async function _renderSeasonPassPanel() {
     headerEl.innerHTML = hHtml;
   }
 
-  // --- Tier track ---
+  // --- Tier track (ascending: Bronze → Diamond) ---
   let html = '';
-  for (const tier of SEASON_PASS_REWARD_TIERS) {
+  for (const tier of SEASON_PASS_REWARD_TIERS.slice().reverse()) {
     const rid         = tier.reward.id;
     const earned      = !!rewards[rid];
     const claimed     = !!(rewards[rid] && rewards[rid].claimed);
