@@ -4328,6 +4328,19 @@ function onMouseDown(event) {
     return;
   }
   if (event.button !== 0) return;
+  // ── Creeper mining: click to deal damage / defuse ──────────────────────────
+  if (targetedBlock && targetedBlock.userData.isCreeper && typeof damageCreeperMesh === "function") {
+    damageCreeperMesh(targetedBlock);
+    // If the creeper was destroyed, clear the target
+    if (!creeperActive || _creeperHP <= 0) {
+      unhighlightTarget();
+      targetedBlock = null;
+      miningProgress = 0;
+      crosshair.classList.remove("target-locked");
+    }
+    return;
+  }
+  // ───────────────────────────────────────────────────────────────────────────
   if (targetedBlock) {
     miningProgress++;
     console.log(

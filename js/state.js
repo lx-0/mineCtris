@@ -371,6 +371,10 @@ let _creeperMesh = null;
 let _creeperFusing = false;
 // Fuse countdown in seconds (starts at 2.5 when fuse begins).
 let _creeperFuseTimer = 0;
+// Creeper hit points remaining (player mines to defuse).
+let _creeperHP = 0;
+// true when the player mined the Creeper to 0 HP (defused, no explosion).
+let _creeperDefused = false;
 
 // ── Survival mode state ───────────────────────────────────────────────────────
 // isSurvivalMode: true while a Survival session is active.

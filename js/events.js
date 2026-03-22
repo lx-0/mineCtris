@@ -312,7 +312,13 @@ function _fireOnEnd(type) {
   }
   _hideEventCountdownHud();
   _dismissEventAnnouncement();
-  _showEventEndToast(type);
+  // Skip the default "CREEPER ended" toast if the player defused it
+  // (the defuse toast is already visible from damageCreeperMesh).
+  if (!(type === EVENT_TYPES.CREEPER && _creeperDefused)) {
+    _showEventEndToast(type);
+  }
+  // Safe to reset defused flag now that _fireOnEnd has checked it
+  if (type === EVENT_TYPES.CREEPER) _creeperDefused = false;
 }
 
 // ── Piece Storm implementation ────────────────────────────────────────────────
@@ -534,8 +540,11 @@ const _CREEPER_SPEED       = 1.5;  // grid units per second
 const _CREEPER_FUSE_RANGE  = 5.0;  // grid units — enter fuse state at this distance
 const _CREEPER_FUSE_TIME   = 2.5;  // seconds of fusing before event ends
 const _CREEPER_BLAST_RADIUS = 4;   // grid units — blocks within this radius are destroyed
+const _CREEPER_HP          = 4;    // clicks to defuse (kill) the creeper
+const _CREEPER_DEFUSE_PTS  = 750;  // bonus points for defusing
 const _CREEPER_COLOR       = new THREE.Color(0x00cc00);
 const _CREEPER_FUSE_WHITE  = new THREE.Color(0xffffff);
+const _CREEPER_HIT_RED     = new THREE.Color(0xff2222);
 
 /**
  * Spawn a creeper mesh at a random edge of the grid, on the ground (y=0).
@@ -567,6 +576,7 @@ function _spawnCreeperMesh() {
   });
   const mesh = new THREE.Mesh(geo, mat);
   mesh.position.set(x, s / 2, z);  // sit on ground (center at half-height)
+  mesh.name = "world_object";       // targetable by raycaster
   mesh.userData.isCreeper = true;
 
   // Add edge lines for Minecraft-style look
@@ -575,7 +585,12 @@ function _spawnCreeperMesh() {
   const lineSegments = new THREE.LineSegments(edges, lineMat);
   mesh.add(lineSegments);
 
-  scene.add(mesh);
+  // Add to worldGroup so raycasting picks it up
+  if (typeof worldGroup !== "undefined" && worldGroup) {
+    worldGroup.add(mesh);
+  } else {
+    scene.add(mesh);
+  }
   return mesh;
 }
 
@@ -594,6 +609,8 @@ function _onCreeperStart() {
   creeperActive = true;
   _creeperFusing = false;
   _creeperFuseTimer = 0;
+  _creeperHP = _CREEPER_HP;
+  _creeperDefused = false;
 
   // Spawn the creeper mesh
   _creeperMesh = _spawnCreeperMesh();
@@ -601,6 +618,65 @@ function _onCreeperStart() {
   // Green atmospheric overlay
   const overlay = document.getElementById("creeper-overlay");
   if (overlay) overlay.style.display = "block";
+}
+
+/**
+ * Deal 1 hit of damage to the Creeper. Called from the click handler in main.js.
+ * Returns true if the Creeper was killed (defused).
+ */
+function damageCreeperMesh(mesh) {
+  if (!mesh || !mesh.userData.isCreeper || _creeperHP <= 0) return false;
+
+  _creeperHP--;
+
+  // Flash the mesh red briefly
+  if (mesh.material) {
+    mesh.material.color.copy(_CREEPER_HIT_RED);
+    mesh.material.emissive.setHex(0x440000);
+    mesh.material.needsUpdate = true;
+    setTimeout(function () {
+      if (!mesh.material) return;
+      mesh.material.color.copy(_CREEPER_COLOR);
+      mesh.material.emissive.setHex(0x003300);
+      mesh.material.needsUpdate = true;
+    }, 120);
+  }
+
+  // Spawn dust particles for hit feedback
+  if (typeof spawnDustParticles === "function") {
+    spawnDustParticles(mesh);
+  }
+
+  if (_creeperHP <= 0) {
+    // Defused!
+    _creeperDefused = true;
+    addScore(_CREEPER_DEFUSE_PTS);
+    _showCreeperDefusedToast();
+    endEvent();
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Show a brief "Creeper Defused! +750" toast using the event-end-toast element.
+ */
+function _showCreeperDefusedToast() {
+  const toast = document.getElementById("event-end-toast");
+  if (!toast) return;
+
+  toast.textContent = "\uD83D\uDEE1\uFE0F Creeper Defused! +" + _CREEPER_DEFUSE_PTS;
+  toast.classList.remove("toast-visible");
+  void toast.offsetWidth;
+  toast.style.display = "block";
+  toast.classList.add("toast-visible");
+
+  if (_endToastTimeout) clearTimeout(_endToastTimeout);
+  _endToastTimeout = setTimeout(function () {
+    toast.style.display = "none";
+    toast.classList.remove("toast-visible");
+    _endToastTimeout = null;
+  }, 3100);
 }
 
 function _onCreeperTick(delta) {
@@ -651,8 +727,11 @@ function _onCreeperTick(delta) {
 }
 
 function _onCreeperEnd() {
+  // If the player defused the creeper, skip the explosion entirely
+  const defused = _creeperDefused;
+
   // Capture whether fuse completed (explosion) vs event timer expired (no explosion)
-  const fuseCompleted = _creeperFusing && _creeperFuseTimer <= 0;
+  const fuseCompleted = !defused && _creeperFusing && _creeperFuseTimer <= 0;
 
   // Capture blast center before removing mesh
   let blastCenter = null;
@@ -667,9 +746,14 @@ function _onCreeperEnd() {
   creeperActive = false;
   _creeperFusing = false;
   _creeperFuseTimer = 0;
+  _creeperHP = 0;
+  // Note: _creeperDefused is NOT reset here — _fireOnEnd reads it to suppress
+  // the default "CREEPER ended" toast when the player defused. It resets in
+  // _onCreeperStart and resetEventEngine.
 
-  // Remove creeper mesh from scene
+  // Remove creeper mesh from scene/worldGroup
   if (_creeperMesh) {
+    if (typeof worldGroup !== "undefined" && worldGroup) worldGroup.remove(_creeperMesh);
     if (typeof scene !== "undefined" && scene) scene.remove(_creeperMesh);
     if (_creeperMesh.geometry) _creeperMesh.geometry.dispose();
     if (_creeperMesh.material) _creeperMesh.material.dispose();
@@ -868,6 +952,7 @@ function resetEventEngine() {
     const overlay = document.getElementById("creeper-overlay");
     if (overlay) overlay.style.display = "none";
     if (_creeperMesh) {
+      if (typeof worldGroup !== "undefined" && worldGroup) worldGroup.remove(_creeperMesh);
       if (typeof scene !== "undefined" && scene) scene.remove(_creeperMesh);
       if (_creeperMesh.geometry) _creeperMesh.geometry.dispose();
       if (_creeperMesh.material) _creeperMesh.material.dispose();
@@ -902,6 +987,8 @@ function resetEventEngine() {
   creeperActive        = false;
   _creeperFusing       = false;
   _creeperFuseTimer    = 0;
+  _creeperHP           = 0;
+  _creeperDefused      = false;
   _creeperMesh         = null;
 }
 
