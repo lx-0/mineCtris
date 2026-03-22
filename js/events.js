@@ -533,6 +533,7 @@ function _spawnEarthquakeCracks() {
 const _CREEPER_SPEED       = 1.5;  // grid units per second
 const _CREEPER_FUSE_RANGE  = 5.0;  // grid units — enter fuse state at this distance
 const _CREEPER_FUSE_TIME   = 2.5;  // seconds of fusing before event ends
+const _CREEPER_BLAST_RADIUS = 4;   // grid units — blocks within this radius are destroyed
 const _CREEPER_COLOR       = new THREE.Color(0x00cc00);
 const _CREEPER_FUSE_WHITE  = new THREE.Color(0xffffff);
 
@@ -650,6 +651,19 @@ function _onCreeperTick(delta) {
 }
 
 function _onCreeperEnd() {
+  // Capture whether fuse completed (explosion) vs event timer expired (no explosion)
+  const fuseCompleted = _creeperFusing && _creeperFuseTimer <= 0;
+
+  // Capture blast center before removing mesh
+  let blastCenter = null;
+  if (fuseCompleted && _creeperMesh) {
+    blastCenter = {
+      x: _creeperMesh.position.x,
+      y: _creeperMesh.position.y,
+      z: _creeperMesh.position.z,
+    };
+  }
+
   creeperActive = false;
   _creeperFusing = false;
   _creeperFuseTimer = 0;
@@ -666,8 +680,115 @@ function _onCreeperEnd() {
   const overlay = document.getElementById("creeper-overlay");
   if (overlay) overlay.style.display = "none";
 
+  // Trigger crater if the fuse actually completed
+  if (blastCenter) {
+    _creeperExplode(blastCenter);
+  }
+
   if (!isGameOver && typeof achOnSurvivalEventEnd === "function") {
     achOnSurvivalEventEnd("CREEPER");
+  }
+}
+
+/**
+ * Destroy all landed blocks within the blast radius, then settle any
+ * floating blocks above the crater and persist the world.
+ */
+function _creeperExplode(center) {
+  if (typeof worldGroup === "undefined" || !worldGroup) return;
+
+  const r2 = _CREEPER_BLAST_RADIUS * _CREEPER_BLAST_RADIUS;
+  const destroyed = [];
+
+  // Collect blocks within blast radius (iterate a copy since we modify children)
+  const children = worldGroup.children.slice();
+  for (let i = 0; i < children.length; i++) {
+    const obj = children[i];
+    if (obj.name !== "landed_block" || !obj.userData.isBlock || !obj.userData.gridPos) continue;
+
+    const gp = obj.userData.gridPos;
+    const dx = gp.x - center.x;
+    const dy = gp.y - center.y;
+    const dz = gp.z - center.z;
+    if (dx * dx + dy * dy + dz * dz <= r2) {
+      destroyed.push(obj);
+    }
+  }
+
+  // Destroy collected blocks
+  for (let i = 0; i < destroyed.length; i++) {
+    const block = destroyed[i];
+    // Spawn dust particles for visual feedback
+    if (typeof spawnDustParticles === "function") {
+      spawnDustParticles(block, { breakBurst: true });
+    }
+    unregisterBlock(block);
+    worldGroup.remove(block);
+    if (block.geometry) block.geometry.dispose();
+    if (block.material) block.material.dispose();
+  }
+
+  // Settle any floating blocks above the crater
+  if (destroyed.length > 0) {
+    _settleFloatingBlocks();
+
+    // Persist damage in Survival mode
+    if (typeof isSurvivalMode !== "undefined" && isSurvivalMode &&
+        typeof saveSurvivalWorld === "function") {
+      saveSurvivalWorld();
+    }
+  }
+}
+
+/**
+ * Gravity pass: find blocks with no support below and drop them down
+ * until they rest on the ground (y = 0.5) or another block.
+ * Iterates bottom-up so lower blocks settle first.
+ */
+function _settleFloatingBlocks() {
+  if (typeof worldGroup === "undefined" || !worldGroup) return;
+
+  // Collect all landed blocks sorted by Y ascending (settle from bottom up)
+  const blocks = [];
+  for (let i = 0; i < worldGroup.children.length; i++) {
+    const obj = worldGroup.children[i];
+    if (obj.name === "landed_block" && obj.userData.isBlock && obj.userData.gridPos) {
+      blocks.push(obj);
+    }
+  }
+  blocks.sort(function (a, b) { return a.userData.gridPos.y - b.userData.gridPos.y; });
+
+  let anyMoved = true;
+  let passes = 0;
+  // Iterate until no blocks move (handles cascading falls)
+  while (anyMoved && passes < 50) {
+    anyMoved = false;
+    passes++;
+    for (let i = 0; i < blocks.length; i++) {
+      const block = blocks[i];
+      const gp = block.userData.gridPos;
+      if (!gp) continue;
+
+      // Already on the ground
+      if (gp.y <= 0.5) continue;
+
+      // Check if there is support directly below
+      const belowY = gp.y - 1;
+      const belowKey = gp.x + "," + gp.z;
+      const belowLayer = gridOccupancy.get(belowY);
+      const hasSupport = (belowY < 0.5) || (belowLayer && belowLayer.has(belowKey));
+
+      if (!hasSupport) {
+        // Move block down one grid unit
+        unregisterBlock(block);
+        block.position.y -= 1;
+        block.userData.gridPos = { x: gp.x, y: belowY, z: gp.z };
+        // Re-register at new position
+        if (!gridOccupancy.has(belowY)) gridOccupancy.set(belowY, new Set());
+        gridOccupancy.get(belowY).add(belowKey);
+        anyMoved = true;
+      }
+    }
   }
 }
 
