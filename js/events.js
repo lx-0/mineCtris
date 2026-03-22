@@ -541,7 +541,10 @@ function _spawnEarthquakeCracks() {
 
 // ── Creeper implementation ────────────────────────────────────────────────────
 
-const _CREEPER_SPEED       = 1.5;  // grid units per second
+const _CREEPER_SPEED       = 1.5;  // grid units per second (base approach speed)
+const _CREEPER_ACCEL_DELAY = 15;   // seconds before acceleration kicks in
+const _CREEPER_ACCEL_RATE  = 0.1;  // speed increase per second after delay
+const _CREEPER_MAX_SPEED   = 3.0;  // max approach speed cap
 const _CREEPER_FUSE_RANGE  = 5.0;  // grid units — enter fuse state at this distance
 const _CREEPER_FUSE_TIME   = 2.5;  // seconds of fusing before event ends
 const _CREEPER_BLAST_RADIUS = 4;   // grid units — blocks within this radius are destroyed
@@ -705,8 +708,45 @@ function _updateCreeperCracks(mesh, currentHP, maxHP) {
 }
 
 /**
+ * Create a canvas texture with the iconic Creeper face pattern.
+ * 8×8 pixel grid: dark pixels for eyes and frown on green background.
+ */
+function _createCreeperFaceTexture() {
+  var canvas = document.createElement("canvas");
+  canvas.width = 8;
+  canvas.height = 8;
+  var ctx = canvas.getContext("2d");
+
+  // Fill green background
+  ctx.fillStyle = "#00cc00";
+  ctx.fillRect(0, 0, 8, 8);
+
+  // Draw face in dark green/black
+  ctx.fillStyle = "#003300";
+
+  // Eyes (2×2 each): left eye at (1,1), right eye at (5,1)
+  ctx.fillRect(1, 1, 2, 2);
+  ctx.fillRect(5, 1, 2, 2);
+
+  // Nose/mouth: vertical bridge (3,3)-(4,3) then (3,4)-(4,4)
+  ctx.fillRect(3, 3, 2, 1);
+  ctx.fillRect(3, 4, 2, 1);
+
+  // Frown: wide bottom row (2,5)-(5,5) then corners (2,6) and (5,6)
+  ctx.fillRect(2, 5, 4, 1);
+  ctx.fillRect(2, 6, 1, 1);
+  ctx.fillRect(5, 6, 1, 1);
+
+  var texture = new THREE.CanvasTexture(canvas);
+  texture.magFilter = THREE.NearestFilter;
+  texture.minFilter = THREE.NearestFilter;
+  return texture;
+}
+
+/**
  * Spawn a creeper mesh at a random edge of the grid, on the ground (y=0).
  * Uses a simple scaled BoxGeometry as specified (reuse block-style mesh, scaled ~2×).
+ * Front face (+Z in local space) gets the iconic Creeper face texture.
  */
 function _spawnCreeperMesh() {
   if (typeof scene === "undefined" || !scene) return null;
@@ -728,14 +768,27 @@ function _spawnCreeperMesh() {
   // Create a scaled-up green cube (2× block size)
   const s = size * 2;
   const geo = new THREE.BoxGeometry(s, s, s);
-  const mat = new THREE.MeshLambertMaterial({
+
+  // Base material for all sides
+  const baseMat = new THREE.MeshLambertMaterial({
     color: _CREEPER_COLOR.clone(),
     emissive: new THREE.Color(0x003300),
   });
-  const mesh = new THREE.Mesh(geo, mat);
+
+  // Face material for the front (+Z face, index 4 in BoxGeometry face order)
+  const faceTex = _createCreeperFaceTexture();
+  const faceMat = new THREE.MeshLambertMaterial({
+    map: faceTex,
+    emissive: new THREE.Color(0x003300),
+  });
+
+  // BoxGeometry face order: +X, -X, +Y, -Y, +Z, -Z
+  const materials = [baseMat, baseMat, baseMat, baseMat, faceMat, baseMat];
+  const mesh = new THREE.Mesh(geo, materials);
   mesh.position.set(x, s / 2, z);  // sit on ground (center at half-height)
   mesh.name = "world_object";       // targetable by raycaster
   mesh.userData.isCreeper = true;
+  mesh.userData.baseMaterials = materials; // store for fuse color animation
 
   // Add edge lines for Minecraft-style look
   const edges = new THREE.EdgesGeometry(geo);
@@ -770,6 +823,7 @@ function _onCreeperStart() {
   _creeperHP = _CREEPER_HP;
   _creeperDefused = false;
   _creeperBobPhase = 0;
+  _creeperApproachTime = 0;
   _creeperHitPulseTime = 0;
   _creeperFuseParticles = [];
   _creeperExplosionParticles = [];
@@ -780,6 +834,37 @@ function _onCreeperStart() {
   // Green atmospheric overlay
   const overlay = document.getElementById("creeper-overlay");
   if (overlay) overlay.style.display = "block";
+
+  // First-encounter explanation toast (one-time, localStorage gated)
+  try {
+    if (!localStorage.getItem("creeperEncountered")) {
+      localStorage.setItem("creeperEncountered", "true");
+      _showCreeperFirstEncounterToast();
+    }
+  } catch (e) { /* localStorage unavailable, skip */ }
+}
+
+/**
+ * Show a one-time explanatory toast for the player's first Creeper encounter.
+ */
+var _firstEncounterToastTimeout = null;
+function _showCreeperFirstEncounterToast() {
+  const toast = document.getElementById("event-end-toast");
+  if (!toast) return;
+
+  toast.textContent = "CREEPER INCOMING! Click it to defuse before it explodes!";
+  toast.classList.remove("toast-visible");
+  void toast.offsetWidth;
+  toast.style.display = "block";
+  toast.classList.add("toast-visible");
+
+  if (_firstEncounterToastTimeout) clearTimeout(_firstEncounterToastTimeout);
+  if (_endToastTimeout) clearTimeout(_endToastTimeout);
+  _firstEncounterToastTimeout = setTimeout(function () {
+    toast.style.display = "none";
+    toast.classList.remove("toast-visible");
+    _firstEncounterToastTimeout = null;
+  }, 4000);
 }
 
 /**
@@ -792,15 +877,20 @@ function damageCreeperMesh(mesh) {
   _creeperHP--;
 
   // Flash the mesh red briefly (extended from 120ms → 220ms for juicier feel)
-  if (mesh.material) {
-    mesh.material.color.copy(_CREEPER_HIT_RED);
-    mesh.material.emissive.setHex(0x440000);
-    mesh.material.needsUpdate = true;
+  var hitMats = Array.isArray(mesh.material) ? mesh.material : (mesh.material ? [mesh.material] : []);
+  for (var hi = 0; hi < hitMats.length; hi++) {
+    hitMats[hi].color.copy(_CREEPER_HIT_RED);
+    hitMats[hi].emissive.setHex(0x440000);
+    hitMats[hi].needsUpdate = true;
+  }
+  if (hitMats.length) {
     setTimeout(function () {
-      if (!mesh.material) return;
-      mesh.material.color.copy(_CREEPER_COLOR);
-      mesh.material.emissive.setHex(0x003300);
-      mesh.material.needsUpdate = true;
+      var restoreMats = Array.isArray(mesh.material) ? mesh.material : (mesh.material ? [mesh.material] : []);
+      for (var ri = 0; ri < restoreMats.length; ri++) {
+        restoreMats[ri].color.copy(_CREEPER_COLOR);
+        restoreMats[ri].emissive.setHex(0x003300);
+        restoreMats[ri].needsUpdate = true;
+      }
     }, 220);
   }
 
@@ -861,6 +951,9 @@ function _onCreeperTick(delta) {
   const size = typeof BLOCK_SIZE !== "undefined" ? BLOCK_SIZE : 1;
   const baseY = size;  // center of 2× scaled cube sitting on ground
 
+  // Rotate creeper to face the player (face is +Z in local space)
+  _creeperMesh.rotation.y = Math.atan2(dx, dz);
+
   if (!_creeperFusing) {
     // Approach phase: walk toward player with bobbing animation
     if (dist <= _CREEPER_FUSE_RANGE) {
@@ -870,8 +963,14 @@ function _onCreeperTick(delta) {
       // Start hiss audio
       if (typeof startCreeperHiss === "function") startCreeperHiss();
     } else {
-      // Move toward player at constant speed
-      const step = _CREEPER_SPEED * delta;
+      // Move toward player — accelerate after delay to guarantee fuse
+      _creeperApproachTime += delta;
+      var speed = _CREEPER_SPEED;
+      if (_creeperApproachTime > _CREEPER_ACCEL_DELAY) {
+        speed += _CREEPER_ACCEL_RATE * (_creeperApproachTime - _CREEPER_ACCEL_DELAY);
+        speed = Math.min(speed, _CREEPER_MAX_SPEED);
+      }
+      const step = speed * delta;
       const nx = dx / dist;
       const nz = dz / dist;
       _creeperMesh.position.x += nx * step;
@@ -891,14 +990,18 @@ function _onCreeperTick(delta) {
     const t = Math.sin(performance.now() / 1000 * Math.PI * 2 * flashRate);
     // Mix intensity: more white as fuse progresses
     const whiteAmount = 0.3 + 0.7 * fuseProgress;
-    if (t > 0) {
-      _creeperMesh.material.color.lerpColors(_CREEPER_COLOR, _CREEPER_FUSE_WHITE, whiteAmount);
-      _creeperMesh.material.emissive.setHex(0x444444);
-    } else {
-      _creeperMesh.material.color.copy(_CREEPER_COLOR);
-      _creeperMesh.material.emissive.setHex(0x003300);
+    // Update all materials in the array (multi-material mesh)
+    var mats = Array.isArray(_creeperMesh.material) ? _creeperMesh.material : [_creeperMesh.material];
+    for (var mi = 0; mi < mats.length; mi++) {
+      if (t > 0) {
+        mats[mi].color.lerpColors(_CREEPER_COLOR, _CREEPER_FUSE_WHITE, whiteAmount);
+        mats[mi].emissive.setHex(0x444444);
+      } else {
+        mats[mi].color.copy(_CREEPER_COLOR);
+        mats[mi].emissive.setHex(0x003300);
+      }
+      mats[mi].needsUpdate = true;
     }
-    _creeperMesh.material.needsUpdate = true;
 
     // Reset bob to base during fuse (creeper stands still and swells)
     var swell = 1.0 + 0.05 * Math.sin(performance.now() / 1000 * Math.PI * flashRate * 0.5);
@@ -1104,7 +1207,7 @@ function _onCreeperEnd() {
       if (child.material) child.material.dispose();
     }
     if (_creeperMesh.geometry) _creeperMesh.geometry.dispose();
-    if (_creeperMesh.material) _creeperMesh.material.dispose();
+    if (Array.isArray(_creeperMesh.material)) { _creeperMesh.material.forEach(function(m) { m.dispose(); }); } else if (_creeperMesh.material) { _creeperMesh.material.dispose(); }
     _creeperMesh = null;
   }
 
@@ -1317,7 +1420,7 @@ function resetEventEngine() {
       if (typeof worldGroup !== "undefined" && worldGroup) worldGroup.remove(_creeperMesh);
       if (typeof scene !== "undefined" && scene) scene.remove(_creeperMesh);
       if (_creeperMesh.geometry) _creeperMesh.geometry.dispose();
-      if (_creeperMesh.material) _creeperMesh.material.dispose();
+      if (Array.isArray(_creeperMesh.material)) { _creeperMesh.material.forEach(function(m) { m.dispose(); }); } else if (_creeperMesh.material) { _creeperMesh.material.dispose(); }
       _creeperMesh = null;
     }
     if (typeof stopCreeperHiss === "function") stopCreeperHiss();
@@ -1366,6 +1469,7 @@ function resetEventEngine() {
   _creeperFuseTimer    = 0;
   _creeperHP           = 0;
   _creeperDefused      = false;
+  _creeperApproachTime = 0;
   _creeperMesh         = null;
 }
 
