@@ -195,6 +195,9 @@ function applyModeUnlockState() {
       _applyLockToButton(btn, bMode, level, bUnlocked);
     }
   }
+
+  // Apply NEW badges after lock state is settled
+  _applyNewBadges();
 }
 
 function _applyLockToElement(el, mode, playerLevel, unlocked) {
@@ -257,6 +260,90 @@ function _queueModeUnlockToast(entry) {
   }
 }
 
+// ── NEW badge for freshly unlocked modes ────────────────────────────────────
+// Tracks which unlocked modes the player has "seen" (clicked at least once).
+// Modes not in the seen set get a NEW badge until clicked.
+
+var _SEEN_MODES_KEY = 'mineCtris_seenModes';
+
+function _getSeenModes() {
+  try {
+    var raw = localStorage.getItem(_SEEN_MODES_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch (_) { return null; }
+}
+
+function _setSeenModes(arr) {
+  try { localStorage.setItem(_SEEN_MODES_KEY, JSON.stringify(arr)); } catch (_) {}
+}
+
+/** Mark a mode as seen — removes the NEW badge and persists. */
+function markModeSeen(modeKey) {
+  var seen = _getSeenModes();
+  if (!seen) return; // feature not initialised yet
+  if (seen.indexOf(modeKey) === -1) {
+    seen.push(modeKey);
+    _setSeenModes(seen);
+  }
+  // Remove badge immediately
+  var card = document.querySelector('.mode-card[data-mode="' + modeKey + '"]');
+  if (card) {
+    var badge = card.querySelector('.mode-new-badge');
+    if (badge) badge.remove();
+  }
+}
+
+/**
+ * Initialise the seen-modes list. On very first run, snapshot all currently
+ * unlocked modes so they don't get a false NEW badge.
+ */
+function _initSeenModes() {
+  if (_getSeenModes() !== null) return; // already initialised
+  var level = (typeof getPlayerLevel === 'function') ? getPlayerLevel() : _getCachedUnlockLevel();
+  var initial = [];
+  for (var key in MODE_UNLOCK_TABLE) {
+    if (isModeUnlocked(key, level)) initial.push(key);
+  }
+  _setSeenModes(initial);
+}
+
+/**
+ * Apply or remove NEW badges on unlocked mode cards.
+ * Called from applyModeUnlockState().
+ */
+function _applyNewBadges() {
+  _initSeenModes();
+  var seen = _getSeenModes();
+  if (!seen) return;
+  var cards = document.querySelectorAll('#mode-cards .mode-card[data-mode]');
+  for (var i = 0; i < cards.length; i++) {
+    var card = cards[i];
+    var mode = card.getAttribute('data-mode');
+    var unlocked = !card.classList.contains('mode-card-locked');
+    var isNew = unlocked && seen.indexOf(mode) === -1;
+    var existing = card.querySelector('.mode-new-badge');
+    if (isNew && !existing) {
+      var badge = document.createElement('span');
+      badge.className = 'mode-new-badge';
+      badge.textContent = 'NEW';
+      card.appendChild(badge);
+    } else if (!isNew && existing) {
+      existing.remove();
+    }
+  }
+}
+
+/** Wire up click handlers to clear NEW badges. */
+function _initNewBadgeClickClear() {
+  var container = document.getElementById('mode-cards');
+  if (!container) return;
+  container.addEventListener('click', function (e) {
+    var card = e.target.closest('.mode-card[data-mode]');
+    if (!card || card.classList.contains('mode-card-locked')) return;
+    markModeSeen(card.getAttribute('data-mode'));
+  }, false); // bubble phase — runs after the capture-phase lock gate
+}
+
 // ── Click gate ──────────────────────────────────────────────────────────────
 // Intercept clicks on locked mode cards to prevent launching the mode.
 
@@ -278,9 +365,13 @@ function _initModeUnlockClickGate() {
   }, true); // capture phase
 }
 
-// Initialize click gate on DOM ready
+// Initialize click gate and NEW badge handlers on DOM ready
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', _initModeUnlockClickGate);
+  document.addEventListener('DOMContentLoaded', function () {
+    _initModeUnlockClickGate();
+    _initNewBadgeClickClear();
+  });
 } else {
   _initModeUnlockClickGate();
+  _initNewBadgeClickClear();
 }
