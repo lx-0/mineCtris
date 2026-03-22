@@ -553,6 +553,82 @@ const _CREEPER_HIT_RED     = new THREE.Color(0xff2222);
 const _CREEPER_HIT_PULSE_DUR = 0.25; // seconds for squish-bounce pulse
 
 /**
+ * Update the on-screen directional indicator pointing toward the Creeper.
+ * Shows a green chevron at the screen edge when the Creeper is off-screen;
+ * hides it when on-screen or during fuse state.
+ */
+function _updateCreeperDirection() {
+  var el = document.getElementById("creeper-direction");
+  if (!el) return;
+
+  // Hide during fuse (player is close enough to see it)
+  if (_creeperFusing || !_creeperMesh) {
+    el.style.display = "none";
+    return;
+  }
+
+  // Project creeper world position to NDC (-1..1)
+  if (typeof camera === "undefined" || !camera) { el.style.display = "none"; return; }
+  var pos = _creeperMesh.position.clone();
+  pos.project(camera);
+
+  // Check if creeper is on-screen (NDC within -1..1 and in front of camera)
+  var onScreen = pos.z < 1 && pos.x > -0.85 && pos.x < 0.85 && pos.y > -0.85 && pos.y < 0.85;
+  if (onScreen) {
+    el.style.display = "none";
+    return;
+  }
+
+  // Creeper is off-screen — compute direction from screen center
+  // If behind camera, flip the direction
+  var sx = pos.x;
+  var sy = pos.y;
+  if (pos.z >= 1) { sx = -sx; sy = -sy; }
+
+  // Angle from center of screen toward the creeper
+  var angle = Math.atan2(sy, sx);
+
+  // Place the indicator at the edge of the viewport with margin
+  var margin = 40;
+  var hw = window.innerWidth / 2;
+  var hh = window.innerHeight / 2;
+
+  // Compute edge intersection
+  var cos = Math.cos(angle);
+  var sin = Math.sin(angle);
+  var edgeX, edgeY;
+
+  // Scale to hit the screen edge (aspect-aware)
+  var absC = Math.abs(cos);
+  var absS = Math.abs(sin);
+  if (absC * hh > absS * hw) {
+    // Hit left/right edge
+    var scale = (hw - margin) / absC;
+    edgeX = hw + cos * scale;
+    edgeY = hh - sin * scale;
+  } else {
+    // Hit top/bottom edge
+    var scale = (hh - margin) / absS;
+    edgeX = hw + cos * scale;
+    edgeY = hh - sin * scale;
+  }
+
+  // Clamp to viewport bounds
+  edgeX = Math.max(margin, Math.min(window.innerWidth - margin, edgeX));
+  edgeY = Math.max(margin, Math.min(window.innerHeight - margin, edgeY));
+
+  // Rotation: the triangle character ▲ points up, so 0° = up.
+  // angle is from +X axis; rotate so arrow points toward creeper.
+  var rotDeg = -(angle * 180 / Math.PI) + 90;
+
+  el.style.display = "block";
+  el.style.left = edgeX + "px";
+  el.style.top = edgeY + "px";
+  el.style.setProperty("--arrow-rot", rotDeg + "deg");
+  el.style.transform = "translate(-50%, -50%) rotate(" + rotDeg + "deg)";
+}
+
+/**
  * Build crack-line vertices for a given damage stage (1-4).
  * Each stage adds a new set of jagged lines across cube faces.
  * Coords are in local mesh space for a 2×blockSize cube centred at origin.
@@ -838,6 +914,9 @@ function _onCreeperTick(delta) {
     }
   }
 
+  // Update directional indicator (arrow at screen edge when off-screen)
+  _updateCreeperDirection();
+
   // Hit-pulse scale animation (squish to 90% then bounce back)
   if (_creeperHitPulseTime > 0) {
     _creeperHitPulseTime = Math.max(0, _creeperHitPulseTime - delta);
@@ -1038,9 +1117,11 @@ function _onCreeperEnd() {
   }
   _creeperFuseParticles = [];
 
-  // Hide overlay
+  // Hide overlay and directional indicator
   const overlay = document.getElementById("creeper-overlay");
   if (overlay) overlay.style.display = "none";
+  var dirEl = document.getElementById("creeper-direction");
+  if (dirEl) dirEl.style.display = "none";
 
   // Trigger crater + explosion VFX if the fuse actually completed
   if (blastCenter) {

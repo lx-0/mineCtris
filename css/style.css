@@ -5620,6 +5620,23 @@ body.theme-legendary #score-display {
   50%       { opacity: 0.85; }
 }
 
+/* Creeper directional indicator — green chevron at screen edge */
+#creeper-direction {
+  position: absolute;
+  pointer-events: none;
+  z-index: 185;
+  font-size: 28px;
+  color: #00dd00;
+  text-shadow: 0 0 8px rgba(0,220,0,0.8), 0 0 16px rgba(0,180,0,0.5);
+  filter: drop-shadow(0 0 4px rgba(0,255,0,0.6));
+  animation: creeper-arrow-pulse 1s ease-in-out infinite;
+  transition: opacity 0.15s;
+}
+@keyframes creeper-arrow-pulse {
+  0%, 100% { opacity: 0.7; transform: translate(-50%, -50%) rotate(var(--arrow-rot, 0deg)) scale(1); }
+  50%      { opacity: 1.0; transform: translate(-50%, -50%) rotate(var(--arrow-rot, 0deg)) scale(1.15); }
+}
+
 /* ── Event Announcement Card ─────────────────────────────────────────────── */
 
 /* Full-screen backdrop */
