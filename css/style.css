@@ -1792,6 +1792,28 @@ body {
 .mode-card-locked .mode-card-lb-btn {
   display: none;
 }
+.mode-card-vault-btn {
+  position: absolute;
+  top: 6px;
+  right: 32px;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+  font-size: 0.75em;
+  padding: 3px 5px;
+  cursor: pointer;
+  opacity: 0.4;
+  transition: opacity 0.15s, border-color 0.15s;
+  z-index: 3;
+  line-height: 1;
+}
+.mode-card:not(.mode-card-locked) .mode-card-vault-btn:hover {
+  opacity: 1;
+  border-color: rgba(249, 115, 22, 0.5);
+}
+.mode-card-locked .mode-card-vault-btn {
+  display: none;
+}
 /* Season banner action buttons */
 #season-banner-actions {
   display: flex;
@@ -15874,4 +15896,476 @@ body.biome-ice #inventory-hud { border-color: #4499dd; }
   .dhud-goal-text { font-size: 0.38em; }
   .dhud-goal-bar { height: 6px; }
   .dhud-extract-btn { font-size: 0.42em; padding: 6px; }
+}
+
+/* ── Depths Vault Overlay ─────────────────────────────────────────────────── */
+
+#depths-vault-overlay {
+  display: none;
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0, 0, 0, 0.85);
+  z-index: 10000;
+  align-items: center;
+  justify-content: center;
+}
+#depths-vault-panel {
+  background: #111;
+  border: 2px solid rgba(249, 115, 22, 0.4);
+  border-radius: 12px;
+  width: 90%;
+  max-width: 720px;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  font-family: "Press Start 2P", monospace;
+  color: #ddd;
+  overflow: hidden;
+  position: relative;
+}
+#depths-vault-header {
+  text-align: center;
+  padding: 14px 16px 10px;
+  border-bottom: 1px solid rgba(249, 115, 22, 0.25);
+}
+#depths-vault-icon {
+  font-size: 1.8em;
+  display: block;
+  margin-bottom: 4px;
+}
+#depths-vault-title {
+  font-size: 1em;
+  color: #f97316;
+  letter-spacing: 2px;
+}
+#depths-vault-subtitle {
+  font-size: 0.5em;
+  color: #888;
+  margin-top: 4px;
+}
+#depths-vault-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px 14px;
+}
+#depths-vault-close-btn {
+  display: block;
+  width: 100%;
+  background: transparent;
+  border: none;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  color: #888;
+  font-family: "Press Start 2P", monospace;
+  font-size: 0.55em;
+  padding: 10px;
+  cursor: pointer;
+  transition: color 0.15s;
+}
+#depths-vault-close-btn:hover {
+  color: #fff;
+}
+
+/* Vault stats bar */
+.vault-stats-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+  padding: 8px 10px;
+  background: rgba(249, 115, 22, 0.08);
+  border: 1px solid rgba(249, 115, 22, 0.2);
+  border-radius: 6px;
+}
+.vault-stats-total {
+  white-space: nowrap;
+}
+.vault-stats-label {
+  font-size: 0.45em;
+  color: #888;
+}
+.vault-stats-value {
+  font-size: 0.55em;
+  color: #f97316;
+  margin-left: 4px;
+}
+.vault-stats-pct-wrap {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.vault-stats-pct-track {
+  flex: 1;
+  height: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.vault-stats-pct-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #f97316, #fbbf24);
+  border-radius: 4px;
+  transition: width 0.3s;
+}
+.vault-stats-pct-text {
+  font-size: 0.5em;
+  color: #fbbf24;
+  min-width: 32px;
+  text-align: right;
+}
+
+/* Section tabs */
+.vault-section-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+.vault-section-btn {
+  flex: 1;
+  min-width: 0;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  color: #888;
+  font-family: "Press Start 2P", monospace;
+  font-size: 0.4em;
+  padding: 6px 4px;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.vault-section-btn:hover {
+  color: #ddd;
+  border-color: rgba(255, 255, 255, 0.25);
+}
+.vault-section-active {
+  color: #f97316 !important;
+  border-color: rgba(249, 115, 22, 0.5) !important;
+  background: rgba(249, 115, 22, 0.1) !important;
+}
+
+/* Filter tabs */
+.vault-filter-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 10px;
+}
+.vault-tab-btn {
+  flex: 1;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+  color: #666;
+  font-family: "Press Start 2P", monospace;
+  font-size: 0.35em;
+  padding: 5px 4px;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+.vault-tab-btn:hover {
+  color: #aaa;
+  border-color: rgba(255, 255, 255, 0.2);
+}
+.vault-tab-active {
+  color: #fbbf24 !important;
+  border-color: rgba(251, 191, 36, 0.4) !important;
+}
+
+/* Item grid */
+.vault-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.vault-item-card {
+  background: rgba(255, 255, 255, 0.04);
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  padding: 8px 6px;
+  text-align: center;
+  cursor: pointer;
+  transition: transform 0.12s, border-color 0.15s, background 0.15s;
+  position: relative;
+}
+.vault-item-card:hover {
+  transform: translateY(-2px);
+  background: rgba(255, 255, 255, 0.08);
+}
+.vault-item-silhouette {
+  opacity: 0.45;
+  filter: grayscale(0.6);
+}
+.vault-item-silhouette:hover {
+  opacity: 0.65;
+}
+.vault-item-icon {
+  font-size: 1.4em;
+  margin-bottom: 4px;
+}
+.vault-item-name {
+  font-size: 0.38em;
+  line-height: 1.4;
+  min-height: 2.8em;
+  word-break: break-word;
+}
+.vault-item-rarity {
+  font-size: 0.3em;
+  margin-top: 2px;
+  letter-spacing: 1px;
+}
+.vault-item-hint {
+  font-size: 0.28em;
+  color: #666;
+  margin-top: 4px;
+  line-height: 1.3;
+}
+.vault-item-desc {
+  font-size: 0.3em;
+  color: #888;
+  margin-top: 4px;
+  line-height: 1.3;
+}
+
+/* New badge */
+.vault-item-new {
+  animation: vault-new-pulse 1.5s ease-in-out infinite;
+}
+.vault-new-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  background: #f97316;
+  color: #000;
+  font-size: 0.28em;
+  font-family: "Press Start 2P", monospace;
+  padding: 2px 4px;
+  border-radius: 3px;
+  font-weight: bold;
+  z-index: 2;
+}
+@keyframes vault-new-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(249, 115, 22, 0); }
+  50% { box-shadow: 0 0 8px 2px rgba(249, 115, 22, 0.35); }
+}
+
+/* Group label */
+.vault-group-label {
+  font-size: 0.5em;
+  color: #aaa;
+  margin: 12px 0 6px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Empty state */
+.vault-empty {
+  grid-column: 1 / -1;
+  text-align: center;
+  color: #555;
+  font-size: 0.4em;
+  padding: 20px;
+}
+
+/* Consumable card extras */
+.vault-consumable-count {
+  font-size: 0.55em;
+  color: #fbbf24;
+  margin-top: 4px;
+  font-weight: bold;
+}
+.vault-item-empty .vault-consumable-count {
+  color: #555;
+}
+
+/* Blueprint card extras */
+.vault-blueprint-status {
+  font-size: 0.32em;
+  color: #22c55e;
+  margin-top: 4px;
+}
+.vault-locked-label {
+  color: #666 !important;
+}
+.vault-blueprint-recipe {
+  font-size: 0.28em;
+  color: #888;
+  margin-top: 2px;
+}
+.vault-item-owned {
+  border-color: rgba(34, 197, 94, 0.3);
+}
+.vault-item-locked {
+  opacity: 0.5;
+}
+
+/* Fragment progress rows */
+.vault-fragments-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.vault-fragment-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  padding: 10px;
+}
+.vault-fragment-icon {
+  font-size: 1.6em;
+  flex-shrink: 0;
+}
+.vault-fragment-info {
+  flex: 1;
+  min-width: 0;
+}
+.vault-fragment-name {
+  font-size: 0.45em;
+  margin-bottom: 2px;
+}
+.vault-fragment-target {
+  font-size: 0.35em;
+  color: #888;
+  margin-bottom: 6px;
+}
+.vault-fragment-bar-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.vault-fragment-bar-track {
+  flex: 1;
+  height: 10px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 5px;
+  overflow: hidden;
+}
+.vault-fragment-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #3b82f6, #a855f7);
+  border-radius: 5px;
+  transition: width 0.3s;
+}
+.vault-fragment-complete {
+  background: linear-gradient(90deg, #22c55e, #fbbf24) !important;
+}
+.vault-fragment-bar-text {
+  font-size: 0.4em;
+  color: #aaa;
+  min-width: 50px;
+  text-align: right;
+  white-space: nowrap;
+}
+
+/* Detail overlay */
+#depths-vault-detail {
+  display: none;
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0, 0, 0, 0.9);
+  z-index: 10;
+  align-items: center;
+  justify-content: center;
+}
+.vault-detail-card {
+  background: #181818;
+  border: 2px solid rgba(249, 115, 22, 0.3);
+  border-radius: 10px;
+  padding: 24px 20px;
+  text-align: center;
+  max-width: 320px;
+  width: 90%;
+  position: relative;
+}
+.vault-detail-close {
+  position: absolute;
+  top: 8px;
+  right: 12px;
+  background: transparent;
+  border: none;
+  color: #888;
+  font-size: 1.2em;
+  cursor: pointer;
+  padding: 4px;
+}
+.vault-detail-close:hover {
+  color: #fff;
+}
+.vault-detail-icon {
+  font-size: 2.5em;
+  margin-bottom: 8px;
+}
+.vault-detail-name {
+  font-size: 0.65em;
+  margin-bottom: 4px;
+}
+.vault-detail-rarity {
+  font-size: 0.4em;
+  letter-spacing: 2px;
+  margin-bottom: 8px;
+}
+.vault-detail-desc {
+  font-size: 0.38em;
+  color: #aaa;
+  line-height: 1.5;
+  margin-bottom: 8px;
+}
+.vault-detail-source {
+  font-size: 0.35em;
+  color: #666;
+  margin-bottom: 12px;
+}
+.vault-detail-equip {
+  background: rgba(249, 115, 22, 0.15);
+  border: 1px solid rgba(249, 115, 22, 0.4);
+  border-radius: 4px;
+  color: #f97316;
+  font-family: "Press Start 2P", monospace;
+  font-size: 0.4em;
+  padding: 8px 16px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.vault-detail-equip:hover {
+  background: rgba(249, 115, 22, 0.3);
+  color: #fff;
+}
+.vault-detail-equipped {
+  background: rgba(34, 197, 94, 0.15);
+  border-color: rgba(34, 197, 94, 0.4);
+  color: #22c55e;
+}
+.vault-detail-equipped:hover {
+  background: rgba(34, 197, 94, 0.3);
+}
+.vault-detail-recipe {
+  font-size: 0.38em;
+  color: #888;
+  margin-top: 8px;
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+  #depths-vault-panel {
+    width: 98%;
+    max-height: 92vh;
+    border-radius: 8px;
+  }
+  .vault-grid {
+    grid-template-columns: repeat(auto-fill, minmax(85px, 1fr));
+    gap: 6px;
+  }
+  .vault-section-btn {
+    font-size: 0.32em;
+    padding: 5px 2px;
+  }
+  .vault-tab-btn {
+    font-size: 0.28em;
+  }
 }

@@ -294,6 +294,7 @@
                   <div class="mode-card-desc">Roguelike dungeon. 7 floors, random upgrades, one life.</div>
                   <div class="mode-card-pb" id="mode-pb-depths"></div>
                   <button class="mode-card-lb-btn" data-lb-tab="depths" title="Leaderboard">&#127942;</button>
+                  <button class="mode-card-vault-btn" id="depths-vault-btn" title="Loot Vault">&#128225;</button>
                   <!-- Variant selector overlay -->
                   <div class="depths-variant-selector" id="depths-variant-selector" style="display:none;">
                     <div class="depths-variant-title">CHOOSE VARIANT</div>
@@ -1306,6 +1307,19 @@
         </div>
       </div>
 
+      <!-- Depths Vault overlay — loot collection screen -->
+      <div id="depths-vault-overlay" style="display:none;" role="dialog" aria-label="Depths Vault">
+        <div id="depths-vault-panel">
+          <div id="depths-vault-header">
+            <span id="depths-vault-icon">&#128225;</span>
+            <div id="depths-vault-title">LOOT VAULT</div>
+            <div id="depths-vault-subtitle">Collection &amp; Completion Tracker</div>
+          </div>
+          <div id="depths-vault-body"></div>
+          <button id="depths-vault-close-btn">&#8592; Close</button>
+        </div>
+      </div>
+
       <!-- Daily Depths history overlay -->
       <div id="daily-depths-history-overlay" style="display:none;" role="dialog" aria-label="Daily Depths History">
         <div class="daily-depths-history-panel">
@@ -1886,6 +1900,8 @@
     <script src="js/loot-tables.js"></script>
     <script src="js/depths-loot-config.js"></script>
     <script src="js/depths-loot.js"></script>
+    <script src="js/depths-vault-data.js"></script>
+    <script src="js/depths-vault-ui.js"></script>
     <script src="js/depths-transition.js"></script>
     <script src="js/depths-floor-gen.js"></script>
     <script src="js/depths-boss-config.js"></script>
