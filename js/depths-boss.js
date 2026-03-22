@@ -245,6 +245,9 @@ function cleanupBossEncounter() {
 
   _hideBossIntro();
   _hideBossTransition();
+
+  // Clean up boss-specific block tracking (The Creep moss/vine)
+  if (typeof cleanupCreepBlocks === 'function') cleanupCreepBlocks();
 }
 
 // ── State tick handlers ──────────────────────────────────────────────────────
@@ -431,6 +434,20 @@ function _fireMechanic(mechanic) {
     case 'column_lock':
       // Lock random columns temporarily
       // Placeholder for column lock implementation
+      break;
+
+    case 'moss_spawn':
+      // Spawn soft moss blocks on empty cells (The Creep)
+      if (typeof spawnCreepMoss === 'function') {
+        spawnCreepMoss(mechanic.count || 3, mechanic.hardenSecs || 3);
+      }
+      break;
+
+    case 'vine_spread':
+      // Spread vine from existing moss/vine blocks (The Creep)
+      if (typeof spreadCreepVines === 'function') {
+        spreadCreepVines(mechanic.count || 1);
+      }
       break;
   }
 }

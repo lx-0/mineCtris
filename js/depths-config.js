@@ -251,7 +251,7 @@ var DUNGEON_DEFINITIONS = {
     floors:           ['shallow_1', 'shallow_2', 'shallow_3'],
     allowedModifiers: ['narrow_corridor', 'fog_of_war', 'mirror_world'],
     lootTable:        'shallow_loot',
-    bossSlot:         { floor: 3, bossId: 'cave_crawler' },
+    bossSlot:         { floor: 3, bossId: 'the_creep' },
   },
   deep_caverns: {
     id:               'deep_caverns',

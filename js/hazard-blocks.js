@@ -27,6 +27,16 @@ function registerHazardBlock(block) {
     block.userData.isHazard = true;
     block.userData.hazardType = 'void';
     block.userData.isVoid = true;
+  } else if (mat === 'soft_moss') {
+    block.userData.isHazard = true;
+    block.userData.hazardType = 'soft_moss';
+  } else if (mat === 'hardened_moss') {
+    block.userData.isHazard = true;
+    block.userData.hazardType = 'hardened_moss';
+    block.userData.isVoid = true;  // permanent obstacle, unmineable
+  } else if (mat === 'vine') {
+    block.userData.isHazard = true;
+    block.userData.hazardType = 'vine';
   }
 }
 
@@ -53,6 +63,7 @@ function unregisterHazardBlock(block) {
 function clearHazardBlocks() {
   _crumbleBlocks.length = 0;
   _magmaBlocks.length = 0;
+  if (typeof cleanupCreepBlocks === 'function') cleanupCreepBlocks();
 }
 
 // ── Per-frame update ──────────────────────────────────────────────────────────
@@ -66,6 +77,8 @@ function updateHazardBlocks(delta) {
 
   _updateCrumbleBlocks(delta);
   _updateMagmaBlocks(delta);
+  // Tick The Creep moss/vine mechanics (hardening timers, vine visuals)
+  if (typeof updateCreepBlocks === 'function') updateCreepBlocks(delta);
 }
 
 // ── Crumble ──────────────────────────────────────────────────────────────────

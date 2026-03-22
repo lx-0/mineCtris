@@ -33,9 +33,12 @@ const SHADOW_APPEAR_DIST = 20; // blocks of fall distance before shadow appears
 // Hazard block constants (Depths mode)
 const CRUMBLE_DECAY_SECS = 5;        // seconds before crumble block disappears
 const MAGMA_DAMAGE_INTERVAL = 3;     // seconds between magma adjacency damage ticks
-const HAZARD_COLOR_CRUMBLE = 0xc4a35a;
-const HAZARD_COLOR_MAGMA   = 0xff4400;
-const HAZARD_COLOR_VOID    = 0x2a0045;
+const HAZARD_COLOR_CRUMBLE      = 0xc4a35a;
+const HAZARD_COLOR_MAGMA        = 0xff4400;
+const HAZARD_COLOR_VOID         = 0x2a0045;
+const HAZARD_COLOR_SOFT_MOSS    = 0x32cd32;  // lime green — minable soft moss
+const HAZARD_COLOR_HARDENED_MOSS = 0x556b2f; // dark olive — permanent obstacle
+const HAZARD_COLOR_VINE         = 0x228b22;  // forest green — spreading vine
 
 const PUSH_DISTANCE_THRESHOLD = 1.5 * BLOCK_SIZE; // horizontal distance to trigger push
 const PUSH_SPEED = 10.0 * BLOCK_SIZE;              // initial lateral push speed
@@ -74,6 +77,9 @@ const BLOCK_TYPES = {
   crumble: { hits: 2, points: 10, effect: null, isHazard: true, hazardType: "crumble" },
   magma:   { hits: 3, points: 30, effect: "magma_glow", isHazard: true, hazardType: "magma" },
   void_block: { hits: Infinity, points: 0, effect: null, isHazard: true, hazardType: "void" },
+  soft_moss:    { hits: 1, points: 5,  effect: null, isHazard: true, hazardType: "soft_moss" },
+  hardened_moss: { hits: Infinity, points: 0, effect: null, isHazard: true, hazardType: "hardened_moss" },
+  vine:         { hits: 2, points: 5,  effect: null, isHazard: true, hazardType: "vine" },
 };
 
 // Crafted plank block color (light tan, distinct from all spawned palette colors).
@@ -102,6 +108,9 @@ const COLOR_TO_MATERIAL = {
   0xc4a35a: "crumble",
   0xff4400: "magma",
   0x2a0045: "void_block",
+  0x32cd32: "soft_moss",
+  0x556b2f: "hardened_moss",
+  0x228b22: "vine",
 };
 
 // Rubble block color — slate grey, used for battle-mode garbage rows.
@@ -130,6 +139,9 @@ const COLORS = [
   0xc4a35a,  // 9: crumble (sandy tan — Depths hazard)
   0xff4400,  // 10: magma (hot orange — Depths hazard)
   0x2a0045,  // 11: void (deep purple — Depths hazard)
+  0x32cd32,  // 12: soft moss (lime green — The Creep boss)
+  0x556b2f,  // 13: hardened moss (dark olive — The Creep boss)
+  0x228b22,  // 14: vine (forest green — The Creep boss)
 ];
 
 // Deuteranopia-safe palette — blue/orange/amber/yellow/purple; never relies on red-green.
@@ -147,6 +159,9 @@ const COLORBLIND_COLORS = [
   0xddaa44, // 9 → muted gold   (crumble hazard)
   0xff6633, // 10 → orange-red  (magma hazard)
   0x6633aa, // 11 → purple      (void hazard)
+  0x88cc33, // 12 → yellow-green (soft moss)
+  0x666633, // 13 → olive-grey   (hardened moss)
+  0x339966, // 14 → teal-green   (vine)
 ];
 
 // Surface pattern index per color index (makes color never the sole differentiator).
@@ -164,6 +179,9 @@ const COLORBLIND_PATTERNS = [
   5, // muted gold - grid (crumble)
   1, // orange-red - horizontal stripes (magma)
   6, // purple     - checkerboard (void)
+  4, // yellow-green - diagonal stripes (soft moss)
+  0, // olive-grey   - solid (hardened moss — dark, clearly distinct)
+  2, // teal-green   - polka dots (vine)
 ];
 
 // Nether theme palette — dark stone, molten lava emphasis, crimson/obsidian tones.

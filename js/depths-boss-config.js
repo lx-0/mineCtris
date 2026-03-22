@@ -50,6 +50,8 @@ var BOSS_MECHANIC_TYPES = {
   row_push:          'row_push',           // push garbage rows from bottom
   speed_ramp:        'speed_ramp',         // gradually increase piece speed
   column_lock:       'column_lock',        // lock columns temporarily
+  moss_spawn:        'moss_spawn',         // spawn soft moss on empty cells
+  vine_spread:       'vine_spread',        // spread vine from existing moss/vine
 };
 
 // ── Boss definitions ─────────────────────────────────────────────────────────
@@ -62,6 +64,45 @@ var BOSS_MECHANIC_TYPES = {
 //   visualTheme: string key for boss arena visuals
 
 var BOSS_DEFINITIONS = {
+
+  // ── Shallow boss: The Creep ────────────────────────────────────────────────
+  the_creep: {
+    id:              'the_creep',
+    name:            'The Creep',
+    tier:            BOSS_TIER_SHALLOW,
+    hp:              20,
+    introText:       'Roots crack through the stone as moss surges upward...',
+    defeatText:      'The overgrowth withers and crumbles away!',
+    visualTheme:     'the_creep',
+    lootTable:       'shallow_loot',
+    firstKillReward: null,
+    phases: [
+      {
+        id:            'phase_1',
+        name:          'Overgrowth',
+        trigger:       { type: BOSS_PHASE_TRIGGER_HEALTH, value: 1.0 },  // starts at 100%
+        mechanics: [
+          { type: BOSS_MECHANIC_TYPES.moss_spawn, interval: 10, count: 3, hardenSecs: 3 },
+          { type: BOSS_MECHANIC_TYPES.vine_spread, interval: 8, count: 1 },
+        ],
+        gravityMult:   1.0,
+        pieceSpeedMult: 1.0,
+        visualShift:   null,
+      },
+      {
+        id:            'phase_2',
+        name:          'Infestation',
+        trigger:       { type: BOSS_PHASE_TRIGGER_HEALTH, value: 0.5 },  // at 50% HP
+        mechanics: [
+          { type: BOSS_MECHANIC_TYPES.moss_spawn, interval: 7, count: 5, hardenSecs: 2 },
+          { type: BOSS_MECHANIC_TYPES.vine_spread, interval: 5, count: 1 },
+        ],
+        gravityMult:   1.1,
+        pieceSpeedMult: 1.1,
+        visualShift:   'overgrowth_intensify',
+      },
+    ],
+  },
 
   // ── Shallow boss: Cave Crawler ─────────────────────────────────────────────
   cave_crawler: {
