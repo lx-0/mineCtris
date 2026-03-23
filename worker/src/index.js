@@ -6443,9 +6443,6 @@ const COMMUNITY_GOAL_TEMPLATES = [
   { id: 'depth_crawler',  name: 'Depth Crawler',  metric: 'depthsFloorsCleared',   icon: '🕳️',
     tiers: [{ name: 'Bronze', pct: 0.40, target: 2000 },   { name: 'Silver', pct: 0.70, target: 3500 },   { name: 'Gold', pct: 1.00, target: 5000 }],
     unit: 'floors cleared', reward: ['Depths torch skin', 'XP boost ×1.25 (24 h)', 'Depths master title'] },
-  { id: 'boss_slayer',    name: 'Boss Slayer',    metric: 'bossesDefeated',        icon: '☠️',
-    tiers: [{ name: 'Bronze', pct: 0.40, target: 400 },    { name: 'Silver', pct: 0.70, target: 700 },    { name: 'Gold', pct: 1.00, target: 1000 }],
-    unit: 'bosses defeated', reward: ['Wither skull badge', 'XP boost ×1.25 (24 h)', 'Bossbreaker title'] },
   { id: 'speed_demon',    name: 'Speed Demon',    metric: 'sprintsCompleted',      icon: '⚡',
     tiers: [{ name: 'Bronze', pct: 0.40, target: 5000 },   { name: 'Silver', pct: 0.70, target: 8500 },   { name: 'Gold', pct: 1.00, target: 12000 }],
     unit: 'sprints completed', reward: ['Lightning trail', 'XP boost ×1.25 (24 h)', 'Speedrunner title'] },
@@ -6503,7 +6500,7 @@ async function handlePostCommunityGoalContribute(request, env) {
   const body = await request.json().catch(() => ({}));
   const {
     blocksMined = 0, linesCleared = 0, depthsFloorsCleared = 0,
-    bossesDefeated = 0, sprintsCompleted = 0, maxComboSum = 0,
+    sprintsCompleted = 0, maxComboSum = 0,
     displayName = '', guildId = null, guildName = null,
   } = body;
 
@@ -6514,7 +6511,6 @@ async function handlePostCommunityGoalContribute(request, env) {
     blocksMined:        Math.max(0, Math.floor(blocksMined)),
     linesCleared:       Math.max(0, Math.floor(linesCleared)),
     depthsFloorsCleared:Math.max(0, Math.floor(depthsFloorsCleared)),
-    bossesDefeated:     Math.max(0, Math.floor(bossesDefeated)),
     sprintsCompleted:   Math.max(0, Math.floor(sprintsCompleted)),
     maxComboSum:        Math.max(0, Math.floor(maxComboSum)),
   };
