@@ -316,6 +316,7 @@ let _levelUpToastRunning = false;
 function _showLevelUpToast(level) {
   _levelUpToastQueue.push({ type: 'levelup', level });
   if (!_levelUpToastRunning) _drainLevelUpQueue();
+  if (typeof playLevelUpStinger === 'function') playLevelUpStinger();
 }
 
 function _showSkinUnlockToast(milestone) {

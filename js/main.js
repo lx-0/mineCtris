@@ -111,9 +111,9 @@ function spawnCaveMouth() {
   var toRemove = worldGroup.children.filter(function (c) { return c.name === 'cave_mouth'; });
   toRemove.forEach(function (b) { worldGroup.remove(b); });
 
-  // Fixed position: 9 blocks north of origin — inside the 20×20 mineable grid (Z: -9.5 to 9.5)
+  // Fixed position: 8 blocks north of origin — inside the 20×20 mineable grid (Z: -9.5 to 9.5)
   var cx = 0;
-  var cz = 9;
+  var cz = 8;
   caveMouthPos = { x: cx, z: cz };
 
   var bs = BLOCK_SIZE;
@@ -245,9 +245,10 @@ function returnToSurvival() {
   var survBadgeEl = document.getElementById('survival-badge');
   if (survBadgeEl) survBadgeEl.style.display = 'block';
 
-  // Spawn at grid center so mineable floor and shaft are immediately visible
+  // Spawn just south of cave mouth so player faces the play area with cave mouth visible behind
   if (typeof controls !== 'undefined' && controls) {
-    controls.getObject().position.set(0, PLAYER_HEIGHT, 0);
+    var _spawnZ = caveMouthPos ? caveMouthPos.z - 3 : 5;
+    controls.getObject().position.set(0, PLAYER_HEIGHT, _spawnZ);
   }
 
   if (typeof requestPointerLock === 'function') requestPointerLock();
@@ -1069,6 +1070,8 @@ function init() {
 
         // Place the cave mouth dungeon entrance in the world
         spawnCaveMouth();
+        // Spawn player just south of cave mouth so they stand on mineable surface grid
+        if (controls) controls.getObject().position.set(0, PLAYER_HEIGHT, 5);
         // Show survival HUD badge
         const survBadgeEl = document.getElementById("survival-badge");
         if (survBadgeEl) survBadgeEl.style.display = "block";
