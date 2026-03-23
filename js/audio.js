@@ -23,6 +23,7 @@ let crumbleCrackleSynth = null;
 let magmaSizzleSynth    = null;
 let _magmaSizzleGain    = null;
 let voidHumSynth        = null;
+let entropySynth        = null;
 let masterCompressor = null;
 let masterReverb = null;
 let masterLimiter = null;
@@ -139,6 +140,13 @@ function initAudio() {
       envelope: { attack: 0.05, decay: 0.4, sustain: 0.1, release: 0.6 },
     }).connect(masterCompressor);
     voidHumSynth.volume.value = -16;
+
+    // Entropy dissolve — ethereal triangle chime on block decay
+    entropySynth = new Tone.Synth({
+      oscillator: { type: "triangle" },
+      envelope: { attack: 0.01, decay: 0.4, sustain: 0.0, release: 0.5 },
+    }).connect(masterCompressor);
+    entropySynth.volume.value = -18;
 
     _initBgMusic();
     console.log("Tone.js musical bus initialized.");
@@ -509,6 +517,18 @@ function playVoidHum() {
   if (now - _lastVoidHumTime < 300) return;
   _lastVoidHumTime = now;
   voidHumSynth.triggerAttackRelease("D2", "8n", Tone.now());
+}
+
+/** Soft crystalline chime played when Entropy decays a block. */
+const _ENTROPY_NOTES = ['E5', 'G5', 'A5', 'B5', 'D6'];
+let _lastEntropyDissolveTime = 0;
+function playEntropyDissolve() {
+  if (!audioReady || !entropySynth) return;
+  var now = performance.now();
+  if (now - _lastEntropyDissolveTime < 300) return;
+  _lastEntropyDissolveTime = now;
+  var note = _ENTROPY_NOTES[Math.floor(Math.random() * _ENTROPY_NOTES.length)];
+  entropySynth.triggerAttackRelease(note, "8n", Tone.now());
 }
 
 // ── Volume settings ───────────────────────────────────────────────────────────

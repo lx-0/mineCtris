@@ -85,6 +85,9 @@ function _applyDungeonFloor(floor) {
   // Store combined gravity for piece physics to read
   _dungeonGravityMult = baseGravity * floorGravity * infiniteSpeedMult;
 
+  // Reset per-floor modifier state
+  _dungeonEntropyActive = false;
+
   // Apply modifiers from the floor's rolled modifier list
   if (floor.modifiers && floor.modifiers.length > 0) {
     for (var i = 0; i < floor.modifiers.length; i++) {
@@ -279,6 +282,16 @@ function _applyDungeonModifier(mod, isPrimary) {
       // Mirror world: invert horizontal controls
       _dungeonMirrorControls = !!mod.effectValue;
       break;
+    case 'entropy':
+      // Entropy: random block decay — Infinite Depths Descent 3+ only
+      if (typeof isInfiniteMode === 'function' && isInfiniteMode() &&
+          typeof getInfiniteRun === 'function') {
+        var _entropyRun = getInfiniteRun();
+        if (_entropyRun && _entropyRun.descentNum >= 3) {
+          _dungeonEntropyActive = true;
+        }
+      }
+      break;
   }
 
   // Also apply via world modifier system if available (for primary modifier)
@@ -297,12 +310,20 @@ var _dungeonDroughtPiece    = -1;
 var _dungeonGravityFlux     = null;
 var _dungeonBlockReplace    = null;
 var _dungeonMirrorControls  = false;
+var _dungeonEntropyActive   = false;
 
 /**
  * Returns true if horizontal controls should be inverted (Mirror World modifier).
  */
 function isDungeonMirrorControls() {
   return gameDepthsMode === 'dungeon' && _dungeonMirrorControls;
+}
+
+/**
+ * Returns true if the Entropy modifier is active on the current floor.
+ */
+function isDungeonEntropyActive() {
+  return gameDepthsMode === 'dungeon' && _dungeonEntropyActive;
 }
 
 /**
