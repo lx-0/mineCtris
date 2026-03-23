@@ -212,6 +212,8 @@
               <button id="hof-open-btn" class="season-banner-btn" title="Hall of Fame">&#127942; Hall of Fame</button>
             </div>
           </div>
+          <!-- Seasonal Event banner — hidden until event data loads -->
+          <div id="se-event-banner" style="display:none;"></div>
           <div id="mode-cards">
             <!-- ── CORE ── -->
             <div class="mode-section">
@@ -440,6 +442,15 @@
 
       <!-- Community Goals progress ticker (bottom-left HUD) -->
       <div id="cg-ticker" style="display:none;"></div>
+
+      <!-- Seasonal Event progress ticker (bottom-left HUD, stacked above cg-ticker) -->
+      <div id="se-ticker" style="display:none;"></div>
+
+      <!-- Seasonal Event corruption world tint overlay -->
+      <div id="se-world-overlay" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:5;transition:opacity 1s ease;"></div>
+
+      <!-- Seasonal Event cosmetics showcase panel -->
+      <div id="se-cosmetics-panel" style="display:none;" class="se-cosmetics-panel"></div>
 
       <!-- Top-right HUD: score + next-piece preview -->
       <div id="top-right-hud">
@@ -1720,6 +1731,8 @@
     <script src="js/world/biome-rules.js"></script>
     <script src="js/core/inventory.js"></script>
     <script src="js/world/world.js"></script>
+    <script src="js/world/underground.js"></script>
+    <script src="js/world/underground-test.js"></script>
     <script src="js/core/gamestate.js"></script>
     <script src="js/core/gamestate-reset.js"></script>
     <script src="js/core/gamestate-battle.js"></script>
@@ -1814,6 +1827,7 @@
     <script src="js/rendering/resize.js"></script>
         <script src="js/main.js"></script>
     <script src="js/social/community-goals.js"></script>
+    <script src="js/events/seasonal-events.js"></script>
     <script>
       // Initialize community goals ticker after all modules have loaded
       document.addEventListener('DOMContentLoaded', function() {

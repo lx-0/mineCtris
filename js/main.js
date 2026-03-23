@@ -31,6 +31,9 @@ function init() {
   if (typeof initBiomeCosmeticsPanel === "function") initBiomeCosmeticsPanel();
   if (typeof initBiomeLeaderboard === "function") initBiomeLeaderboard();
 
+  if (typeof initCommunityGoalsTicker === "function") initCommunityGoalsTicker();
+  if (typeof initSeasonalEvents === "function") initSeasonalEvents();
+
   if (typeof initExpeditionMap === "function") initExpeditionMap();
   if (typeof initExpeditionCodex === "function") initExpeditionCodex();
   if (typeof initExpeditionSession === "function") initExpeditionSession();
@@ -67,6 +70,9 @@ function init() {
   ground.rotation.x = -Math.PI / 2;
   ground.name = "ground";
   worldGroup.add(ground);
+
+  // Initialise underground voxel grid (Phase 1 — data structure + surface meshes).
+  if (typeof initUndergroundGrid === 'function') initUndergroundGrid();
 
   const spawnedPositions = [];
   for (let i = 0; i < 15; i++) {

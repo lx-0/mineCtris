@@ -223,6 +223,11 @@ function onMouseDown(event) {
       addScore(_matName && BLOCK_TYPES[_matName] ? BLOCK_TYPES[_matName].points : 10);
       if (typeof achOnBlockMined === "function") achOnBlockMined(blocksMined, _objType);
       if (typeof onMissionBlockMined === "function") onMissionBlockMined();
+      // Seasonal event: track void-adjacent mining
+      if (typeof recordVoidAdjacentMined === 'function' && targetedBlock.userData.gridPos &&
+          typeof isAdjacentToVoid === 'function' && isAdjacentToVoid(targetedBlock.userData.gridPos)) {
+        recordVoidAdjacentMined();
+      }
       // Save grid pos for diamond AOE (before block is removed from world)
       const _brokenBlock = pickaxeTier === "diamond" ? (targetedBlock.userData.gridPos
         ? { x: targetedBlock.userData.gridPos.x, y: targetedBlock.userData.gridPos.y, z: targetedBlock.userData.gridPos.z }
@@ -286,6 +291,13 @@ function onMouseDown(event) {
       unregisterBlock(targetedBlock);
       disposeBlock(targetedBlock);
       worldGroup.remove(targetedBlock);
+
+      // Underground grid: update exposed-face state after block removal
+      if (targetedBlock.userData.isUnderground && targetedBlock.userData.ugIndex &&
+          typeof onBlockMined === 'function') {
+        const _ug = targetedBlock.userData.ugIndex;
+        onBlockMined(_ug.xi, _ug.zi, _ug.yi);
+      }
 
       // Remove from obsidian shimmer tracking if applicable
       const _obIdx = obsidianBlocks.indexOf(targetedBlock);

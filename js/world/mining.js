@@ -39,7 +39,7 @@ function updateTargeting() {
   for (const intersection of intersects) {
     if (intersection.distance > MINING_RANGE) break;
     const name = intersection.object.name;
-    if (name === "landed_block" || name === "trunk_block" || name === "leaf_block" || name === "world_object") {
+    if (name === "landed_block" || name === "trunk_block" || name === "leaf_block" || name === "world_object" || name === "underground_block") {
       newTarget = intersection.object;
       if (intersection.face) {
         newFaceNormal = intersection.face.normal.clone()

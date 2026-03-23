@@ -119,6 +119,18 @@ function _randomShapeIndex() {
     return worldModifierWeightedIndex(weights, _rng);
   }
 
+  // Seasonal event: void blocks (index 11) added to pool at voidBlockMult weight.
+  // voidBlockMult=2 means 2 void slots per standard pool, ~22% of pieces become void.
+  const _seVoidMult = typeof getSeasonalVoidBlockMult === 'function'
+    ? getSeasonalVoidBlockMult() : 1;
+  if (_seVoidMult > 1) {
+    const pool = [];
+    const stdSize = diamondEligible ? 8 : 7;
+    for (let i = 1; i <= stdSize; i++) pool.push(i);
+    for (let v = 0; v < _seVoidMult; v++) pool.push(11); // void block index
+    return pool[Math.floor(_rng() * pool.length)];
+  }
+
   // Standard pool is indices 1–7; diamond adds index 8.
   const poolSize = diamondEligible ? 8 : 7;
   return Math.floor(_rng() * poolSize) + 1;
@@ -649,6 +661,18 @@ function updateFallingPieces(delta) {
       block.quaternion.copy(block.userData.tempQuat);
       block.name = "landed_block";
       registerBlock(block);
+      // Underground grid: register blocks that land below surface (Y < 0.5)
+      if (block.userData.gridPos && block.userData.gridPos.y < 0.5 &&
+          typeof onBlockPlaced === 'function' && typeof ugWorldToIndex === 'function') {
+        const _ugIdx = ugWorldToIndex(
+          block.userData.gridPos.x,
+          block.userData.gridPos.y,
+          block.userData.gridPos.z
+        );
+        if (typeof ugInBounds === 'function' && ugInBounds(_ugIdx.xi, _ugIdx.zi, _ugIdx.yi)) {
+          onBlockPlaced(_ugIdx.xi, _ugIdx.zi, _ugIdx.yi, block.userData.materialType, block);
+        }
+      }
       newBlocks.push(block);
     }
     removePieceShadow(pieceToLand);
