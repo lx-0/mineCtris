@@ -288,53 +288,6 @@
                   <div id="survival-world-card" class="survival-world-card"></div>
                   <button id="survival-reset-btn" class="survival-reset-btn" style="display:none;">&#128465; Reset World</button>
                 </div>
-                <div class="mode-card mode-card-depths" id="mode-card-depths" data-mode="depths">
-                  <div class="mode-card-icon">&#9760;</div>
-                  <div class="mode-card-name">The Depths</div>
-                  <div class="mode-card-desc">Descend into danger. Roguelike runs, tiered dungeons, and endless depths.</div>
-                  <div class="mode-card-pb" id="mode-pb-depths"></div>
-                  <button class="mode-card-lb-btn" data-lb-tab="depths" title="Leaderboard">&#127942;</button>
-                  <button class="mode-card-vault-btn" id="depths-vault-btn" title="Loot Vault">&#128225;</button>
-                  <!-- Variant selector overlay -->
-                  <div class="depths-variant-selector" id="depths-variant-selector" style="display:none;">
-                    <div class="depths-variant-title">CHOOSE VARIANT</div>
-                    <button class="depths-variant-btn" id="depths-variant-free">
-                      <span class="depths-variant-btn-icon">&#127922;</span>
-                      <span class="depths-variant-btn-name">Free Run</span>
-                      <span class="depths-variant-btn-desc">Random seed, play anytime</span>
-                      <span class="depths-variant-btn-pb" id="depths-variant-free-pb"></span>
-                    </button>
-                    <button class="depths-variant-btn depths-variant-btn-daily" id="depths-variant-daily">
-                      <span class="depths-variant-btn-icon">&#128197;</span>
-                      <span class="depths-variant-btn-name">Daily Seed</span>
-                      <span class="depths-variant-btn-desc">Shared seed, one attempt per day</span>
-                      <span class="depths-variant-btn-pb" id="depths-variant-daily-pb"></span>
-                    </button>
-                    <div class="depths-variant-divider"></div>
-                    <button class="dungeon-tier-btn" id="dungeon-tier-shallow" data-dungeon="shallow_mines">
-                      <span class="dungeon-tier-icon" style="color:#6ee7b7;">&#9878;</span>
-                      <span class="dungeon-tier-name">Shallow Mines</span>
-                      <span class="dungeon-tier-info">3 floors &middot; Easy</span>
-                    </button>
-                    <button class="dungeon-tier-btn" id="dungeon-tier-deep" data-dungeon="deep_caverns">
-                      <span class="dungeon-tier-icon" style="color:#fbbf24;">&#9878;</span>
-                      <span class="dungeon-tier-name">Deep Caverns</span>
-                      <span class="dungeon-tier-info">4 floors &middot; Hard</span>
-                    </button>
-                    <button class="dungeon-tier-btn" id="dungeon-tier-abyssal" data-dungeon="abyssal_rift">
-                      <span class="dungeon-tier-icon" style="color:#ef4444;">&#9878;</span>
-                      <span class="dungeon-tier-name">Abyssal Rift</span>
-                      <span class="dungeon-tier-info">4 floors &middot; Extreme</span>
-                    </button>
-                    <button class="dungeon-tier-btn dungeon-tier-btn-infinite" id="dungeon-tier-infinite" data-dungeon="infinite">
-                      <span class="dungeon-tier-icon" style="color:#a855f7;">&#8734;</span>
-                      <span class="dungeon-tier-name">Infinite Depths</span>
-                      <span class="dungeon-tier-info">7 floors &middot; Endless &middot; Wither Storm</span>
-                      <span class="dungeon-infinite-lock" id="dungeon-infinite-lock-msg" style="display:none;">&#128274; Defeat The Wither Storm first</span>
-                    </button>
-                    <button class="depths-variant-back" id="depths-variant-back">&#8592; Back</button>
-                  </div>
-                </div>
                 <div class="mode-card mode-card-expedition" id="mode-card-expedition" data-mode="expedition">
                   <div class="mode-card-icon">&#127758;</div>
                   <div class="mode-card-name">Expeditions</div>
@@ -376,15 +329,6 @@
         </div>
       </div>
 
-      <!-- Depths discovery nudge prompt (shown after 3 games if Depths never tried) -->
-      <div id="depths-discovery-prompt" style="display:none;">
-        <div class="ddp-header">&#9935; Ready to go deeper?</div>
-        <div class="ddp-body">The Depths awaits &mdash; roguelike dungeon runs with<br>tiered challenges and rare loot.<br>Try it from the Adventure section!</div>
-        <div class="ddp-actions">
-          <button class="ddp-btn-show" id="ddp-show-me">&#128270; Show me</button>
-          <button class="ddp-btn-later" id="ddp-maybe-later">Maybe later</button>
-        </div>
-      </div>
 
       <div id="renderer-container"></div>
       <div id="crosshair"></div>
@@ -426,13 +370,8 @@
       <div id="survival-badge" style="display:none;">&#129430; Survival</div>
 
       <!-- Tutorial prompt: shown on first-ever Survival session (hidden by default) -->
-      <div id="survival-tutorial-prompt" style="display:none;position:fixed;top:30%;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.65);color:#fff;font-size:18px;padding:14px 28px;border-radius:8px;pointer-events:none;z-index:900;opacity:0;transition:opacity 0.5s ease;white-space:nowrap;">Mine the ground to explore the depths below</div>
+      <div id="survival-tutorial-prompt" style="display:none;position:fixed;top:30%;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.65);color:#fff;font-size:18px;padding:14px 28px;border-radius:8px;pointer-events:none;z-index:900;opacity:0;transition:opacity 0.5s ease;white-space:nowrap;">Mine blocks to survive and build your world</div>
 
-      <!-- Underground HUD (Survival mode only — shown while player Y < 0) -->
-      <div id="underground-hud" style="display:none;">
-        <span id="underground-label">&#127755; Underground</span>
-        <span id="underground-return-hint">Press <kbd>R</kbd> to return to surface</span>
-      </div>
 
       <!-- Co-op mode badge (shown during co-op runs) + difficulty label -->
       <div id="coop-mode-badge" style="display:none;">&#9760; CO-OP<span id="coop-difficulty-label"></span></div>
@@ -749,10 +688,6 @@
         <div id="missions-panel">
           <div id="missions-title">DAILY MISSIONS</div>
           <div id="missions-panel-body"></div>
-          <div id="depths-missions-section" style="display:none;">
-            <div id="depths-missions-title">DUNGEON MISSIONS</div>
-            <div id="depths-missions-body"></div>
-          </div>
           <button id="missions-close-btn">Close</button>
         </div>
       </div>
@@ -1051,15 +986,6 @@
       <!-- Post-tutorial coach mark toasts (first 3 games) -->
       <div id="coach-mark-toast" style="display:none;"></div>
 
-      <!-- Depths dungeon tutorial tooltip (first dungeon run) -->
-      <div id="depths-tutorial-tooltip" style="display:none;">
-        <div class="dtt-text"></div>
-        <div class="dtt-subtext"></div>
-        <div class="dtt-footer">
-          <span class="dtt-step-count"></span>
-          <button id="depths-tutorial-skip">SKIP TUTORIAL</button>
-        </div>
-      </div>
 
       <!-- Context-sensitive crafting hint toast -->
       <div id="craft-hint-toast">Tip: Press C to craft with your materials!</div>
@@ -1095,7 +1021,6 @@
             <button id="lb-tab-coop" class="lb-tab">&#9760; Co-op</button>
             <button id="lb-tab-dailycoop" class="lb-tab">&#9760; Daily Co-op</button>
             <button id="lb-tab-battle" class="lb-tab">&#9876; Battle</button>
-            <button id="lb-tab-depths" class="lb-tab">&#9876; Depths</button>
             <button id="lb-tab-mastery" class="lb-tab">&#11088; Mastery</button>
           </div>
           <div id="lb-panel-body"></div>
@@ -1271,89 +1196,6 @@
         </div>
       </div>
 
-      <!-- Depths mode badge (in-game) -->
-      <div id="depths-mode-badge" class="mode-badge" style="display:none;">THE DEPTHS</div>
-      <div id="daily-depths-badge" class="mode-badge" style="display:none;"></div>
-
-      <!-- Depths floor HUD — shows current floor, biome, modifiers, goal, timer -->
-      <div id="depths-floor-hud" style="display:none;">
-        <span class="depths-floor-num"></span>
-        <span class="depths-biome"></span>
-        <span class="depths-modifiers"></span>
-        <span class="depths-goal"></span>
-        <span class="depths-timer"></span>
-      </div>
-
-      <!-- Boss floor: active piece indicator + cycle hint -->
-      <div id="boss-piece-hud" style="display:none;">
-        <span class="boss-piece-label">PIECE STORM</span>
-        <span class="boss-piece-active">Piece 1/3</span>
-        <span class="boss-piece-hint">Tab = cycle</span>
-      </div>
-
-      <!-- Depths floor lore overlay — shown between floors -->
-      <div id="depths-floor-lore-overlay" style="display:none;" role="dialog" aria-label="Floor Transition">
-        <div class="depths-lore-panel">
-          <div class="depths-lore-title"></div>
-          <div class="depths-lore-biome"></div>
-          <div class="depths-lore-body"></div>
-        </div>
-      </div>
-
-      <!-- Depths results overlay — shown on run end (permadeath or victory) -->
-      <div id="depths-results-overlay" style="display:none;" role="dialog" aria-label="Depths Results">
-        <div class="depths-results-panel">
-          <div class="depths-results-title"></div>
-          <div class="depths-results-stats"></div>
-          <div class="depths-results-map"></div>
-          <div class="depths-results-upgrades"></div>
-          <div class="depths-results-actions">
-            <button class="depths-results-retry">&#9654; Try Again <span class="key-hint">[Enter]</span></button>
-            <button class="depths-results-leaderboard">&#127942; Leaderboard <span class="key-hint">[L]</span></button>
-            <button class="depths-results-lobby">&#8592; Return to Lobby <span class="key-hint">[Esc]</span></button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Depths Dungeon Leaderboard overlay -->
-      <div id="depths-lb-overlay" style="display:none;" role="dialog" aria-label="Depths Leaderboard">
-        <div id="depths-lb-panel">
-          <div id="depths-lb-header">
-            <span id="depths-lb-title">&#9876; THE DEPTHS — LEADERBOARD</span>
-            <button id="depths-lb-refresh-btn" title="Refresh">&#8635;</button>
-          </div>
-          <div id="depths-lb-tabs">
-            <button id="depths-lb-tab-allruns" class="depths-lb-tab depths-lb-tab-active">All Runs</button>
-            <button id="depths-lb-tab-daily" class="depths-lb-tab">Daily Seed</button>
-          </div>
-          <div id="depths-lb-body"></div>
-          <button id="depths-lb-close-btn">Close</button>
-        </div>
-      </div>
-
-      <!-- Depths Vault overlay — loot collection screen -->
-      <div id="depths-vault-overlay" style="display:none;" role="dialog" aria-label="Depths Vault">
-        <div id="depths-vault-panel">
-          <div id="depths-vault-header">
-            <span id="depths-vault-icon">&#128225;</span>
-            <div id="depths-vault-title">LOOT VAULT</div>
-            <div id="depths-vault-subtitle">Collection &amp; Completion Tracker</div>
-          </div>
-          <div id="depths-vault-body"></div>
-          <button id="depths-vault-close-btn">&#8592; Close</button>
-        </div>
-      </div>
-
-      <!-- Daily Depths history overlay -->
-      <div id="daily-depths-history-overlay" style="display:none;" role="dialog" aria-label="Daily Depths History">
-        <div class="daily-depths-history-panel">
-          <div class="daily-depths-history-header">
-            <span class="daily-depths-history-title">&#128197; SEED HISTORY</span>
-            <button class="daily-depths-history-close" aria-label="Close">&#10005;</button>
-          </div>
-          <div class="daily-depths-history-list"></div>
-        </div>
-      </div>
 
       <!-- Biome Weekly Leaderboard overlay -->
       <div id="biome-lb-overlay" style="display:none;" role="dialog" aria-label="Biome Weekly Leaderboard">
@@ -1881,9 +1723,6 @@
     <script src="js/season-missions.js"></script>
     <script src="js/savestate.js"></script>
     <script src="js/survival.js"></script>
-    <script src="js/underground.js"></script>
-    <script src="js/dungeon-rooms.js"></script>
-    <script src="js/dungeon-challenge.js"></script>
     <script src="js/shareland.js"></script>
     <script src="js/events.js"></script>
     <script src="js/puzzle-codec.js"></script>
@@ -1919,29 +1758,7 @@
     <script src="js/expedition-codex.js"></script>
     <script src="js/expedition-session.js"></script>
     <script src="js/expedition-leaderboard.js"></script>
-    <script src="js/depths-leaderboard.js"></script>
-    <script src="js/depths-upgrades.js"></script>
-    <script src="js/depths-config.js"></script>
-    <script src="js/depths-state.js"></script>
-    <script src="js/depths-tutorial.js"></script>
-    <script src="js/depths-rewards.js"></script>
     <script src="js/loot-tables.js"></script>
-    <script src="js/depths-loot-config.js"></script>
-    <script src="js/depths-loot.js"></script>
-    <script src="js/depths-vault-data.js"></script>
-    <script src="js/depths-vault-ui.js"></script>
-    <script src="js/depths-transition.js"></script>
-    <script src="js/depths-floor-gen.js"></script>
-    <script src="js/depths-boss-config.js"></script>
-    <script src="js/depths-boss.js"></script>
-    <script src="js/depths-boss-creep.js"></script>
-    <script src="js/depths-boss-furnace.js"></script>
-    <script src="js/depths-boss-wither.js"></script>
-    <script src="js/depths-hud.js"></script>
-    <script src="js/depths-session.js"></script>
-    <script src="js/infinite-depths.js"></script>
-    <script src="js/depths-missions.js"></script>
-    <script src="js/daily-depths.js"></script>
     <script src="js/main.js"></script>
     <script src="js/community-goals.js"></script>
     <script>

@@ -122,16 +122,10 @@ function returnToSurvival() {
   isSurvivalMode = true;
   if (typeof hasSurvivalWorld === 'function' && hasSurvivalWorld()) {
     if (typeof restoreSurvivalWorld === 'function') restoreSurvivalWorld();
-    if (typeof restoreUnderground === 'function') restoreUnderground();
-    // Re-apply emissive crack markers to any surviving surface blocks above dungeon rooms
-    if (typeof applyDungeonCrackMarkers === 'function') applyDungeonCrackMarkers();
     survivalSessionNumber++;
   } else {
     survivalSessionNumber = 1;
     if (typeof initWorldStats === 'function') initWorldStats();
-    // Initialise underground first so shaft/room positions are known before surface spawn
-    if (typeof initUnderground === 'function') initUnderground(Date.now());
-    // Spawn 20×20 mineable surface grid (skips shaft holes, marks crack blocks above rooms)
     if (typeof spawnMineableSurfaceGrid === 'function') spawnMineableSurfaceGrid();
   }
 
