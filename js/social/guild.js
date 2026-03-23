@@ -282,8 +282,12 @@ async function awardGuildXP(source, xpAmount) {
   const baseXP = xpAmount != null ? xpAmount : (GUILD_XP_SOURCES[source] || 0);
   if (baseXP <= 0) return;
 
+  // Apply small guild bonus before the daily cap
+  const memberCount = (_myGuild && _myGuild.members) ? _myGuild.members.length : 0;
+  const adjustedXP = Math.round(baseXP * getSmallGuildMultiplier(memberCount));
+
   // Enforce per-member daily cap
-  const actual = _consumeGuildDailyXP(baseXP);
+  const actual = _consumeGuildDailyXP(adjustedXP);
   if (actual <= 0) return;
 
   // Track for weekly challenges
