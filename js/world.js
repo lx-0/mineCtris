@@ -157,6 +157,17 @@ function createBlockMesh(color) {
       cube.material.needsUpdate = true;
       cube.userData.defaultEmissive = magmaEmissive.clone();
     }
+    // Dungeon entrance: warm amber emissive glow
+    if (BLOCK_TYPES[materialName].effect === "dungeon_entrance_glow" && !colorblindMode) {
+      const entranceEmissive = new THREE.Color(0x1a0800);
+      cube.material.emissive = entranceEmissive;
+      cube.material.needsUpdate = true;
+      cube.userData.defaultEmissive = entranceEmissive.clone();
+    }
+    // Dungeon wall / bedrock: tag as indestructible
+    if (BLOCK_TYPES[materialName].isBedrock) {
+      cube.userData.isBedrock = true;
+    }
     // Void hazard: deep purple emissive shimmer
     if (materialName === "void_block" && !colorblindMode) {
       const voidEmissive = new THREE.Color(0x150025);

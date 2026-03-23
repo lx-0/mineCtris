@@ -3629,6 +3629,7 @@ function init() {
       survivalResetYes.addEventListener("click", function () {
         if (typeof clearSurvivalWorld === "function") clearSurvivalWorld();
         if (typeof clearUndergroundSave === "function") clearUndergroundSave();
+        if (typeof clearDungeonRoomsSave === "function") clearDungeonRoomsSave();
         if (typeof resetWorldStats === "function") resetWorldStats();
         survivalResetConfirm.style.display = "none";
         if (typeof renderWorldCard === "function") renderWorldCard();

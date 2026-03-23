@@ -80,6 +80,9 @@ const BLOCK_TYPES = {
   soft_moss:    { hits: 1, points: 5,  effect: null, isHazard: true, hazardType: "soft_moss" },
   hardened_moss: { hits: Infinity, points: 0, effect: null, isHazard: true, hazardType: "hardened_moss" },
   vine:         { hits: 2, points: 5,  effect: null, isHazard: true, hazardType: "vine" },
+  bedrock:      { hits: Infinity, points: 0, effect: null, isBedrock: true },
+  dungeon_wall:     { hits: Infinity, points: 0, effect: null, isBedrock: true },
+  dungeon_entrance: { hits: 3,        points: 0, effect: 'dungeon_entrance_glow' },
 };
 
 // Crafted plank block color (light tan, distinct from all spawned palette colors).
@@ -111,7 +114,14 @@ const COLOR_TO_MATERIAL = {
   0x32cd32: "soft_moss",
   0x556b2f: "hardened_moss",
   0x228b22: "vine",
+  0x404040: "bedrock",
+  0x4a4a5e: "dungeon_wall",
+  0x7a4028: "dungeon_entrance",
 };
+
+// Dungeon block colors.
+const DUNGEON_WALL_COLOR     = 0x4a4a5e;  // blue-grey stone brick — non-mineable room perimeter
+const DUNGEON_ENTRANCE_COLOR = 0x7a4028;  // warm brick-red — mineable entrance (3 hits, glowing)
 
 // Rubble block color — slate grey, used for battle-mode garbage rows.
 const RUBBLE_COLOR = 0x6b6b6b;
