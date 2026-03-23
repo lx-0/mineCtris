@@ -261,6 +261,32 @@ function renderWorldCard() {
 }
 
 /**
+ * Spawn a 20×20 grid of mineable dirt surface blocks centered at (0, 0) at Y=0.5
+ * (block center; top face at Y=1). Call only when starting a brand-new Survival
+ * world — restoring a saved world already includes whatever blocks survived mining.
+ *
+ * Blocks are registered as standard "landed_block" entries so they are:
+ *   - Mineable by the existing raycaster (2 hits as dirt)
+ *   - Saved by saveSurvivalWorld() automatically
+ *   - Landed-on by falling Tetris pieces
+ *   - Walkable by the player
+ */
+function spawnMineableSurfaceGrid() {
+  const GRID_SIZE = 20;
+  for (let row = 0; row < GRID_SIZE; row++) {
+    for (let col = 0; col < GRID_SIZE; col++) {
+      const x = col - 9.5;  // 20 half-integer values: -9.5 → 9.5
+      const z = row - 9.5;
+      const block = createBlockMesh(0x8b4513);  // dirt: 2 hits, brown
+      block.position.set(x, 0.5, z);
+      block.name = 'landed_block';
+      worldGroup.add(block);
+      registerBlock(block);
+    }
+  }
+}
+
+/**
  * Record end-of-run survival stats. Call on game-over before clearing the world.
  * Updates lifetime stats and resets world stats.
  * @param {number} finalScore

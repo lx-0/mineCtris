@@ -210,6 +210,8 @@ function returnToSurvival() {
   } else {
     survivalSessionNumber = 1;
     if (typeof initWorldStats === 'function') initWorldStats();
+    // Spawn 20×20 mineable surface grid for new worlds
+    if (typeof spawnMineableSurfaceGrid === 'function') spawnMineableSurfaceGrid();
   }
 
   // Re-place the cave mouth (resetGame doesn't remove cave_mouth blocks but
@@ -998,6 +1000,8 @@ function init() {
         } else {
           survivalSessionNumber = 1;
           if (typeof initWorldStats === "function") initWorldStats();
+          // Spawn 20×20 mineable surface grid for new worlds
+          if (typeof spawnMineableSurfaceGrid === "function") spawnMineableSurfaceGrid();
         }
         // Place the cave mouth dungeon entrance in the world
         spawnCaveMouth();
