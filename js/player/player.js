@@ -58,9 +58,9 @@ function checkPlayerCollision(deltaY) {
 var _cKeyHoldTimeout = null;
 
 function onKeyDown(event) {
-  // When crafting panel is open the pointer is unlocked; still allow C/Escape to close it
+  // When crafting panel is open the pointer is unlocked; still allow craft key/Escape to close it
   if (craftingPanelOpen) {
-    if (event.code === "KeyC" || event.code === "Escape") {
+    if (_resolveKeyCode(event.code) === "KeyC" || event.code === "Escape") {
       closeCraftingPanel();
     }
     return;
@@ -78,7 +78,10 @@ function onKeyDown(event) {
     return;
   }
   if (!controls || !controls.isLocked || isGameOver) return;
-  switch (event.code) {
+  // Translate the physical key code to its canonical default so existing
+  // switch/case logic works unchanged after a rebind.
+  const _keyCode = _resolveKeyCode(event.code);
+  switch (_keyCode) {
     case "KeyW":
       moveForward = true;
       break;
@@ -188,7 +191,8 @@ function onKeyDown(event) {
 }
 
 function onKeyUp(event) {
-  switch (event.code) {
+  const _keyCode = _resolveKeyCode(event.code);
+  switch (_keyCode) {
     case "KeyC":
       // Co-op: if hold timer is still pending it was a quick tap → open crafting
       if (isCoopMode && _cKeyHoldTimeout) {

@@ -249,6 +249,177 @@ function _syncThemeButtons() {
   });
 }
 
+// ── Controls / keybindings tab ────────────────────────────────────────────────
+
+/** Converts a KeyboardEvent.code to a short display label. */
+function _kbDisplayCode(code) {
+  const MAP = {
+    KeyA:"A", KeyB:"B", KeyC:"C", KeyD:"D", KeyE:"E", KeyF:"F", KeyG:"G",
+    KeyH:"H", KeyI:"I", KeyJ:"J", KeyK:"K", KeyL:"L", KeyM:"M", KeyN:"N",
+    KeyO:"O", KeyP:"P", KeyQ:"Q", KeyR:"R", KeyS:"S", KeyT:"T", KeyU:"U",
+    KeyV:"V", KeyW:"W", KeyX:"X", KeyY:"Y", KeyZ:"Z",
+    Space:"Space", Enter:"Enter", Backspace:"Bksp", Tab:"Tab", Escape:"Esc",
+    ArrowUp:"\u2191", ArrowDown:"\u2193", ArrowLeft:"\u2190", ArrowRight:"\u2192",
+    ShiftLeft:"L.Shift", ShiftRight:"R.Shift",
+    ControlLeft:"L.Ctrl", ControlRight:"R.Ctrl",
+    AltLeft:"L.Alt", AltRight:"R.Alt",
+    Numpad0:"Num0", Numpad1:"Num1", Numpad2:"Num2", Numpad3:"Num3",
+    Numpad4:"Num4", Numpad5:"Num5", Numpad6:"Num6", Numpad7:"Num7",
+    Numpad8:"Num8", Numpad9:"Num9", NumpadEnter:"Num\u23CE",
+    Digit0:"0", Digit1:"1", Digit2:"2", Digit3:"3", Digit4:"4",
+    Digit5:"5", Digit6:"6", Digit7:"7", Digit8:"8", Digit9:"9",
+  };
+  return MAP[code] || code;
+}
+
+// Keys that should never be accepted as bindings (reserved / system).
+const _KB_FORBIDDEN = new Set([
+  "Escape", "F1","F2","F3","F4","F5","F6","F7","F8","F9","F10","F11","F12",
+  "PrintScreen", "ScrollLock", "Pause", "NumLock", "CapsLock",
+]);
+
+let _kbListeningAction = null; // action currently awaiting a key press
+let _kbListeningBtn   = null; // the button element being overridden
+
+/** Build / rebuild the keybind table rows. */
+function _buildKeybindTable() {
+  const table = document.getElementById("keybind-table");
+  if (!table) return;
+  table.innerHTML = "";
+  const bindings = getAllBindings();
+  for (const action of Object.keys(KB_ACTION_LABELS)) {
+    const label = KB_ACTION_LABELS[action];
+    const code  = bindings[action] || KB_DEFAULTS[action];
+
+    const row = document.createElement("div");
+    row.className = "keybind-row";
+    row.dataset.action = action;
+
+    const lbl = document.createElement("span");
+    lbl.className = "keybind-action-label";
+    lbl.textContent = label;
+
+    const btn = document.createElement("button");
+    btn.className = "keybind-key-badge keybind-key-btn";
+    btn.textContent = _kbDisplayCode(code);
+    btn.dataset.action = action;
+    btn.addEventListener("click", _onKeybindBtnClick);
+
+    row.appendChild(lbl);
+    row.appendChild(btn);
+    table.appendChild(row);
+  }
+}
+
+/** Sync all badge labels to current bindings without rebuilding the DOM. */
+function _syncKeybindTable() {
+  const bindings = getAllBindings();
+  const table = document.getElementById("keybind-table");
+  if (!table) return;
+  for (const btn of table.querySelectorAll(".keybind-key-btn")) {
+    const action = btn.dataset.action;
+    if (action) btn.textContent = _kbDisplayCode(bindings[action] || KB_DEFAULTS[action]);
+  }
+}
+
+function _onKeybindBtnClick(e) {
+  const btn    = e.currentTarget;
+  const action = btn.dataset.action;
+  if (_kbListeningAction) {
+    // Cancel previous listening state.
+    if (_kbListeningBtn) {
+      _kbListeningBtn.textContent = _kbDisplayCode(getKeyBinding(_kbListeningBtn.dataset.action));
+      _kbListeningBtn.classList.remove("keybind-key-btn-listening");
+    }
+  }
+  _kbListeningAction = action;
+  _kbListeningBtn    = btn;
+  btn.textContent = "Press key\u2026";
+  btn.classList.add("keybind-key-btn-listening");
+  document.getElementById("keybind-conflict-msg").textContent = "";
+}
+
+function _onKeybindCapture(e) {
+  if (!_kbListeningAction) return;
+  e.preventDefault();
+  e.stopPropagation();
+  const code = e.code;
+  if (_KB_FORBIDDEN.has(code)) {
+    // Reject forbidden keys.
+    const msg = document.getElementById("keybind-conflict-msg");
+    if (msg) { msg.textContent = "\u26A0 That key is reserved."; msg.style.color = "#f55"; }
+    _kbListeningBtn.textContent = _kbDisplayCode(getKeyBinding(_kbListeningAction));
+    _kbListeningBtn.classList.remove("keybind-key-btn-listening");
+    _kbListeningAction = null;
+    _kbListeningBtn    = null;
+    return;
+  }
+  const displaced = setKeyBinding(_kbListeningAction, code);
+  const msg = document.getElementById("keybind-conflict-msg");
+  if (msg) {
+    if (displaced) {
+      msg.style.color = "#ff0";
+      msg.textContent = "\u21C4 Swapped with \u201C" + KB_ACTION_LABELS[displaced] + "\u201D";
+    } else {
+      msg.textContent = "";
+    }
+  }
+  _kbListeningBtn.classList.remove("keybind-key-btn-listening");
+  _kbListeningAction = null;
+  _kbListeningBtn    = null;
+  _syncKeybindTable();
+}
+
+function _initControlsTab() {
+  // Tab switching.
+  const tabGeneral  = document.getElementById("settings-tab-general");
+  const tabControls = document.getElementById("settings-tab-controls");
+  const paneGeneral  = document.getElementById("settings-pane-general");
+  const paneControls = document.getElementById("settings-pane-controls");
+
+  function _showTab(tab) {
+    const isControls = (tab === "controls");
+    if (tabGeneral)  tabGeneral.classList.toggle("settings-tab-active",  !isControls);
+    if (tabControls) tabControls.classList.toggle("settings-tab-active", isControls);
+    if (paneGeneral)  paneGeneral.style.display  = isControls ? "none" : "";
+    if (paneControls) paneControls.style.display = isControls ? ""     : "none";
+  }
+
+  if (tabGeneral)  tabGeneral.addEventListener("click",  function() { _showTab("general"); });
+  if (tabControls) tabControls.addEventListener("click", function() { _showTab("controls"); });
+
+  // Build table once.
+  _buildKeybindTable();
+
+  // Preset buttons.
+  const presets = [
+    { id: "kb-preset-default",    name: "default"     },
+    { id: "kb-preset-arrows",     name: "arrows"      },
+    { id: "kb-preset-lefthanded", name: "leftHanded"  },
+  ];
+  for (const p of presets) {
+    const btn = document.getElementById(p.id);
+    if (btn) btn.addEventListener("click", function() {
+      applyKeyPreset(p.name);
+      _syncKeybindTable();
+      const msg = document.getElementById("keybind-conflict-msg");
+      if (msg) msg.textContent = "";
+    });
+  }
+
+  // Reset button.
+  const resetBtn = document.getElementById("keybind-reset-btn");
+  if (resetBtn) resetBtn.addEventListener("click", function() {
+    resetKeyBindings();
+    _syncKeybindTable();
+    const msg = document.getElementById("keybind-conflict-msg");
+    if (msg) msg.textContent = "";
+  });
+
+  // Global key capture listener (only active when listening for a rebind).
+  document.addEventListener("keydown", _onKeybindCapture, true);
+}
+
 /** Called once during init() — loads persisted settings and wires sliders. */
 function initSettings() {
   _loadAudioSettings();
@@ -377,6 +548,8 @@ function initSettings() {
       if (isThemeUnlocked(key)) applyTheme(key);
     });
   });
+
+  _initControlsTab();
 }
 
 function _syncDisplayNameField() {
@@ -394,12 +567,31 @@ function openSettings(onClose) {
   if (samToggleSync) samToggleSync.checked = (typeof isShowAllModesEnabled === "function") && isShowAllModesEnabled();
   _syncThemeButtons();
   _syncDisplayNameField();
+  _syncKeybindTable();
+  // Always start on the General tab.
+  const paneGeneral  = document.getElementById("settings-pane-general");
+  const paneControls = document.getElementById("settings-pane-controls");
+  const tabGeneral   = document.getElementById("settings-tab-general");
+  const tabControls  = document.getElementById("settings-tab-controls");
+  if (paneGeneral)  paneGeneral.style.display  = "";
+  if (paneControls) paneControls.style.display = "none";
+  if (tabGeneral)   tabGeneral.classList.add("settings-tab-active");
+  if (tabControls)  tabControls.classList.remove("settings-tab-active");
   const overlay = document.getElementById("settings-overlay");
   if (overlay) overlay.style.display = "flex";
 }
 
 /** Hide the settings overlay and invoke the close callback if any. */
 function closeSettings() {
+  // Cancel any pending keybind capture.
+  if (_kbListeningAction) {
+    if (_kbListeningBtn) {
+      _kbListeningBtn.textContent = _kbDisplayCode(getKeyBinding(_kbListeningBtn.dataset.action));
+      _kbListeningBtn.classList.remove("keybind-key-btn-listening");
+    }
+    _kbListeningAction = null;
+    _kbListeningBtn    = null;
+  }
   const overlay = document.getElementById("settings-overlay");
   if (overlay) overlay.style.display = "none";
   if (_settingsCloseCallback) {

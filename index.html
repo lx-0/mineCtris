@@ -748,6 +748,13 @@
       <div id="settings-overlay">
         <div id="settings-panel">
           <div id="settings-title">SETTINGS</div>
+          <!-- Tab navigation -->
+          <div id="settings-tabs">
+            <button id="settings-tab-general" class="settings-tab settings-tab-active">General</button>
+            <button id="settings-tab-controls" class="settings-tab">Controls</button>
+          </div>
+          <!-- Pane: General -->
+          <div id="settings-pane-general">
           <div class="settings-row">
             <label class="settings-label">Master</label>
             <input type="range" id="vol-master" class="vol-slider" min="0" max="100" value="80">
@@ -835,6 +842,30 @@
           <div class="settings-section-divider"></div>
           <button id="settings-metrics-btn" class="settings-link-btn">&#128202; Player Metrics</button>
           <button id="settings-replay-tutorial-btn" class="settings-link-btn">&#127891; Replay Tutorial</button>
+          </div><!-- end #settings-pane-general -->
+
+          <!-- Pane: Controls (keybindings) -->
+          <div id="settings-pane-controls" style="display:none">
+            <div class="settings-label settings-label-section">Presets</div>
+            <div id="keybind-presets">
+              <button id="kb-preset-default" class="kb-preset-btn">Default</button>
+              <button id="kb-preset-arrows" class="kb-preset-btn">Arrow Keys</button>
+              <button id="kb-preset-lefthanded" class="kb-preset-btn">Left-handed</button>
+            </div>
+            <div class="settings-section-divider"></div>
+            <div id="keybind-table">
+              <!-- rows injected by settings.js -->
+            </div>
+            <div id="keybind-conflict-msg" class="keybind-conflict-msg"></div>
+            <div class="settings-section-divider"></div>
+            <button id="keybind-reset-btn" class="settings-link-btn">&#8635; Reset to Defaults</button>
+            <div class="settings-label settings-label-section" style="margin-top:8px">Display Only</div>
+            <div class="keybind-display-row"><span class="keybind-action-label">Mine / Interact</span><span class="keybind-key-badge">Left Click</span></div>
+            <div class="keybind-display-row"><span class="keybind-action-label">Place Block</span><span class="keybind-key-badge">Right Click</span></div>
+            <div class="keybind-display-row"><span class="keybind-action-label">Camera Look</span><span class="keybind-key-badge">Mouse Move</span></div>
+            <div class="keybind-display-row"><span class="keybind-action-label">Select Block</span><span class="keybind-key-badge">1–9 / Scroll</span></div>
+          </div><!-- end #settings-pane-controls -->
+
           <button id="settings-close-btn">Close</button>
         </div>
       </div>
@@ -1698,6 +1729,7 @@
     <script src="js/rendering/trails.js"></script>
     <script src="js/world/mining.js"></script>
     <script src="js/world/hazard-blocks.js"></script>
+    <script src="js/player/keybindings.js"></script>
     <script src="js/player/player.js"></script>
     <script src="js/rendering/sky.js"></script>
     <script src="js/rendering/postprocessing.js"></script>

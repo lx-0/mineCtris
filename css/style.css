@@ -14102,6 +14102,133 @@ body.biome-ice #inventory-hud { border-color: #4499dd; }
 }
 .settings-link-btn:hover { background: #0a01; }
 
+/* ── Settings tab navigation ── */
+#settings-tabs {
+  display: flex;
+  gap: 0;
+  width: 100%;
+  border-bottom: 2px solid #333;
+  margin-bottom: 4px;
+}
+.settings-tab {
+  font-family: "Press Start 2P", cursive;
+  font-size: 8px;
+  padding: 8px 16px;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: #555;
+  cursor: pointer;
+  margin-bottom: -2px;
+  transition: color 0.15s;
+}
+.settings-tab:hover { color: #0f0; }
+.settings-tab-active {
+  color: #0f0;
+  border-bottom-color: #0f0;
+}
+
+/* ── Controls tab panes ── */
+#settings-pane-general,
+#settings-pane-controls {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+/* ── Keybind table rows ── */
+#keybind-table {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.keybind-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+}
+.keybind-action-label {
+  font-family: "Press Start 2P", cursive;
+  font-size: 7px;
+  color: #ccc;
+  flex: 1;
+}
+.keybind-key-badge {
+  font-family: "Press Start 2P", cursive;
+  font-size: 7px;
+  color: #0f0;
+  background: #1a1a1a;
+  border: 1px solid #0f0;
+  border-radius: 3px;
+  padding: 4px 8px;
+  min-width: 52px;
+  text-align: center;
+  white-space: nowrap;
+}
+.keybind-key-btn {
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+}
+.keybind-key-btn:hover {
+  background: #0f01;
+  color: #fff;
+}
+.keybind-key-btn-listening {
+  background: #330;
+  color: #ff0;
+  border-color: #ff0;
+  animation: kb-pulse 0.6s ease-in-out infinite alternate;
+}
+@keyframes kb-pulse {
+  from { box-shadow: 0 0 0 0 rgba(255,255,0,0.3); }
+  to   { box-shadow: 0 0 0 4px rgba(255,255,0,0); }
+}
+.keybind-conflict-msg {
+  font-family: "Press Start 2P", cursive;
+  font-size: 7px;
+  min-height: 14px;
+  text-align: center;
+  width: 100%;
+}
+
+/* ── Preset buttons ── */
+#keybind-presets {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+  justify-content: center;
+}
+.kb-preset-btn {
+  font-family: "Press Start 2P", cursive;
+  font-size: 7px;
+  padding: 6px 10px;
+  background: transparent;
+  border: 1px solid #555;
+  color: #aaa;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: border-color 0.12s, color 0.12s;
+}
+.kb-preset-btn:hover {
+  border-color: #0f0;
+  color: #0f0;
+}
+
+/* ── Display-only rows in controls tab ── */
+.keybind-display-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  opacity: 0.55;
+}
+
 /* Expedition card — earthy/explorer accent */
 .mode-card-expedition {
   border-color: rgba(139, 195, 74, 0.5);
