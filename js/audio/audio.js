@@ -23,7 +23,6 @@ let crumbleCrackleSynth = null;
 let magmaSizzleSynth    = null;
 let _magmaSizzleGain    = null;
 let voidHumSynth        = null;
-let entropySynth        = null;
 // ── Enhanced SFX synths ─────────────────────────────────────────────────────
 let blockHitSynth       = null;   // Tone.js layer for block hits (musical pitch)
 let blockBreakSynth     = null;   // Tone.js layer for block breaks
@@ -31,17 +30,6 @@ let blockPlaceSynth     = null;   // tonal click for satisfying placement
 let _placeReverb        = null;   // dedicated reverb for placement sound
 let levelUpSynth        = null;   // stinger synth for level-up events
 let biomeDiscoverSynth  = null;   // stinger synth for new biome discovery
-// ── Infinite Depths synths ────────────────────────────────────────────────────
-let _depthDroneSynth    = null;   // low drone that darkens with descent number
-let _depthDroneGain     = null;
-let _depthNoiseSynth    = null;   // filtered noise layer — distortion/tension
-let _depthNoiseFilter   = null;
-let _depthNoiseGain     = null;
-let _descentStingSynth  = null;   // PolySynth for descent completion sting
-let _extractSynth       = null;   // PolySynth for extraction success
-let _milestoneSynth     = null;   // PolySynth for milestone reach
-let _milestoneRumble    = null;   // MembraneSynth rumble accent for milestones
-let _bossEscalationSynth = null;  // PolySynth for boss phase escalation hits
 let masterCompressor = null;
 let masterReverb = null;
 let masterLimiter = null;
@@ -73,16 +61,6 @@ const _env = {
   birdLoopId:  null,   // scheduled bird chirp interval
   dripLoopId:  null,   // scheduled drip interval
 };
-
-// ── Infinite Depths ambient state ─────────────────────────────────────────────
-const _depthAmb = {
-  active:         false,
-  currentDescent: 0,     // 0 = not in infinite mode
-  droneActive:    false,
-};
-
-// Milestone Descent numbers where cosmetic rewards unlock
-const _INFINITE_MILESTONES = [2, 4, 7, 10, 15]; // Descents ≈ floors 14, 28, 49, 70, 100+
 
 // ── Ambient music system state ───────────────────────────────────────────────
 let bgMusicPlaying = false;
@@ -206,13 +184,6 @@ function initAudio() {
     }).connect(masterCompressor);
     voidHumSynth.volume.value = -16;
 
-    // Entropy dissolve — ethereal triangle chime on block decay
-    entropySynth = new Tone.Synth({
-      oscillator: { type: "triangle" },
-      envelope: { attack: 0.01, decay: 0.4, sustain: 0.0, release: 0.5 },
-    }).connect(masterCompressor);
-    entropySynth.volume.value = -18;
-
     // ── Enhanced SFX synths ────────────────────────────────────────────────
     // Block hit layer — sine with short decay, pitched per block type
     blockHitSynth = new Tone.Synth({
@@ -258,74 +229,6 @@ function initAudio() {
       },
     }).connect(masterCompressor);
     biomeDiscoverSynth.volume.value = -10;
-
-    // ── Infinite Depths synths ────────────────────────────────────────────────
-    // Depth drone — low sine that deepens with descent number
-    _depthDroneGain = new Tone.Gain(0).connect(masterCompressor);
-    _depthDroneSynth = new Tone.Synth({
-      oscillator: { type: 'sine' },
-      envelope: { attack: 3.0, decay: 2.0, sustain: 0.8, release: 4.0 },
-    }).connect(_depthDroneGain);
-    _depthDroneSynth.volume.value = -20;
-
-    // Depth noise — filtered brown noise, increasing presence with descent
-    _depthNoiseFilter = new Tone.Filter({ type: 'lowpass', frequency: 200, Q: 1.5 });
-    _depthNoiseGain = new Tone.Gain(0).connect(masterCompressor);
-    _depthNoiseFilter.connect(_depthNoiseGain);
-    _depthNoiseSynth = new Tone.Noise('brown').connect(_depthNoiseFilter);
-    _depthNoiseSynth.volume.value = -28;
-
-    // Descent completion sting — warm sine PolySynth
-    _descentStingSynth = new Tone.PolySynth(Tone.Synth, {
-      maxPolyphony: 5,
-      voice: Tone.Synth,
-      options: {
-        oscillator: { type: 'sine' },
-        envelope: { attack: 0.03, decay: 0.5, sustain: 0.2, release: 1.2 },
-      },
-    }).connect(masterCompressor);
-    _descentStingSynth.volume.value = -8;
-
-    // Extraction success — bright triangle PolySynth with relief
-    _extractSynth = new Tone.PolySynth(Tone.Synth, {
-      maxPolyphony: 6,
-      voice: Tone.Synth,
-      options: {
-        oscillator: { type: 'triangle' },
-        envelope: { attack: 0.04, decay: 0.6, sustain: 0.25, release: 2.0 },
-      },
-    }).connect(masterCompressor);
-    _extractSynth.volume.value = -8;
-
-    // Milestone reach — ethereal sine with long decay
-    _milestoneSynth = new Tone.PolySynth(Tone.Synth, {
-      maxPolyphony: 6,
-      voice: Tone.Synth,
-      options: {
-        oscillator: { type: 'sine' },
-        envelope: { attack: 0.06, decay: 0.8, sustain: 0.3, release: 2.5 },
-      },
-    }).connect(masterCompressor);
-    _milestoneSynth.volume.value = -6;
-
-    // Milestone rumble accent — deep membrane for weight
-    _milestoneRumble = new Tone.MembraneSynth({
-      pitchDecay: 0.25,
-      octaves: 4,
-      envelope: { attack: 0.01, decay: 0.5, sustain: 0.0, release: 0.4 },
-    }).connect(masterCompressor);
-    _milestoneRumble.volume.value = -4;
-
-    // Boss escalation hit — percussive sine stab for phase transitions
-    _bossEscalationSynth = new Tone.PolySynth(Tone.Synth, {
-      maxPolyphony: 4,
-      voice: Tone.Synth,
-      options: {
-        oscillator: { type: 'sawtooth' },
-        envelope: { attack: 0.005, decay: 0.3, sustain: 0.0, release: 0.4 },
-      },
-    }).connect(masterCompressor);
-    _bossEscalationSynth.volume.value = -12;
 
     _initBgMusic();
     _initEnvironmentalAudio();
