@@ -126,6 +126,12 @@ function awardXP(finalScore, modeKey) {
     if (prestigeBonus > 0) xpEarned = Math.floor(xpEarned * (1 + prestigeBonus));
   }
 
+  // Guild XP boost perk (multiplicative)
+  if (typeof getGuildXPBoost === 'function') {
+    const guildBoost = getGuildXPBoost();
+    if (guildBoost > 0) xpEarned = Math.floor(xpEarned * (1 + guildBoost));
+  }
+
   // First-game completion bonus (one-time 100 XP)
   if (typeof _awardFirstGameBonus === 'function') {
     xpEarned += _awardFirstGameBonus();
@@ -133,6 +139,11 @@ function awardXP(finalScore, modeKey) {
 
   stats.playerXP = (stats.playerXP || 0) + xpEarned;
   saveLifetimeStats(stats);
+
+  // Award guild XP for game completion
+  if (typeof awardGuildXP === 'function') {
+    awardGuildXP('game_completion');
+  }
 
   // Fire milestone toast on new streak days only (3, 7, 30)
   if (isNewStreakDay && (streak === 3 || streak === 7 || streak === 30)) {

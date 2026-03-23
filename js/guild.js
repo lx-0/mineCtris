@@ -233,22 +233,61 @@ async function apiTickClanWar(warId) {
 // ── Guild XP award (called by game systems) ───────────────────────────────────
 
 const GUILD_XP_SOURCES = {
-  standard_match_win:   10,
+  game_completion:      5,
+  daily_mission:       10,
+  mastery_unlock:      25,
+  clan_war_win:       100,
+  community_goal:    null, // proportional — pass xpAmount directly
+  // Legacy sources kept for backward API compat
+  standard_match_win:  10,
   tournament_match_win: 25,
-  clan_war_win:         50,
-  daily_mission:         5,
 };
+
+// Per-member daily XP cap (anti-alt-farming)
+const GUILD_MEMBER_DAILY_CAP = 50;
+
+function _getGuildDailyXPState() {
+  try {
+    const raw = localStorage.getItem('mineCtris_guild_daily_xp');
+    const data = raw ? JSON.parse(raw) : null;
+    const today = new Date().toISOString().slice(0, 10);
+    if (data && data.date === today) return data;
+    return { date: today, xp: 0 };
+  } catch (_) { return { date: new Date().toISOString().slice(0, 10), xp: 0 }; }
+}
+
+function _consumeGuildDailyXP(amount) {
+  // Returns actual XP to award (capped), and persists updated state.
+  const state = _getGuildDailyXPState();
+  const remaining = Math.max(0, GUILD_MEMBER_DAILY_CAP - (state.xp || 0));
+  const actual = Math.min(amount, remaining);
+  if (actual > 0) {
+    state.xp = (state.xp || 0) + actual;
+    try { localStorage.setItem('mineCtris_guild_daily_xp', JSON.stringify(state)); } catch (_) {}
+  }
+  return actual;
+}
 
 /**
  * Award guild XP for a game event. Call from match/mission/tournament systems.
- * @param {'standard_match_win'|'tournament_match_win'|'clan_war_win'|'daily_mission'} source
+ * @param {'game_completion'|'daily_mission'|'mastery_unlock'|'clan_war_win'|'community_goal'|string} source
+ * @param {number} [xpAmount] Override amount (required for community_goal)
  */
-async function awardGuildXP(source) {
+async function awardGuildXP(source, xpAmount) {
   const guildId = _loadMyGuildId();
-  if (!guildId) return; // player is not in a guild
+  if (!guildId) return;
   const userId = guildUserId();
   if (!userId) return;
-  if (!GUILD_XP_SOURCES[source]) return;
+
+  const baseXP = xpAmount != null ? xpAmount : (GUILD_XP_SOURCES[source] || 0);
+  if (baseXP <= 0) return;
+
+  // Enforce per-member daily cap
+  const actual = _consumeGuildDailyXP(baseXP);
+  if (actual <= 0) return;
+
+  // Track for weekly challenges
+  _recordGuildChallengeActivity(source);
 
   try {
     await apiPostGuildXp(guildId, userId, source);
@@ -267,6 +306,7 @@ function getMyGuildCosmetics() {
     bannerColor:    g.bannerColor || null,
     activeBoardSkin: g.activeBoardSkin || null,
     isLegendary:    (g.level || 1) >= 20,
+    xpBoost:        getGuildXPBoost(g.level || 1),
   };
 }
 
@@ -361,27 +401,173 @@ function _avatarChar(userId) {
   return (userId || '?')[0].toUpperCase();
 }
 
-// XP needed to go from level N to level N+1 (quadratic curve: N^2 * 500)
+// XP needed to go from level N to level N+1 (exponential: 100 * 1.3^(N-1))
+// L1→L2: 100, L19→L20: ~11,260, cumulative L20: ~48,400
 function _xpToNextLevel(level) {
-  const l = level || 1;
-  return l * l * 500;
+  const l = Math.max(1, level || 1);
+  return Math.round(100 * Math.pow(1.3, l - 1));
 }
 
 // Cumulative XP needed to reach a given level from level 1
 function _xpThresholdForLevel(level) {
   let total = 0;
-  for (let i = 1; i < level; i++) total += i * i * 500;
+  for (let i = 1; i < level; i++) total += _xpToNextLevel(i);
   return total;
 }
 
-// Guild level milestone unlocks
+// ── Guild perks ────────────────────────────────────────────────────────────────
+
+const GUILD_PERKS = [
+  { level: 3,  id: 'xp_boost_5',      label: '+5% XP boost for all members',                    icon: '⚡' },
+  { level: 5,  id: 'emblem_anim',     label: 'Guild emblem animation',                          icon: '✨' },
+  { level: 8,  id: 'xp_boost_10',     label: '+10% XP boost + guild chat emotes',               icon: '⚡' },
+  { level: 10, id: 'block_skin',      label: 'Guild-exclusive block skin',                      icon: '🎮' },
+  { level: 12, id: 'xp_boost_15',     label: '+15% XP boost for all members',                   icon: '⚡' },
+  { level: 15, id: 'trail_effect',    label: 'Guild trail effect',                              icon: '🌟' },
+  { level: 18, id: 'landing_effect',  label: 'Guild landing effect',                            icon: '💥' },
+  { level: 20, id: 'legendary',       label: '"Legendary Guild" title + animated banner + 20% XP boost', icon: '👑' },
+];
+
+/**
+ * Returns the XP boost multiplier granted by the guild's current perks (0–0.20).
+ * Uses the guild in _myGuild cache; pass an explicit level to override.
+ */
+function getGuildXPBoost(levelOverride) {
+  const level = levelOverride != null ? levelOverride
+    : (_myGuild && _myGuild.guild ? (_myGuild.guild.level || 1) : 1);
+  if (level >= 20) return 0.20;
+  if (level >= 12) return 0.15;
+  if (level >= 8)  return 0.10;
+  if (level >= 3)  return 0.05;
+  return 0;
+}
+
+/** Returns array of GUILD_PERKS entries unlocked at or below the given level. */
+function getUnlockedGuildPerks(level) {
+  return GUILD_PERKS.filter(p => p.level <= level);
+}
+
+// Guild level milestone unlocks (matches perk unlock levels)
 const GUILD_LEVEL_MILESTONES = {
-  3:  '⚔️ +1 Officer slot',
-  5:  '🎨 Banner colors unlock',
-  10: '🎮 Board skin slot 1',
-  15: '🎮 Board skin slot 2',
-  20: '✨ Legendary emblem',
+  3:  '⚡ +5% XP boost',
+  5:  '✨ Emblem animation',
+  8:  '⚡ +10% XP boost + emotes',
+  10: '🎮 Exclusive block skin',
+  12: '⚡ +15% XP boost',
+  15: '🌟 Guild trail effect',
+  18: '💥 Guild landing effect',
+  20: '👑 Legendary Guild status',
 };
+
+// ── Small guild multiplier ────────────────────────────────────────────────────
+
+const GUILD_SMALL_SIZE_THRESHOLD = 10;
+const GUILD_SMALL_SIZE_MULTIPLIER = 1.5;
+
+/**
+ * Returns the small-guild XP multiplier if the guild has fewer than 10 members.
+ * @param {number} memberCount
+ */
+function getSmallGuildMultiplier(memberCount) {
+  return (memberCount > 0 && memberCount < GUILD_SMALL_SIZE_THRESHOLD)
+    ? GUILD_SMALL_SIZE_MULTIPLIER : 1.0;
+}
+
+// ── Weekly guild challenges ───────────────────────────────────────────────────
+
+const GUILD_WEEKLY_CHALLENGES = [
+  { id: 'games_played',   label: 'Play games this week',       target: 15, unit: 'games',   icon: '🎮' },
+  { id: 'missions_done',  label: 'Complete daily missions',    target: 5,  unit: 'missions', icon: '📋' },
+  { id: 'mastery_unlock', label: 'Unlock mastery tiers',       target: 1,  unit: 'tiers',    icon: '🏅' },
+];
+
+const GUILD_CHALLENGE_BONUS_XP = 50; // Bonus guild XP for completing all 3 challenges
+
+function _getGuildChallengeWeekKey() {
+  const now = new Date();
+  const d = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
+  const day = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() + 4 - day);
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  const week = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+  return `${d.getUTCFullYear()}-W${String(week).padStart(2, '0')}`;
+}
+
+function _loadGuildChallengeState() {
+  try {
+    const raw = localStorage.getItem('mineCtris_guild_challenges');
+    const data = raw ? JSON.parse(raw) : null;
+    const weekKey = _getGuildChallengeWeekKey();
+    if (data && data.weekKey === weekKey) return data;
+    // New week — reset
+    return {
+      weekKey,
+      progress: { games_played: 0, missions_done: 0, mastery_unlock: 0 },
+      bonusAwarded: false,
+    };
+  } catch (_) {
+    return {
+      weekKey: _getGuildChallengeWeekKey(),
+      progress: { games_played: 0, missions_done: 0, mastery_unlock: 0 },
+      bonusAwarded: false,
+    };
+  }
+}
+
+function _saveGuildChallengeState(state) {
+  try { localStorage.setItem('mineCtris_guild_challenges', JSON.stringify(state)); } catch (_) {}
+}
+
+/**
+ * Record an activity event towards weekly guild challenges.
+ * Called by awardGuildXP after each qualifying event.
+ * @param {string} source - XP source key
+ */
+function _recordGuildChallengeActivity(source) {
+  const state = _loadGuildChallengeState();
+  let changed = false;
+
+  if (source === 'game_completion') {
+    state.progress.games_played = (state.progress.games_played || 0) + 1;
+    changed = true;
+  } else if (source === 'daily_mission') {
+    state.progress.missions_done = (state.progress.missions_done || 0) + 1;
+    changed = true;
+  } else if (source === 'mastery_unlock') {
+    state.progress.mastery_unlock = (state.progress.mastery_unlock || 0) + 1;
+    changed = true;
+  }
+
+  if (!changed) return;
+
+  // Check if all 3 challenges are now complete
+  const allDone = GUILD_WEEKLY_CHALLENGES.every(
+    c => (state.progress[c.id] || 0) >= c.target
+  );
+
+  if (allDone && !state.bonusAwarded) {
+    state.bonusAwarded = true;
+    _saveGuildChallengeState(state);
+    // Award bonus guild XP (bypasses daily cap — it's a weekly reward)
+    const guildId = _loadMyGuildId();
+    const userId = guildUserId();
+    if (guildId && userId) {
+      apiPostGuildXp(guildId, userId, 'community_goal').catch(() => {});
+    }
+    _showGuildChallengesCompleteToast();
+  } else {
+    _saveGuildChallengeState(state);
+  }
+}
+
+function _showGuildChallengesCompleteToast() {
+  const toast = document.getElementById('guild-joined-toast');
+  if (!toast) return;
+  toast.textContent = '🎯 All weekly guild challenges complete! Bonus XP awarded!';
+  toast.style.display = 'block';
+  clearTimeout(_showGuildChallengesCompleteToast._t);
+  _showGuildChallengesCompleteToast._t = setTimeout(() => { toast.style.display = 'none'; }, 5000);
+}
 
 // ── Guild cosmetics constants ─────────────────────────────────────────────────
 
@@ -625,6 +811,7 @@ function _renderHomeView(content) {
             <div class="guild-xp-fill" style="width:${xpPct}%"></div>
           </div>
           <div class="guild-xp-label">${_fmtXP(guild.xp)} XP · ${guild.level < 20 ? xpPct + '% to Lv.' + (guild.level + 1) : 'MAX LEVEL'}</div>
+          ${getGuildXPBoost(guild.level) > 0 ? `<div class="guild-active-boost">⚡ +${Math.round(getGuildXPBoost(guild.level) * 100)}% XP Boost Active</div>` : ''}
           ${nextMilestoneHtml}
         </div>
       </div>
@@ -632,6 +819,8 @@ function _renderHomeView(content) {
       <div class="guild-home-tabs">
         <button class="guild-tab-btn guild-tab-btn--active" id="guild-tab-roster">👥 Roster</button>
         <button class="guild-tab-btn" id="guild-tab-leaderboard">🏆 Leaderboard</button>
+        <button class="guild-tab-btn" id="guild-tab-perks">⭐ Perks</button>
+        <button class="guild-tab-btn" id="guild-tab-challenges">🎯 Challenges</button>
         <button class="guild-tab-btn" id="guild-tab-wars">⚔️ Wars</button>
         <button class="guild-tab-btn guild-tab-btn--chat" id="guild-tab-chat">💬 Chat</button>
         <button class="guild-tab-btn" id="guild-tab-feed">📣 Feed</button>
@@ -644,6 +833,12 @@ function _renderHomeView(content) {
       <div id="guild-tab-panel-leaderboard" style="display:none">
         <div class="guild-section-title">WEEKLY LEADERBOARD</div>
         <div id="guild-leaderboard-content" class="guild-leaderboard-loading">Loading…</div>
+      </div>
+      <div id="guild-tab-panel-perks" style="display:none">
+        <div id="guild-perks-content"></div>
+      </div>
+      <div id="guild-tab-panel-challenges" style="display:none">
+        <div id="guild-challenges-content"></div>
       </div>
       <div id="guild-tab-panel-wars" style="display:none">
         <div id="guild-wars-content"><div class="guild-loading">Loading…</div></div>
@@ -676,24 +871,38 @@ function _renderHomeView(content) {
   // ── Tab switching
   const rosterTab      = document.getElementById('guild-tab-roster');
   const lbTab          = document.getElementById('guild-tab-leaderboard');
+  const perksTab       = document.getElementById('guild-tab-perks');
+  const challengesTab  = document.getElementById('guild-tab-challenges');
   const warsTab        = document.getElementById('guild-tab-wars');
   const chatTab        = document.getElementById('guild-tab-chat');
   const feedTab        = document.getElementById('guild-tab-feed');
   const expeditionTab  = document.getElementById('guild-tab-expedition');
   const rosterPanel    = document.getElementById('guild-tab-panel-roster');
   const lbPanel        = document.getElementById('guild-tab-panel-leaderboard');
+  const perksPanel     = document.getElementById('guild-tab-panel-perks');
+  const challengesPanel = document.getElementById('guild-tab-panel-challenges');
   const warsPanel      = document.getElementById('guild-tab-panel-wars');
   const chatPanel      = document.getElementById('guild-tab-panel-chat');
   const feedPanel      = document.getElementById('guild-tab-panel-feed');
   const expeditionPanel = document.getElementById('guild-tab-panel-expedition');
 
   function _switchToTab(tab) {
-    [rosterTab, lbTab, warsTab, chatTab, feedTab, expeditionTab].forEach(t => t && t.classList.remove('guild-tab-btn--active'));
-    [rosterPanel, lbPanel, warsPanel, chatPanel, feedPanel, expeditionPanel].forEach(p => { if (p) p.style.display = 'none'; });
+    [rosterTab, lbTab, perksTab, challengesTab, warsTab, chatTab, feedTab, expeditionTab]
+      .forEach(t => t && t.classList.remove('guild-tab-btn--active'));
+    [rosterPanel, lbPanel, perksPanel, challengesPanel, warsPanel, chatPanel, feedPanel, expeditionPanel]
+      .forEach(p => { if (p) p.style.display = 'none'; });
     if (tab === 'leaderboard') {
       lbTab.classList.add('guild-tab-btn--active');
       lbPanel.style.display = '';
       _loadGuildLeaderboard();
+    } else if (tab === 'perks') {
+      perksTab.classList.add('guild-tab-btn--active');
+      perksPanel.style.display = '';
+      _renderPerksTab(document.getElementById('guild-perks-content'), guild.level || 1, guild.memberCount || 1);
+    } else if (tab === 'challenges') {
+      challengesTab.classList.add('guild-tab-btn--active');
+      challengesPanel.style.display = '';
+      _renderChallengesTab(document.getElementById('guild-challenges-content'));
     } else if (tab === 'wars') {
       warsTab.classList.add('guild-tab-btn--active');
       warsPanel.style.display = '';
@@ -723,9 +932,11 @@ function _renderHomeView(content) {
     }
   }
 
-  rosterTab.addEventListener('click', () => _switchToTab('roster'));
-  lbTab.addEventListener('click',     () => _switchToTab('leaderboard'));
-  warsTab.addEventListener('click',   () => _switchToTab('wars'));
+  rosterTab.addEventListener('click',     () => _switchToTab('roster'));
+  lbTab.addEventListener('click',         () => _switchToTab('leaderboard'));
+  if (perksTab)      perksTab.addEventListener('click',      () => _switchToTab('perks'));
+  if (challengesTab) challengesTab.addEventListener('click', () => _switchToTab('challenges'));
+  warsTab.addEventListener('click',       () => _switchToTab('wars'));
   if (chatTab)       chatTab.addEventListener('click',       () => _switchToTab('chat'));
   if (feedTab)       feedTab.addEventListener('click',       () => _switchToTab('feed'));
   if (expeditionTab) expeditionTab.addEventListener('click', () => _switchToTab('expedition'));
@@ -2128,6 +2339,94 @@ async function _renderRequestsView(content) {
       }
     });
   });
+}
+
+// ── Perks tab ─────────────────────────────────────────────────────────────────
+
+function _renderPerksTab(container, guildLevel, memberCount) {
+  if (!container) return;
+  const boost = getGuildXPBoost(guildLevel);
+  const isSmall = memberCount < GUILD_SMALL_SIZE_THRESHOLD;
+
+  let html = `<div class="guild-section-title">GUILD PERKS — Lv.${guildLevel}</div>`;
+
+  if (boost > 0) {
+    html += `<div class="guild-perk-active-banner">⚡ Active XP Boost: +${Math.round(boost * 100)}% for all members</div>`;
+  }
+  if (isSmall) {
+    html += `<div class="guild-perk-active-banner">🔥 Small Guild Bonus: ${GUILD_SMALL_SIZE_MULTIPLIER}× XP multiplier active (${memberCount}/${GUILD_SMALL_SIZE_THRESHOLD - 1} members)</div>`;
+  }
+
+  html += '<div class="guild-perks-list">';
+  GUILD_PERKS.forEach(perk => {
+    const unlocked = guildLevel >= perk.level;
+    html += `<div class="guild-perk-row guild-perk-row--${unlocked ? 'unlocked' : 'locked'}">
+      <span class="guild-perk-icon">${unlocked ? perk.icon : '🔒'}</span>
+      <div class="guild-perk-info">
+        <div class="guild-perk-label">${_esc(perk.label)}</div>
+        <div class="guild-perk-level">Lv.${perk.level} ${unlocked ? '✓ Unlocked' : '— Locked'}</div>
+      </div>
+    </div>`;
+  });
+  html += '</div>';
+
+  const dailyState = _getGuildDailyXPState();
+  const dailyUsed = dailyState.xp || 0;
+  const dailyPct = Math.min(100, Math.round((dailyUsed / GUILD_MEMBER_DAILY_CAP) * 100));
+  html += `<div class="guild-section-title" style="margin-top:12px">YOUR DAILY XP CAP</div>
+    <div class="guild-daily-cap-info">
+      <div class="guild-xp-bar">
+        <div class="guild-xp-fill guild-xp-fill--daily" style="width:${dailyPct}%"></div>
+      </div>
+      <div class="guild-xp-label">${dailyUsed} / ${GUILD_MEMBER_DAILY_CAP} guild XP used today</div>
+    </div>`;
+
+  container.innerHTML = html;
+}
+
+// ── Challenges tab ────────────────────────────────────────────────────────────
+
+function _renderChallengesTab(container) {
+  if (!container) return;
+  const state = _loadGuildChallengeState();
+  const weekKey = state.weekKey;
+
+  let html = `<div class="guild-section-title">WEEKLY GUILD CHALLENGES</div>
+    <div class="guild-challenges-week">Week ${_esc(weekKey)}</div>`;
+
+  const allDone = GUILD_WEEKLY_CHALLENGES.every(c => (state.progress[c.id] || 0) >= c.target);
+
+  if (state.bonusAwarded) {
+    html += `<div class="guild-challenges-complete-banner">🎉 All challenges complete! Bonus XP awarded!</div>`;
+  } else if (allDone) {
+    html += `<div class="guild-challenges-complete-banner">🎯 All objectives met! Bonus XP will be awarded shortly.</div>`;
+  }
+
+  html += '<div class="guild-challenges-list">';
+  GUILD_WEEKLY_CHALLENGES.forEach(challenge => {
+    const progress = state.progress[challenge.id] || 0;
+    const pct = Math.min(100, Math.round((progress / challenge.target) * 100));
+    const done = progress >= challenge.target;
+    html += `<div class="guild-challenge-row guild-challenge-row--${done ? 'done' : 'active'}">
+      <span class="guild-challenge-icon">${done ? '✅' : challenge.icon}</span>
+      <div class="guild-challenge-info">
+        <div class="guild-challenge-label">${_esc(challenge.label)}</div>
+        <div class="guild-challenge-progress-row">
+          <div class="guild-xp-bar guild-challenge-bar">
+            <div class="guild-xp-fill" style="width:${pct}%"></div>
+          </div>
+          <span class="guild-challenge-count">${progress}/${challenge.target} ${_esc(challenge.unit)}</span>
+        </div>
+      </div>
+    </div>`;
+  });
+  html += '</div>';
+
+  html += `<div class="guild-challenges-bonus-info">
+    Complete all 3 challenges to earn <strong>${GUILD_CHALLENGE_BONUS_XP} bonus guild XP</strong> for your guild!
+  </div>`;
+
+  container.innerHTML = html;
 }
 
 // ── Weekly summary notification ───────────────────────────────────────────────

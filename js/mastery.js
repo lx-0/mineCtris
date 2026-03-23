@@ -337,6 +337,11 @@ function unlockMasteryTier(mode, tier) {
 
   _showMasteryUnlockOverlay(modeLabel, tierName, cosmeticId);
 
+  // Award guild XP for mastery tier unlock
+  if (typeof awardGuildXP === 'function') {
+    awardGuildXP('mastery_unlock');
+  }
+
   // Submit updated mastery score to leaderboard worker
   _submitMasteryToLeaderboard();
 }
