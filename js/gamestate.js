@@ -466,6 +466,17 @@ function triggerGameOver() {
     };
   }
 
+  // Community goals: submit contribution (fire-and-forget)
+  if (typeof submitCommunityGoalContribution === 'function') {
+    submitCommunityGoalContribution({
+      blocksMined:     state.blocksMined,
+      linesCleared:    state.linesCleared,
+      maxCombo:        sessionHighestComboCount,
+      sprintCompleted: (typeof isSprintMode !== 'undefined' && isSprintMode &&
+                        typeof sprintComplete !== 'undefined' && sprintComplete) ? 1 : 0,
+    });
+  }
+
   // Fade out background music, then play game-over jingle
   if (typeof stopBgMusic === "function") stopBgMusic();
   if (typeof playGameOverJingle === "function") playGameOverJingle();

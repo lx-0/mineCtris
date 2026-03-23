@@ -825,6 +825,7 @@ function _renderHomeView(content) {
         <button class="guild-tab-btn guild-tab-btn--chat" id="guild-tab-chat">💬 Chat</button>
         <button class="guild-tab-btn" id="guild-tab-feed">📣 Feed</button>
         <button class="guild-tab-btn" id="guild-tab-expedition">🌍 Expedition</button>
+        <button class="guild-tab-btn" id="guild-tab-goals">🌐 Goals</button>
       </div>
       <div id="guild-tab-panel-roster">
         <div class="guild-section-title">MEMBERS (${guild.memberCount}/30)</div>
@@ -852,6 +853,9 @@ function _renderHomeView(content) {
       <div id="guild-tab-panel-expedition" style="display:none">
         <div id="guild-expedition-panel-content"><div class="guild-loading">Loading…</div></div>
       </div>
+      <div id="guild-tab-panel-goals" style="display:none">
+        <div id="guild-goals-panel-content"><div class="guild-loading">Loading…</div></div>
+      </div>
       <div class="guild-section-title">INVITE</div>
       <div class="guild-invite-row">
         <input id="guild-invite-input" type="text" placeholder="Invite player by name..." maxlength="32">
@@ -877,6 +881,7 @@ function _renderHomeView(content) {
   const chatTab        = document.getElementById('guild-tab-chat');
   const feedTab        = document.getElementById('guild-tab-feed');
   const expeditionTab  = document.getElementById('guild-tab-expedition');
+  const goalsTab       = document.getElementById('guild-tab-goals');
   const rosterPanel    = document.getElementById('guild-tab-panel-roster');
   const lbPanel        = document.getElementById('guild-tab-panel-leaderboard');
   const perksPanel     = document.getElementById('guild-tab-panel-perks');
@@ -885,11 +890,12 @@ function _renderHomeView(content) {
   const chatPanel      = document.getElementById('guild-tab-panel-chat');
   const feedPanel      = document.getElementById('guild-tab-panel-feed');
   const expeditionPanel = document.getElementById('guild-tab-panel-expedition');
+  const goalsPanel     = document.getElementById('guild-tab-panel-goals');
 
   function _switchToTab(tab) {
-    [rosterTab, lbTab, perksTab, challengesTab, warsTab, chatTab, feedTab, expeditionTab]
+    [rosterTab, lbTab, perksTab, challengesTab, warsTab, chatTab, feedTab, expeditionTab, goalsTab]
       .forEach(t => t && t.classList.remove('guild-tab-btn--active'));
-    [rosterPanel, lbPanel, perksPanel, challengesPanel, warsPanel, chatPanel, feedPanel, expeditionPanel]
+    [rosterPanel, lbPanel, perksPanel, challengesPanel, warsPanel, chatPanel, feedPanel, expeditionPanel, goalsPanel]
       .forEach(p => { if (p) p.style.display = 'none'; });
     if (tab === 'leaderboard') {
       lbTab.classList.add('guild-tab-btn--active');
@@ -926,6 +932,15 @@ function _renderHomeView(content) {
       expeditionPanel.style.display = '';
       const expContent = document.getElementById('guild-expedition-panel-content');
       if (expContent) _renderExpeditionTab(expContent, isOfficer, _loadMyGuildId());
+    } else if (tab === 'goals') {
+      goalsTab && goalsTab.classList.add('guild-tab-btn--active');
+      if (goalsPanel) {
+        goalsPanel.style.display = '';
+        const goalsContent = document.getElementById('guild-goals-panel-content');
+        if (goalsContent && typeof renderCommunityGoalsTab === 'function') {
+          renderCommunityGoalsTab(goalsContent);
+        }
+      }
     } else {
       rosterTab.classList.add('guild-tab-btn--active');
       rosterPanel.style.display = '';
@@ -940,6 +955,7 @@ function _renderHomeView(content) {
   if (chatTab)       chatTab.addEventListener('click',       () => _switchToTab('chat'));
   if (feedTab)       feedTab.addEventListener('click',       () => _switchToTab('feed'));
   if (expeditionTab) expeditionTab.addEventListener('click', () => _switchToTab('expedition'));
+  if (goalsTab)      goalsTab.addEventListener('click',      () => _switchToTab('goals'));
 
   // Start guild chat WebSocket connection when the home panel loads
   const guildId = _loadMyGuildId();

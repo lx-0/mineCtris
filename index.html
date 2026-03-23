@@ -531,6 +531,9 @@
       <!-- Event End Toast: small notification when an event ends -->
       <div id="event-end-toast" style="display:none;"></div>
 
+      <!-- Community Goals progress ticker (bottom-left HUD) -->
+      <div id="cg-ticker" style="display:none;"></div>
+
       <!-- Top-right HUD: score + next-piece preview -->
       <div id="top-right-hud">
         <!-- Score HUD -->
@@ -1972,5 +1975,16 @@
     <script src="js/depths-missions.js"></script>
     <script src="js/daily-depths.js"></script>
     <script src="js/main.js"></script>
+    <script src="js/community-goals.js"></script>
+    <script>
+      // Initialize community goals ticker after all modules have loaded
+      document.addEventListener('DOMContentLoaded', function() {
+        if (typeof initCommunityGoalsTicker === 'function') initCommunityGoalsTicker();
+      });
+      // Fallback: init immediately if DOM already ready
+      if (document.readyState !== 'loading' && typeof initCommunityGoalsTicker === 'function') {
+        initCommunityGoalsTicker();
+      }
+    </script>
   </body>
 </html>

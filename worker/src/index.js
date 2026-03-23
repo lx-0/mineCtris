@@ -6431,6 +6431,144 @@ async function handleGetExpeditionWeeklyLeaderboard(biomeId, weekStr, request, e
   });
 }
 
+// ── Community Goals ──────────────────────────────────────────────────────────
+
+const COMMUNITY_GOAL_TEMPLATES = [
+  { id: 'block_breaker',  name: 'Block Breaker',  metric: 'blocksMined',          icon: '⛏️',
+    tiers: [{ name: 'Bronze', pct: 0.40, target: 200000 }, { name: 'Silver', pct: 0.70, target: 350000 }, { name: 'Gold', pct: 1.00, target: 500000 }],
+    unit: 'blocks mined', reward: ['Custom block trail', 'XP boost ×1.25 (24 h)', 'Legendary pickaxe skin'] },
+  { id: 'line_master',    name: 'Line Master',    metric: 'linesCleared',          icon: '🧱',
+    tiers: [{ name: 'Bronze', pct: 0.40, target: 40000 },  { name: 'Silver', pct: 0.70, target: 70000 },  { name: 'Gold', pct: 1.00, target: 100000 }],
+    unit: 'lines cleared', reward: ['Line-burst effect', 'XP boost ×1.25 (24 h)', 'Quad-clear badge title'] },
+  { id: 'depth_crawler',  name: 'Depth Crawler',  metric: 'depthsFloorsCleared',   icon: '🕳️',
+    tiers: [{ name: 'Bronze', pct: 0.40, target: 2000 },   { name: 'Silver', pct: 0.70, target: 3500 },   { name: 'Gold', pct: 1.00, target: 5000 }],
+    unit: 'floors cleared', reward: ['Depths torch skin', 'XP boost ×1.25 (24 h)', 'Depths master title'] },
+  { id: 'boss_slayer',    name: 'Boss Slayer',    metric: 'bossesDefeated',        icon: '☠️',
+    tiers: [{ name: 'Bronze', pct: 0.40, target: 400 },    { name: 'Silver', pct: 0.70, target: 700 },    { name: 'Gold', pct: 1.00, target: 1000 }],
+    unit: 'bosses defeated', reward: ['Wither skull badge', 'XP boost ×1.25 (24 h)', 'Bossbreaker title'] },
+  { id: 'speed_demon',    name: 'Speed Demon',    metric: 'sprintsCompleted',      icon: '⚡',
+    tiers: [{ name: 'Bronze', pct: 0.40, target: 5000 },   { name: 'Silver', pct: 0.70, target: 8500 },   { name: 'Gold', pct: 1.00, target: 12000 }],
+    unit: 'sprints completed', reward: ['Lightning trail', 'XP boost ×1.25 (24 h)', 'Speedrunner title'] },
+  { id: 'combo_king',     name: 'Combo King',     metric: 'maxComboSum',           icon: '🔥',
+    tiers: [{ name: 'Bronze', pct: 0.40, target: 50000 },  { name: 'Silver', pct: 0.70, target: 85000 },  { name: 'Gold', pct: 1.00, target: 120000 }],
+    unit: 'combo hits combined', reward: ['Flame border skin', 'XP boost ×1.25 (24 h)', 'Combo God title'] },
+];
+
+const COMMUNITY_GOAL_KV_TTL = 14 * 24 * 60 * 60; // 14 days
+
+function _communityGoalIndex(weekStr) {
+  const weekNum = parseInt((weekStr || '').split('-W')[1] || '1', 10);
+  return (weekNum - 1) % COMMUNITY_GOAL_TEMPLATES.length;
+}
+
+function _communityGoalTier(template, progress) {
+  let reached = null;
+  for (const tier of template.tiers) {
+    if (progress >= tier.target) reached = tier.name;
+  }
+  return reached; // null | 'Bronze' | 'Silver' | 'Gold'
+}
+
+async function handleGetCommunityGoalCurrent(env) {
+  const week = currentISOWeek();
+  const template = COMMUNITY_GOAL_TEMPLATES[_communityGoalIndex(week)];
+  const key = `community-goal:${week}:progress`;
+  const data = (await env.LEADERBOARD_KV.get(key, { type: 'json' })) || {
+    goalId: template.id, progress: 0, activePlayerCount: 0, guildContributions: {},
+  };
+
+  const tier = _communityGoalTier(template, data.progress);
+  const goldTarget = template.tiers[2].target;
+  return jsonResponse({
+    week,
+    goal: {
+      id: template.id, name: template.name, metric: template.metric,
+      icon: template.icon, unit: template.unit,
+    },
+    progress:          data.progress,
+    goldTarget,
+    activePlayerCount: data.activePlayerCount || 0,
+    tierReached:       tier,
+    tiers: template.tiers.map(t => ({
+      name:    t.name,
+      target:  t.target,
+      reached: data.progress >= t.target,
+      pct:     Math.min(100, Math.round((data.progress / t.target) * 100)),
+      reward:  template.reward[template.tiers.indexOf(t)],
+    })),
+  });
+}
+
+async function handlePostCommunityGoalContribute(request, env) {
+  const body = await request.json().catch(() => ({}));
+  const {
+    blocksMined = 0, linesCleared = 0, depthsFloorsCleared = 0,
+    bossesDefeated = 0, sprintsCompleted = 0, maxComboSum = 0,
+    displayName = '', guildId = null, guildName = null,
+  } = body;
+
+  const week     = currentISOWeek();
+  const template = COMMUNITY_GOAL_TEMPLATES[_communityGoalIndex(week)];
+
+  const metricMap = {
+    blocksMined:        Math.max(0, Math.floor(blocksMined)),
+    linesCleared:       Math.max(0, Math.floor(linesCleared)),
+    depthsFloorsCleared:Math.max(0, Math.floor(depthsFloorsCleared)),
+    bossesDefeated:     Math.max(0, Math.floor(bossesDefeated)),
+    sprintsCompleted:   Math.max(0, Math.floor(sprintsCompleted)),
+    maxComboSum:        Math.max(0, Math.floor(maxComboSum)),
+  };
+  const contribution = metricMap[template.metric] || 0;
+  if (contribution <= 0) {
+    return jsonResponse({ ok: true, progress: 0, contribution: 0 });
+  }
+
+  const key = `community-goal:${week}:progress`;
+  const data = (await env.LEADERBOARD_KV.get(key, { type: 'json' })) || {
+    goalId: template.id, progress: 0, activePlayerCount: 0, guildContributions: {},
+  };
+
+  data.progress          = (data.progress || 0) + contribution;
+  data.activePlayerCount = (data.activePlayerCount || 0) + 1;
+
+  if (guildId) {
+    if (!data.guildContributions) data.guildContributions = {};
+    const gc = data.guildContributions[guildId] || { guildId, guildName: guildName || guildId, contribution: 0 };
+    gc.contribution += contribution;
+    if (guildName) gc.guildName = guildName;
+    data.guildContributions[guildId] = gc;
+  }
+
+  await env.LEADERBOARD_KV.put(key, JSON.stringify(data), { expirationTtl: COMMUNITY_GOAL_KV_TTL });
+
+  const tier = _communityGoalTier(template, data.progress);
+  return jsonResponse({ ok: true, progress: data.progress, contribution, tierReached: tier, week });
+}
+
+async function handleGetCommunityGoalLeaderboard(env) {
+  const week = currentISOWeek();
+  const key  = `community-goal:${week}:progress`;
+  const data = (await env.LEADERBOARD_KV.get(key, { type: 'json' })) || { guildContributions: {} };
+
+  const entries = Object.values(data.guildContributions || {})
+    .sort((a, b) => b.contribution - a.contribution)
+    .slice(0, 20)
+    .map((e, i) => ({ rank: i + 1, guildId: e.guildId, guildName: e.guildName, contribution: e.contribution }));
+
+  return jsonResponse({ week, entries, total: entries.length });
+}
+
+async function handleGetCommunityGoalPastWeek(weekStr, env) {
+  if (!isValidWeek(weekStr)) return jsonResponse({ error: 'Invalid week format. Use YYYY-Www.' }, 400);
+  const key  = `community-goal:${weekStr}:progress`;
+  const data = (await env.LEADERBOARD_KV.get(key, { type: 'json' })) || null;
+  if (!data) return jsonResponse({ error: 'No data for that week' }, 404);
+
+  const template = COMMUNITY_GOAL_TEMPLATES[_communityGoalIndex(weekStr)];
+  const tier     = _communityGoalTier(template, data.progress);
+  return jsonResponse({ week: weekStr, goal: { id: template.id, name: template.name, icon: template.icon, unit: template.unit }, progress: data.progress, tierReached: tier, activePlayerCount: data.activePlayerCount || 0 });
+}
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
@@ -6511,6 +6649,16 @@ export default {
       const parts = url.pathname.split('/');
       // /api/leaderboard/expedition/weekly/{biomeId}/{weekStr}
       response = await handleGetExpeditionWeeklyLeaderboard(parts[5], parts[6], request, env);
+    // ── Community Goals ────────────────────────────────────────────────────────
+    } else if (method === 'GET' && url.pathname === '/api/community-goals/current') {
+      response = await handleGetCommunityGoalCurrent(env);
+    } else if (method === 'POST' && url.pathname === '/api/community-goals/contribute') {
+      response = await handlePostCommunityGoalContribute(request, env);
+    } else if (method === 'GET' && url.pathname === '/api/community-goals/leaderboard') {
+      response = await handleGetCommunityGoalLeaderboard(env);
+    } else if (method === 'GET' && url.pathname.startsWith('/api/community-goals/week/')) {
+      const weekStr = url.pathname.replace('/api/community-goals/week/', '');
+      response = await handleGetCommunityGoalPastWeek(weekStr, env);
     } else if (method === 'GET' && url.pathname === '/api/missions') {
       response = handleGetMissions(todayUTC());
     } else if (method === 'GET' && url.pathname.startsWith('/api/missions/')) {

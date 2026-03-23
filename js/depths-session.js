@@ -490,6 +490,10 @@ function _onDungeonFloorCleared() {
   if (typeof onDepthsMissionFloorReached === 'function') onDepthsMissionFloorReached(floorNum);
   if (isBoss && typeof onDepthsMissionBossDefeated === 'function') onDepthsMissionBossDefeated();
 
+  // Community goals: track floors and boss kills for weekly contribution
+  if (typeof cgRecordFloorCleared === 'function') cgRecordFloorCleared();
+  if (isBoss && typeof cgRecordBossDefeated === 'function') cgRecordBossDefeated();
+
   // Track loot collection for achievements
   if (floorLoot.length > 0 && typeof achOnDepthsLootCollected === 'function') {
     achOnDepthsLootCollected(floorLoot.length);
