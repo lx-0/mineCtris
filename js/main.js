@@ -193,6 +193,20 @@ function _showCaveMouthTierSelector() {
 }
 
 /**
+ * Teleport the player back to the surface from underground in Survival mode.
+ * Used as an escape hatch when stuck or lost underground.
+ */
+function returnPlayerToSurface() {
+  if (!controls) return;
+  var pos = controls.getObject().position;
+  pos.y = PLAYER_HEIGHT;
+  playerVelocity.y = 0;
+  isUnderground = false;
+  var _rtsEl = document.getElementById('underground-hud');
+  if (_rtsEl) _rtsEl.style.display = 'none';
+}
+
+/**
  * Return the player to Survival mode after completing/exiting a dungeon launched
  * from the cave mouth. Restores the survival world and repositions the player.
  */
@@ -206,12 +220,15 @@ function returnToSurvival() {
   isSurvivalMode = true;
   if (typeof hasSurvivalWorld === 'function' && hasSurvivalWorld()) {
     if (typeof restoreSurvivalWorld === 'function') restoreSurvivalWorld();
+    if (typeof restoreUnderground === 'function') restoreUnderground();
     survivalSessionNumber++;
   } else {
     survivalSessionNumber = 1;
     if (typeof initWorldStats === 'function') initWorldStats();
     // Spawn 20×20 mineable surface grid for new worlds
     if (typeof spawnMineableSurfaceGrid === 'function') spawnMineableSurfaceGrid();
+    // Initialise underground terrain for this new world
+    if (typeof initUnderground === 'function') initUnderground(Date.now());
   }
 
   // Re-place the cave mouth (resetGame doesn't remove cave_mouth blocks but
@@ -677,6 +694,15 @@ function init() {
 
       blocker.style.display = "none";
       modeSelectEl.style.display = "flex";
+
+      // Start ambient music in ultra-sparse menu mood for the mode-select screen
+      if (typeof Tone !== 'undefined' && Tone.context && Tone.context.state !== 'running') {
+        Tone.context.resume();
+      }
+      if (typeof startBgMusic === 'function' && typeof setAmbientMood === 'function') {
+        startBgMusic();
+        setAmbientMood('menu');
+      }
     }
 
     function _maybeShowDepthsDiscoveryPrompt() {
@@ -996,12 +1022,15 @@ function init() {
         // If a survival world is saved, restore it; otherwise start fresh
         if (typeof hasSurvivalWorld === "function" && hasSurvivalWorld()) {
           if (typeof restoreSurvivalWorld === "function") restoreSurvivalWorld();
+          if (typeof restoreUnderground === "function") restoreUnderground();
           survivalSessionNumber++;
         } else {
           survivalSessionNumber = 1;
           if (typeof initWorldStats === "function") initWorldStats();
           // Spawn 20×20 mineable surface grid for new worlds
           if (typeof spawnMineableSurfaceGrid === "function") spawnMineableSurfaceGrid();
+          // Initialise underground terrain for this new world
+          if (typeof initUnderground === "function") initUnderground(Date.now());
         }
         // Place the cave mouth dungeon entrance in the world
         spawnCaveMouth();
@@ -3599,6 +3628,7 @@ function init() {
       });
       survivalResetYes.addEventListener("click", function () {
         if (typeof clearSurvivalWorld === "function") clearSurvivalWorld();
+        if (typeof clearUndergroundSave === "function") clearUndergroundSave();
         if (typeof resetWorldStats === "function") resetWorldStats();
         survivalResetConfirm.style.display = "none";
         if (typeof renderWorldCard === "function") renderWorldCard();
@@ -3769,6 +3799,8 @@ function init() {
         instructions.style.display = "none";
         blocker.style.display = "none";
         if (typeof startBgMusic === "function") startBgMusic();
+        // Transition from menu mood → calm when gameplay begins
+        if (typeof forceAmbientMood === "function") forceAmbientMood("calm");
         // First-run tutorial (v2.0 — starts immediately with falling piece)
         if (typeof initTutorial === "function") {
           initTutorial();
@@ -4749,6 +4781,20 @@ function onMouseDown(event) {
       }
       return;
     }
+    // Bedrock cannot be mined — reject click with brief gray flash
+    if (targetedBlock.userData.isBedrock) {
+      if (targetedBlock.material) {
+        targetedBlock.material.emissive.setRGB(0.3, 0.3, 0.3);
+        targetedBlock.material.needsUpdate = true;
+        setTimeout(function () {
+          if (targetedBlock && targetedBlock.material) {
+            targetedBlock.material.emissive.setRGB(0, 0, 0);
+            targetedBlock.material.needsUpdate = true;
+          }
+        }, 150);
+      }
+      return;
+    }
     miningProgress++;
     console.log(
       `Mining progress on block: ${miningProgress}/${MINING_CLICKS_NEEDED}`
@@ -4894,9 +4940,27 @@ function onMouseDown(event) {
       const _rubbleRowY = _isRubble && targetedBlock.userData.gridPos
         ? targetedBlock.userData.gridPos.y : null;
 
+      // Capture underground data before unregisterBlock clears gridPos
+      const _ugMineSnap = (isSurvivalMode && targetedBlock.userData.gridPos)
+        ? {
+            gridPos:      { x: targetedBlock.userData.gridPos.x,
+                            y: targetedBlock.userData.gridPos.y,
+                            z: targetedBlock.userData.gridPos.z },
+            isUnderground: !!targetedBlock.userData.isUnderground,
+            ugCol:         targetedBlock.userData.ugCol,
+            ugRow:         targetedBlock.userData.ugRow,
+            ugDepth:       targetedBlock.userData.ugDepth,
+          }
+        : null;
+
       unregisterBlock(targetedBlock);
       disposeBlock(targetedBlock);
       worldGroup.remove(targetedBlock);
+
+      // Notify underground system (reveal block below, persist mined state)
+      if (_ugMineSnap && typeof notifyBlockMined === 'function') {
+        notifyBlockMined(_ugMineSnap);
+      }
       // Remove from obsidian shimmer tracking if applicable
       const _obIdx = obsidianBlocks.indexOf(targetedBlock);
       if (_obIdx !== -1) obsidianBlocks.splice(_obIdx, 1);
@@ -5350,6 +5414,36 @@ function animate() {
       tickBossEncounter(delta);
     }
 
+    // Update environmental soundscapes based on biome and depth
+    if (typeof updateEnvironmentalAudio === 'function') {
+      var _envBiome = (typeof activeBiomeId !== 'undefined') ? activeBiomeId : null;
+      var _envDepth = 0;
+      if (gameDepthsMode === 'dungeon' && typeof getDungeonFloorNum === 'function') {
+        _envDepth = getDungeonFloorNum() || 0;
+      } else if (gameDepthsMode === 'depths') {
+        _envDepth = (typeof depthsFloorLinesCleared !== 'undefined') ? Math.floor(depthsFloorLinesCleared / 10) + 1 : 1;
+      }
+      updateEnvironmentalAudio(_envBiome, _envDepth);
+    }
+
+    // ── Ambient mood decision — maps game state to audio mood ──────────────
+    if (typeof setAmbientMood === 'function' && typeof getMaxBlockHeight === 'function') {
+      var _heightRatio = getMaxBlockHeight() / GAME_OVER_HEIGHT;
+      var _bossActive = (typeof getBossState === 'function') &&
+        (getBossState() === 'active' || getBossState() === 'intro' || getBossState() === 'transition');
+      var _stormActive = (typeof pieceStormActive !== 'undefined') && pieceStormActive;
+      var _creeperFuseActive = (typeof _creeperFusing !== 'undefined') && _creeperFusing;
+
+      if (_bossActive) {
+        setAmbientMood('intense');
+      } else if (_stormActive || _creeperFuseActive || _heightRatio >= 0.75) {
+        setAmbientMood('tense');
+      } else if (_heightRatio < 0.50) {
+        setAmbientMood('calm');
+      }
+      // Between 0.50–0.75: hold current mood (hysteresis to prevent flickering)
+    }
+
     // Tick ice bridge slow timer
     if (iceBridgeSlowActive) {
       iceBridgeSlowTimer -= delta;
@@ -5557,6 +5651,25 @@ function animate() {
     }
 
     if (!isEditorMode) checkPlayerCollision(playerVelocity.y * delta);
+
+    // Update underground state and safety in Survival mode
+    if (isSurvivalMode && controls && controls.isLocked && !isGameOver) {
+      var _ugY = controls.getObject().position.y;
+      var _prevUnderground = isUnderground;
+      isUnderground = _ugY < 0;
+
+      // Show / hide the underground HUD hint
+      var _ugHud = document.getElementById('underground-hud');
+      if (_ugHud) _ugHud.style.display = isUnderground ? 'flex' : 'none';
+
+      // Safety: below bedrock floor → respawn at surface to prevent softlock
+      if (_ugY < -10.5) {
+        returnPlayerToSurface();
+      }
+    } else if (!isSurvivalMode && isUnderground) {
+      isUnderground = false;
+    }
+
     updateTargeting();
     if (isEditorMode && typeof updateEditorGhost === "function") updateEditorGhost();
     if (isEditorMode && typeof tickEditorAutosave === "function") tickEditorAutosave(delta);
@@ -5606,6 +5719,7 @@ function animate() {
       }
     }
 
+    if (typeof updateUndergroundChunks === 'function') updateUndergroundChunks(delta);
     updateDustParticles(delta);
     updateCraftingBanner(delta);
     // Tick co-op bonus banner fade-out

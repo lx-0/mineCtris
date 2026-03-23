@@ -457,6 +457,12 @@
       <!-- Survival mode badge (shown during survival runs) -->
       <div id="survival-badge" style="display:none;">&#129430; Survival</div>
 
+      <!-- Underground HUD (Survival mode only — shown while player Y < 0) -->
+      <div id="underground-hud" style="display:none;">
+        <span id="underground-label">&#127755; Underground</span>
+        <span id="underground-return-hint">Press <kbd>R</kbd> to return to surface</span>
+      </div>
+
       <!-- Co-op mode badge (shown during co-op runs) + difficulty label -->
       <div id="coop-mode-badge" style="display:none;">&#9760; CO-OP<span id="coop-difficulty-label"></span></div>
       <!-- Co-op bonus overlay: "1.8x CO-OP BONUS" fades out after 3s -->
@@ -1900,6 +1906,7 @@
     <script src="js/season-missions.js"></script>
     <script src="js/savestate.js"></script>
     <script src="js/survival.js"></script>
+    <script src="js/underground.js"></script>
     <script src="js/shareland.js"></script>
     <script src="js/events.js"></script>
     <script src="js/puzzle-codec.js"></script>

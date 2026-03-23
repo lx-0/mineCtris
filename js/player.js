@@ -26,8 +26,11 @@ function checkPlayerCollision(deltaY) {
       onSolidGround = true;
     }
   }
+  // Fallback floor at the surface level — skip in Survival mode so players can
+  // descend into the underground (underground block meshes handle collision there).
   if (
     !onSolidGround &&
+    !isSurvivalMode &&
     playerPosition.y <= capsuleHalfHeight + BLOCK_SIZE / 2
   ) {
     playerVelocity.y = Math.max(0, playerVelocity.y);
@@ -130,6 +133,12 @@ function onKeyDown(event) {
       }
       // Non-coop: crafting is disabled in Sprint, Blitz, and No Iron Week
       if (!isSprintMode && !isBlitzMode && !weeklyNoIron) toggleCraftingPanel();
+      break;
+    case "KeyR":
+      // Return to surface from underground in Survival mode
+      if (isSurvivalMode && isUnderground && typeof returnPlayerToSurface === 'function') {
+        returnPlayerToSurface();
+      }
       break;
     case "KeyQ":
       // Reject incoming trade offer if one is pending

@@ -395,6 +395,11 @@ let caveMouthPos = null;
 // suppresses recordSurvivedSession on the intermediate resetGame call.
 let survivalFromCaveMouth = false;
 
+// ── Underground player state ──────────────────────────────────────────────────
+// isUnderground: true when the player's Y position is below 0 in Survival mode.
+// Updated every frame in the animate loop; consumed by lighting, HUD, and dungeon systems.
+let isUnderground = false;
+
 // ── Session stats (reset each game, accumulated for lifetime stats on game over) ──
 let blocksPlaced = 0;
 let sessionCrafts = 0;
