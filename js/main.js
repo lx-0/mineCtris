@@ -64,14 +64,7 @@ function init() {
   shadowsGroup = new THREE.Group();
   scene.add(shadowsGroup);
 
-  const groundGeometry = new THREE.PlaneGeometry(WORLD_SIZE, WORLD_SIZE);
-  const groundMaterial = new THREE.MeshLambertMaterial({ color: 0x55aa55 });
-  const ground = new THREE.Mesh(groundGeometry, groundMaterial);
-  ground.rotation.x = -Math.PI / 2;
-  ground.name = "ground";
-  worldGroup.add(ground);
-
-  // Initialise underground voxel grid (Phase 1 — data structure + surface meshes).
+  // Initialise underground voxel grid (surface + depth data structure).
   if (typeof initUndergroundGrid === 'function') initUndergroundGrid();
 
   const spawnedPositions = [];

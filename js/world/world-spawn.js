@@ -106,13 +106,8 @@ function returnToSurvival() {
   } else {
     survivalSessionNumber = 1;
     if (typeof initWorldStats === 'function') initWorldStats();
-    if (typeof spawnMineableSurfaceGrid === 'function') spawnMineableSurfaceGrid();
+    if (typeof generateUnderground === 'function') generateUnderground();
   }
-
-  // Hide ground plane in Survival mode — the mineable surface grid replaces it
-  // visually, and visible=false also excludes it from raycasting so mining works.
-  const _survGround = worldGroup.children.find(c => c.name === "ground");
-  if (_survGround) _survGround.visible = false;
 
   var survBadgeEl = document.getElementById('survival-badge');
   if (survBadgeEl) survBadgeEl.style.display = 'block';

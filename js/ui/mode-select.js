@@ -188,6 +188,9 @@
       blocker.style.display = "none";
       modeSelectEl.style.display = "flex";
 
+      // Seasonal event: refresh banner each time mode-select opens
+      if (typeof renderSeasonalEventBanner === 'function') renderSeasonalEventBanner();
+
       // Start ambient music in ultra-sparse menu mood for the mode-select screen
       if (typeof Tone !== 'undefined' && Tone.context && Tone.context.state !== 'running') {
         Tone.context.resume();
@@ -433,12 +436,8 @@
         } else {
           survivalSessionNumber = 1;
           if (typeof initWorldStats === "function") initWorldStats();
-          if (typeof spawnMineableSurfaceGrid === "function") spawnMineableSurfaceGrid();
+          if (typeof generateUnderground === "function") generateUnderground();
         }
-        // Hide ground plane in Survival mode — the mineable surface grid replaces it
-        // visually, and visible=false also excludes it from raycasting so mining works.
-        const _survGround = worldGroup.children.find(c => c.name === "ground");
-        if (_survGround) _survGround.visible = false;
 
         // Spawn player at grid center
         if (controls) controls.getObject().position.set(0, PLAYER_HEIGHT, 0);

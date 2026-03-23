@@ -5,7 +5,7 @@
 
 const SURVIVAL_WORLD_KEY  = "mineCtris_survivalWorld";
 const SURVIVAL_STATS_KEY  = "mineCtris_survivalStats";
-const SURVIVAL_WORLD_VERSION = 1;
+const SURVIVAL_WORLD_VERSION = 2;
 
 /** Returns true if a survival world exists in localStorage. */
 function hasSurvivalWorld() {
@@ -41,11 +41,13 @@ function saveSurvivalWorld() {
   });
 
   const data = {
-    version:       SURVIVAL_WORLD_VERSION,
+    version:          SURVIVAL_WORLD_VERSION,
     score,
-    timeAlive:     gameElapsedSeconds,
-    sessionNumber: survivalSessionNumber,
-    blocks
+    timeAlive:        gameElapsedSeconds,
+    sessionNumber:    survivalSessionNumber,
+    blocks,
+    undergroundSeed:  typeof getUndergroundSeed === 'function' ? getUndergroundSeed() : null,
+    undergroundMined: typeof saveUndergroundGridData === 'function' ? saveUndergroundGridData() : null,
   };
 
   try {
@@ -78,6 +80,16 @@ function restoreSurvivalWorld() {
     worldGroup.add(block);
     registerBlock(block);
   });
+
+  // Restore underground grid from seed + mined-cell list.
+  // Fall back to generateUnderground() with a random seed when missing (v1 saves).
+  if (typeof restoreUndergroundGrid === 'function') {
+    if (data.undergroundSeed) {
+      restoreUndergroundGrid(data.undergroundSeed, data.undergroundMined || []);
+    } else {
+      if (typeof generateUnderground === 'function') generateUnderground();
+    }
+  }
 
   updateScoreHUD();
   return true;
