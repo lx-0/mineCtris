@@ -140,6 +140,16 @@ function onKeyDown(event) {
       applyNudge(-1, 0);
       break;
     case "KeyE":
+      // Cave mouth interaction: enter dungeon from Survival world
+      if (isSurvivalMode && caveMouthPos && typeof _showCaveMouthTierSelector === 'function') {
+        var _ep = controls.getObject().position;
+        var _edx = _ep.x - caveMouthPos.x;
+        var _edz = _ep.z - caveMouthPos.z;
+        if (_edx * _edx + _edz * _edz < 9) {
+          _showCaveMouthTierSelector();
+          break;
+        }
+      }
       // Accept incoming trade offer if one is pending
       if (isCoopMode && typeof coopTrade !== 'undefined' && coopTrade.hasPendingIncomingOffer()) {
         coopTrade.acceptIncomingOffer();

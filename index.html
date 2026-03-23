@@ -376,6 +376,38 @@
         </div>
       </div>
 
+      <!-- Cave mouth proximity prompt (shown in Survival when near the dungeon entrance) -->
+      <div id="cave-mouth-prompt" style="display:none;">
+        <div class="cmp-key">E</div>
+        <div class="cmp-label">Enter The Depths</div>
+      </div>
+
+      <!-- Cave mouth tier selector (opened by pressing E near the cave entrance in Survival) -->
+      <div id="cave-mouth-tier-selector" style="display:none;" tabindex="-1">
+        <div class="cmts-panel">
+          <div class="cmts-title">&#9968; THE DEPTHS</div>
+          <div class="cmts-subtitle">Choose your descent</div>
+          <div class="cmts-tiers">
+            <button class="cmts-tier-btn cmts-tier-shallow" data-dungeon="shallow_mines">
+              <span class="cmts-tier-icon">&#9653;</span>
+              <span class="cmts-tier-name">Shallow Mines</span>
+              <span class="cmts-tier-desc">3 floors &bull; Intro difficulty</span>
+            </button>
+            <button class="cmts-tier-btn cmts-tier-deep" data-dungeon="deep_caverns">
+              <span class="cmts-tier-icon">&#9660;</span>
+              <span class="cmts-tier-name">Deep Caverns</span>
+              <span class="cmts-tier-desc">4 floors &bull; Challenging</span>
+            </button>
+            <button class="cmts-tier-btn cmts-tier-abyssal" data-dungeon="abyssal_rift">
+              <span class="cmts-tier-icon">&#9760;</span>
+              <span class="cmts-tier-name">Abyssal Rift</span>
+              <span class="cmts-tier-desc">4 floors &bull; Extreme</span>
+            </button>
+          </div>
+          <button class="cmts-cancel-btn" id="cmts-cancel">&#8592; Stay on Surface</button>
+        </div>
+      </div>
+
       <!-- Depths discovery nudge prompt (shown after 3 games if Depths never tried) -->
       <div id="depths-discovery-prompt" style="display:none;">
         <div class="ddp-header">&#9935; Ready to go deeper?</div>

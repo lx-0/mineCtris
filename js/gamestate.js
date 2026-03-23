@@ -629,8 +629,9 @@ function showShareFallback(text, anchorBtn) {
 
 /** Reset all game state and return to the start screen. */
 function resetGame() {
-  // Survival: if exiting without game over, record this as a survived session
-  if (isSurvivalMode && !isGameOver && typeof recordSurvivedSession === 'function') {
+  // Survival: if exiting without game over, record this as a survived session.
+  // Skip when the player is just entering a dungeon from the cave mouth (survivalFromCaveMouth).
+  if (isSurvivalMode && !isGameOver && !survivalFromCaveMouth && typeof recordSurvivedSession === 'function') {
     recordSurvivedSession({
       score:        score,
       blocksMined:  blocksMined,
@@ -832,6 +833,10 @@ function resetGame() {
   // Reset survival mode state
   isSurvivalMode = false;
   survivalSessionNumber = 1;
+  caveMouthPos = null;
+  // Hide cave mouth prompt (if showing)
+  var _cmpEl = document.getElementById('cave-mouth-prompt');
+  if (_cmpEl) _cmpEl.style.display = 'none';
   const survivalBadgeEl = document.getElementById('survival-badge');
   if (survivalBadgeEl) survivalBadgeEl.style.display = 'none';
   const survGoEl2 = document.getElementById('survival-go-section');

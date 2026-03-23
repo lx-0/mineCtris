@@ -1292,10 +1292,18 @@ function _showDungeonResultsScreen(summary) {
 
   var lobbyBtn = overlay.querySelector('.drw-btn-lobby');
   if (lobbyBtn) {
-    lobbyBtn.onclick = function () {
-      overlay.style.display = 'none';
-      if (typeof resetGame === 'function') resetGame();
-    };
+    // If the dungeon was launched from the survival cave mouth, offer a direct return
+    if (typeof survivalFromCaveMouth !== 'undefined' && survivalFromCaveMouth) {
+      lobbyBtn.textContent = '⛏ Return to Surface';
+      lobbyBtn.onclick = function () {
+        if (typeof returnToSurvival === 'function') returnToSurvival();
+      };
+    } else {
+      lobbyBtn.onclick = function () {
+        overlay.style.display = 'none';
+        if (typeof resetGame === 'function') resetGame();
+      };
+    }
   }
 
   var shareBtn = overlay.querySelector('.drw-btn-share');
