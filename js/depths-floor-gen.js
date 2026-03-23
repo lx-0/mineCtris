@@ -19,6 +19,19 @@ const DEPTHS_BOARD_WIDTH = 8;  // 8-wide play area (narrower than standard 10)
 // Standard 10-wide = 100 cells; 8-wide = 64 cells.
 const DEPTHS_LINE_CLEAR_CELLS = 64;
 
+// Per-room board width override (set by dungeon-challenge.js when launching a room challenge).
+// 0 = use default DEPTHS_LINE_CLEAR_CELLS.  boardHeight is always 8 (matching depths convention).
+var _dungeonRoomBoardWidth = 0;
+
+/**
+ * Override the line-clear cell count for a dungeon room challenge.
+ * Set to 0 to restore the default (64 cells, 8-wide board).
+ * @param {number} boardWidth  Room board width (min 7). Pass 0 to clear.
+ */
+function setDungeonRoomBoardWidth(boardWidth) {
+  _dungeonRoomBoardWidth = boardWidth || 0;
+}
+
 // ── Biome weights per floor (deeper = harder biomes more likely) ─────────────
 
 const _DEPTHS_BIOME_WEIGHTS = [
@@ -365,9 +378,13 @@ function getDepthsSpawnRange() {
 }
 
 /**
- * Returns the LINE_CLEAR_CELLS_NEEDED override for 8-wide depths board.
+ * Returns the LINE_CLEAR_CELLS_NEEDED for the current depths/dungeon context.
+ * During a dungeon room challenge the board width is set via setDungeonRoomBoardWidth();
+ * cellsNeeded = boardWidth * 8 (board height convention from depths system).
+ * Falls back to DEPTHS_LINE_CLEAR_CELLS (64) for normal depths/dungeon runs.
  */
 function getDepthsLineClearCells() {
+  if (_dungeonRoomBoardWidth > 0) return _dungeonRoomBoardWidth * 8;
   return DEPTHS_LINE_CLEAR_CELLS;
 }
 

@@ -78,6 +78,11 @@ function onKeyDown(event) {
     if (typeof resetGame === "function") resetGame();
     return;
   }
+  // Phase 2B: Escape during dungeon challenge countdown → abort
+  if (event.code === "Escape" && typeof abortDungeonChallenge === 'function') {
+    abortDungeonChallenge();
+    // Fall through (controls may need to re-lock)
+  }
   if (!controls || !controls.isLocked || isGameOver) return;
   switch (event.code) {
     case "KeyW":

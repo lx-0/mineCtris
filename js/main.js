@@ -4490,6 +4490,48 @@ function init() {
     try { localStorage.setItem('mineCtris_lastMode', 'dungeon'); } catch (_) {}
   });
 
+  // ── Dungeon room challenge launch handler (Phase 2B) ──────────────────────
+  // Dispatched by dungeon-challenge.js when the 3-second countdown completes.
+  // Starts a single-floor dungeon session reusing the existing depths machinery.
+  document.addEventListener('roomDungeonLaunch', function (e) {
+    var room     = e.detail && e.detail.room;
+    var dungeonId = (e.detail && e.detail.dungeonId) || 'shallow_mines';
+
+    if (typeof resetGame === 'function') resetGame();
+
+    // Launch dungeon session; board width was already set via setDungeonRoomBoardWidth()
+    var success = false;
+    if (typeof launchDungeonSession === 'function') {
+      success = launchDungeonSession(dungeonId, null);
+    }
+    if (!success) {
+      console.warn('roomDungeonLaunch: failed to launch dungeon session for', dungeonId);
+      survivalFromCaveMouth = false;
+      if (typeof returnToSurvival === 'function') returnToSurvival();
+      return;
+    }
+
+    // Trim session to single floor (room challenge = 1-floor challenge)
+    var session = typeof getDungeonSession === 'function' ? getDungeonSession() : null;
+    if (session && session.floors && session.floors.length > 1) {
+      session.floors = [session.floors[0]];
+      session.totalFloors = 1;
+    }
+
+    // Show dungeon room badge
+    var badge = document.getElementById('depths-mode-badge');
+    if (badge) { badge.textContent = 'DUNGEON ROOM'; badge.style.display = 'inline-block'; }
+
+    // Start floor timers and hand off to dungeon-challenge for camera + seal
+    dungeonFloorTimerActive = true;
+    depthsFloorTimerActive  = true;
+    if (typeof onDungeonChallengeSessionStarted === 'function' && room) {
+      onDungeonChallengeSessionStarted(room);
+    }
+
+    requestPointerLock();
+  });
+
   // ── Depths (legacy 7-floor) launch handler ────────────────────────────────
   document.addEventListener('depthsLaunch', function () {
     hideModeSelect();
@@ -4944,13 +4986,14 @@ function onMouseDown(event) {
       // Capture underground data before unregisterBlock clears gridPos
       const _ugMineSnap = (isSurvivalMode && targetedBlock.userData.gridPos)
         ? {
-            gridPos:      { x: targetedBlock.userData.gridPos.x,
-                            y: targetedBlock.userData.gridPos.y,
-                            z: targetedBlock.userData.gridPos.z },
-            isUnderground: !!targetedBlock.userData.isUnderground,
-            ugCol:         targetedBlock.userData.ugCol,
-            ugRow:         targetedBlock.userData.ugRow,
-            ugDepth:       targetedBlock.userData.ugDepth,
+            gridPos:          { x: targetedBlock.userData.gridPos.x,
+                                y: targetedBlock.userData.gridPos.y,
+                                z: targetedBlock.userData.gridPos.z },
+            isUnderground:     !!targetedBlock.userData.isUnderground,
+            ugCol:             targetedBlock.userData.ugCol,
+            ugRow:             targetedBlock.userData.ugRow,
+            ugDepth:           targetedBlock.userData.ugDepth,
+            isDungeonEntrance: !!targetedBlock.userData.isDungeonEntrance,
           }
         : null;
 
@@ -4961,6 +5004,13 @@ function onMouseDown(event) {
       // Notify underground system (reveal block below, persist mined state)
       if (_ugMineSnap && typeof notifyBlockMined === 'function') {
         notifyBlockMined(_ugMineSnap);
+      }
+
+      // Phase 2B: dungeon entrance mined → trigger room discovery + challenge flow
+      if (_ugMineSnap && _ugMineSnap.isUnderground && _ugMineSnap.isDungeonEntrance) {
+        if (typeof onDungeonEntranceMined === 'function') {
+          onDungeonEntranceMined(_ugMineSnap.ugCol, _ugMineSnap.ugRow, _ugMineSnap.ugDepth);
+        }
       }
       // Remove from obsidian shimmer tracking if applicable
       const _obIdx = obsidianBlocks.indexOf(targetedBlock);
@@ -5396,6 +5446,9 @@ function animate() {
         updateScoreHUD();
       }
     }
+
+    // Phase 2B: tick dungeon room challenge state machine (discovery overlay, countdown, camera dolly)
+    if (typeof tickDungeonChallenge === 'function') tickDungeonChallenge(delta);
 
     // Tick Depths floor timer (legacy 7-floor mode)
     if (gameDepthsMode === 'depths' && depthsFloorTimerActive && typeof updateDepthsFloorTimer === 'function') {

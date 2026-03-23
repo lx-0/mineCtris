@@ -400,6 +400,12 @@ let survivalFromCaveMouth = false;
 // Updated every frame in the animate loop; consumed by lighting, HUD, and dungeon systems.
 let isUnderground = false;
 
+// ── Dungeon room challenge state ──────────────────────────────────────────────
+// activeDungeonRoom: the room object currently being challenged (or null).
+// isInDungeonChallenge: true while a Tetris challenge inside a room is active.
+let activeDungeonRoom = null;
+let isInDungeonChallenge = false;
+
 // ── Session stats (reset each game, accumulated for lifetime stats on game over) ──
 let blocksPlaced = 0;
 let sessionCrafts = 0;

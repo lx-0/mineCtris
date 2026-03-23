@@ -88,6 +88,25 @@ function getDungeonRooms() {
 }
 
 /**
+ * Find the dungeon room whose entrance block is at (col, row, depth).
+ * Returns the room object, or null if none matches.
+ * @param {number} col
+ * @param {number} row
+ * @param {number} depth
+ */
+function findRoomByEntrance(col, row, depth) {
+  for (var i = 0; i < _drRooms.length; i++) {
+    var r = _drRooms[i];
+    if (r.depthMin === depth &&
+        r.centerCol === col &&
+        r.centerRow === row) {
+      return r;
+    }
+  }
+  return null;
+}
+
+/**
  * Mark a room as discovered (call when player is near entrance).
  * @param {string} roomId
  */
@@ -207,20 +226,22 @@ function _drGenerateRooms(rng) {
     if (overlap) continue;
 
     rooms.push({
-      id:        'room_' + rooms.length,
-      tier:      'shallow',
-      centerCol: centerCol,
-      centerRow: centerRow,
-      topDepth:  topDepth,
-      colMin:    colMin,
-      colMax:    colMax,
-      rowMin:    rowMin,
-      rowMax:    rowMax,
-      depthMin:  depthMin,
-      depthMax:  depthMax,
-      width:     w,
-      height:    h,
-      depth_z:   dz,
+      id:         'room_' + rooms.length,
+      tier:       'shallow',
+      centerCol:  centerCol,
+      centerRow:  centerRow,
+      topDepth:   topDepth,
+      colMin:     colMin,
+      colMax:     colMax,
+      rowMin:     rowMin,
+      rowMax:     rowMax,
+      depthMin:   depthMin,
+      depthMax:   depthMax,
+      width:      w,
+      height:     h,
+      depth_z:    dz,
+      // boardWidth: Tetris board columns for the room challenge (min 7 per design spec)
+      boardWidth: Math.max(7, w),
       completed:  false,
       discovered: false,
       loot:       [],

@@ -505,6 +505,12 @@ function _onDungeonFloorCleared() {
   // Advance session state (marks current floor cleared, moves index)
   var nextFloor = advanceDungeonFloor();
 
+  // Phase 2B: dungeon room challenge — intercept completion and hand off to challenge overlay
+  if (typeof isInDungeonChallenge !== 'undefined' && isInDungeonChallenge) {
+    if (typeof onDungeonChallengeComplete === 'function') onDungeonChallengeComplete('victory');
+    return;
+  }
+
   if (session.completed) {
     // Infinite Depths: after floor 7, show inter-Descent screen instead
     if (typeof isInfiniteMode === 'function' && isInfiniteMode() && typeof showInfiniteDescentScreen === 'function') {
@@ -857,6 +863,12 @@ function handleDungeonDeath() {
 
   // Hide dungeon HUD overlay
   if (typeof depthsHud !== 'undefined' && depthsHud) depthsHud.hide();
+
+  // Phase 2B: dungeon room challenge — failure intercept
+  if (typeof isInDungeonChallenge !== 'undefined' && isInDungeonChallenge) {
+    if (typeof onDungeonChallengeComplete === 'function') onDungeonChallengeComplete('failure');
+    return;
+  }
 
   // Infinite Depths: current Descent loot is forfeited; banked loot is kept
   if (typeof isInfiniteMode === 'function' && isInfiniteMode()) {
