@@ -11,7 +11,8 @@
 // Requires: depths-state.js, depths-session.js, depths-config.js
 // Used by:  main.js (launch), depths-session.js (hooks), depths-hud.js (HUD)
 
-var INFINITE_DEPTHS_RUN_KEY = 'mineCtris_infiniteDepths_run';
+var INFINITE_DEPTHS_RUN_KEY           = 'mineCtris_infiniteDepths_run';
+var INFINITE_DEPTHS_HIGHEST_FLOOR_KEY = 'mineCtris_infiniteDepths_highestFloor';
 
 // In-memory run state. Null when no run is active.
 var _infiniteRun = null;
@@ -230,6 +231,139 @@ function clearInfiniteRunState() {
   try { localStorage.removeItem(INFINITE_DEPTHS_RUN_KEY); } catch (_) {}
 }
 
+// ── Milestone cosmetic tracking ───────────────────────────────────────────────
+
+/**
+ * Returns the all-time highest Infinite Depths floor reached (persistent).
+ * Each completed Descent contributes descentNum × 7 floors.
+ * @returns {number}
+ */
+function getInfiniteHighestFloor() {
+  try {
+    return parseInt(localStorage.getItem(INFINITE_DEPTHS_HIGHEST_FLOOR_KEY) || '0', 10);
+  } catch (_) {
+    return 0;
+  }
+}
+
+/**
+ * Update persistent highest floor if the new value is greater.
+ * @param {number} floor
+ */
+function _updateInfiniteHighestFloor(floor) {
+  try {
+    var prev = getInfiniteHighestFloor();
+    if (floor > prev) {
+      localStorage.setItem(INFINITE_DEPTHS_HIGHEST_FLOOR_KEY, String(floor));
+    }
+  } catch (_) {}
+}
+
+/**
+ * Check for newly unlocked Infinite Depths milestone cosmetics and award them.
+ * Shows an unlock notification for each newly awarded cosmetic.
+ * Idempotent — already-unlocked cosmetics are skipped by processUnlocks().
+ */
+function checkInfiniteDepthsMilestones() {
+  if (typeof processUnlocks !== 'function') return;
+  var newlyUnlocked = processUnlocks();
+  for (var i = 0; i < newlyUnlocked.length; i++) {
+    if (newlyUnlocked[i].source === 'free_progression') {
+      _showInfiniteDepthsCosmeticUnlock(newlyUnlocked[i]);
+    }
+  }
+}
+
+/**
+ * Show a cosmetic unlock notification for an Infinite Depths milestone reward.
+ * Uses the achievement toast element if available, otherwise creates a simple overlay.
+ * @param {object} cosmetic — a COSMETIC_REGISTRY entry
+ */
+function _showInfiniteDepthsCosmeticUnlock(cosmetic) {
+  var rarityColors = {
+    common:    '#9ca3af',
+    rare:      '#60a5fa',
+    epic:      '#a78bfa',
+    legendary: '#fbbf24',
+  };
+  var categoryLabels = {
+    block_skin:     'Block Skin',
+    trail:          'Trail',
+    landing_effect: 'Landing Effect',
+    border:         'Border',
+    title:          'Title',
+  };
+
+  var color = rarityColors[cosmetic.rarity] || '#fbbf24';
+  var catLabel = categoryLabels[cosmetic.category] || cosmetic.category;
+
+  // Reuse or create a dedicated depths-cosmetic-unlock overlay
+  var overlay = document.getElementById('infinite-depths-cosmetic-unlock');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.id = 'infinite-depths-cosmetic-unlock';
+    overlay.style.cssText = [
+      'position:fixed',
+      'top:50%',
+      'left:50%',
+      'transform:translate(-50%,-50%)',
+      'background:rgba(10,10,20,0.97)',
+      'border:2px solid #fbbf24',
+      'border-radius:12px',
+      'padding:32px 40px',
+      'text-align:center',
+      'z-index:9999',
+      'pointer-events:none',
+      'opacity:0',
+      'transition:opacity 0.4s ease',
+      'min-width:280px',
+    ].join(';');
+    document.body.appendChild(overlay);
+  }
+
+  overlay.style.borderColor = color;
+  overlay.innerHTML =
+    '<div style="font-size:2em;margin-bottom:8px">&#8734;</div>' +
+    '<div style="font-size:0.65em;letter-spacing:0.15em;color:#6ee7b7;margin-bottom:6px">INFINITE DEPTHS MILESTONE</div>' +
+    '<div style="font-size:0.75em;letter-spacing:0.12em;color:#d1d5db;margin-bottom:10px">COSMETIC UNLOCKED</div>' +
+    '<div style="font-size:1.1em;font-weight:bold;color:' + color + ';margin-bottom:4px">' + cosmetic.name + '</div>' +
+    '<div style="font-size:0.6em;color:#9ca3af;text-transform:uppercase;letter-spacing:0.1em">' +
+      cosmetic.rarity + ' &bull; ' + catLabel +
+    '</div>';
+
+  // Fade in, hold, fade out
+  overlay.style.opacity = '0';
+  void overlay.offsetWidth;
+  overlay.style.opacity = '1';
+  clearTimeout(overlay._hideTimer);
+  overlay._hideTimer = setTimeout(function () {
+    overlay.style.opacity = '0';
+  }, 3500);
+
+  // Play a short chime
+  try {
+    var AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (AudioCtx) {
+      var ctx = new AudioCtx();
+      var freqs = [523.25, 659.25, 783.99, 1046.5]; // C5 E5 G5 C6
+      var now = ctx.currentTime;
+      for (var j = 0; j < freqs.length; j++) {
+        var osc = ctx.createOscillator();
+        var gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.type = 'sine';
+        osc.frequency.value = freqs[j];
+        var t = now + j * 0.13;
+        gain.gain.setValueAtTime(0.22, t);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
+        osc.start(t);
+        osc.stop(t + 0.25);
+      }
+    }
+  } catch (_) {}
+}
+
 // ── Extraction results screen ─────────────────────────────────────────────────
 
 /**
@@ -307,6 +441,9 @@ function showInfiniteRunResults(isDeath) {
   if (bankedLoot.length > 0 && typeof _saveDungeonLootToInventory === 'function') {
     _saveDungeonLootToInventory(bankedLoot);
   }
+
+  // Check milestone cosmetics on run end (covers extraction and death paths)
+  checkInfiniteDepthsMilestones();
 
   // Persist stats
   if (typeof _persistDungeonRunStats === 'function') {
@@ -424,14 +561,20 @@ function showInfiniteDescentScreen(descentNum, floorLoot) {
   overlay.setAttribute('tabindex', '-1');
   overlay.focus();
 
+  // Track highest floor reached: each Descent has 7 floors
+  _updateInfiniteHighestFloor(descentNum * 7);
+
   // Mastery tracking — record this completed descent
   if (typeof masteryOnInfiniteDescentComplete === 'function') {
     masteryOnInfiniteDescentComplete(descentNum);
   }
 
-  // Descent completion sting + milestone check
+  // Descent completion sting + audio milestone check
   if (typeof playDescentCompleteSting === 'function') playDescentCompleteSting(descentNum);
   if (typeof checkAndPlayMilestone === 'function') checkAndPlayMilestone(descentNum);
+
+  // Award any newly reached cosmetic milestones
+  checkInfiniteDepthsMilestones();
 
   // Wire Extract button
   var extractBtn = document.getElementById('infinite-extract-btn');

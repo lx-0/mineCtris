@@ -135,6 +135,67 @@ const COSMETIC_REGISTRY = [
     assets:          { displayText: 'Crown', leaderboardIcon: '\uD83D\uDC51' },
   },
 
+    // ── Infinite Depths Milestone Cosmetics ──────────────────────────────────
+  //
+  // FREE PROGRESSION COSMETICS — earned exclusively through Infinite Depths gameplay.
+  //
+  // Design boundary (per CEO feedback, MINAA-334):
+  //   Free progression cosmetics  — earned through gameplay milestones, achievements, mastery.
+  //                                  Themed around gameplay accomplishments (depth, skill, completion).
+  //   Premium cosmetics (future)  — purchased. Themed around aesthetic variety (seasonal themes,
+  //                                  pop culture, abstract art). NEVER gameplay-gated.
+  //
+  // RULE: No free progression cosmetic shares a visual theme or rarity tier with premium cosmetics.
+  //       Premium cosmetics are never obtainable through gameplay, and vice versa.
+  //
+  // Unlock type: { type: 'infinite_floor', value: <floor_number> }
+  //   Checked against mineCtris_infiniteDepths_highestFloor in localStorage.
+  {
+    id:              'title_depth_diver',
+    category:        'title',
+    name:            'Depth Diver',
+    rarity:          'rare',
+    source:          'free_progression',
+    unlockCondition: { type: 'infinite_floor', value: 14 }, // Descent 2 complete
+    assets:          { displayText: 'Depth Diver' },
+  },
+  {
+    id:              'block_skin_abyssal',
+    category:        'block_skin',
+    name:            'Abyssal',
+    rarity:          'epic',
+    source:          'free_progression',
+    unlockCondition: { type: 'infinite_floor', value: 28 }, // Descent 4 complete
+    assets:          { themeKey: 'abyssal' }, // dark blue with depth-pressure cracks
+  },
+  {
+    id:              'trail_entropy',
+    category:        'trail',
+    name:            'Entropy',
+    rarity:          'epic',
+    source:          'free_progression',
+    unlockCondition: { type: 'infinite_floor', value: 49 }, // Descent 7 complete
+    assets:          { trailKey: 'entropy', dissolveBlocks: true }, // blocks dissolve behind player
+  },
+  {
+    id:              'landing_void_walker',
+    category:        'landing_effect',
+    name:            'Void Walker',
+    rarity:          'legendary',
+    source:          'free_progression',
+    unlockCondition: { type: 'infinite_floor', value: 70 }, // Descent 10 complete
+    assets:          { effectKey: 'void_ripple' }, // void ripple on piece land
+  },
+  {
+    id:              'border_infinite',
+    category:        'border',
+    name:            'Infinite',
+    rarity:          'legendary',
+    source:          'free_progression',
+    unlockCondition: { type: 'infinite_floor', value: 98 }, // Descent 14 complete (~floor 100)
+    assets:          { borderKey: 'infinite_depth', animated: true, shiftingColors: true },
+  },
+
   // ── Mastery Cosmetics (40 total: 8 modes × 5 tiers) ──────────────────────
   // Bronze → title, Silver → block_skin, Gold → trail,
   // Diamond → landing_effect, Obsidian → border
@@ -364,6 +425,15 @@ function checkUnlockCondition(cosmetic) {
       // Dungeon reward — check if the player owns this depths reward
       if (typeof hasDepthsReward === 'function') return hasDepthsReward(cond.value);
       return false;
+    }
+    case 'infinite_floor': {
+      // Infinite Depths milestone — check persistent highest floor reached
+      try {
+        var floor = parseInt(localStorage.getItem('mineCtris_infiniteDepths_highestFloor') || '0', 10);
+        return floor >= cond.value;
+      } catch (_) {
+        return false;
+      }
     }
     default:
       return false;
