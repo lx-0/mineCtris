@@ -106,9 +106,6 @@ function returnPlayerToSurface() {
   var pos = controls.getObject().position;
   pos.y = PLAYER_HEIGHT;
   playerVelocity.y = 0;
-  isUnderground = false;
-  var _rtsEl = document.getElementById('underground-hud');
-  if (_rtsEl) _rtsEl.style.display = 'none';
 }
 
 /**
@@ -5596,22 +5593,11 @@ function animate() {
 
     if (!isEditorMode) checkPlayerCollision(playerVelocity.y * delta);
 
-    // Update underground state and safety in Survival mode
+    // Safety: below bedrock floor → respawn at surface to prevent softlock
     if (isSurvivalMode && controls && controls.isLocked && !isGameOver) {
-      var _ugY = controls.getObject().position.y;
-      var _prevUnderground = isUnderground;
-      isUnderground = _ugY < 0;
-
-      // Show / hide the underground HUD hint
-      var _ugHud = document.getElementById('underground-hud');
-      if (_ugHud) _ugHud.style.display = isUnderground ? 'flex' : 'none';
-
-      // Safety: below bedrock floor → respawn at surface to prevent softlock
-      if (_ugY < -10.5) {
+      if (controls.getObject().position.y < -10.5) {
         returnPlayerToSurface();
       }
-    } else if (!isSurvivalMode && isUnderground) {
-      isUnderground = false;
     }
 
     updateTargeting();
@@ -5663,7 +5649,6 @@ function animate() {
       }
     }
 
-    if (typeof updateUndergroundChunks === 'function') updateUndergroundChunks(delta);
     updateDustParticles(delta);
     updateCraftingBanner(delta);
     // Tick co-op bonus banner fade-out

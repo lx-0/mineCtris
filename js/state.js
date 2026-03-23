@@ -393,11 +393,6 @@ let survivalSessionNumber = 1;
 // suppresses recordSurvivedSession on the intermediate resetGame call.
 let survivalFromCaveMouth = false;
 
-// ── Underground player state ──────────────────────────────────────────────────
-// isUnderground: true when the player's Y position is below 0 in Survival mode.
-// Updated every frame in the animate loop; consumed by lighting, HUD, and dungeon systems.
-let isUnderground = false;
-
 // ── Dungeon room challenge state ──────────────────────────────────────────────
 // activeDungeonRoom: the room object currently being challenged (or null).
 // isInDungeonChallenge: true while a Tetris challenge inside a room is active.

@@ -139,12 +139,6 @@ function onKeyDown(event) {
       // Non-coop: crafting is disabled in Sprint, Blitz, and No Iron Week
       if (!isSprintMode && !isBlitzMode && !weeklyNoIron) toggleCraftingPanel();
       break;
-    case "KeyR":
-      // Return to surface from underground in Survival mode
-      if (isSurvivalMode && isUnderground && typeof returnPlayerToSurface === 'function') {
-        returnPlayerToSurface();
-      }
-      break;
     case "KeyQ":
       // Reject incoming trade offer if one is pending
       if (isCoopMode && typeof coopTrade !== 'undefined' && coopTrade.hasPendingIncomingOffer()) {

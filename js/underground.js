@@ -1,15 +1,16 @@
-// Underground terrain — data layer, chunk-based mesh loading, and depth lighting.
+// Underground terrain — data layer, pre-generated mesh system, and dungeon support.
 // Phase 1B: 20×20×10 grid below the mineable surface.
 //
 // Depth layers:
 //   depth 0-2  → world Y -0.5 to -2.5  → Dirt  (2 mining hits)
 //   depth 3-9  → world Y -3.5 to -9.5  → Stone (4 mining hits)
 //
-// Chunk size: 8×8×4. Load radius: 2 chunks. Unload distance: 4 chunks.
+// All 4000 underground block meshes are created at world init and kept in the scene
+// with visible=false. Blocks become visible (and enter gridOccupancy) only when the
+// block directly above them is mined. No chunk loading — one unified world.
 //
 // Requires: config.js, world.js (createBlockMesh, registerBlock, unregisterBlock,
-//           disposeBlock), state.js (worldGroup, hemisphereLight, isSurvivalMode,
-//           controls)
+//           disposeBlock), state.js (worldGroup, isSurvivalMode, controls)
 
 var UNDERGROUND_COLS  = 20;
 var UNDERGROUND_ROWS  = 20;
@@ -27,12 +28,6 @@ var UG_BEDROCK_COLOR      = 0x404040;  // "bedrock"         in COLOR_TO_MATERIAL
 var UG_DUNGEON_WALL_COLOR = 0x4a4a5e;  // "dungeon_wall"    in COLOR_TO_MATERIAL
 var UG_DUNGEON_ENT_COLOR  = 0x7a4028;  // "dungeon_entrance" in COLOR_TO_MATERIAL
 
-var UG_CHUNK_H    = 8;   // columns / rows per horizontal chunk slice
-var UG_CHUNK_V    = 4;   // depth layers per vertical chunk slice
-
-var UG_LOAD_RADIUS   = 2;  // load chunks within this Chebyshev distance
-var UG_UNLOAD_DIST   = 4;  // unload chunks beyond this Chebyshev distance
-
 // localStorage persistence key
 var UNDERGROUND_MINED_KEY = 'mineCtris_undergroundMined';
 var UNDERGROUND_SEED_KEY  = 'mineCtris_undergroundSeed';
@@ -40,8 +35,6 @@ var UNDERGROUND_SEED_KEY  = 'mineCtris_undergroundSeed';
 // Module-private state
 var _ugData          = null;      // Map<"col,row,depth", {type, mined}>
 var _ugMeshes        = new Map(); // Map<"col,row,depth", THREE.Mesh>
-var _loadedChunks    = new Set(); // Set<"cx,cz,cy">
-var _ugChunkTimer    = 0;         // throttle: seconds until next chunk update
 var _bedrockWalls    = [];        // always-loaded boundary bedrock meshes
 var _dungeonGlowKeys      = new Set(); // block keys flagged for warm emissive tint (full)
 var _dungeonGlowFaintKeys = new Set(); // subset: faint glow (3-5 steps from room wall)
@@ -64,15 +57,6 @@ function _ugMkRng(seed) {
 /** World-space centre position for (col, row, depth). */
 function _ugWorldPos(col, row, depth) {
   return { x: col - 9.5, y: -depth - 0.5, z: row - 9.5 };
-}
-
-/** Chunk coordinates for (col, row, depth). */
-function _ugChunkCoords(col, row, depth) {
-  return {
-    cx: Math.floor(col   / UG_CHUNK_H),
-    cz: Math.floor(row   / UG_CHUNK_H),
-    cy: Math.floor(depth / UG_CHUNK_V),
-  };
 }
 
 /** Data-map key. */
@@ -121,6 +105,9 @@ function initUnderground(seed) {
   if (typeof initDungeonRooms === 'function') {
     initDungeonRooms(_ugSeed, _ugData);
   }
+
+  // Pre-generate all block meshes (invisible until revealed by mining above)
+  _createAllUgMeshes();
 }
 
 /**
@@ -161,63 +148,9 @@ function restoreUnderground() {
   }
 
   _createBedrockWalls();
-}
 
-/**
- * Per-frame tick. Updates chunk loading/unloading and depth lighting.
- * Throttled internally — safe to call every frame.
- * @param {number} delta  Seconds since last frame.
- */
-function updateUndergroundChunks(delta) {
-  if (!_ugData || !isSurvivalMode) return;
-  if (!controls || !controls.isLocked) return;
-
-  _ugChunkTimer -= delta;
-  if (_ugChunkTimer > 0) return;
-  _ugChunkTimer = 0.5; // run at most twice per second
-
-  var pos   = controls.getObject().position;
-  var pCol  = pos.x + 9.5;
-  var pRow  = pos.z + 9.5;
-  var pDepth = Math.max(0, -pos.y - 0.5); // world Y < 0 → depth
-
-  var pcx = Math.floor(pCol  / UG_CHUNK_H);
-  var pcz = Math.floor(pRow  / UG_CHUNK_H);
-  var pcy = Math.floor(pDepth / UG_CHUNK_V);
-
-  // Load chunks within radius
-  for (var dx = -UG_LOAD_RADIUS; dx <= UG_LOAD_RADIUS; dx++) {
-    for (var dz = -UG_LOAD_RADIUS; dz <= UG_LOAD_RADIUS; dz++) {
-      for (var dy = -UG_LOAD_RADIUS; dy <= UG_LOAD_RADIUS; dy++) {
-        var cx = pcx + dx, cz = pcz + dz, cy = pcy + dy;
-        if (cx < 0 || cz < 0 || cy < 0) continue;
-        if (cx * UG_CHUNK_H >= UNDERGROUND_COLS)  continue;
-        if (cz * UG_CHUNK_H >= UNDERGROUND_ROWS)  continue;
-        if (cy * UG_CHUNK_V >= UNDERGROUND_DEPTH) continue;
-        _loadChunk(cx, cz, cy);
-      }
-    }
-  }
-
-  // Unload distant chunks
-  var toUnload = [];
-  _loadedChunks.forEach(function (key) {
-    var parts = key.split(',');
-    var cx = +parts[0], cz = +parts[1], cy = +parts[2];
-    var dist = Math.max(
-      Math.abs(cx - pcx),
-      Math.abs(cz - pcz),
-      Math.abs(cy - pcy)
-    );
-    if (dist > UG_UNLOAD_DIST) toUnload.push({ cx: cx, cz: cz, cy: cy });
-  });
-  for (var i = 0; i < toUnload.length; i++) {
-    var c = toUnload[i];
-    _unloadChunk(c.cx, c.cz, c.cy);
-  }
-
-  // Update depth-based ambient lighting
-  _updateDepthLighting(pos.y);
+  // Pre-generate all block meshes (invisible until revealed by mining above)
+  _createAllUgMeshes();
 }
 
 /**
@@ -282,10 +215,6 @@ function clearUnderground() {
   // Remove dungeon torch point lights from the scene
   if (typeof clearDungeonRoomLights === 'function') clearDungeonRoomLights();
   _clearModuleState();
-  // Restore default hemisphere light intensity
-  if (typeof hemisphereLight !== 'undefined' && hemisphereLight) {
-    hemisphereLight.intensity = 0.5;
-  }
 }
 
 /**
@@ -306,14 +235,14 @@ function _clearModuleState() {
   });
   _ugData          = null;
   _ugMeshes        = new Map();
-  _loadedChunks    = new Set();
-  _ugChunkTimer    = 0;
   _bedrockWalls    = [];
   _dungeonGlowKeys      = new Set();
   _dungeonGlowFaintKeys = new Set();
 }
 
-/** Instantiate a THREE.js mesh for the given underground block and add it to the world. */
+/** Instantiate a THREE.js mesh for the given underground block and add it to the world.
+ *  The mesh starts invisible and unregistered — call registerBlock + set visible=true
+ *  when revealing it. */
 function _createUgMesh(col, row, depth, type) {
   var color;
   if (type === UG_DUNGEON_WALL) {
@@ -339,101 +268,69 @@ function _createUgMesh(col, row, depth, type) {
   }
 
   worldGroup.add(mesh);
-  registerBlock(mesh);
+  // NOTE: registerBlock is called on reveal (not here) so hidden blocks
+  // stay out of gridOccupancy and are not targetable or line-cleared.
   return mesh;
 }
 
-/** Load a chunk — create meshes for all unmined blocks it contains. */
-function _loadChunk(cx, cz, cy) {
-  var cKey = cx + ',' + cz + ',' + cy;
-  if (_loadedChunks.has(cKey)) return;
-  _loadedChunks.add(cKey);
+/**
+ * Pre-generate all underground block meshes at world init.
+ * All meshes start invisible and unregistered.
+ * Blocks whose depth-1 layer is fully mined (shaft holes, dungeon carve) are
+ * made visible immediately and registered in gridOccupancy.
+ */
+function _createAllUgMeshes() {
+  _ugMeshes = new Map();
 
-  var colStart   = cx * UG_CHUNK_H;
-  var rowStart   = cz * UG_CHUNK_H;
-  var depthStart = cy * UG_CHUNK_V;
-
-  for (var col = colStart; col < colStart + UG_CHUNK_H && col < UNDERGROUND_COLS; col++) {
-    for (var row = rowStart; row < rowStart + UG_CHUNK_H && row < UNDERGROUND_ROWS; row++) {
-      for (var depth = depthStart; depth < depthStart + UG_CHUNK_V && depth < UNDERGROUND_DEPTH; depth++) {
+  // Pass 1: create every non-mined block mesh, hidden
+  for (var col = 0; col < UNDERGROUND_COLS; col++) {
+    for (var row = 0; row < UNDERGROUND_ROWS; row++) {
+      for (var depth = 0; depth < UNDERGROUND_DEPTH; depth++) {
         var bKey  = _ugKey(col, row, depth);
         var bData = _ugData.get(bKey);
-        if (!bData || bData.mined || _ugMeshes.has(bKey)) continue;
+        if (!bData || bData.mined) continue;
         var mesh = _createUgMesh(col, row, depth, bData.type);
-        _ugMeshes.set(bKey, mesh);
+        mesh.visible = false;
+        // Apply dungeon glow (markRoomAdjacentBlocks already populated the sets)
         if (_dungeonGlowKeys.has(bKey)) {
           if (_dungeonGlowFaintKeys.has(bKey)) _applyDungeonGlowFaint(mesh);
           else _applyDungeonGlow(mesh);
+        }
+        _ugMeshes.set(bKey, mesh);
+      }
+    }
+  }
+
+  // Pass 2: reveal blocks that are immediately exposed (block above is mined)
+  for (var col = 0; col < UNDERGROUND_COLS; col++) {
+    for (var row = 0; row < UNDERGROUND_ROWS; row++) {
+      for (var depth = 1; depth < UNDERGROUND_DEPTH; depth++) {
+        var bKey = _ugKey(col, row, depth);
+        var mesh = _ugMeshes.get(bKey);
+        if (!mesh) continue;
+        var aboveKey  = _ugKey(col, row, depth - 1);
+        var aboveData = _ugData.get(aboveKey);
+        if (aboveData && aboveData.mined) {
+          mesh.visible = true;
+          registerBlock(mesh);
         }
       }
     }
   }
 }
 
-/** Unload a chunk — dispose and remove all its meshes. */
-function _unloadChunk(cx, cz, cy) {
-  var cKey = cx + ',' + cz + ',' + cy;
-  if (!_loadedChunks.has(cKey)) return;
-  _loadedChunks.delete(cKey);
-
-  var colStart   = cx * UG_CHUNK_H;
-  var rowStart   = cz * UG_CHUNK_H;
-  var depthStart = cy * UG_CHUNK_V;
-
-  for (var col = colStart; col < colStart + UG_CHUNK_H && col < UNDERGROUND_COLS; col++) {
-    for (var row = rowStart; row < rowStart + UG_CHUNK_H && row < UNDERGROUND_ROWS; row++) {
-      for (var depth = depthStart; depth < depthStart + UG_CHUNK_V && depth < UNDERGROUND_DEPTH; depth++) {
-        var bKey = _ugKey(col, row, depth);
-        var mesh = _ugMeshes.get(bKey);
-        if (!mesh) continue;
-        unregisterBlock(mesh);
-        disposeBlock(mesh);
-        worldGroup.remove(mesh);
-        _ugMeshes.delete(bKey);
-      }
-    }
-  }
-}
-
 /**
- * Ensure a specific block has a mesh (reveal it after mining a block above).
- * Force-loads the block's chunk if not already loaded.
+ * Make a specific underground block visible and register it for interaction.
+ * Called when the block directly above it is mined.
  */
 function _revealBlock(col, row, depth) {
   var bKey  = _ugKey(col, row, depth);
   var bData = _ugData.get(bKey);
-  if (!bData || bData.mined || _ugMeshes.has(bKey)) return;
-
-  var c    = _ugChunkCoords(col, row, depth);
-  var cKey = c.cx + ',' + c.cz + ',' + c.cy;
-  if (!_loadedChunks.has(cKey)) {
-    // Force-load this one chunk so the revealed block is immediately visible
-    _loadChunk(c.cx, c.cz, c.cy);
-  } else {
-    // Chunk already loaded but mesh missing (shouldn't normally happen, but be safe)
-    var mesh = _createUgMesh(col, row, depth, bData.type);
-    _ugMeshes.set(bKey, mesh);
-    if (_dungeonGlowKeys.has(bKey)) {
-      if (_dungeonGlowFaintKeys.has(bKey)) _applyDungeonGlowFaint(mesh);
-      else _applyDungeonGlow(mesh);
-    }
-  }
-}
-
-/**
- * Lerp hemisphere light intensity from 0.5 (surface) to 0.1 (Y=-10).
- * Only dims when the player is underground (Y < 0).
- */
-function _updateDepthLighting(playerY) {
-  if (typeof hemisphereLight === 'undefined' || !hemisphereLight) return;
-  if (playerY >= 0) {
-    // At or above surface: restore full intensity
-    hemisphereLight.intensity = 0.5;
-    return;
-  }
-  // t = 0 at Y=0, t = 1 at Y=-10
-  var t = Math.max(0, Math.min(1, -playerY / 10));
-  hemisphereLight.intensity = 0.5 - 0.4 * t; // lerp 0.5 → 0.1
+  if (!bData || bData.mined) return;
+  var mesh = _ugMeshes.get(bKey);
+  if (!mesh || mesh.visible) return;
+  mesh.visible = true;
+  registerBlock(mesh);
 }
 
 // ── Bedrock boundary walls ───────────────────────────────────────────────────
@@ -496,9 +393,9 @@ function _applyDungeonGlowFaint(mesh) {
 
 /**
  * Flag underground blocks adjacent to dungeon room cells for warm emissive
- * tinting. Call from the dungeon system (MINAA-348) after room layout is known.
+ * tinting. Call from the dungeon system after room layout is known.
  * Blocks that are already loaded get their emissive applied immediately; blocks
- * not yet loaded pick it up when their chunk is loaded.
+ * not yet created pick it up in _createAllUgMeshes.
  *
  * @param {Array<{col:number, row:number, depth:number}>} roomCells
  *   Array of cell positions that form room walls. Blocks within 5 steps of any
