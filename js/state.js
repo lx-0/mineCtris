@@ -389,9 +389,7 @@ let _creeperWalkPhase = 0;
 // survivalSessionNumber: increments each time the player continues on the same world.
 let isSurvivalMode      = false;
 let survivalSessionNumber = 1;
-// caveMouthPos: world-space position of the cave mouth entrance (set when survival starts).
-let caveMouthPos = null;
-// survivalFromCaveMouth: true when a dungeon was launched from the survival cave mouth,
+// survivalFromCaveMouth: true when a dungeon was launched from survival mode,
 // suppresses recordSurvivedSession on the intermediate resetGame call.
 let survivalFromCaveMouth = false;
 

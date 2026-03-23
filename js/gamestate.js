@@ -846,13 +846,9 @@ function resetGame() {
   // Reset survival mode state
   isSurvivalMode = false;
   survivalSessionNumber = 1;
-  caveMouthPos = null;
   // Restore ground plane visibility (was hidden during Survival mode)
   const _resetGround = worldGroup.children.find(c => c.name === "ground");
   if (_resetGround) _resetGround.visible = true;
-  // Hide cave mouth prompt (if showing)
-  var _cmpEl = document.getElementById('cave-mouth-prompt');
-  if (_cmpEl) _cmpEl.style.display = 'none';
   const survivalBadgeEl = document.getElementById('survival-badge');
   if (survivalBadgeEl) survivalBadgeEl.style.display = 'none';
   const survGoEl2 = document.getElementById('survival-go-section');

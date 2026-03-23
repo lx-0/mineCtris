@@ -97,101 +97,6 @@ function spawnObsidian(ox, oz) {
   return block;
 }
 
-// ── Cave Mouth (Survival → Depths dungeon entry point) ──────────────────────
-
-/**
- * Place the cave mouth structure in the survival world.
- * Always at a fixed offset from spawn so it's always visible.
- * Blocks are named "cave_mouth" so resetGame() (which only removes "landed_block")
- * never accidentally removes them.
- * Sets the global caveMouthPos.
- */
-function spawnCaveMouth() {
-  // First, remove any existing cave mouth blocks (idempotent re-spawn)
-  var toRemove = worldGroup.children.filter(function (c) { return c.name === 'cave_mouth'; });
-  toRemove.forEach(function (b) { worldGroup.remove(b); });
-
-  // Fixed position: 8 blocks north of origin — inside the 20×20 mineable grid (Z: -9.5 to 9.5)
-  var cx = 0;
-  var cz = 8;
-  caveMouthPos = { x: cx, z: cz };
-
-  var bs = BLOCK_SIZE;
-
-  var darkStoneMat = new THREE.MeshLambertMaterial({ color: 0x2a2a3a });
-  var lintelMat    = new THREE.MeshLambertMaterial({ color: 0x1a1a2e });
-  var torchMat     = new THREE.MeshLambertMaterial({
-    color: 0xff8800,
-    emissive: new THREE.Color(0xff4400),
-    emissiveIntensity: 0.5,
-  });
-  var railMat  = new THREE.MeshLambertMaterial({ color: 0x888888 });
-  var signMat  = new THREE.MeshLambertMaterial({ color: 0x6b3a1f });
-
-  function addBlock(geo, mat, x, y, z) {
-    var b = new THREE.Mesh(geo, mat);
-    b.position.set(x, y, z);
-    b.name = 'cave_mouth';
-    b.userData.objectType = 'cave_mouth_decoration';
-    worldGroup.add(b);
-    return b;
-  }
-
-  var blockGeo = new THREE.BoxGeometry(bs, bs, bs);
-
-  // Left column (2 high)
-  addBlock(blockGeo, darkStoneMat.clone(), cx - bs, bs * 0.5, cz);
-  addBlock(blockGeo, darkStoneMat.clone(), cx - bs, bs * 1.5, cz);
-  // Right column (2 high)
-  addBlock(blockGeo, darkStoneMat.clone(), cx + bs, bs * 0.5, cz);
-  addBlock(blockGeo, darkStoneMat.clone(), cx + bs, bs * 1.5, cz);
-  // Lintel (3 wide across top)
-  addBlock(blockGeo, lintelMat.clone(), cx - bs, bs * 2.5, cz);
-  addBlock(blockGeo, lintelMat.clone(), cx,      bs * 2.5, cz);
-  addBlock(blockGeo, lintelMat.clone(), cx + bs, bs * 2.5, cz);
-
-  // Dark obsidian floor patch across the entrance opening
-  var floorGeo = new THREE.BoxGeometry(bs, bs * 0.25, bs);
-  var floorMat = new THREE.MeshLambertMaterial({
-    color: 0x1a0030,
-    emissive: new THREE.Color(0x1a0030),
-    emissiveIntensity: 0.2,
-  });
-  addBlock(floorGeo, floorMat.clone(), cx - 0, bs * 0.125, cz);
-
-  // Torch to the left of the entrance
-  var torchGeo = new THREE.BoxGeometry(bs * 0.3, bs * 0.7, bs * 0.3);
-  addBlock(torchGeo, torchMat.clone(), cx - bs * 2, bs * 0.35, cz);
-
-  // Abandoned rail tracks leading away from entrance (3 sleepers)
-  var sleepGeo = new THREE.BoxGeometry(bs * 0.8, bs * 0.12, bs * 0.2);
-  var sleepMat = new THREE.MeshLambertMaterial({ color: 0x5a3a1a });
-  var railBarGeo = new THREE.BoxGeometry(bs * 0.12, bs * 0.12, bs * 3.2);
-  addBlock(railBarGeo, railMat.clone(), cx - bs * 0.3, bs * 0.12, cz + bs * 1.6);
-  addBlock(railBarGeo, railMat.clone(), cx + bs * 0.3, bs * 0.12, cz + bs * 1.6);
-  for (var ri = 0; ri < 3; ri++) {
-    addBlock(sleepGeo, sleepMat.clone(), cx, bs * 0.06, cz + bs * (0.8 + ri * 1.2));
-  }
-
-  // Signpost: "The Depths" to the right of entrance
-  var postGeo = new THREE.BoxGeometry(bs * 0.15, bs * 2, bs * 0.15);
-  addBlock(postGeo, signMat.clone(), cx + bs * 2.2, bs, cz - bs * 0.3);
-  var signBoardGeo = new THREE.BoxGeometry(bs * 1.4, bs * 0.55, bs * 0.12);
-  addBlock(signBoardGeo, signMat.clone(), cx + bs * 2.2, bs * 2.1, cz - bs * 0.3);
-}
-
-/**
- * Show the cave mouth tier selector overlay so the player can choose which
- * dungeon to enter. Unlocks pointer, shows the modal.
- */
-function _showCaveMouthTierSelector() {
-  if (typeof controls !== 'undefined' && controls && controls.isLocked) controls.unlock();
-  var sel = document.getElementById('cave-mouth-tier-selector');
-  if (!sel) return;
-  sel.style.display = 'flex'; // matches CSS display:flex for centering
-  sel.focus();
-}
-
 /**
  * Teleport the player back to the surface from underground in Survival mode.
  * Used as an escape hatch when stuck or lost underground.
@@ -238,17 +143,12 @@ function returnToSurvival() {
   const _survGround = worldGroup.children.find(c => c.name === "ground");
   if (_survGround) _survGround.visible = false;
 
-  // Re-place the cave mouth (resetGame doesn't remove cave_mouth blocks but
-  // caveMouthPos was cleared — call spawnCaveMouth to refresh it)
-  spawnCaveMouth();
-
   var survBadgeEl = document.getElementById('survival-badge');
   if (survBadgeEl) survBadgeEl.style.display = 'block';
 
-  // Spawn just south of cave mouth so player faces the play area with cave mouth visible behind
+  // Spawn at grid center
   if (typeof controls !== 'undefined' && controls) {
-    var _spawnZ = caveMouthPos ? caveMouthPos.z - 3 : 5;
-    controls.getObject().position.set(0, PLAYER_HEIGHT, _spawnZ);
+    controls.getObject().position.set(0, PLAYER_HEIGHT, 0);
   }
 
   if (typeof requestPointerLock === 'function') requestPointerLock();
@@ -777,46 +677,6 @@ function init() {
     }
 
     // ── Cave mouth tier selector wiring ────────────────────────────────────
-    (function () {
-      var cmts = document.getElementById('cave-mouth-tier-selector');
-      if (!cmts) return;
-
-      function closeCmts() {
-        cmts.style.display = 'none';
-        // Return pointer lock to survival world
-        if (typeof controls !== 'undefined' && controls) {
-          if (Tone && Tone.context && Tone.context.state !== 'running') {
-            Tone.start().then(function () { controls.lock(); }).catch(function () { controls.lock(); });
-          } else {
-            controls.lock();
-          }
-        }
-      }
-
-      // Tier buttons
-      var tierBtns = cmts.querySelectorAll('.cmts-tier-btn');
-      tierBtns.forEach(function (btn) {
-        btn.addEventListener('click', function () {
-          var dungeonId = btn.getAttribute('data-dungeon');
-          if (!dungeonId) return;
-          cmts.style.display = 'none';
-          // Save survival world before entering dungeon
-          if (typeof saveSurvivalWorld === 'function') saveSurvivalWorld();
-          // Flag: this dungeon came from cave mouth
-          survivalFromCaveMouth = true;
-          document.dispatchEvent(new CustomEvent('dungeonLaunch', { detail: { dungeonId: dungeonId } }));
-        });
-      });
-
-      // Cancel button
-      var cancelBtn = document.getElementById('cmts-cancel');
-      if (cancelBtn) cancelBtn.addEventListener('click', closeCmts);
-
-      // Escape key closes selector
-      cmts.addEventListener('keydown', function (e) {
-        if (e.key === 'Escape') { e.preventDefault(); closeCmts(); }
-      });
-    })();
 
     function hideModeSelect() {
       const modeSelectEl = document.getElementById("mode-select");
@@ -1068,10 +928,8 @@ function init() {
         const _survGround = worldGroup.children.find(c => c.name === "ground");
         if (_survGround) _survGround.visible = false;
 
-        // Place the cave mouth dungeon entrance in the world
-        spawnCaveMouth();
-        // Spawn player just south of cave mouth so they stand on mineable surface grid
-        if (controls) controls.getObject().position.set(0, PLAYER_HEIGHT, 5);
+        // Spawn player at grid center
+        if (controls) controls.getObject().position.set(0, PLAYER_HEIGHT, 0);
         // Show survival HUD badge
         const survBadgeEl = document.getElementById("survival-badge");
         if (survBadgeEl) survBadgeEl.style.display = "block";
@@ -5694,16 +5552,6 @@ function animate() {
     }
 
     const playerPosition = controls.getObject().position;
-
-    // Cave mouth proximity check: show/hide interact prompt when near the entrance
-    if (isSurvivalMode && caveMouthPos && !isGameOver) {
-      var _cmp = document.getElementById('cave-mouth-prompt');
-      if (_cmp) {
-        var _cmDx = playerPosition.x - caveMouthPos.x;
-        var _cmDz = playerPosition.z - caveMouthPos.z;
-        _cmp.style.display = (_cmDx * _cmDx + _cmDz * _cmDz < 9) ? 'flex' : 'none';
-      }
-    }
 
     if (isEditorMode) {
       // Free-fly: vertical velocity driven by Space (up) / Shift (down) keys
