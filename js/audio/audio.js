@@ -329,6 +329,7 @@ function initAudio() {
 
     _initBgMusic();
     _initEnvironmentalAudio();
+    if (typeof _initEventAudio === 'function') _initEventAudio();
     console.log("Tone.js musical bus initialized.");
   } else {
     console.warn("Tone.js not loaded — line-clear music disabled.");
@@ -647,5 +648,7 @@ function resetBgMusic() {
   // Reset environmental audio alongside music
   resetEnvironmentalAudio();
 
+  // Reset seasonal event audio
+  if (typeof resetSeasonalEventAudio === 'function') resetSeasonalEventAudio();
 }
 

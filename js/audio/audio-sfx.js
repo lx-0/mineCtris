@@ -594,4 +594,9 @@ function applyAudioSettings(master, sfx, music) {
     _depthDroneGain.gain.rampTo((music / 100) * (0.15 + depthFactor * 0.35), 0.1);
     _depthNoiseGain.gain.rampTo((music / 100) * (0.05 + depthFactor * 0.25), 0.1);
   }
+
+  // Seasonal event audio gain (tracks music volume at 45%)
+  if (typeof applyEventAudioVolume === 'function') {
+    applyEventAudioVolume(music);
+  }
 }
