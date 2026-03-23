@@ -85,6 +85,22 @@ async function apiFetchSeasonRatingSnapshot(seasonId) {
   return resp.json();
 }
 
+async function apiSubmitMasteryScore(displayName, totalScore, tiers, obsidianCount) {
+  const resp = await fetch(LEADERBOARD_WORKER_URL + '/api/mastery/submit', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ displayName, totalScore, tiers, obsidianCount, timestamp: new Date().toISOString() }),
+  });
+  return resp.json();
+}
+
+async function apiFetchMasteryLeaderboard(displayName) {
+  const url = LEADERBOARD_WORKER_URL + '/api/mastery/leaderboard' +
+    (displayName ? '?displayName=' + encodeURIComponent(displayName) : '');
+  const resp = await fetch(url);
+  return resp.json();
+}
+
 async function apiFetchCoopLeaderboard(date, isDaily) {
   const path = isDaily
     ? '/api/leaderboard/coop/daily/' + date
@@ -167,7 +183,7 @@ function openDisplayNameModal(onConfirm) {
 
 // ── Leaderboard Panel ─────────────────────────────────────────────────────────
 
-let _lbActiveTab = 'today'; // 'today' | 'yesterday' | 'thisweek' | 'lastweek' | 'season' | 'seasonrating' | 'coop' | 'dailycoop' | 'battle'
+let _lbActiveTab = 'today'; // 'today' | 'yesterday' | 'thisweek' | 'lastweek' | 'season' | 'seasonrating' | 'coop' | 'dailycoop' | 'battle' | 'mastery'
 
 function openLeaderboardPanel(defaultTab) {
   const overlay = document.getElementById('lb-panel-overlay');
@@ -194,6 +210,7 @@ function _syncLbTabs() {
   const dailyCoopBtn    = document.getElementById('lb-tab-dailycoop');
   const battleBtn       = document.getElementById('lb-tab-battle');
   const depthsBtn       = document.getElementById('lb-tab-depths');
+  const masteryBtn      = document.getElementById('lb-tab-mastery');
   if (todayBtn)        todayBtn.classList.toggle('lb-tab-active',        _lbActiveTab === 'today');
   if (yestBtn)         yestBtn.classList.toggle('lb-tab-active',         _lbActiveTab === 'yesterday');
   if (thisWeekBtn)     thisWeekBtn.classList.toggle('lb-tab-active',     _lbActiveTab === 'thisweek');
@@ -204,6 +221,7 @@ function _syncLbTabs() {
   if (dailyCoopBtn)    dailyCoopBtn.classList.toggle('lb-tab-active',    _lbActiveTab === 'dailycoop');
   if (battleBtn)       battleBtn.classList.toggle('lb-tab-active',       _lbActiveTab === 'battle');
   if (depthsBtn)       depthsBtn.classList.toggle('lb-tab-active',       _lbActiveTab === 'depths');
+  if (masteryBtn)      masteryBtn.classList.toggle('lb-tab-active',      _lbActiveTab === 'mastery');
 }
 
 function _getYesterdayString() {
@@ -293,6 +311,11 @@ async function _loadLbTab(tab) {
       } else {
         body.innerHTML = '<div class="lb-error">Depths leaderboard not available.</div>';
       }
+    } else if (tab === 'mastery') {
+      const myName = loadDisplayName();
+      const data = await apiFetchMasteryLeaderboard(myName);
+      if (!data || !data.entries) throw new Error('bad response');
+      _renderMasteryLeaderboard(body, data.entries, data.ownEntry);
     } else {
       const date = tab === 'today' ? getDailyDateString() : _getYesterdayString();
       const data = await apiFetchLeaderboard(date);
@@ -473,6 +496,75 @@ function _renderSeasonRatingLeaderboard(container, data) {
       '<td>' + (e.rating || 0) + '</td>' +
       '<td class="lb-wld">' + wld + '</td>' +
       '<td>' + winPct + '</td>' +
+      '</tr>';
+  }
+
+  html += '</tbody></table>';
+  container.innerHTML = html;
+}
+
+// Mastery tier icons — must match mastery.js MASTERY_TIER_ICONS
+const _MASTERY_TIER_ICONS = { bronze: '🥉', silver: '🥈', gold: '🥇', diamond: '💎', obsidian: '⬛' };
+const _MASTERY_TIER_COLORS = { bronze: '#cd7f32', silver: '#c0c0c0', gold: '#ffd700', diamond: '#b9f2ff', obsidian: '#7c3aed' };
+const _MASTERY_MODE_LABELS = ['classic', 'sprint', 'blitz', 'daily', 'survival', 'battle', 'expedition', 'depths'];
+
+function _masteryTierIcon(tierNum) {
+  var names = ['bronze', 'silver', 'gold', 'diamond', 'obsidian'];
+  var name = names[tierNum - 1];
+  if (!name) return '<span class="mastery-icon mastery-icon-none" title="None">&#8226;</span>';
+  var color = _MASTERY_TIER_COLORS[name] || '#fff';
+  var icon  = _MASTERY_TIER_ICONS[name] || '?';
+  return '<span class="mastery-icon" title="' + name.charAt(0).toUpperCase() + name.slice(1) + '" style="color:' + color + '">' + icon + '</span>';
+}
+
+function _renderMasteryLeaderboard(container, entries, ownEntry) {
+  const myName = loadDisplayName().toLowerCase();
+
+  if (!entries || !entries.length) {
+    container.innerHTML = '<div class="lb-empty">No mastery rankings yet. Unlock mastery tiers to appear here!</div>';
+    return;
+  }
+
+  var modeHeaders = _MASTERY_MODE_LABELS.map(function(m) {
+    return '<th title="' + m + '">' + m.slice(0, 3).toUpperCase() + '</th>';
+  }).join('');
+
+  var html = '<div class="lb-mastery-header">Global Mastery Rankings — Max Score: 40</div>' +
+    '<table class="lb-table lb-mastery-table"><thead><tr>' +
+    '<th>#</th><th>Name</th><th>Score</th>' + modeHeaders +
+    '</tr></thead><tbody>';
+
+  var myInTop = false;
+
+  entries.forEach(function(e) {
+    var isMe = myName && e.displayName.toLowerCase() === myName;
+    if (isMe) myInTop = true;
+    var cls = isMe ? ' class="lb-row-me"' : '';
+    var nameCell = _escHtml(e.displayName) + (isMe ? ' &#9668;' : '');
+    var tierCells = _MASTERY_MODE_LABELS.map(function(m) {
+      var t = (e.tiers && e.tiers[m]) ? parseInt(e.tiers[m], 10) : 0;
+      return '<td>' + (t > 0 ? _masteryTierIcon(t) : '<span class="mastery-icon mastery-icon-none">&#8226;</span>') + '</td>';
+    }).join('');
+    html += '<tr' + cls + '>' +
+      '<td>' + e.rank + '</td>' +
+      '<td>' + nameCell + '</td>' +
+      '<td class="mastery-score">' + (e.totalScore || 0) + '</td>' +
+      tierCells +
+      '</tr>';
+  });
+
+  // Pin own row at bottom if not in top 100
+  if (!myInTop && ownEntry && ownEntry.rank != null) {
+    var e = ownEntry;
+    var tierCells = _MASTERY_MODE_LABELS.map(function(m) {
+      var t = (e.tiers && e.tiers[m]) ? parseInt(e.tiers[m], 10) : 0;
+      return '<td>' + (t > 0 ? _masteryTierIcon(t) : '<span class="mastery-icon mastery-icon-none">&#8226;</span>') + '</td>';
+    }).join('');
+    html += '<tr class="lb-row-me lb-row-me-pinned">' +
+      '<td>' + e.rank + '</td>' +
+      '<td>' + _escHtml(e.displayName || loadDisplayName()) + ' &#9668;</td>' +
+      '<td class="mastery-score">' + (e.totalScore || 0) + '</td>' +
+      tierCells +
       '</tr>';
   }
 
@@ -705,6 +797,15 @@ function initLeaderboard() {
       _lbActiveTab = 'depths';
       _syncLbTabs();
       _loadLbTab('depths');
+    });
+  }
+
+  const masteryTabBtn = document.getElementById('lb-tab-mastery');
+  if (masteryTabBtn) {
+    masteryTabBtn.addEventListener('click', function() {
+      _lbActiveTab = 'mastery';
+      _syncLbTabs();
+      _loadLbTab('mastery');
     });
   }
 

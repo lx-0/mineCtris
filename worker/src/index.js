@@ -643,6 +643,7 @@ async function handleGetSeasonLeaderboard(env) {
 // ── Battle Rating Submission ──────────────────────────────────────────────────
 
 const BATTLE_LB_KEY = 'battle:leaderboard';
+const MASTERY_LB_KEY = 'mastery:leaderboard';
 
 async function handlePostBattleRating(request, env) {
   let body;
@@ -732,6 +733,78 @@ async function handleGetBattleLeaderboard(env) {
     draws:   e.draws  || 0,
   }));
   return jsonResponse({ entries: top, total: leaderboard.length });
+}
+
+// ── Mastery Leaderboard ───────────────────────────────────────────────────────
+
+const MASTERY_MODES_LIST = ['classic', 'sprint', 'blitz', 'daily', 'survival', 'battle', 'expedition', 'depths'];
+
+async function handlePostMasterySubmit(request, env) {
+  let body;
+  try { body = await request.json(); } catch { return jsonResponse({ error: 'Invalid JSON' }, 400); }
+
+  const { displayName, totalScore, tiers, obsidianCount, timestamp } = body;
+
+  if (!displayName || !DISPLAY_NAME_REGEX.test(displayName)) {
+    return jsonResponse({ error: 'Invalid display name' }, 400);
+  }
+  const scoreNum = parseInt(totalScore, 10);
+  if (!Number.isInteger(scoreNum) || scoreNum < 0 || scoreNum > 40) {
+    return jsonResponse({ error: 'Invalid totalScore' }, 400);
+  }
+
+  const now = new Date().toISOString();
+  const entry = {
+    displayName,
+    totalScore: scoreNum,
+    obsidianCount: Math.max(0, parseInt(obsidianCount, 10) || 0),
+    tiers: tiers || {},
+    updatedAt: timestamp || now,
+  };
+
+  // Store individual player record
+  const playerKey = `mastery:player:${displayName.toLowerCase()}`;
+  await env.LEADERBOARD_KV.put(playerKey, JSON.stringify(entry));
+
+  // Load global mastery leaderboard, upsert, sort (desc score, then desc obsidianCount, then asc updatedAt)
+  let masteryLb = (await env.LEADERBOARD_KV.get(MASTERY_LB_KEY, { type: 'json' })) || [];
+  const existingIdx = masteryLb.findIndex(e => e.displayName.toLowerCase() === displayName.toLowerCase());
+  if (existingIdx >= 0) {
+    masteryLb[existingIdx] = entry;
+  } else {
+    masteryLb.push(entry);
+  }
+  masteryLb.sort((a, b) => {
+    if (b.totalScore !== a.totalScore) return b.totalScore - a.totalScore;
+    if ((b.obsidianCount || 0) !== (a.obsidianCount || 0)) return (b.obsidianCount || 0) - (a.obsidianCount || 0);
+    return (a.updatedAt || '').localeCompare(b.updatedAt || '');
+  });
+  if (masteryLb.length > LEADERBOARD_MAX) masteryLb = masteryLb.slice(0, LEADERBOARD_MAX);
+
+  await env.LEADERBOARD_KV.put(MASTERY_LB_KEY, JSON.stringify(masteryLb));
+
+  const rank = masteryLb.findIndex(e => e.displayName.toLowerCase() === displayName.toLowerCase()) + 1;
+  return jsonResponse({ ok: true, rank, total: masteryLb.length });
+}
+
+async function handleGetMasteryLeaderboard(request, env) {
+  const leaderboard = (await env.LEADERBOARD_KV.get(MASTERY_LB_KEY, { type: 'json' })) || [];
+  const displayName = new URL(request.url).searchParams.get('displayName') || '';
+  const top = leaderboard.slice(0, LEADERBOARD_MAX).map((e, i) => ({
+    rank:         i + 1,
+    displayName:  e.displayName,
+    totalScore:   e.totalScore || 0,
+    obsidianCount: e.obsidianCount || 0,
+    tiers:        e.tiers || {},
+  }));
+  let ownEntry = null;
+  if (displayName) {
+    const idx = leaderboard.findIndex(e => e.displayName.toLowerCase() === displayName.toLowerCase());
+    if (idx >= 0) {
+      ownEntry = { rank: idx + 1, ...leaderboard[idx] };
+    }
+  }
+  return jsonResponse({ entries: top, total: leaderboard.length, ownEntry });
 }
 
 async function handleGetSeasonRatingLeaderboard(request, env) {
@@ -6447,6 +6520,10 @@ export default {
       response = await handlePostScore(request, env);
     } else if (method === 'POST' && url.pathname === '/api/scores/weekly') {
       response = await handlePostWeeklyScore(request, env);
+    } else if (method === 'POST' && url.pathname === '/api/mastery/submit') {
+      response = await handlePostMasterySubmit(request, env);
+    } else if (method === 'GET' && url.pathname === '/api/mastery/leaderboard') {
+      response = await handleGetMasteryLeaderboard(request, env);
     } else if (method === 'POST' && url.pathname === '/api/battle/ratings') {
       response = await handlePostBattleRating(request, env);
     } else if (method === 'GET' && url.pathname === '/api/battle/ratings') {

@@ -336,6 +336,9 @@ function unlockMasteryTier(mode, tier) {
   if (typeof processUnlocks === 'function') processUnlocks();
 
   _showMasteryUnlockOverlay(modeLabel, tierName, cosmeticId);
+
+  // Submit updated mastery score to leaderboard worker
+  _submitMasteryToLeaderboard();
 }
 
 // ── Notification ──────────────────────────────────────────────────────────────
@@ -756,4 +759,47 @@ function masteryOnSurvivalEnd(opts) {
     blocksPlaced:  opts.blocksPlaced || 0,
     diamondPickaxe: (pickaxeTier === 'diamond' || pickaxeTier === 'obsidian'),
   });
+}
+
+// ── Leaderboard submission ─────────────────────────────────────────────────────
+
+/**
+ * Submit current mastery state to the global mastery leaderboard worker.
+ * Called automatically on tier unlock. Requires loadDisplayName() from leaderboard.js.
+ */
+function _submitMasteryToLeaderboard() {
+  if (typeof loadDisplayName !== 'function') return;
+  var displayName = loadDisplayName();
+  if (!displayName) return;
+
+  var state = loadMastery();
+  var totalScore = 0;
+  var obsidianCount = 0;
+  var tiers = {};
+
+  for (var i = 0; i < MASTERY_MODES.length; i++) {
+    var mode = MASTERY_MODES[i];
+    var ms = state[mode];
+    var tier = ms ? (ms.tier || 0) : 0;
+    tiers[mode] = tier;
+    if (tier > 0) {
+      totalScore += MASTERY_TIER_POINTS[MASTERY_TIER_NAMES[tier - 1]] || 0;
+      if (tier === 5) obsidianCount++;
+    }
+  }
+
+  var workerUrl = (typeof LEADERBOARD_WORKER_URL !== 'undefined') ? LEADERBOARD_WORKER_URL : '';
+  if (!workerUrl) return;
+
+  fetch(workerUrl + '/api/mastery/submit', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      displayName:  displayName,
+      totalScore:   totalScore,
+      tiers:        tiers,
+      obsidianCount: obsidianCount,
+      timestamp:    new Date().toISOString(),
+    }),
+  }).catch(function () {}); // fire-and-forget
 }
