@@ -256,3 +256,27 @@ function resetPostProcessing() {
 function resizePostProcessing(width, height) {
   if (_bloomPass) _bloomPass.setSize(width, height);
 }
+
+function initPostProcessing() {
+  if (
+    typeof THREE.EffectComposer === 'undefined' ||
+    typeof THREE.SSAOPass === 'undefined'
+  ) {
+    console.warn("Post-processing scripts not loaded — skipping SSAO.");
+    return;
+  }
+
+  composer = new THREE.EffectComposer(renderer);
+
+  const renderPass = new THREE.RenderPass(scene, camera);
+  composer.addPass(renderPass);
+
+  const ssaoPass = new THREE.SSAOPass(scene, camera, window.innerWidth, window.innerHeight);
+  ssaoPass.kernelRadius = 6;
+  ssaoPass.minDistance  = 0.004;
+  ssaoPass.maxDistance  = 0.08;
+  composer.addPass(ssaoPass);
+
+  // Bloom + color grade + vignette
+  initBloomPasses(composer);
+}

@@ -28,10 +28,24 @@ function fail(msg) {
 }
 
 // ---------------------------------------------------------------------------
-// 1. JS syntax check (node --check on every file in js/)
+// 1. JS syntax check (node --check on every .js file in js/, recursively)
 // ---------------------------------------------------------------------------
 console.log('\n--- JS Syntax Check ---');
-const jsFiles = fs.readdirSync(JS_DIR).filter(f => f.endsWith('.js'));
+
+function collectJsFiles(dir, base) {
+  const results = [];
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    const rel = base ? `${base}/${entry.name}` : entry.name;
+    if (entry.isDirectory()) {
+      results.push(...collectJsFiles(path.join(dir, entry.name), rel));
+    } else if (entry.name.endsWith('.js')) {
+      results.push(rel);
+    }
+  }
+  return results;
+}
+
+const jsFiles = collectJsFiles(JS_DIR, '');
 
 for (const file of jsFiles) {
   const filePath = path.join(JS_DIR, file);
