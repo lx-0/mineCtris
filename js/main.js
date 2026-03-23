@@ -111,9 +111,9 @@ function spawnCaveMouth() {
   var toRemove = worldGroup.children.filter(function (c) { return c.name === 'cave_mouth'; });
   toRemove.forEach(function (b) { worldGroup.remove(b); });
 
-  // Fixed position: 17 blocks north of spawn (positive Z axis) — always visible
+  // Fixed position: 9 blocks north of origin — inside the 20×20 mineable grid (Z: -9.5 to 9.5)
   var cx = 0;
-  var cz = 17;
+  var cz = 9;
   caveMouthPos = { x: cx, z: cz };
 
   var bs = BLOCK_SIZE;
@@ -245,9 +245,9 @@ function returnToSurvival() {
   var survBadgeEl = document.getElementById('survival-badge');
   if (survBadgeEl) survBadgeEl.style.display = 'block';
 
-  // Position player just in front of the cave mouth
-  if (typeof controls !== 'undefined' && controls && caveMouthPos) {
-    controls.getObject().position.set(caveMouthPos.x, PLAYER_HEIGHT, caveMouthPos.z - 4);
+  // Spawn at grid center so mineable floor and shaft are immediately visible
+  if (typeof controls !== 'undefined' && controls) {
+    controls.getObject().position.set(0, PLAYER_HEIGHT, 0);
   }
 
   if (typeof requestPointerLock === 'function') requestPointerLock();
