@@ -97,6 +97,10 @@ function updateTargeting() {
 
 function applyMineDamage(block, hits, effectiveMax) {
   if (!block || !block.material) return;
+  // Dismiss the first-time tutorial prompt on first mine action
+  if (hits === 1 && typeof window._dismissSurvivalTutorialPrompt === 'function') {
+    window._dismissSurvivalTutorialPrompt();
+  }
   const orig = block.userData.originalColor;
   if (!orig) return;
   const maxClicks = effectiveMax || block.userData.miningClicks || MINING_CLICKS_NEEDED;
@@ -335,6 +339,13 @@ function updateMaterialTooltip() {
   // Void blocks: show special tooltip
   if (typeof isVoidBlock === 'function' && isVoidBlock(targetedBlock)) {
     tooltip.innerHTML = '<span style="color:#8844cc;">VOID</span> — Line-clear only';
+    tooltip.classList.add("visible");
+    return;
+  }
+
+  // Bedrock: indestructible boundary wall
+  if (targetedBlock.userData.isBedrock) {
+    tooltip.innerHTML = '<span style="color:#888888;">Bedrock</span> — cannot be mined.';
     tooltip.classList.add("visible");
     return;
   }

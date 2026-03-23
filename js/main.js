@@ -221,14 +221,16 @@ function returnToSurvival() {
   if (typeof hasSurvivalWorld === 'function' && hasSurvivalWorld()) {
     if (typeof restoreSurvivalWorld === 'function') restoreSurvivalWorld();
     if (typeof restoreUnderground === 'function') restoreUnderground();
+    // Re-apply emissive crack markers to any surviving surface blocks above dungeon rooms
+    if (typeof applyDungeonCrackMarkers === 'function') applyDungeonCrackMarkers();
     survivalSessionNumber++;
   } else {
     survivalSessionNumber = 1;
     if (typeof initWorldStats === 'function') initWorldStats();
-    // Spawn 20×20 mineable surface grid for new worlds
-    if (typeof spawnMineableSurfaceGrid === 'function') spawnMineableSurfaceGrid();
-    // Initialise underground terrain for this new world
+    // Initialise underground first so shaft/room positions are known before surface spawn
     if (typeof initUnderground === 'function') initUnderground(Date.now());
+    // Spawn 20×20 mineable surface grid (skips shaft holes, marks crack blocks above rooms)
+    if (typeof spawnMineableSurfaceGrid === 'function') spawnMineableSurfaceGrid();
   }
 
   // Re-place the cave mouth (resetGame doesn't remove cave_mouth blocks but
@@ -1011,6 +1013,27 @@ function init() {
       });
     }
 
+    // Show the one-time Survival tutorial prompt; auto-dismisses after 6s
+    function _showSurvivalTutorialPrompt() {
+      var el = document.getElementById("survival-tutorial-prompt");
+      if (!el) return;
+      localStorage.setItem("mineCtris_tutorialShown", "1");
+      el.style.display = "block";
+      // Fade in
+      requestAnimationFrame(function () { el.style.opacity = "1"; });
+      var tutTimer = setTimeout(function () { _dismissSurvivalTutorialPrompt(); }, 6000);
+      el._tutTimer = tutTimer;
+    }
+
+    // Fade out and hide the tutorial prompt (also called from mining.js on first mine)
+    window._dismissSurvivalTutorialPrompt = function _dismissSurvivalTutorialPrompt() {
+      var el = document.getElementById("survival-tutorial-prompt");
+      if (!el || el.style.display === "none") return;
+      if (el._tutTimer) { clearTimeout(el._tutTimer); el._tutTimer = null; }
+      el.style.opacity = "0";
+      setTimeout(function () { el.style.display = "none"; }, 500);
+    };
+
     // Survival mode card
     const survivalCardEl = document.getElementById("mode-card-survival");
     if (survivalCardEl) {
@@ -1023,14 +1046,16 @@ function init() {
         if (typeof hasSurvivalWorld === "function" && hasSurvivalWorld()) {
           if (typeof restoreSurvivalWorld === "function") restoreSurvivalWorld();
           if (typeof restoreUnderground === "function") restoreUnderground();
+          // Re-apply emissive crack markers to any surviving surface blocks above dungeon rooms
+          if (typeof applyDungeonCrackMarkers === "function") applyDungeonCrackMarkers();
           survivalSessionNumber++;
         } else {
           survivalSessionNumber = 1;
           if (typeof initWorldStats === "function") initWorldStats();
-          // Spawn 20×20 mineable surface grid for new worlds
-          if (typeof spawnMineableSurfaceGrid === "function") spawnMineableSurfaceGrid();
-          // Initialise underground terrain for this new world
+          // Initialise underground first so shaft/room positions are known before surface spawn
           if (typeof initUnderground === "function") initUnderground(Date.now());
+          // Spawn 20×20 mineable surface grid (skips shaft holes, marks crack blocks above rooms)
+          if (typeof spawnMineableSurfaceGrid === "function") spawnMineableSurfaceGrid();
         }
         // Place the cave mouth dungeon entrance in the world
         spawnCaveMouth();
@@ -1039,6 +1064,10 @@ function init() {
         if (survBadgeEl) survBadgeEl.style.display = "block";
         hideModeSelect();
         requestPointerLock();
+        // Show one-time tutorial prompt on first-ever Survival session
+        if (!localStorage.getItem("mineCtris_tutorialShown")) {
+          _showSurvivalTutorialPrompt();
+        }
       });
     }
 

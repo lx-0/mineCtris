@@ -43,7 +43,8 @@ var _ugMeshes        = new Map(); // Map<"col,row,depth", THREE.Mesh>
 var _loadedChunks    = new Set(); // Set<"cx,cz,cy">
 var _ugChunkTimer    = 0;         // throttle: seconds until next chunk update
 var _bedrockWalls    = [];        // always-loaded boundary bedrock meshes
-var _dungeonGlowKeys = new Set(); // block keys flagged for warm emissive tint
+var _dungeonGlowKeys      = new Set(); // block keys flagged for warm emissive tint (full)
+var _dungeonGlowFaintKeys = new Set(); // subset: faint glow (3-5 steps from room wall)
 var _ugSeed          = 0;         // seed in use for this world (exposed for dungeon-rooms.js)
 
 // ── Seeded RNG (mulberry32) ─────────────────────────────────────────────────
@@ -308,7 +309,8 @@ function _clearModuleState() {
   _loadedChunks    = new Set();
   _ugChunkTimer    = 0;
   _bedrockWalls    = [];
-  _dungeonGlowKeys = new Set();
+  _dungeonGlowKeys      = new Set();
+  _dungeonGlowFaintKeys = new Set();
 }
 
 /** Instantiate a THREE.js mesh for the given underground block and add it to the world. */
@@ -359,7 +361,10 @@ function _loadChunk(cx, cz, cy) {
         if (!bData || bData.mined || _ugMeshes.has(bKey)) continue;
         var mesh = _createUgMesh(col, row, depth, bData.type);
         _ugMeshes.set(bKey, mesh);
-        if (_dungeonGlowKeys.has(bKey)) _applyDungeonGlow(mesh);
+        if (_dungeonGlowKeys.has(bKey)) {
+          if (_dungeonGlowFaintKeys.has(bKey)) _applyDungeonGlowFaint(mesh);
+          else _applyDungeonGlow(mesh);
+        }
       }
     }
   }
@@ -408,7 +413,10 @@ function _revealBlock(col, row, depth) {
     // Chunk already loaded but mesh missing (shouldn't normally happen, but be safe)
     var mesh = _createUgMesh(col, row, depth, bData.type);
     _ugMeshes.set(bKey, mesh);
-    if (_dungeonGlowKeys.has(bKey)) _applyDungeonGlow(mesh);
+    if (_dungeonGlowKeys.has(bKey)) {
+      if (_dungeonGlowFaintKeys.has(bKey)) _applyDungeonGlowFaint(mesh);
+      else _applyDungeonGlow(mesh);
+    }
   }
 }
 
@@ -480,6 +488,12 @@ function _applyDungeonGlow(mesh) {
   mesh.material.needsUpdate = true;
 }
 
+function _applyDungeonGlowFaint(mesh) {
+  if (!mesh || !mesh.material) return;
+  mesh.material.emissive = new THREE.Color(0x0a0500);
+  mesh.material.needsUpdate = true;
+}
+
 /**
  * Flag underground blocks adjacent to dungeon room cells for warm emissive
  * tinting. Call from the dungeon system (MINAA-348) after room layout is known.
@@ -487,16 +501,17 @@ function _applyDungeonGlow(mesh) {
  * not yet loaded pick it up when their chunk is loaded.
  *
  * @param {Array<{col:number, row:number, depth:number}>} roomCells
- *   Array of cell positions that form room walls. Blocks within 2 steps of any
- *   room cell are flagged.
+ *   Array of cell positions that form room walls. Blocks within 5 steps of any
+ *   room cell are flagged (full amber 1-2 steps, faint glow 3-5 steps).
  */
 function markRoomAdjacentBlocks(roomCells) {
   if (!_ugData || !roomCells || !roomCells.length) return;
+  var GLOW_RADIUS = 5;
   for (var i = 0; i < roomCells.length; i++) {
     var rc = roomCells[i];
-    for (var dc = -2; dc <= 2; dc++) {
-      for (var dr = -2; dr <= 2; dr++) {
-        for (var dd = -2; dd <= 2; dd++) {
+    for (var dc = -GLOW_RADIUS; dc <= GLOW_RADIUS; dc++) {
+      for (var dr = -GLOW_RADIUS; dr <= GLOW_RADIUS; dr++) {
+        for (var dd = -GLOW_RADIUS; dd <= GLOW_RADIUS; dd++) {
           var nc = rc.col   + dc;
           var nr = rc.row   + dr;
           var nd = rc.depth + dd;
@@ -506,9 +521,21 @@ function markRoomAdjacentBlocks(roomCells) {
           var key   = _ugKey(nc, nr, nd);
           var bData = _ugData.get(key);
           if (!bData || bData.mined) continue;
+          // Chebyshev distance from the room wall cell
+          var dist = Math.max(Math.abs(dc), Math.abs(dr), Math.abs(dd));
+          var isFaint = dist >= 3;
           _dungeonGlowKeys.add(key);
+          if (isFaint) {
+            _dungeonGlowFaintKeys.add(key);
+          } else {
+            // Full-intensity overwrites a previously faint entry for the same key
+            _dungeonGlowFaintKeys.delete(key);
+          }
           var mesh = _ugMeshes.get(key);
-          if (mesh) _applyDungeonGlow(mesh);
+          if (mesh) {
+            if (isFaint) _applyDungeonGlowFaint(mesh);
+            else _applyDungeonGlow(mesh);
+          }
         }
       }
     }
