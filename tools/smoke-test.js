@@ -54,7 +54,7 @@ const html = fs.readFileSync(INDEX_HTML, 'utf8');
 console.log('\n--- Mode Cards ---');
 const EXPECTED_MODES = [
   'classic', 'sprint', 'blitz', 'survival', 'coop', 'battle',
-  'daily', 'weekly', 'puzzle', 'depths', 'expedition',
+  'daily', 'weekly', 'puzzle', 'expedition',
 ];
 
 for (const mode of EXPECTED_MODES) {
