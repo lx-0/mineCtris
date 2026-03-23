@@ -836,6 +836,9 @@ function resetGame() {
   isSurvivalMode = false;
   survivalSessionNumber = 1;
   caveMouthPos = null;
+  // Restore ground plane visibility (was hidden during Survival mode)
+  const _resetGround = worldGroup.children.find(c => c.name === "ground");
+  if (_resetGround) _resetGround.visible = true;
   // Hide cave mouth prompt (if showing)
   var _cmpEl = document.getElementById('cave-mouth-prompt');
   if (_cmpEl) _cmpEl.style.display = 'none';

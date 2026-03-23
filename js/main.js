@@ -233,6 +233,11 @@ function returnToSurvival() {
     if (typeof spawnMineableSurfaceGrid === 'function') spawnMineableSurfaceGrid();
   }
 
+  // Hide ground plane in Survival mode — the mineable surface grid replaces it
+  // visually, and visible=false also excludes it from raycasting so mining works.
+  const _survGround = worldGroup.children.find(c => c.name === "ground");
+  if (_survGround) _survGround.visible = false;
+
   // Re-place the cave mouth (resetGame doesn't remove cave_mouth blocks but
   // caveMouthPos was cleared — call spawnCaveMouth to refresh it)
   spawnCaveMouth();
@@ -1057,6 +1062,11 @@ function init() {
           // Spawn 20×20 mineable surface grid (skips shaft holes, marks crack blocks above rooms)
           if (typeof spawnMineableSurfaceGrid === "function") spawnMineableSurfaceGrid();
         }
+        // Hide ground plane in Survival mode — the mineable surface grid replaces it
+        // visually, and visible=false also excludes it from raycasting so mining works.
+        const _survGround = worldGroup.children.find(c => c.name === "ground");
+        if (_survGround) _survGround.visible = false;
+
         // Place the cave mouth dungeon entrance in the world
         spawnCaveMouth();
         // Show survival HUD badge
