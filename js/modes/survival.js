@@ -28,8 +28,6 @@ function saveSurvivalWorld() {
   const blocks = [];
   worldGroup.children.forEach(function (obj) {
     if (obj.name === "landed_block" && obj.userData.isBlock && obj.userData.gridPos) {
-      // Underground blocks are saved separately by underground.js — skip them here
-      if (obj.userData.isUnderground) return;
       const gp = obj.userData.gridPos;
       blocks.push({
         x: gp.x,
@@ -276,77 +274,17 @@ function renderWorldCard() {
 function spawnMineableSurfaceGrid() {
   const GRID_SIZE = 20;
 
-  // Build set of shaft positions to omit (open holes in the surface)
-  const shaftSet = new Set();
-  if (typeof getDungeonShaftPositions === 'function') {
-    getDungeonShaftPositions().forEach(function (p) {
-      shaftSet.add(p.col + ',' + p.row);
-    });
-  }
-
-  // Build set of crack-marker positions (2 blocks above each dungeon room center)
-  const crackSet = new Set();
-  if (typeof getDungeonRooms === 'function') {
-    getDungeonRooms().forEach(function (room) {
-      crackSet.add(room.centerCol + ',' + room.centerRow);
-      if (room.centerCol + 1 < GRID_SIZE) {
-        crackSet.add((room.centerCol + 1) + ',' + room.centerRow);
-      }
-    });
-  }
-
   for (let row = 0; row < GRID_SIZE; row++) {
     for (let col = 0; col < GRID_SIZE; col++) {
-      // Leave shaft positions as open holes
-      if (shaftSet.has(col + ',' + row)) continue;
-
       const x = col - 9.5;  // 20 half-integer values: -9.5 → 9.5
       const z = row - 9.5;
-      const isCrack = crackSet.has(col + ',' + row);
-      // Crack blocks: darker warm brown; standard blocks: normal dirt brown
-      const block = createBlockMesh(isCrack ? 0x6a3018 : 0x8b4513);
+      const block = createBlockMesh(0x8b4513);
       block.position.set(x, 0.5, z);
       block.name = 'landed_block';
       worldGroup.add(block);
       registerBlock(block);
-      if (isCrack && block.material) {
-        // Subtle warm emissive glow to hint at dungeon below
-        block.material.emissive = new THREE.Color(0x0a0400);
-        block.material.needsUpdate = true;
-      }
     }
   }
-}
-
-/**
- * Re-apply crack markers to any surviving surface blocks above dungeon room centers.
- * Call after restoreUnderground() so room positions are known and surface blocks exist.
- * Emissive-only pass — color was already saved as 0x6a3018 on first spawn.
- */
-function applyDungeonCrackMarkers() {
-  if (typeof getDungeonRooms !== 'function') return;
-  const rooms = getDungeonRooms();
-  if (!rooms.length || !worldGroup) return;
-
-  const crackSet = new Set();
-  const GRID_SIZE = 20;
-  rooms.forEach(function (room) {
-    crackSet.add(room.centerCol + ',' + room.centerRow);
-    if (room.centerCol + 1 < GRID_SIZE) {
-      crackSet.add((room.centerCol + 1) + ',' + room.centerRow);
-    }
-  });
-
-  worldGroup.children.forEach(function (obj) {
-    if (obj.name !== 'landed_block' || !obj.userData.isBlock || !obj.userData.gridPos) return;
-    if (Math.abs(obj.userData.gridPos.y - 0.5) > 0.1) return; // surface only
-    const col = Math.round(obj.userData.gridPos.x + 9.5);
-    const row = Math.round(obj.userData.gridPos.z + 9.5);
-    if (crackSet.has(col + ',' + row) && obj.material) {
-      obj.material.emissive = new THREE.Color(0x0a0400);
-      obj.material.needsUpdate = true;
-    }
-  });
 }
 
 /**

@@ -26,8 +26,7 @@ function checkPlayerCollision(deltaY) {
       onSolidGround = true;
     }
   }
-  // Fallback floor at the surface level — skip in Survival mode so players can
-  // descend into the underground (underground block meshes handle collision there).
+  // Fallback floor at the surface level — skip in Survival mode.
   if (
     !onSolidGround &&
     !isSurvivalMode &&
@@ -77,11 +76,6 @@ function onKeyDown(event) {
   if (isGameOver && event.code === "KeyP") {
     if (typeof resetGame === "function") resetGame();
     return;
-  }
-  // Phase 2B: Escape during dungeon challenge countdown → abort
-  if (event.code === "Escape" && typeof abortDungeonChallenge === 'function') {
-    abortDungeonChallenge();
-    // Fall through (controls may need to re-lock)
   }
   if (!controls || !controls.isLocked || isGameOver) return;
   switch (event.code) {
@@ -189,13 +183,6 @@ function onKeyDown(event) {
       break;
     case "KeyG":
       if (typeof activateIceBridge === "function") activateIceBridge();
-      break;
-    case "Tab":
-      // Boss floor: cycle active piece
-      if (depthsBossActive && typeof cycleBossActivePiece === 'function') {
-        event.preventDefault();
-        cycleBossActivePiece();
-      }
       break;
   }
 }

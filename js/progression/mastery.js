@@ -1,9 +1,9 @@
 // Mastery System — tracking engine, data model, and challenge definitions.
-// 8 modes × 5 tiers (Bronze → Silver → Gold → Diamond → Obsidian) = 40 challenges.
+// 7 modes × 5 tiers (Bronze → Silver → Gold → Diamond → Obsidian) = 35 challenges.
 //
 // Requires: (none — pure localStorage + optional notification DOM)
-// Called by: gamestate.js, sprint.js, blitz.js, main.js, infinite-depths.js,
-//            expedition-session.js, depths-transition.js, depths-floor-gen.js
+// Called by: gamestate.js, sprint.js, blitz.js, main.js,
+//            expedition-session.js
 //
 // Storage key: mineCtris_mastery
 // Schema: { classic: { tier, progress }, sprint: { tier, progress }, … }
@@ -15,8 +15,8 @@ const MASTERY_TIER_NAMES  = ['bronze', 'silver', 'gold', 'diamond', 'obsidian'];
 const MASTERY_TIER_POINTS = { bronze: 1, silver: 2, gold: 3, diamond: 4, obsidian: 5 };
 const MASTERY_TIER_ICONS  = { bronze: '🥉', silver: '🥈', gold: '🥇', diamond: '💎', obsidian: '⬛' };
 
-// All 8 mode keys
-const MASTERY_MODES = ['classic', 'sprint', 'blitz', 'daily', 'survival', 'battle', 'expedition', 'depths'];
+// All 7 mode keys
+const MASTERY_MODES = ['classic', 'sprint', 'blitz', 'daily', 'survival', 'battle', 'expedition'];
 
 // ── Challenge definitions ─────────────────────────────────────────────────────
 // Each challenge: { mode, tier (1-5), tierName, desc, check(progress) → bool }
@@ -224,36 +224,6 @@ var MASTERY_CHALLENGES = {
     },
   ],
 
-  depths: [
-    {
-      tier: 1, tierName: 'bronze',
-      desc: 'Complete Shallow tier (Shallow Mines)',
-      check: function (p) { return p.shallowComplete === true; },
-    },
-    {
-      tier: 2, tierName: 'silver',
-      desc: 'Complete Deep tier (Deep Caverns)',
-      check: function (p) { return p.deepComplete === true; },
-    },
-    {
-      tier: 3, tierName: 'gold',
-      desc: 'Complete Abyssal tier (Abyssal Rift)',
-      check: function (p) { return p.abyssalComplete === true; },
-    },
-    {
-      tier: 4, tierName: 'diamond',
-      desc: 'Defeat all 3 bosses (Creep, Furnace, Wither Storm) in clean runs',
-      check: function (p) {
-        return p.bossesBeatenClean && p.bossesBeatenClean.the_creep &&
-               p.bossesBeatenClean.the_furnace && p.bossesBeatenClean.the_wither_storm;
-      },
-    },
-    {
-      tier: 5, tierName: 'obsidian',
-      desc: 'Reach floor 28 in Infinite Depths (Descent 4 complete)',
-      check: function (p) { return p.maxDescentCompleted >= 4; },
-    },
-  ],
 };
 
 // ── Persistence ───────────────────────────────────────────────────────────────
@@ -357,7 +327,6 @@ var MASTERY_MODE_ICONS = {
   survival:   '\uD83C\uDF32',
   battle:     '\u2694\uFE0F',
   expedition: '\uD83D\uDDFA\uFE0F',
-  depths:     '\u26CF\uFE0F',
 };
 
 // Tier accent colors
@@ -571,18 +540,6 @@ function _mergeProgress(mode, progress, stats) {
     if (stats.biomesAtTier10 > (progress.biomesAtTier10 || 0))  progress.biomesAtTier10 = stats.biomesAtTier10;
   }
 
-  if (mode === 'depths') {
-    if (stats.shallowComplete)                                  progress.shallowComplete = true;
-    if (stats.deepComplete)                                     progress.deepComplete = true;
-    if (stats.abyssalComplete)                                  progress.abyssalComplete = true;
-    if (stats.bossId && stats.cleanRun) {
-      if (!progress.bossesBeatenClean) progress.bossesBeatenClean = {};
-      progress.bossesBeatenClean[stats.bossId] = true;
-    }
-    if (stats.descentCompleted > (progress.maxDescentCompleted || 0)) {
-      progress.maxDescentCompleted = stats.descentCompleted;
-    }
-  }
 }
 
 // ── Mode-specific hooks ───────────────────────────────────────────────────────
@@ -707,48 +664,6 @@ function masteryOnExpeditionEnd(biomeId, trackInfo) {
     biomeId:       biomeId,
     maxBiomeTier:  maxTier,
     biomesAtTier10: tier10Count,
-  });
-}
-
-/**
- * Call when a depths run ends (win or loss) — from depths-transition.js and depths-floor-gen.js.
- * @param {object} data  { score, linesCleared, blocksMined, timeSeconds, floorReached, runComplete }
- */
-function masteryOnDepthsEnd(data) {
-  if (!data) return;
-
-  // Get session tier from getDungeonSessionSummary if available
-  var summary = (typeof getDungeonSessionSummary === 'function') ? getDungeonSessionSummary() : null;
-  var tier    = summary ? (summary.tier || '') : '';
-  var died    = summary ? (summary.died || false) : false;
-  var bossDefeated = summary ? (summary.bossDefeated || false) : false;
-
-  // Which tier-level boss was defeated?
-  var bossId = null;
-  if (summary && summary.bossDefeated) {
-    var dungeonDef = (typeof getDungeonDef === 'function') ? getDungeonDef(summary.dungeonId) : null;
-    if (dungeonDef && dungeonDef.bossSlot) bossId = dungeonDef.bossSlot.bossId;
-  }
-
-  var cleanRun = data.runComplete && !died;
-
-  checkMasteryProgress('depths', {
-    shallowComplete: (tier === 'shallow' && data.runComplete === true),
-    deepComplete:    (tier === 'deep'    && data.runComplete === true),
-    abyssalComplete: (tier === 'abyssal' && data.runComplete === true),
-    bossId:          bossId,
-    cleanRun:        cleanRun,
-    descentCompleted: 0, // infinite handled separately
-  });
-}
-
-/**
- * Call when an Infinite Depths descent completes (from infinite-depths.js showInfiniteDescentScreen).
- * @param {number} descentNum  The Descent number just completed (1-based)
- */
-function masteryOnInfiniteDescentComplete(descentNum) {
-  checkMasteryProgress('depths', {
-    descentCompleted: descentNum,
   });
 }
 

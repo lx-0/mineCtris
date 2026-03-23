@@ -389,15 +389,6 @@ let _creeperWalkPhase = 0;
 // survivalSessionNumber: increments each time the player continues on the same world.
 let isSurvivalMode      = false;
 let survivalSessionNumber = 1;
-// survivalFromCaveMouth: true when a dungeon was launched from survival mode,
-// suppresses recordSurvivedSession on the intermediate resetGame call.
-let survivalFromCaveMouth = false;
-
-// ── Dungeon room challenge state ──────────────────────────────────────────────
-// activeDungeonRoom: the room object currently being challenged (or null).
-// isInDungeonChallenge: true while a Tetris challenge inside a room is active.
-let activeDungeonRoom = null;
-let isInDungeonChallenge = false;
 
 // ── Session stats (reset each game, accumulated for lifetime stats on game over) ──
 let blocksPlaced = 0;
@@ -425,35 +416,3 @@ let customPieceSequence      = { mode: "random", pieces: [] };
 // true when the current custom puzzle session was launched from the editor Play button.
 // Used to show "Edit Puzzle" on the completion overlay.
 let customPlayFromEditor     = false;
-
-// ── The Depths / Dungeon (roguelike) mode state ───────────────────────────────
-// gameDepthsMode: single source of truth for which depths-like system is active.
-//   null      – not in any depths/dungeon mode
-//   'depths'  – legacy 7-floor Depths run
-//   'dungeon' – tiered Dungeon/Expeditions run (Shallow / Deep / Abyssal)
-// depthsFloorLinesCleared: lines cleared on the current floor (resets each floor).
-// depthsFloorElapsedMs: milliseconds elapsed on the current floor (counts up).
-// depthsFloorTimerActive: true after first piece spawns on the current floor.
-// depthsRunComplete: true when the player has cleared all 7 floors.
-let gameDepthsMode        = null; // null | 'depths' | 'dungeon'
-let depthsFloorLinesCleared = 0;
-let depthsFloorElapsedMs  = 0;
-let depthsFloorTimerActive = false;
-let depthsRunComplete     = false;
-
-// ── Depths boss floor state ──────────────────────────────────────────────────
-// depthsBossActive: true while a boss floor encounter is running.
-// depthsBossConfig: the boss descriptor from DEPTHS_BOSS_FLOORS (or null).
-// depthsActivePieceIndex: index into fallingPieces[] of the player-controlled piece.
-//   -1 = no active piece (normal mode).
-// depthsBossStormOverlay: true while the Piece Storm atmospheric overlay is shown.
-let depthsBossActive       = false;
-let depthsBossConfig       = null;
-let depthsActivePieceIndex = -1;
-let depthsBossStormOverlay = false;
-
-// ── Daily Depths state ───────────────────────────────────────────────────────
-// isDailyDepths: true when the current Depths run uses today's daily seed.
-// dailyDepthsPrng: seeded PRNG function for deterministic floor generation.
-let isDailyDepths     = false;
-let dailyDepthsPrng   = null;

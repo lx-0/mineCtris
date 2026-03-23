@@ -144,7 +144,6 @@ var _MASTERY_MODE_META = [
   { key: 'survival',   label: 'Survival',   icon: '\uD83C\uDF32' },
   { key: 'battle',     label: 'Battle',     icon: '\u2694\uFE0F' },
   { key: 'expedition', label: 'Expedition', icon: '\uD83D\uDDFA\uFE0F' },
-  { key: 'depths',     label: 'Depths',     icon: '\u26CF\uFE0F' },
 ];
 
 var _MASTERY_TIER_BORDER_COLORS = {
@@ -165,7 +164,7 @@ function _renderMasteryBadges() {
   var totalScore = (typeof getMasteryScore === 'function') ? getMasteryScore() : 0;
 
   var html = '<div class="profile-section-title">MASTERY</div>';
-  html += '<div class="profile-mastery-score">Total Mastery Score: <span class="profile-mastery-score-val">' + totalScore + ' / 40</span></div>';
+  html += '<div class="profile-mastery-score">Total Mastery Score: <span class="profile-mastery-score-val">' + totalScore + ' / 35</span></div>';
   html += '<div class="profile-mastery-grid">';
 
   for (var i = 0; i < _MASTERY_MODE_META.length; i++) {
@@ -322,7 +321,6 @@ function _getUnlockHint(cosmetic) {
       return modeLabel + ' ' + tierLabel + ' Mastery';
     }
     case 'season':      return 'Season reward';
-    case 'dungeon':     return 'Dungeon reward';
     default:            return 'Locked';
   }
 }

@@ -30,7 +30,7 @@ const DANGER_ZONE_HEIGHT = GAME_OVER_HEIGHT - 3; // 16.5
 
 const SHADOW_APPEAR_DIST = 20; // blocks of fall distance before shadow appears
 
-// Hazard block constants (Depths mode)
+// Hazard block constants
 const CRUMBLE_DECAY_SECS = 5;        // seconds before crumble block disappears
 const MAGMA_DAMAGE_INTERVAL = 3;     // seconds between magma adjacency damage ticks
 const HAZARD_COLOR_CRUMBLE      = 0xc4a35a;
@@ -81,8 +81,6 @@ const BLOCK_TYPES = {
   hardened_moss: { hits: Infinity, points: 0, effect: null, isHazard: true, hazardType: "hardened_moss" },
   vine:         { hits: 2, points: 5,  effect: null, isHazard: true, hazardType: "vine" },
   bedrock:      { hits: Infinity, points: 0, effect: null, isBedrock: true },
-  dungeon_wall:     { hits: Infinity, points: 0, effect: null, isBedrock: true },
-  dungeon_entrance: { hits: 3,        points: 0, effect: 'dungeon_entrance_glow' },
 };
 
 // Crafted plank block color (light tan, distinct from all spawned palette colors).
@@ -115,13 +113,7 @@ const COLOR_TO_MATERIAL = {
   0x556b2f: "hardened_moss",
   0x228b22: "vine",
   0x404040: "bedrock",
-  0x4a4a5e: "dungeon_wall",
-  0x7a4028: "dungeon_entrance",
 };
-
-// Dungeon block colors.
-const DUNGEON_WALL_COLOR     = 0x4a4a5e;  // blue-grey stone brick — non-mineable room perimeter
-const DUNGEON_ENTRANCE_COLOR = 0x7a4028;  // warm brick-red — mineable entrance (3 hits, glowing)
 
 // Rubble block color — slate grey, used for battle-mode garbage rows.
 const RUBBLE_COLOR = 0x6b6b6b;
@@ -146,9 +138,9 @@ const COLORS = [
   0xff0000,
   0x800080,
   0x1a237e,
-  0xc4a35a,  // 9: crumble (sandy tan — Depths hazard)
-  0xff4400,  // 10: magma (hot orange — Depths hazard)
-  0x2a0045,  // 11: void (deep purple — Depths hazard)
+  0xc4a35a,  // 9: crumble (sandy tan — hazard)
+  0xff4400,  // 10: magma (hot orange — hazard)
+  0x2a0045,  // 11: void (deep purple — hazard)
   0x32cd32,  // 12: soft moss (lime green — The Creep boss)
   0x556b2f,  // 13: hardened moss (dark olive — The Creep boss)
   0x228b22,  // 14: vine (forest green — The Creep boss)
@@ -352,7 +344,7 @@ const DIAMOND_SEASON_TRAIL_EMISSIVE = {
 // Used by biome-themes.js and referenced by world.js / pieces.js / trails.js.
 // Index maps 1:1 with COLORS.
 
-// Stone biome — underground cave, muted grey tones
+// Stone biome — muted grey tones
 const BIOME_STONE_COLORS = [
   null,
   0x4a4040, // 1 → cave dirt

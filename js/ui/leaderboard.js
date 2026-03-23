@@ -209,7 +209,6 @@ function _syncLbTabs() {
   const coopBtn         = document.getElementById('lb-tab-coop');
   const dailyCoopBtn    = document.getElementById('lb-tab-dailycoop');
   const battleBtn       = document.getElementById('lb-tab-battle');
-  const depthsBtn       = document.getElementById('lb-tab-depths');
   const masteryBtn      = document.getElementById('lb-tab-mastery');
   if (todayBtn)        todayBtn.classList.toggle('lb-tab-active',        _lbActiveTab === 'today');
   if (yestBtn)         yestBtn.classList.toggle('lb-tab-active',         _lbActiveTab === 'yesterday');
@@ -220,7 +219,6 @@ function _syncLbTabs() {
   if (coopBtn)         coopBtn.classList.toggle('lb-tab-active',         _lbActiveTab === 'coop');
   if (dailyCoopBtn)    dailyCoopBtn.classList.toggle('lb-tab-active',    _lbActiveTab === 'dailycoop');
   if (battleBtn)       battleBtn.classList.toggle('lb-tab-active',       _lbActiveTab === 'battle');
-  if (depthsBtn)       depthsBtn.classList.toggle('lb-tab-active',       _lbActiveTab === 'depths');
   if (masteryBtn)      masteryBtn.classList.toggle('lb-tab-active',      _lbActiveTab === 'mastery');
 }
 
@@ -303,14 +301,6 @@ async function _loadLbTab(tab) {
       const data = await apiFetchBattleLeaderboard();
       if (!data || !data.entries) throw new Error('bad response');
       _renderBattleLeaderboard(body, data.entries);
-    } else if (tab === 'depths') {
-      // Open the dedicated depths leaderboard panel instead
-      if (typeof openDepthsLeaderboard === 'function') {
-        openDepthsLeaderboard('allruns');
-        body.innerHTML = '<div class="lb-empty">Opened Depths leaderboard panel.</div>';
-      } else {
-        body.innerHTML = '<div class="lb-error">Depths leaderboard not available.</div>';
-      }
     } else if (tab === 'mastery') {
       const myName = loadDisplayName();
       const data = await apiFetchMasteryLeaderboard(myName);
@@ -506,7 +496,7 @@ function _renderSeasonRatingLeaderboard(container, data) {
 // Mastery tier icons — must match mastery.js MASTERY_TIER_ICONS
 const _MASTERY_TIER_ICONS = { bronze: '🥉', silver: '🥈', gold: '🥇', diamond: '💎', obsidian: '⬛' };
 const _MASTERY_TIER_COLORS = { bronze: '#cd7f32', silver: '#c0c0c0', gold: '#ffd700', diamond: '#b9f2ff', obsidian: '#7c3aed' };
-const _MASTERY_MODE_LABELS = ['classic', 'sprint', 'blitz', 'daily', 'survival', 'battle', 'expedition', 'depths'];
+const _MASTERY_MODE_LABELS = ['classic', 'sprint', 'blitz', 'daily', 'survival', 'battle', 'expedition'];
 
 function _masteryTierIcon(tierNum) {
   var names = ['bronze', 'silver', 'gold', 'diamond', 'obsidian'];
@@ -788,15 +778,6 @@ function initLeaderboard() {
       _lbActiveTab = 'battle';
       _syncLbTabs();
       _loadLbTab('battle');
-    });
-  }
-
-  const depthsTabBtn = document.getElementById('lb-tab-depths');
-  if (depthsTabBtn) {
-    depthsTabBtn.addEventListener('click', function() {
-      _lbActiveTab = 'depths';
-      _syncLbTabs();
-      _loadLbTab('depths');
     });
   }
 

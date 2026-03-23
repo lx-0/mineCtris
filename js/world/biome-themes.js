@@ -10,7 +10,7 @@
 // zen/hor are [r,g,b] 0-255; tint is blend strength (0=none, 1=full override).
 const _BIOME_SKY_THEMES = {
   stone: {
-    zen: [  8,   8,  10], // near-black underground
+    zen: [  8,   8,  10], // near-black
     hor: [ 22,  16,  14], // very dark warm (deep cave glow)
     fog: new THREE.Color(0x0c0808),
     tint: 0.95,

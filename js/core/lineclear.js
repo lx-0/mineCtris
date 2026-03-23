@@ -171,20 +171,8 @@ function checkLineClear(newBlocks) {
     triggerSprintComplete();
   }
 
-  // Dungeon (Expeditions): track floor lines and check clear condition
-  if (gameDepthsMode === 'dungeon' && typeof onDungeonLinesClear === 'function') {
-    onDungeonLinesClear(completeLevels.length);
-  }
-  // Depths (legacy 7-floor): track floor lines and check exit condition
-  else if (gameDepthsMode === 'depths') {
-    depthsFloorLinesCleared += completeLevels.length;
-    if (typeof checkDepthsFloorExit === 'function') checkDepthsFloorExit();
-  }
-
   const now = clock.getElapsedTime();
-  // Depths Chain Reaction upgrade: 50% wider combo window (4.5s instead of 3s)
   var _comboWindow = 3.0;
-  if (gameDepthsMode !== null && typeof isDepthsComboBoost === 'function' && isDepthsComboBoost()) _comboWindow = 4.5;
   if (lastClearTime >= 0 && (now - lastClearTime) <= _comboWindow) {
     comboCount++;
   } else {

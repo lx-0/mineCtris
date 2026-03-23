@@ -1,4 +1,4 @@
-// Hazard block mechanics for Depths mode — Crumble, Magma, and Void.
+// Hazard block mechanics — Crumble, Magma, and Void.
 // Requires: config.js, state.js, world.js (unregisterBlock), mining.js (spawnDustParticles)
 
 // ── Active hazard block tracking ──────────────────────────────────────────────
@@ -17,12 +17,10 @@ function registerHazardBlock(block) {
     block.userData.isHazard = true;
     block.userData.hazardType = 'crumble';
     _crumbleBlocks.push({ block: block, timer: CRUMBLE_DECAY_SECS });
-    if (typeof depthsTutorialNotify === 'function') depthsTutorialNotify('hazardBlockLanded');
   } else if (mat === 'magma') {
     block.userData.isHazard = true;
     block.userData.hazardType = 'magma';
     _magmaBlocks.push({ block: block, timer: MAGMA_DAMAGE_INTERVAL });
-    if (typeof depthsTutorialNotify === 'function') depthsTutorialNotify('hazardBlockLanded');
   } else if (mat === 'void_block') {
     block.userData.isHazard = true;
     block.userData.hazardType = 'void';
@@ -85,8 +83,6 @@ function unregisterHazardBlock(block) {
 function clearHazardBlocks() {
   _crumbleBlocks.length = 0;
   _magmaBlocks.length = 0;
-  _entropyTimer = 8.0;
-  _entropyTelegraph = null;
   if (typeof cleanupCreepBlocks === 'function') cleanupCreepBlocks();
   if (typeof cleanupFurnaceBlocks === 'function') cleanupFurnaceBlocks();
   if (typeof cleanupWitherBlocks === 'function') cleanupWitherBlocks();
@@ -99,14 +95,8 @@ function clearHazardBlocks() {
  * @param {number} delta  Frame delta in seconds
  */
 function updateHazardBlocks(delta) {
-  if (gameDepthsMode === null) return;
-
   _updateCrumbleBlocks(delta);
   _updateMagmaBlocks(delta);
-  // Tick Entropy modifier — random block decay for Infinite Depths
-  if (typeof isDungeonEntropyActive === 'function' && isDungeonEntropyActive()) {
-    _tickEntropy(delta);
-  }
   // Tick The Creep moss/vine mechanics (hardening timers, vine visuals)
   if (typeof updateCreepBlocks === 'function') updateCreepBlocks(delta);
   // Tick The Furnace magma/obsidian/lava/ice mechanics
@@ -236,106 +226,6 @@ function _magmaDamageAdjacent(magmaBlock) {
 
   if (typeof unregisterBlock === 'function') unregisterBlock(victim);
   if (typeof worldGroup !== 'undefined') worldGroup.remove(victim);
-}
-
-// ── Entropy ───────────────────────────────────────────────────────────────────
-// Random block decay mechanic for Infinite Depths Descent 3+.
-// Every 8s (6s at D5+, 4s at D8+) one non-hazard block is telegraphed then removed.
-
-var _entropyTimer = 8.0;      // seconds until next telegraph starts
-var _entropyTelegraph = null; // { block, timer } — active 2s warning phase
-
-function _tickEntropy(delta) {
-  // ── Telegraph phase ──
-  if (_entropyTelegraph) {
-    var tBlock = _entropyTelegraph.block;
-
-    // Targeted block removed by another mechanic (line-clear, mining, etc.)
-    if (!tBlock.parent) {
-      _entropyTelegraph = null;
-      _resetEntropyTimer();
-      return;
-    }
-
-    _entropyTelegraph.timer -= delta;
-
-    // Purple-to-transparent flicker
-    if (tBlock.material) {
-      var progress = 1 - (_entropyTelegraph.timer / 2.0); // 0→1 over 2 secs
-      var flicker = 0.5 + Math.sin(performance.now() * 0.018) * 0.5;
-      tBlock.material.color.setHex(0x9932cc);
-      tBlock.material.opacity = Math.max(0.1, (1 - progress * 0.85) * flicker + 0.1);
-      tBlock.material.transparent = true;
-      tBlock.material.needsUpdate = true;
-    }
-
-    if (_entropyTelegraph.timer <= 0) {
-      var victim = _entropyTelegraph.block;
-      _entropyTelegraph = null;
-      _resetEntropyTimer();
-
-      if (victim.parent) {
-        if (typeof playEntropyDissolve === 'function') playEntropyDissolve();
-        if (typeof spawnDustParticles === 'function') {
-          spawnDustParticles(victim, { breakBurst: true });
-        }
-        if (typeof unregisterBlock === 'function') unregisterBlock(victim);
-        if (typeof worldGroup !== 'undefined') worldGroup.remove(victim);
-      }
-    }
-    return;
-  }
-
-  // ── Interval phase ──
-  _entropyTimer -= delta;
-  if (_entropyTimer <= 0) {
-    _resetEntropyTimer();
-    var target = _pickEntropyVictim();
-    if (target) {
-      _entropyTelegraph = { block: target, timer: 2.0 };
-    }
-  }
-}
-
-/**
- * Reset the entropy interval based on current Descent number.
- * D1-4: 8s, D5-7: 6s, D8+: 4s.
- */
-function _resetEntropyTimer() {
-  var descentNum = 1;
-  if (typeof getInfiniteRun === 'function') {
-    var run = getInfiniteRun();
-    if (run) descentNum = run.descentNum;
-  }
-  if (descentNum >= 8) _entropyTimer = 4.0;
-  else if (descentNum >= 5) _entropyTimer = 6.0;
-  else _entropyTimer = 8.0;
-}
-
-/**
- * Pick a random non-hazard landed block, weighted 3:1 toward middle rows (y 5-15).
- */
-function _pickEntropyVictim() {
-  if (typeof worldGroup === 'undefined') return null;
-
-  var all = [];
-  var mid = [];
-
-  for (var i = 0; i < worldGroup.children.length; i++) {
-    var obj = worldGroup.children[i];
-    if (obj.name !== 'landed_block' || !obj.userData.gridPos) continue;
-    if (obj.userData.isHazard) continue;
-
-    all.push(obj);
-    var row = obj.userData.gridPos.y;
-    if (row >= 5 && row <= 15) mid.push(obj);
-  }
-
-  if (all.length === 0) return null;
-
-  // Build weighted pool: each middle-row block appears 3×, others 1×
-  var pool = mid.length > 0 ? mid.concat(mid).concat(mid).concat(all) : all;
-  return pool[Math.floor(Math.random() * pool.length)];
 }
 
 // ── Void helpers ──────────────────────────────────────────────────────────────

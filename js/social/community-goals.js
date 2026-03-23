@@ -6,7 +6,6 @@
 const CG_TEMPLATES = [
   { id: 'block_breaker',  name: 'Block Breaker',  metric: 'blocksMined',          icon: '⛏️', goldTarget: 500000 },
   { id: 'line_master',    name: 'Line Master',    metric: 'linesCleared',          icon: '🧱', goldTarget: 100000 },
-  { id: 'depth_crawler',  name: 'Depth Crawler',  metric: 'depthsFloorsCleared',   icon: '🕳️', goldTarget: 5000   },
   { id: 'boss_slayer',    name: 'Boss Slayer',    metric: 'bossesDefeated',        icon: '☠️', goldTarget: 1000   },
   { id: 'speed_demon',    name: 'Speed Demon',    metric: 'sprintsCompleted',      icon: '⚡', goldTarget: 12000  },
   { id: 'combo_king',     name: 'Combo King',     metric: 'maxComboSum',           icon: '🔥', goldTarget: 120000 },
@@ -17,21 +16,15 @@ const CG_TEMPLATES = [
 let _cgCache = null;               // last fetched goal state
 let _cgTickerInterval = null;      // HUD refresh interval id
 let _cgSessionBossesDefeated = 0;  // accumulated for current session
-let _cgSessionFloorsCleared  = 0;  // accumulated for current session
 
-// ── Public: session tracking (call from depths systems) ───────────────────────
+// ── Public: session tracking ─────────────────────────────────────────────────
 
 function cgRecordBossDefeated() {
   _cgSessionBossesDefeated++;
 }
 
-function cgRecordFloorCleared() {
-  _cgSessionFloorsCleared++;
-}
-
 function cgResetSession() {
   _cgSessionBossesDefeated = 0;
-  _cgSessionFloorsCleared  = 0;
 }
 
 // ── API helpers ───────────────────────────────────────────────────────────────
@@ -82,7 +75,6 @@ async function submitCommunityGoalContribution(stats) {
   const body = {
     blocksMined:         Math.max(0, stats.blocksMined        || 0),
     linesCleared:        Math.max(0, stats.linesCleared       || 0),
-    depthsFloorsCleared: Math.max(0, _cgSessionFloorsCleared),
     bossesDefeated:      Math.max(0, _cgSessionBossesDefeated),
     sprintsCompleted:    stats.sprintCompleted ? 1 : 0,
     maxComboSum:         Math.max(0, stats.maxCombo            || 0),
