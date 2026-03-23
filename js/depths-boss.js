@@ -373,6 +373,13 @@ function _transitionToPhase(phaseIdx) {
 
   if (_bossPauseCallback) _bossPauseCallback();
 
+  // Boss escalation audio for Infinite Depths extra phases (phase_4, phase_5)
+  var phase = _bossDef && _bossDef.phases ? _bossDef.phases[phaseIdx] : null;
+  if (phase && typeof playBossEscalation === 'function') {
+    if (phase.id === 'phase_4') playBossEscalation(4);
+    else if (phase.id === 'phase_5') playBossEscalation(5);
+  }
+
   _showBossTransition();
   _updateBossHUD();
 }

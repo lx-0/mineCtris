@@ -64,6 +64,12 @@ function launchInfiniteDepthsSession() {
   }
 
   saveInfiniteRunState();
+
+  // Start depth-scaling ambient audio
+  if (typeof updateInfiniteDepthsAudio === 'function') {
+    updateInfiniteDepthsAudio(_infiniteRun.descentNum);
+  }
+
   return true;
 }
 
@@ -101,6 +107,11 @@ function advanceInfiniteDescend() {
   _infiniteRun.speedMultiplier = _calcSpeedMult(_infiniteRun.descentNum);
 
   saveInfiniteRunState();
+
+  // Update depth-scaling ambient audio for new descent
+  if (typeof updateInfiniteDepthsAudio === 'function') {
+    updateInfiniteDepthsAudio(_infiniteRun.descentNum);
+  }
 
   // Reset the dungeon session and start the next Descent
   if (typeof clearDungeonSession === 'function') clearDungeonSession();
@@ -165,6 +176,11 @@ function extractInfiniteRun() {
   _infiniteRun.extracted = true;
   _infiniteRun.extractedAt = Date.now();
   saveInfiniteRunState();
+
+  // Extraction success audio + stop depth ambient
+  if (typeof playExtractionSuccess === 'function') playExtractionSuccess();
+  if (typeof stopInfiniteDepthsAudio === 'function') stopInfiniteDepthsAudio();
+  if (typeof stopEntropyAmbient === 'function') stopEntropyAmbient();
 }
 
 /**
@@ -185,6 +201,10 @@ function onInfiniteDescentDeath() {
   _infiniteRun.died = true;
   saveInfiniteRunState();
   // Note: current session loot is forfeit (never banked); only _infiniteRun.bankedLoot is safe.
+
+  // Stop depth ambient audio on death
+  if (typeof stopInfiniteDepthsAudio === 'function') stopInfiniteDepthsAudio();
+  if (typeof stopEntropyAmbient === 'function') stopEntropyAmbient();
 }
 
 // ── Persistence ───────────────────────────────────────────────────────────────
@@ -408,6 +428,10 @@ function showInfiniteDescentScreen(descentNum, floorLoot) {
   if (typeof masteryOnInfiniteDescentComplete === 'function') {
     masteryOnInfiniteDescentComplete(descentNum);
   }
+
+  // Descent completion sting + milestone check
+  if (typeof playDescentCompleteSting === 'function') playDescentCompleteSting(descentNum);
+  if (typeof checkAndPlayMilestone === 'function') checkAndPlayMilestone(descentNum);
 
   // Wire Extract button
   var extractBtn = document.getElementById('infinite-extract-btn');

@@ -289,6 +289,8 @@ function _applyDungeonModifier(mod, isPrimary) {
         var _entropyRun = getInfiniteRun();
         if (_entropyRun && _entropyRun.descentNum >= 3) {
           _dungeonEntropyActive = true;
+          // Start entropy ambient audio layer
+          if (typeof startEntropyAmbient === 'function') startEntropyAmbient();
         }
       }
       break;
