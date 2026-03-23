@@ -10,8 +10,9 @@
 
 // ── Module state ─────────────────────────────────────────────────────────────
 
-var _drRooms      = [];  // Array<RoomObject>
-var _drTorchLights = []; // Array<THREE.PointLight> — removed on clearDungeonRoomLights()
+var _drRooms         = [];  // Array<RoomObject>
+var _drTorchLights   = []; // Array<THREE.PointLight> — removed on clearDungeonRoomLights()
+var _drShaftPositions = []; // Array<{col,row}> — 2×2 surface shaft hole positions
 
 var DUNGEON_ROOMS_SAVE_KEY = 'mineCtris_dungeonRooms';
 
@@ -47,6 +48,7 @@ function initDungeonRooms(seed, ugData) {
   if (typeof markRoomAdjacentBlocks === 'function') {
     markRoomAdjacentBlocks(_drWallCells());
   }
+  carveDungeonShaft(ugData);
 }
 
 /**
@@ -80,11 +82,72 @@ function restoreDungeonRooms(seed, ugData) {
   if (typeof markRoomAdjacentBlocks === 'function') {
     markRoomAdjacentBlocks(_drWallCells());
   }
+  carveDungeonShaft(ugData);
 }
 
 /** Return a shallow copy of the current room array. */
 function getDungeonRooms() {
   return _drRooms.slice();
+}
+
+/** Return a copy of the 2×2 shaft surface positions [{col,row},…]. */
+function getDungeonShaftPositions() {
+  return _drShaftPositions.slice();
+}
+
+/**
+ * Carve a 2×2 access shaft from the surface into the underground.
+ * Positions shaft 3 blocks from room[0]'s nearest edge toward grid center.
+ * Marks depth 0-2 cells as mined in ugData so the shaft is open from the start.
+ * Surface grid spawner uses getDungeonShaftPositions() to skip these blocks.
+ *
+ * @param {Map} ugData  Underground data map (col,row,depth → {type,mined}).
+ */
+function carveDungeonShaft(ugData) {
+  _drShaftPositions = [];
+  if (!_drRooms.length) return;
+
+  var room = _drRooms[0];
+  var gridCenterCol = 9;
+  var gridCenterRow = 9;
+  var dCol = gridCenterCol - room.centerCol;
+  var dRow = gridCenterRow - room.centerRow;
+
+  var shaftCol, shaftRow;
+  if (Math.abs(dCol) >= Math.abs(dRow)) {
+    // Primary axis: columns
+    var colDir = (dCol >= 0) ? 1 : -1;
+    var edgeCol = (colDir > 0) ? room.colMax : room.colMin;
+    shaftCol = edgeCol + colDir * 3;
+    shaftRow = room.centerRow;
+  } else {
+    // Primary axis: rows
+    var rowDir = (dRow >= 0) ? 1 : -1;
+    var edgeRow = (rowDir > 0) ? room.rowMax : room.rowMin;
+    shaftCol = room.centerCol;
+    shaftRow = edgeRow + rowDir * 3;
+  }
+
+  // Clamp so both col and col+1 (and row and row+1) stay within cols/rows 1-18
+  shaftCol = Math.max(1, Math.min(17, shaftCol));
+  shaftRow = Math.max(1, Math.min(17, shaftRow));
+
+  _drShaftPositions = [
+    { col: shaftCol,     row: shaftRow     },
+    { col: shaftCol + 1, row: shaftRow     },
+    { col: shaftCol,     row: shaftRow + 1 },
+    { col: shaftCol + 1, row: shaftRow + 1 },
+  ];
+
+  // Pre-mine depths 0-2 for each shaft cell (3 underground layers)
+  for (var i = 0; i < _drShaftPositions.length; i++) {
+    var sp = _drShaftPositions[i];
+    for (var depth = 0; depth < 3; depth++) {
+      var key = sp.col + ',' + sp.row + ',' + depth;
+      var cell = ugData.get(key);
+      if (cell) cell.mined = true;
+    }
+  }
 }
 
 /**
@@ -363,6 +426,7 @@ function _drWorldPos(col, row, depth) {
 function _drClearState() {
   _drClearTorchLights();
   _drRooms = [];
+  _drShaftPositions = [];
 }
 
 /** Persist completion/discovered state for each room. */

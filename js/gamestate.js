@@ -642,6 +642,8 @@ function resetGame() {
 
   if (typeof resetBgMusic === "function") resetBgMusic();
   if (typeof clearSaveState === "function") clearSaveState();
+  // Clear underground terrain (disposes meshes before generic cleanup runs)
+  if (typeof clearUnderground === 'function') clearUnderground();
   // Remove landed blocks (keep ground and trees)
   const toRemove = worldGroup.children.filter(
     (c) => c.name === "landed_block"
